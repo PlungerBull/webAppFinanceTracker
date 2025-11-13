@@ -3,9 +3,10 @@
 import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { accountsApi } from '../api/accounts';
-import { createAccountSchema, type CreateAccountFormData } from '../schemas/account.schema';
+import { accountCurrenciesApi } from '../api/account-currencies';
 import { useCurrencies, useAddCurrency } from '@/features/currencies/hooks/use-currencies';
 import {
   Dialog,
@@ -17,18 +18,33 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 
 interface AddAccountModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+// Schema for the form
+const accountSchema = z.object({
+  name: z.string().min(1, 'Account name is required'),
+});
+
+type AccountFormData = z.infer<typeof accountSchema>;
+
+// Type for currency with balance
+interface CurrencyBalance {
+  currency_code: string;
+  starting_balance: number;
+}
+
 export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [currencyInput, setCurrencyInput] = useState('');
+  const [balanceInput, setBalanceInput] = useState('0');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedCurrencies, setSelectedCurrencies] = useState<CurrencyBalance[]>([]);
 
   const { data: currencies = [], isLoading: isLoadingCurrencies } = useCurrencies();
   const addCurrencyMutation = useAddCurrency();
@@ -37,68 +53,89 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
-    watch,
     reset,
-  } = useForm<CreateAccountFormData>({
-    resolver: zodResolver(createAccountSchema),
-    defaultValues: {
-      starting_balance: 0,
-      currency: 'USD',
-    },
+  } = useForm<AccountFormData>({
+    resolver: zodResolver(accountSchema),
   });
 
-  const selectedCurrency = watch('currency');
-
-  // Filter currencies based on input
+  // Filter currencies based on input and exclude already selected ones
   const filteredCurrencies = useMemo(() => {
     if (!currencyInput) return currencies;
     const search = currencyInput.toUpperCase();
-    return currencies.filter(c => c.code.startsWith(search));
-  }, [currencies, currencyInput]);
+    const selectedCodes = selectedCurrencies.map(c => c.currency_code);
+    return currencies.filter(c =>
+      c.code.startsWith(search) && !selectedCodes.includes(c.code)
+    );
+  }, [currencies, currencyInput, selectedCurrencies]);
 
-  const handleCurrencySelect = (code: string) => {
-    setValue('currency', code);
-    setCurrencyInput(code);
+  const handleAddCurrency = async (code: string) => {
+    // Check if currency already selected
+    if (selectedCurrencies.some(c => c.currency_code === code)) {
+      return;
+    }
+
+    // Check if currency exists, if not add it
+    const currencyExists = currencies.some(c => c.code === code);
+    if (!currencyExists) {
+      try {
+        await addCurrencyMutation.mutateAsync(code);
+      } catch (err) {
+        console.log('Currency might already exist, continuing');
+      }
+    }
+
+    // Add to selected currencies
+    setSelectedCurrencies([
+      ...selectedCurrencies,
+      { currency_code: code, starting_balance: parseFloat(balanceInput) || 0 }
+    ]);
+
+    // Reset inputs
+    setCurrencyInput('');
+    setBalanceInput('0');
     setShowSuggestions(false);
   };
 
-  const handleAddNewCurrency = async () => {
-    const code = currencyInput.toUpperCase();
-    if (code.length === 3) {
-      try {
-        await addCurrencyMutation.mutateAsync(code);
-        setValue('currency', code);
-        setShowSuggestions(false);
-      } catch (err) {
-        console.error('Failed to add currency:', err);
-      }
-    }
+  const handleRemoveCurrency = (code: string) => {
+    setSelectedCurrencies(selectedCurrencies.filter(c => c.currency_code !== code));
   };
 
-  const onSubmit = async (data: CreateAccountFormData) => {
+  const handleUpdateBalance = (code: string, balance: number) => {
+    setSelectedCurrencies(selectedCurrencies.map(c =>
+      c.currency_code === code ? { ...c, starting_balance: balance } : c
+    ));
+  };
+
+  const onSubmit = async (data: AccountFormData) => {
     try {
       setError(null);
 
-      // Check if currency exists, if not try to add it (ignore if already exists)
-      const currencyExists = currencies.some(c => c.code === data.currency.toUpperCase());
-      if (!currencyExists) {
-        try {
-          await addCurrencyMutation.mutateAsync(data.currency.toUpperCase());
-        } catch (currencyError) {
-          // Ignore duplicate currency errors - it means it already exists
-          console.log('Currency might already exist, continuing with creation');
-        }
+      // Validation: At least one currency must be selected
+      if (selectedCurrencies.length === 0) {
+        setError('Please add at least one currency to the account');
+        return;
       }
 
-      await accountsApi.create(data);
+      // Step 1: Create the account
+      const account = await accountsApi.create(data);
+
+      // Step 2: Add currencies to the account
+      const accountCurrenciesToCreate = selectedCurrencies.map(c => ({
+        account_id: account.id,
+        currency_code: c.currency_code,
+        starting_balance: c.starting_balance,
+      }));
+
+      await accountCurrenciesApi.createMany(accountCurrenciesToCreate);
 
       // Invalidate accounts query to refresh the list
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
 
       // Reset form and close modal
       reset();
+      setSelectedCurrencies([]);
       setCurrencyInput('');
+      setBalanceInput('0');
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create account');
@@ -107,18 +144,20 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
 
   const handleClose = () => {
     reset();
+    setSelectedCurrencies([]);
     setCurrencyInput('');
+    setBalanceInput('0');
     setError(null);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Account</DialogTitle>
           <DialogDescription>
-            Create a new account to track your finances
+            Create a new account and configure currencies
           </DialogDescription>
         </DialogHeader>
 
@@ -129,13 +168,13 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
             </div>
           )}
 
-          {/* Account Nickname */}
+          {/* Account Name */}
           <div className="space-y-2">
-            <Label htmlFor="name">Account Nickname *</Label>
+            <Label htmlFor="name">Account Name *</Label>
             <Input
               id="name"
               type="text"
-              placeholder="e.g., Checking Account, Savings, Cash"
+              placeholder="e.g., BCP Credit Card, Checking Account"
               {...register('name')}
               disabled={isSubmitting}
             />
@@ -144,88 +183,126 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
             )}
           </div>
 
-          {/* Starting Balance */}
+          {/* Add Currency Section */}
           <div className="space-y-2">
-            <Label htmlFor="starting_balance">Starting Balance</Label>
-            <Input
-              id="starting_balance"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              {...register('starting_balance', { valueAsNumber: true })}
-              disabled={isSubmitting}
-            />
-            {errors.starting_balance && (
-              <p className="text-sm text-red-600">{errors.starting_balance.message}</p>
-            )}
-          </div>
+            <Label>Add Currencies *</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder="Currency (e.g., USD)"
+                  value={currencyInput}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase();
+                    setCurrencyInput(value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowSuggestions(false), 200);
+                  }}
+                  maxLength={3}
+                  disabled={isSubmitting}
+                  className="uppercase"
+                />
 
-          {/* Currency with Autocomplete */}
-          <div className="space-y-2">
-            <Label htmlFor="currency">Currency *</Label>
-            <div className="relative">
+                {/* Suggestions Dropdown */}
+                {showSuggestions && currencyInput && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-lg max-h-48 overflow-auto">
+                    {isLoadingCurrencies ? (
+                      <div className="p-3 text-center text-sm text-zinc-500">
+                        Loading...
+                      </div>
+                    ) : filteredCurrencies.length > 0 ? (
+                      <div className="py-1">
+                        {filteredCurrencies.map((currency) => (
+                          <button
+                            key={currency.id}
+                            type="button"
+                            onClick={() => handleAddCurrency(currency.code)}
+                            className="w-full px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm"
+                          >
+                            {currency.code}
+                          </button>
+                        ))}
+                      </div>
+                    ) : currencyInput.length === 3 ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAddCurrency(currencyInput)}
+                        className="w-full px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add "{currencyInput}"</span>
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
               <Input
-                id="currency"
-                type="text"
-                placeholder="Type to search (e.g., USD, EUR)"
-                value={currencyInput}
-                onChange={(e) => {
-                  const value = e.target.value.toUpperCase();
-                  setCurrencyInput(value);
-                  setValue('currency', value);
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => {
-                  // Delay to allow clicking on suggestions
-                  setTimeout(() => setShowSuggestions(false), 200);
-                }}
-                maxLength={3}
+                type="number"
+                step="0.01"
+                placeholder="Balance"
+                value={balanceInput}
+                onChange={(e) => setBalanceInput(e.target.value)}
                 disabled={isSubmitting}
-                className="uppercase"
+                className="w-32"
               />
 
-              {/* Suggestions Dropdown */}
-              {showSuggestions && (
-                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-lg max-h-60 overflow-auto">
-                  {isLoadingCurrencies ? (
-                    <div className="p-4 text-center text-sm text-zinc-500">
-                      Loading currencies...
-                    </div>
-                  ) : filteredCurrencies.length > 0 ? (
-                    <div className="py-1">
-                      {filteredCurrencies.map((currency) => (
-                        <button
-                          key={currency.id}
-                          type="button"
-                          onClick={() => handleCurrencySelect(currency.code)}
-                          className="w-full px-4 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm"
-                        >
-                          {currency.code}
-                        </button>
-                      ))}
-                    </div>
-                  ) : currencyInput.length === 3 ? (
-                    <button
-                      type="button"
-                      onClick={handleAddNewCurrency}
-                      className="w-full px-4 py-3 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm flex items-center gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Add "{currencyInput}" as new currency</span>
-                    </button>
-                  ) : (
-                    <div className="p-4 text-center text-sm text-zinc-500">
-                      {currencyInput ? 'No currencies found' : 'Start typing to search'}
-                    </div>
-                  )}
-                </div>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => currencyInput.length === 3 && handleAddCurrency(currencyInput)}
+                disabled={!currencyInput || currencyInput.length !== 3 || isSubmitting}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
-            {errors.currency && (
-              <p className="text-sm text-red-600">{errors.currency.message}</p>
-            )}
+            <p className="text-xs text-zinc-500">
+              Add one or more currencies for this account
+            </p>
           </div>
+
+          {/* Selected Currencies List */}
+          {selectedCurrencies.length > 0 && (
+            <div className="space-y-2">
+              <Label>Selected Currencies ({selectedCurrencies.length})</Label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border border-zinc-200 dark:border-zinc-800 rounded-md p-2">
+                {selectedCurrencies.map((currency) => (
+                  <div
+                    key={currency.currency_code}
+                    className="flex items-center gap-2 p-2 bg-zinc-50 dark:bg-zinc-900 rounded"
+                  >
+                    <span className="font-medium text-sm flex-shrink-0 w-12">
+                      {currency.currency_code}
+                    </span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={currency.starting_balance}
+                      onChange={(e) =>
+                        handleUpdateBalance(currency.currency_code, parseFloat(e.target.value) || 0)
+                      }
+                      disabled={isSubmitting}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveCurrency(currency.currency_code)}
+                      disabled={isSubmitting}
+                      className="flex-shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Form Actions */}
           <div className="flex gap-3 pt-4">

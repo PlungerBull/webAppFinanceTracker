@@ -23,6 +23,7 @@ export function useAddTransaction() {
   return useMutation({
     mutationFn: (data: CreateTransactionFormData) => transactionsApi.create(data),
     onSuccess: () => {
+      // Invalidate all transaction-related queries (including monthly-spending)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },

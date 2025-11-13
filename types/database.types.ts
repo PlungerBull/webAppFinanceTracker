@@ -14,8 +14,6 @@ export interface Database {
           id: string;
           user_id: string;
           name: string;
-          starting_balance: number;
-          currency: string;
           created_at: string;
           updated_at: string;
         };
@@ -23,8 +21,6 @@ export interface Database {
           id?: string;
           user_id: string;
           name: string;
-          starting_balance?: number;
-          currency?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -32,8 +28,32 @@ export interface Database {
           id?: string;
           user_id?: string;
           name?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      account_currencies: {
+        Row: {
+          id: string;
+          account_id: string;
+          currency_code: string;
+          starting_balance: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          currency_code: string;
           starting_balance?: number;
-          currency?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          account_id?: string;
+          currency_code?: string;
+          starting_balance?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -168,12 +188,15 @@ export interface Database {
       account_balances: {
         Row: {
           id: string;
+          account_id: string;
           user_id: string;
           name: string;
           currency: string;
           starting_balance: number;
           transaction_sum: number;
           current_balance: number;
+          created_at: string;
+          updated_at: string;
         };
       };
     };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -8,6 +8,7 @@ import { createTransactionSchema, type CreateTransactionFormData } from '../sche
 import { useAddTransaction } from '../hooks/use-transactions';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useAccountCurrencies } from '@/features/accounts/hooks/use-account-currencies';
 import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
 import {
   Dialog,
@@ -44,8 +45,22 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   const addTransactionMutation = useAddTransaction();
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
-  const { data: accounts = [], isLoading: isLoadingAccounts } = useAccounts();
+  const { data: accountBalances = [], isLoading: isLoadingAccounts } = useAccounts();
   const { data: currencies = [] } = useCurrencies();
+
+  // Get unique accounts (group by account_id since we now have multiple rows per account)
+  const accounts = useMemo(() => {
+    const accountMap = new Map();
+    accountBalances.forEach((balance) => {
+      if (!accountMap.has(balance.account_id)) {
+        accountMap.set(balance.account_id, {
+          id: balance.account_id,
+          name: balance.name,
+        });
+      }
+    });
+    return Array.from(accountMap.values());
+  }, [accountBalances]);
 
   const {
     register,
@@ -70,15 +85,17 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const selectedCurrency = watch('currency_original');
   const exchangeRate = watch('exchange_rate');
 
+  // Fetch currencies for selected account (must come after watch() calls)
+  const { data: accountCurrencies = [] } = useAccountCurrencies(selectedAccountId);
+
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 
-  // Get main currency (assuming first currency is main, or we can add a flag)
+  // Get main currency
   const mainCurrency = currencies.find(c => c.is_main)?.code || currencies[0]?.code || 'USD';
 
   // Determine if we should show currency selector
-  // This happens when the selected account has a different currency than main
-  const accountCurrencies = selectedAccount ? [selectedAccount.currency] : [];
+  // Show it if the account has multiple currencies
   const shouldShowCurrencyPicker = accountCurrencies.length > 1;
 
   // Determine if we should show exchange rate input
@@ -94,10 +111,14 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   // Auto-set currency when account is selected
   useEffect(() => {
-    if (selectedAccount) {
-      setValue('currency_original', selectedAccount.currency);
+    if (accountCurrencies.length > 0) {
+      // If account has only one currency, auto-select it
+      if (accountCurrencies.length === 1) {
+        setValue('currency_original', accountCurrencies[0].currency_code);
+      }
+      // If multiple currencies, don't auto-select (user must choose)
     }
-  }, [selectedAccount, setValue]);
+  }, [accountCurrencies, setValue]);
 
   const onSubmit = async (data: CreateTransactionFormData) => {
     try {
@@ -271,11 +292,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                   )}
                   type="button"
                 >
-                  {selectedAccount ? (
-                    <span className="text-xs font-semibold">{selectedAccount.currency}</span>
-                  ) : (
-                    <Wallet className="h-4 w-4" />
-                  )}
+                  <Wallet className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[250px] p-0" align="start">
@@ -301,13 +318,52 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                       >
                         <Wallet className="h-4 w-4" />
                         <span className="flex-1">{account.name}</span>
-                        <span className="text-xs text-zinc-500">{account.currency}</span>
                       </button>
                     ))
                   )}
                 </div>
               </PopoverContent>
             </Popover>
+
+            {/* Currency Picker (only shown when account has multiple currencies) */}
+            {shouldShowCurrencyPicker && (
+              <Popover open={showCurrencyPicker} onOpenChange={setShowCurrencyPicker}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={cn(
+                      'h-10 w-10',
+                      selectedCurrency && 'border-2 border-primary'
+                    )}
+                    type="button"
+                  >
+                    {selectedCurrency ? (
+                      <span className="text-xs font-semibold">{selectedCurrency}</span>
+                    ) : (
+                      <DollarSign className="h-4 w-4" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0" align="start">
+                  <div className="max-h-[300px] overflow-y-auto p-1">
+                    {accountCurrencies.map((currency) => (
+                      <button
+                        key={currency.id}
+                        type="button"
+                        onClick={() => {
+                          setValue('currency_original', currency.currency_code);
+                          setShowCurrencyPicker(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left"
+                      >
+                        <span className="font-semibold">{currency.currency_code}</span>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
 
             {/* Exchange Rate Input (conditional) */}
             {showExchangeRate && (

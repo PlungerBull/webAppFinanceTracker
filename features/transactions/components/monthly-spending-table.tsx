@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subMonths, startOfMonth } from 'date-fns';
 import {
   Table,
   TableBody,
@@ -22,110 +23,99 @@ interface CategorySpending {
 }
 
 export function MonthlySpendingTable() {
-  const [data, setData] = useState<CategorySpending[]>([]);
-  const [months, setMonths] = useState<Date[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mainCurrency, setMainCurrency] = useState<string>('USD');
+  // Generate last 6 months
+  const months = useMemo(() => {
+    const monthsArray: Date[] = [];
+    for (let i = 5; i >= 0; i--) {
+      monthsArray.push(subMonths(new Date(), i));
+    }
+    return monthsArray;
+  }, []);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const supabase = createClient();
+  // Fetch all data using React Query - this will auto-update when transactions change
+  const { data: spendingData, isLoading: loading } = useQuery({
+    queryKey: ['transactions', 'monthly-spending'],
+    queryFn: async () => {
+      const supabase = createClient();
 
-        // Get user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+      // Get user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-        // Get main currency
-        const { data: currencyData } = await supabase
-          .from('currencies')
-          .select('code')
-          .eq('user_id', user.id)
-          .eq('is_main', true)
-          .single();
+      // Get main currency
+      const { data: currencyData } = await supabase
+        .from('currencies')
+        .select('code')
+        .eq('user_id', user.id)
+        .eq('is_main', true)
+        .single();
 
-        if (currencyData) {
-          setMainCurrency(currencyData.code);
-        }
+      const mainCurrency = currencyData?.code || 'USD';
 
-        // Generate last 6 months
-        const monthsArray: Date[] = [];
-        for (let i = 5; i >= 0; i--) {
-          monthsArray.push(subMonths(new Date(), i));
-        }
-        setMonths(monthsArray);
+      // Get all categories
+      const { data: categories } = await supabase
+        .from('categories')
+        .select('*')
+        .or(`user_id.eq.${user.id},user_id.is.null`)
+        .order('name', { ascending: true });
 
-        // Get all categories
-        const { data: categories } = await supabase
-          .from('categories')
-          .select('*')
-          .or(`user_id.eq.${user.id},user_id.is.null`)
-          .order('name', { ascending: true });
+      if (!categories) return { data: [], mainCurrency };
 
-        if (!categories) return;
+      // Get transactions for the last 6 months
+      const oldestMonth = startOfMonth(months[0]);
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('category_id, date, amount_home')
+        .eq('user_id', user.id)
+        .gte('date', format(oldestMonth, 'yyyy-MM-dd'))
+        .order('date', { ascending: false });
 
-        // Get transactions for the last 6 months
-        const oldestMonth = startOfMonth(monthsArray[0]);
-        const { data: transactions } = await supabase
-          .from('transactions')
-          .select('category_id, date, amount_home')
-          .eq('user_id', user.id)
-          .gte('date', format(oldestMonth, 'yyyy-MM-dd'))
-          .order('date', { ascending: false });
+      if (!transactions) return { data: [], mainCurrency };
 
-        if (!transactions) return;
+      // Build spending data by category and month
+      const spendingByCategory: { [categoryId: string]: CategorySpending } = {};
 
-        // Build spending data by category and month
-        const spendingByCategory: { [categoryId: string]: CategorySpending } = {};
-
-        categories.forEach((category) => {
-          spendingByCategory[category.id] = {
-            categoryId: category.id,
-            categoryName: category.name,
-            categoryIcon: category.icon,
-            monthlyAmounts: {},
-          };
-        });
-
-        // Add "Uncategorized" for transactions without a category
-        spendingByCategory['uncategorized'] = {
-          categoryId: 'uncategorized',
-          categoryName: 'Uncategorized',
-          categoryIcon: '❓',
+      categories.forEach((category) => {
+        spendingByCategory[category.id] = {
+          categoryId: category.id,
+          categoryName: category.name,
+          categoryIcon: category.icon,
           monthlyAmounts: {},
         };
+      });
 
-        transactions.forEach((transaction) => {
-          const transactionDate = new Date(transaction.date);
-          const monthKey = format(startOfMonth(transactionDate), 'yyyy-MM');
-          const categoryId = transaction.category_id || 'uncategorized';
+      // Add "Uncategorized" for transactions without a category
+      spendingByCategory['uncategorized'] = {
+        categoryId: 'uncategorized',
+        categoryName: 'Uncategorized',
+        categoryIcon: '❓',
+        monthlyAmounts: {},
+      };
 
-          if (!spendingByCategory[categoryId]) {
-            return;
-          }
+      transactions.forEach((transaction) => {
+        const transactionDate = new Date(transaction.date);
+        const monthKey = format(startOfMonth(transactionDate), 'yyyy-MM');
+        const categoryId = transaction.category_id || 'uncategorized';
 
-          if (!spendingByCategory[categoryId].monthlyAmounts[monthKey]) {
-            spendingByCategory[categoryId].monthlyAmounts[monthKey] = 0;
-          }
+        if (!spendingByCategory[categoryId]) {
+          return;
+        }
 
-          spendingByCategory[categoryId].monthlyAmounts[monthKey] += transaction.amount_home;
-        });
+        if (!spendingByCategory[categoryId].monthlyAmounts[monthKey]) {
+          spendingByCategory[categoryId].monthlyAmounts[monthKey] = 0;
+        }
 
-        // Filter out categories with no spending
-        const categoriesWithSpending = Object.values(spendingByCategory).filter(
-          (category) => Object.keys(category.monthlyAmounts).length > 0
-        );
+        spendingByCategory[categoryId].monthlyAmounts[monthKey] += transaction.amount_home;
+      });
 
-        setData(categoriesWithSpending);
-      } catch (error) {
-        console.error('Error fetching spending data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
+      // Filter out categories with no spending
+      const categoriesWithSpending = Object.values(spendingByCategory).filter(
+        (category) => Object.keys(category.monthlyAmounts).length > 0
+      );
 
-    fetchData();
-  }, []);
+      return { data: categoriesWithSpending, mainCurrency };
+    },
+  });
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -145,6 +135,9 @@ export function MonthlySpendingTable() {
       </Card>
     );
   }
+
+  const data = spendingData?.data || [];
+  const mainCurrency = spendingData?.mainCurrency || 'USD';
 
   if (data.length === 0) {
     return (

@@ -126,14 +126,18 @@ Single PostgreSQL database hosted on Supabase, shared by all platforms (Web, iOS
 │bank_accounts│  │  currencies  │
 └──────┬──────┘  └──────────────┘
        │
-       │         ┌──────────────┐
-       ├────────►│ transactions │
-       │         └──────┬───────┘
-       │                │
-       ▼                ▼
-┌──────────────┐  (self-join)
-│  categories  │   transfer_id
-└──────────────┘
+       ├────────────┐
+       │            │
+       ▼            ▼
+┌────────────────┐ ┌──────────────┐
+│account_currencies│ │ transactions │
+│  (junction)   │ └──────┬───────┘
+└────────────────┘        │
+                          ▼
+                    ┌──────────────┐
+                    │  categories  │
+                    └──────────────┘
+                    (self-join via transfer_id)
 ```
 
 ### Table Schemas
@@ -146,9 +150,7 @@ Stores user's financial accounts (checking, savings, cash, credit cards, etc.)
 CREATE TABLE bank_accounts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,                    -- e.g., "Checking", "Savings"
-    starting_balance NUMERIC(15, 2) NOT NULL DEFAULT 0,
-    currency TEXT NOT NULL DEFAULT 'USD',  -- ISO 4217 code
+    name TEXT NOT NULL,                    -- e.g., "Checking", "Savings", "Credit Card"
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -177,13 +179,59 @@ CREATE POLICY "Users can delete their own accounts"
 
 **Business Rules:**
 - Account names must be unique per user
-- Starting balance represents initial amount when account created
-- Currency cannot be changed after creation (create new account instead)
-- Deleting account deletes all related transactions (CASCADE)
+- Currencies and balances stored in `account_currencies` junction table
+- Supports multiple currencies per account (essential for credit cards)
+- Deleting account deletes all related transactions and currencies (CASCADE)
 
 ---
 
-#### 2. `transactions`
+#### 2. `account_currencies` (Multi-Currency Support)
+
+Junction table linking accounts to currencies with starting balances.
+
+```sql
+CREATE TABLE account_currencies (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    currency_code VARCHAR(3) NOT NULL,     -- ISO 4217 code (USD, PEN, EUR)
+    starting_balance NUMERIC(15, 2) DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(account_id, currency_code)      -- One entry per account-currency pair
+);
+
+-- Indexes
+CREATE INDEX idx_account_currencies_account_id ON account_currencies(account_id);
+CREATE INDEX idx_account_currencies_currency_code ON account_currencies(currency_code);
+
+-- RLS Policies (indirect ownership through bank_accounts)
+CREATE POLICY "Users can view their own account currencies"
+    ON account_currencies FOR SELECT
+    USING (
+        account_id IN (
+            SELECT id FROM bank_accounts WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can manage their own account currencies"
+    ON account_currencies FOR ALL
+    USING (
+        account_id IN (
+            SELECT id FROM bank_accounts WHERE user_id = auth.uid()
+        )
+    );
+```
+
+**Business Rules:**
+- One account can have multiple currencies
+- Each currency has its own starting balance
+- Perfect for credit cards supporting multiple currencies
+- Current balance per currency = starting_balance + SUM(transactions in that currency)
+- Cannot have duplicate currency for same account (UNIQUE constraint)
+
+---
+
+#### 3. `transactions`
 
 Stores all financial transactions (income, expenses, transfers)
 
@@ -237,7 +285,7 @@ CREATE INDEX idx_transactions_transfer_id ON transactions(transfer_id);
 
 ---
 
-#### 3. `categories`
+#### 4. `categories`
 
 Categorizes transactions by spending area (not by income/expense)
 
@@ -306,7 +354,7 @@ CREATE POLICY "Users can delete any categories"
 
 ---
 
-#### 4. `currencies`
+#### 5. `currencies`
 
 Tracks which currencies each user uses
 
@@ -335,7 +383,7 @@ CREATE INDEX idx_currencies_user_id ON currencies(user_id);
 
 ---
 
-#### 5. `user_settings`
+#### 6. `user_settings`
 
 User preferences and configuration
 

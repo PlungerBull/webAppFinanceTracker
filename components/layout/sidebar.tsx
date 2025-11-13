@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
@@ -78,6 +78,20 @@ export function Sidebar({ className }: SidebarProps) {
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
+  // Group account balances by account_id
+  const groupedAccounts = useMemo(() => {
+    const grouped = new Map<string, typeof accounts>();
+    accounts.forEach((balance) => {
+      const existing = grouped.get(balance.account_id) || [];
+      grouped.set(balance.account_id, [...existing, balance]);
+    });
+    return Array.from(grouped.entries()).map(([account_id, balances]) => ({
+      account_id,
+      name: balances[0].name,
+      balances: balances.sort((a, b) => a.currency.localeCompare(b.currency)),
+    }));
+  }, [accounts]);
+
   return (
     <aside
       className={cn(
@@ -136,8 +150,13 @@ export function Sidebar({ className }: SidebarProps) {
         {!isCollapsed && (
           <div className="mb-4">
             <div className="px-2 mb-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                <span>Accounts</span>
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
+                <button
+                  onClick={() => router.push('/transactions')}
+                  className="flex-1 text-left px-2 py-1 rounded-md text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                >
+                  All Accounts
+                </button>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
@@ -170,60 +189,74 @@ export function Sidebar({ className }: SidebarProps) {
                   <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
                     Loading...
                   </div>
-                ) : accounts.length === 0 ? (
+                ) : groupedAccounts.length === 0 ? (
                   <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
                     No accounts yet!
                   </div>
                 ) : (
-                  accounts.map((account) => (
+                  groupedAccounts.map((account) => (
                     <div
-                      key={account.id}
-                      className="relative group"
+                      key={account.account_id}
+                      className="relative group px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer"
+                      onClick={() => router.push(`/accounts/${account.account_id}`)}
                     >
-                      <div className="flex items-center justify-between w-full px-2 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-sm">
-                        <div
-                          className="flex items-center min-w-0 flex-1 cursor-pointer"
-                          onClick={() => router.push(`/accounts/${account.id}`)}
-                        >
-                          <Wallet className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span className="truncate">{account.name}</span>
-                        </div>
-                        <div className="flex items-center ml-2 flex-shrink-0 relative min-w-[80px] justify-end">
-                          <span className="text-xs text-zinc-500 dark:text-zinc-400 absolute right-0 group-hover:opacity-0 group-hover:pointer-events-none transition-opacity">
-                            {formatCurrency(account.current_balance || account.starting_balance, account.currency)}
-                          </span>
-                          <div className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded text-xs text-zinc-500 dark:text-zinc-400 border-0 bg-transparent flex items-center justify-center outline-none"
-                                onClick={(e) => e.stopPropagation()}
+                      {/* Account Header with Icon and Name */}
+                      <div className="flex items-center w-full text-sm">
+                        <Wallet className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span className="truncate flex-1">{account.name}</span>
+                        <div className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity ml-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded text-xs text-zinc-500 dark:text-zinc-400 border-0 bg-transparent flex items-center justify-center outline-none"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-3 w-3" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="z-50">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingAccount(account.balances[0]);
+                                }}
                               >
-                                <MoreHorizontal className="h-3 w-3" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="z-50">
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingAccount(account);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeletingAccount(account);
-                                  }}
-                                  className="text-red-600 dark:text-red-400"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingAccount(account.balances[0]);
+                                }}
+                                className="text-red-600 dark:text-red-400"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
+                      </div>
+
+                      {/* Currency Balances - Indented */}
+                      <div className="ml-6 space-y-0.5">
+                        {account.balances.map((balance) => (
+                          <div
+                            key={balance.id}
+                            className="flex items-center justify-between text-xs py-0.5 px-2"
+                          >
+                            <span className="text-zinc-600 dark:text-zinc-400 font-medium">
+                              {balance.currency}
+                            </span>
+                            <span className={cn(
+                              "font-medium tabular-nums",
+                              balance.current_balance >= 0
+                                ? "text-zinc-700 dark:text-zinc-300"
+                                : "text-red-600 dark:text-red-400"
+                            )}>
+                              {formatCurrency(balance.current_balance, balance.currency)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))

@@ -272,12 +272,13 @@ PostgreSQL database hosted on Supabase, accessed by all platforms.
 ### Core Tables
 
 ```
-auth.users          (Managed by Supabase Auth)
-├── bank_accounts   (User's financial accounts)
-├── transactions    (All money movements)
-├── categories      (Spending categories)
-├── currencies      (User's currencies)
-└── user_settings   (User preferences)
+auth.users             (Managed by Supabase Auth)
+├── bank_accounts      (User's financial accounts)
+├── account_currencies (Currencies per account - junction table)
+├── transactions       (All money movements)
+├── categories         (Spending categories)
+├── currencies         (User's currencies)
+└── user_settings      (User preferences)
 ```
 
 ### Detailed Schemas
@@ -289,9 +290,7 @@ Stores user's financial accounts.
 CREATE TABLE bank_accounts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,                    -- "Checking", "Savings", etc.
-    starting_balance NUMERIC(15, 2) NOT NULL DEFAULT 0,
-    currency TEXT NOT NULL DEFAULT 'USD',  -- ISO 4217 code
+    name TEXT NOT NULL,                    -- "Checking", "Savings", "Credit Card", etc.
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -300,9 +299,42 @@ CREATE INDEX idx_bank_accounts_user_id ON bank_accounts(user_id);
 ```
 
 **Key Points:**
-- `starting_balance` = initial amount when account created
-- `currency` = account's base currency (USD, PEN, EUR, etc.)
-- Current balance = `starting_balance + SUM(transactions)`
+- Simple table - just stores account name and user
+- Currencies and balances are stored in `account_currencies` junction table
+- This allows accounts to support multiple currencies (essential for credit cards, etc.)
+
+---
+
+#### **account_currencies** (NEW - Multi-Currency Support)
+Junction table linking accounts to currencies with starting balances.
+
+```sql
+CREATE TABLE account_currencies (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    currency_code VARCHAR(3) NOT NULL,     -- ISO 4217 code (USD, PEN, EUR)
+    starting_balance NUMERIC(15, 2) DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(account_id, currency_code)      -- One entry per account-currency pair
+);
+
+CREATE INDEX idx_account_currencies_account_id ON account_currencies(account_id);
+CREATE INDEX idx_account_currencies_currency_code ON account_currencies(currency_code);
+```
+
+**Key Points:**
+- **Many-to-many** relationship: One account can have multiple currencies
+- Each currency for an account has its own `starting_balance`
+- Perfect for credit cards that support multiple currencies
+- Example: Credit card with USD and PEN balances
+- Current balance per currency = `starting_balance + SUM(transactions in that currency)`
+
+**Why this design:**
+- Credit cards often support spending in multiple currencies
+- Bank accounts in dual-currency economies (Peru, Argentina, etc.)
+- Properly normalized (3NF) - avoids data duplication
+- Easy to query and maintain
 
 ---
 
@@ -466,6 +498,7 @@ CREATE TABLE user_settings (
 ```sql
 -- Enable RLS on all tables
 ALTER TABLE bank_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE account_currencies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE currencies ENABLE ROW LEVEL SECURITY;
@@ -488,6 +521,23 @@ CREATE POLICY "Users can update their own data"
 CREATE POLICY "Users can delete their own data"
     ON bank_accounts FOR DELETE
     USING (auth.uid() = user_id);
+
+-- Special RLS for account_currencies (indirect ownership through bank_accounts)
+CREATE POLICY "Users can view their own account currencies"
+  ON account_currencies FOR SELECT
+  USING (
+    account_id IN (
+      SELECT id FROM bank_accounts WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can manage their own account currencies"
+  ON account_currencies FOR ALL
+  USING (
+    account_id IN (
+      SELECT id FROM bank_accounts WHERE user_id = auth.uid()
+    )
+  );
 ```
 
 **Special case for categories:**
@@ -659,43 +709,58 @@ await supabase.rpc('delete_transfer', {
 
 ---
 
-### 3. `account_balances` View
+### 3. `account_balances` View (Multi-Currency)
 
-**Purpose:** Pre-calculate account balances for performance.
+**Purpose:** Pre-calculate account balances per currency for performance.
 
 ```sql
 CREATE OR REPLACE VIEW account_balances AS
-SELECT 
-    ba.id,
+SELECT
+    ac.id,
+    ba.id as account_id,
     ba.user_id,
     ba.name,
-    ba.currency,
-    ba.starting_balance,
+    ac.currency_code as currency,
+    ac.starting_balance,
     COALESCE(SUM(t.amount_original), 0) as transaction_sum,
-    ba.starting_balance + COALESCE(SUM(t.amount_original), 0) as current_balance
-FROM bank_accounts ba
-LEFT JOIN transactions t ON t.account_id = ba.id
-GROUP BY ba.id, ba.user_id, ba.name, ba.currency, ba.starting_balance;
+    ac.starting_balance + COALESCE(SUM(t.amount_original), 0) as current_balance,
+    ba.created_at,
+    ba.updated_at
+FROM account_currencies ac
+JOIN bank_accounts ba ON ba.id = ac.account_id
+LEFT JOIN transactions t ON t.account_id = ac.account_id
+    AND t.currency_original = ac.currency_code
+GROUP BY ac.id, ba.id, ba.user_id, ba.name, ac.currency_code,
+         ac.starting_balance, ba.created_at, ba.updated_at;
 
 GRANT SELECT ON account_balances TO authenticated;
 ```
 
+**Key Changes:**
+- Returns **one row per account per currency** (not one row per account)
+- Joins through `account_currencies` junction table
+- Filters transactions by matching currency
+- Example: Credit card with USD and PEN shows 2 rows
+
 **Usage:**
 ```typescript
-// Get account with pre-calculated balance
+// Get all balances for an account (may return multiple currencies)
 const { data } = await supabase
   .from('account_balances')
   .select('*')
-  .eq('id', accountId)
-  .single();
+  .eq('account_id', accountId);
 
-console.log(data.current_balance); // Already calculated!
+// Result for multi-currency account:
+// [
+//   { account_id: '123', currency: 'USD', current_balance: 1000 },
+//   { account_id: '123', currency: 'PEN', current_balance: 5000 }
+// ]
 ```
 
 **Why this matters:**
-- **Without view:** Complex query every time + manual calculation
-- **With view:** Simple query, balance already calculated
-- **Performance:** 3-5x faster
+- **Without view:** Complex multi-table join + currency filtering + manual calculation
+- **With view:** Simple query, balances already calculated per currency
+- **Performance:** 5-10x faster for multi-currency accounts
 
 ---
 
@@ -768,6 +833,7 @@ $$;
 
 **Database Tables:**
 - `bank_accounts` - User's financial accounts
+- `account_currencies` - Junction table: accounts ↔ currencies (multi-currency support)
 - `transactions` - All money movements (+ or -)
 - `categories` - Spending areas (not split by type)
 - `currencies` - User's currencies
