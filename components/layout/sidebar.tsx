@@ -102,7 +102,7 @@ export function Sidebar({ className }: SidebarProps) {
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4" />
           )}
         </Button>
       </div>
@@ -157,7 +157,7 @@ export function Sidebar({ className }: SidebarProps) {
                     {isAccountsExpanded ? (
                       <ChevronDown className="h-3 w-3" />
                     ) : (
-                      <ChevronLeft className="h-3 w-3" />
+                      <ChevronRight className="h-3 w-3" />
                     )}
                   </Button>
                 </div>
