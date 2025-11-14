@@ -21,21 +21,6 @@ export const authApi = {
       throw new Error(error.message || 'Failed to sign up');
     }
 
-    // Create user settings record
-    if (authData.user) {
-      const { error: settingsError } = await supabase
-        .from('user_settings')
-        .insert({
-          user_id: authData.user.id,
-          theme: 'system',
-          start_of_week: 0,
-        });
-
-      if (settingsError) {
-        console.error('Failed to create user settings:', settingsError);
-      }
-    }
-
     return authData;
   },
 

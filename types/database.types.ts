@@ -4,228 +4,456 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      bank_accounts: {
-        Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          name?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
       account_currencies: {
         Row: {
-          id: string;
-          account_id: string;
-          currency_code: string;
-          starting_balance: number;
-          created_at: string;
-          updated_at: string;
-        };
+          account_id: string
+          created_at: string | null
+          currency_code: string
+          id: string
+          starting_balance: number | null
+          updated_at: string | null
+        }
         Insert: {
-          id?: string;
-          account_id: string;
-          currency_code: string;
-          starting_balance?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
+          account_id: string
+          created_at?: string | null
+          currency_code: string
+          id?: string
+          starting_balance?: number | null
+          updated_at?: string | null
+        }
         Update: {
-          id?: string;
-          account_id?: string;
-          currency_code?: string;
-          starting_balance?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      transactions: {
+          account_id?: string
+          created_at?: string | null
+          currency_code?: string
+          id?: string
+          starting_balance?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_currencies_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "account_currencies_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_accounts: {
         Row: {
-          id: string;
-          user_id: string;
-          account_id: string;
-          category_id: string | null;
-          date: string;
-          description: string | null;
-          amount_original: number;
-          currency_original: string;
-          exchange_rate: number;
-          amount_home: number;
-          transfer_id: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          account_id: string;
-          category_id?: string | null;
-          date?: string;
-          description?: string | null;
-          amount_original: number;
-          currency_original: string;
-          exchange_rate?: number;
-          amount_home: number;
-          transfer_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          account_id?: string;
-          category_id?: string | null;
-          date?: string;
-          description?: string | null;
-          amount_original?: number;
-          currency_original?: string;
-          exchange_rate?: number;
-          amount_home?: number;
-          transfer_id?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
-          id: string;
-          user_id: string | null;
-          name: string;
-          icon: string;
-          color: string;
-          created_at: string;
-          updated_at: string;
-        };
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          is_default: boolean | null
+          name: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
         Insert: {
-          id?: string;
-          user_id?: string | null;
-          name: string;
-          icon: string;
-          color: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          color: string
+          created_at?: string
+          icon: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
         Update: {
-          id?: string;
-          user_id?: string | null;
-          name?: string;
-          icon?: string;
-          color?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       currencies: {
         Row: {
-          id: string;
-          user_id: string;
-          code: string;
-          is_main: boolean;
-          created_at: string;
-        };
+          code: string
+          created_at: string
+          id: string
+          is_main: boolean | null
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          code: string;
-          is_main?: boolean;
-          created_at?: string;
-        };
+          code: string
+          created_at?: string
+          id?: string
+          is_main?: boolean | null
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          code?: string;
-          is_main?: boolean;
-          created_at?: string;
-        };
-      };
+          code?: string
+          created_at?: string
+          id?: string
+          is_main?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          account_id: string
+          amount_home: number
+          amount_original: number
+          category_id: string | null
+          created_at: string
+          currency_original: string
+          date: string
+          description: string | null
+          exchange_rate: number
+          id: string
+          transfer_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount_home: number
+          amount_original: number
+          category_id?: string | null
+          created_at?: string
+          currency_original: string
+          date?: string
+          description?: string | null
+          exchange_rate?: number
+          id?: string
+          transfer_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount_home?: number
+          amount_original?: number
+          category_id?: string | null
+          created_at?: string
+          currency_original?: string
+          date?: string
+          description?: string | null
+          exchange_rate?: number
+          id?: string
+          transfer_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
-          user_id: string;
-          nickname: string | null;
-          theme: 'light' | 'dark' | 'system';
-          start_of_week: number;
-          created_at: string;
-          updated_at: string;
-        };
+          created_at: string
+          start_of_week: number | null
+          theme: string | null
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          user_id: string;
-          nickname?: string | null;
-          theme?: 'light' | 'dark' | 'system';
-          start_of_week?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          start_of_week?: number | null
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          user_id?: string;
-          nickname?: string | null;
-          theme?: 'light' | 'dark' | 'system';
-          start_of_week?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-    };
+          created_at?: string
+          start_of_week?: number | null
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
     Views: {
       account_balances: {
         Row: {
-          id: string;
-          account_id: string;
-          user_id: string;
-          name: string;
-          currency: string;
-          starting_balance: number;
-          transaction_sum: number;
-          current_balance: number;
-          created_at: string;
-          updated_at: string;
-        };
-      };
-    };
+          account_id: string | null
+          created_at: string | null
+          currency: string | null
+          current_balance: number | null
+          id: string | null
+          name: string | null
+          starting_balance: number | null
+          transaction_sum: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+    }
     Functions: {
       create_transfer: {
         Args: {
-          p_user_id: string;
-          p_from_account_id: string;
-          p_to_account_id: string;
-          p_amount: number;
-          p_currency_original: string;
-          p_exchange_rate: number;
-          p_description: string;
-          p_date: string;
-          p_category_id?: string;
-        };
-        Returns: {
-          transfer_id: string;
-          debit_transaction_id: string;
-          credit_transaction_id: string;
-        };
-      };
+          p_amount: number
+          p_category_id?: string
+          p_currency_original: string
+          p_date: string
+          p_description: string
+          p_exchange_rate: number
+          p_from_account_id: string
+          p_to_account_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       delete_transfer: {
+        Args: { p_transfer_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      replace_account_currency: {
         Args: {
-          p_user_id: string;
-          p_transfer_id: string;
-        };
-        Returns: void;
-      };
-    };
-  };
+          p_account_id: string
+          p_new_currency_code: string
+          p_new_starting_balance: number
+          p_old_currency_code: string
+        }
+        Returns: undefined
+      }
+    }
+    Enums: {
+      account_type:
+        | "checking"
+        | "savings"
+        | "credit_card"
+        | "investment"
+        | "loan"
+        | "cash"
+        | "other"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      account_type: [
+        "checking",
+        "savings",
+        "credit_card",
+        "investment",
+        "loan",
+        "cash",
+        "other",
+      ],
+    },
+  },
+} as const

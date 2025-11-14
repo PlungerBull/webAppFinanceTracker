@@ -16,8 +16,8 @@ export const transactionsApi = {
       .select(`
         *,
         category:categories(id, name, icon, color),
-        account:bank_accounts(id, name, currency)
-      `)
+        account:bank_accounts(id, name)
+      `) // 
       .eq('user_id', user.id)
       .order('date', { ascending: false });
 
@@ -43,8 +43,8 @@ export const transactionsApi = {
       .select(`
         *,
         category:categories(id, name, icon, color),
-        account:bank_accounts(id, name, currency)
-      `)
+        account:bank_accounts(id, name)
+      `) // 
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
@@ -66,16 +66,13 @@ export const transactionsApi = {
       throw new Error('User not authenticated');
     }
 
-    // Calculate amount_home based on exchange rate
-    const amount_home = transactionData.amount_original * transactionData.exchange_rate;
-
     const { data, error } = await supabase
       .from('transactions')
       .insert({
         user_id: user.id,
         description: transactionData.description || null,
         amount_original: transactionData.amount_original,
-        amount_home: amount_home,
+        amount_home: 0, // 
         date: transactionData.date,
         category_id: transactionData.category_id || null,
         account_id: transactionData.account_id,
@@ -102,30 +99,9 @@ export const transactionsApi = {
       throw new Error('User not authenticated');
     }
 
-    // If amount_original or exchange_rate changed, recalculate amount_home
-    let amount_home;
-    if (transactionData.amount_original !== undefined || transactionData.exchange_rate !== undefined) {
-      // Get current transaction to access current values
-      const { data: currentTransaction } = await supabase
-        .from('transactions')
-        .select('amount_original, exchange_rate')
-        .eq('id', id)
-        .single();
-
-      const finalAmount = transactionData.amount_original ?? currentTransaction?.amount_original ?? 0;
-      const finalExchangeRate = transactionData.exchange_rate ?? currentTransaction?.exchange_rate ?? 1;
-
-      amount_home = finalAmount * finalExchangeRate;
-    }
-
-    const updatePayload: any = { ...transactionData };
-    if (amount_home !== undefined) {
-      updatePayload.amount_home = amount_home;
-    }
-
     const { data, error } = await supabase
       .from('transactions')
-      .update(updatePayload)
+      .update(transactionData) // This will now be correctly typed
       .eq('id', id)
       .eq('user_id', user.id)
       .select()
