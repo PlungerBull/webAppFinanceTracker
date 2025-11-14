@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { format } from 'date-fns';
 import {
   Table,
@@ -84,15 +85,6 @@ export function AccountTransactionsTable({ accountId }: AccountTransactionsTable
       });
     },
   });
-
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
 
   if (isLoading) {
     return (

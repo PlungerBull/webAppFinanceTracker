@@ -34,7 +34,7 @@ export const accountCurrenciesApi = {
 
     const { data, error } = await supabase
       .from('account_currencies')
-      .insert(accountCurrency)
+      .insert(accountCurrency as any)
       .select()
       .single();
 
@@ -54,7 +54,7 @@ export const accountCurrenciesApi = {
 
     const { data, error } = await supabase
       .from('account_currencies')
-      .update(updates)
+      .update(updates as any)
       .eq('id', id)
       .select()
       .single();
@@ -92,7 +92,7 @@ export const accountCurrenciesApi = {
 
     const { data, error } = await supabase
       .from('account_currencies')
-      .insert(accountCurrencies)
+      .insert(accountCurrencies as any)
       .select();
 
     if (error) {

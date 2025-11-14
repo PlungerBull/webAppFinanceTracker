@@ -9,6 +9,7 @@ import { AddAccountModal } from '@/features/accounts/components/add-account-moda
 import { EditAccountModal } from '@/features/accounts/components/edit-account-modal';
 import { DeleteAccountDialog } from '@/features/accounts/components/delete-account-dialog';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/hooks/use-formatted-balance';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,13 +65,6 @@ export function Sidebar({ className }: SidebarProps) {
     } catch (error) {
       console.error('Failed to logout:', error);
     }
-  };
-
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount);
   };
 
   const navItems = [

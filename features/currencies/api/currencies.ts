@@ -30,34 +30,42 @@ export const currenciesApi = {
   },
 
   /**
-   * Add a new currency for the current user
-   */
-  add: async (code: string) => {
-    const supabase = createClient();
+ * Add a new currency for the current user
+ * Uses upsert to gracefully handle duplicates
+ */
+add: async (code: string) => {
+  const supabase = createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
 
-    const { data, error } = await supabase
-      .from('currencies')
-      .insert({
+  // Use upsert to handle duplicates gracefully
+  const { data, error } = await supabase
+    .from('currencies')
+    .upsert(
+      {
         user_id: user.id,
         code: code.toUpperCase(),
         is_main: false,
-      })
-      .select()
-      .single();
+      },
+      {
+        onConflict: 'user_id,code', // Unique constraint columns
+        ignoreDuplicates: false,     // Return the existing row if duplicate
+      }
+    )
+    .select()
+    .maybeSingle(); // Use maybeSingle instead of single to avoid error if no row returned
 
-    if (error) {
-      console.error('Error adding currency:', error);
-      throw new Error(error.message || 'Failed to add currency');
-    }
+  if (error) {
+    console.error('Error adding currency:', error);
+    throw new Error(error.message || 'Failed to add currency');
+  }
 
-    return data;
-  },
-};
+  return data;
+},
+}

@@ -278,6 +278,10 @@ export type Database = {
       }
     }
     Functions: {
+      create_account_with_currencies: {
+        Args: { p_account_name: string; p_currencies: Json; p_user_id: string }
+        Returns: Json
+      }
       create_transfer: {
         Args: {
           p_amount: number
@@ -295,6 +299,16 @@ export type Database = {
       delete_transfer: {
         Args: { p_transfer_id: string; p_user_id: string }
         Returns: undefined
+      }
+      get_monthly_spending_by_category: {
+        Args: { p_months_back?: number; p_user_id: string }
+        Returns: {
+          category_icon: string
+          category_id: string
+          category_name: string
+          month_key: string
+          total_amount: number
+        }[]
       }
       replace_account_currency: {
         Args: {

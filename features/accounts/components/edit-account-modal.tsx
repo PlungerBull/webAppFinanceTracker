@@ -113,13 +113,11 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
 
         // Ensure the new currency exists in user's currencies
         if (oldCode !== newCode) {
-          const currencyExists = allCurrencies.some((c) => c.code === newCode);
-          if (!currencyExists) {
-            try {
-              await addCurrencyMutation.mutateAsync(newCode);
-            } catch (err) {
-              console.log('Currency might already exist, continuing');
-            }
+          try {
+            await addCurrencyMutation.mutateAsync(newCode);
+          } catch (err) {
+            // Only log real errors, not duplicates
+            console.error('Error adding currency:', err);
           }
 
           // Replace currency in account and all transactions

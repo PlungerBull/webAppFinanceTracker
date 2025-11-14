@@ -74,14 +74,13 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       return;
     }
 
-    // Check if currency exists, if not add it
-    const currencyExists = currencies.some(c => c.code === code);
-    if (!currencyExists) {
-      try {
-        await addCurrencyMutation.mutateAsync(code);
-      } catch (err) {
-        console.log('Currency might already exist, continuing');
-      }
+    // NEW CODE - CLEANER:
+    // Always try to add currency - upsert will handle duplicates
+    try {
+      await addCurrencyMutation.mutateAsync(code);
+    } catch (err) {
+      // Only log real errors, not duplicates
+      console.error('Error adding currency:', err);
     }
 
     // Add to selected currencies
