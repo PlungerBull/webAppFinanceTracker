@@ -75,7 +75,7 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
         accountCurrencies.map((ac) => ({
           oldCurrency: ac,
           newCurrencyCode: ac.currency_code,
-          newStartingBalance: ac.starting_balance,
+          newStartingBalance: ac.starting_balance ?? 0, // Handle null by defaulting to 0
         }))
       );
     }

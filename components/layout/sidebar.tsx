@@ -76,13 +76,18 @@ export function Sidebar({ className }: SidebarProps) {
   const groupedAccounts = useMemo(() => {
     const grouped = new Map<string, typeof accounts>();
     accounts.forEach((balance) => {
+      // Filter out balances without account_id
+      if (!balance.account_id) return;
+
       const existing = grouped.get(balance.account_id) || [];
       grouped.set(balance.account_id, [...existing, balance]);
     });
     return Array.from(grouped.entries()).map(([account_id, balances]) => ({
       account_id,
-      name: balances[0].name,
-      balances: balances.sort((a, b) => a.currency.localeCompare(b.currency)),
+      name: balances[0].name ?? 'Unknown Account',
+      balances: balances.sort((a, b) =>
+        (a.currency ?? '').localeCompare(b.currency ?? '')
+      ),
     }));
   }, [accounts]);
 
@@ -210,7 +215,17 @@ export function Sidebar({ className }: SidebarProps) {
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setEditingAccount(account.balances[0]);
+                                  const balance = account.balances[0];
+                                  if (balance.account_id && balance.user_id && balance.created_at && balance.updated_at) {
+                                    const bankAccount: BankAccount = {
+                                      id: balance.account_id,
+                                      user_id: balance.user_id,
+                                      name: balance.name ?? 'Unknown Account',
+                                      created_at: balance.created_at,
+                                      updated_at: balance.updated_at,
+                                    };
+                                    setEditingAccount(bankAccount);
+                                  }
                                 }}
                               >
                                 <Edit className="h-4 w-4 mr-2" />
@@ -219,7 +234,17 @@ export function Sidebar({ className }: SidebarProps) {
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setDeletingAccount(account.balances[0]);
+                                  const balance = account.balances[0];
+                                  if (balance.account_id && balance.user_id && balance.created_at && balance.updated_at) {
+                                    const bankAccount: BankAccount = {
+                                      id: balance.account_id,
+                                      user_id: balance.user_id,
+                                      name: balance.name ?? 'Unknown Account',
+                                      created_at: balance.created_at,
+                                      updated_at: balance.updated_at,
+                                    };
+                                    setDeletingAccount(bankAccount);
+                                  }
                                 }}
                                 className="text-red-600 dark:text-red-400"
                               >
@@ -235,19 +260,19 @@ export function Sidebar({ className }: SidebarProps) {
                       <div className="ml-6 space-y-0.5">
                         {account.balances.map((balance) => (
                           <div
-                            key={balance.id}
+                            key={balance.id ?? Math.random()}
                             className="flex items-center justify-between text-xs py-0.5 px-2"
                           >
                             <span className="text-zinc-600 dark:text-zinc-400 font-medium">
-                              {balance.currency}
+                              {balance.currency ?? 'N/A'}
                             </span>
                             <span className={cn(
                               "font-medium tabular-nums",
-                              balance.current_balance >= 0
+                              (balance.current_balance ?? 0) >= 0
                                 ? "text-zinc-700 dark:text-zinc-300"
                                 : "text-red-600 dark:text-red-400"
                             )}>
-                              {formatCurrency(balance.current_balance, balance.currency)}
+                              {formatCurrency(balance.current_balance ?? 0, balance.currency ?? 'USD')}
                             </span>
                           </div>
                         ))}
