@@ -66,8 +66,6 @@ export const accountsApi = {
       .insert({
         user_id: user.id,
         name: accountData.name,
-        starting_balance: accountData.starting_balance,
-        currency: accountData.currency,
       })
       .select()
       .single();

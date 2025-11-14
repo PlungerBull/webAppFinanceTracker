@@ -7,9 +7,18 @@ export const currenciesApi = {
   getAll: async () => {
     const supabase = createClient();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     const { data, error } = await supabase
       .from('currencies')
       .select('*')
+      .eq('user_id', user.id)
       .order('code', { ascending: true });
 
     if (error) {
@@ -17,7 +26,7 @@ export const currenciesApi = {
       throw new Error(error.message || 'Failed to fetch currencies');
     }
 
-    return data;
+    return data || [];
   },
 
   /**

@@ -102,4 +102,72 @@ export const accountCurrenciesApi = {
 
     return data;
   },
+
+  /**
+   * Replace a currency in an account (updates account_currencies and all related transactions)
+   */
+  replaceCurrency: async (
+    accountId: string,
+    oldCurrencyCode: string,
+    newCurrencyCode: string,
+    newStartingBalance: number
+  ): Promise<void> => {
+    const supabase = createClient();
+
+    // Get user for authentication
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // First, update all transactions with the old currency to the new currency
+    const { error: transactionsError } = await supabase
+      .from('transactions')
+      .update({ currency_original: newCurrencyCode })
+      .eq('account_id', accountId)
+      .eq('user_id', user.id)
+      .eq('currency_original', oldCurrencyCode);
+
+    if (transactionsError) {
+      console.error('Error updating transactions:', transactionsError);
+      throw new Error('Failed to update transactions with new currency');
+    }
+
+    // Then, update or create the account_currencies record
+    // First try to find the old currency record
+    const { data: oldCurrency } = await supabase
+      .from('account_currencies')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('currency_code', oldCurrencyCode)
+      .single();
+
+    if (oldCurrency) {
+      // Update existing record
+      const { error: updateError } = await supabase
+        .from('account_currencies')
+        .update({
+          currency_code: newCurrencyCode,
+          starting_balance: newStartingBalance,
+        })
+        .eq('id', oldCurrency.id);
+
+      if (updateError) {
+        console.error('Error updating account currency:', updateError);
+        throw new Error('Failed to update account currency');
+      }
+    } else {
+      // Create new record if it doesn't exist
+      const { error: createError } = await supabase
+        .from('account_currencies')
+        .insert({
+          account_id: accountId,
+          currency_code: newCurrencyCode,
+          starting_balance: newStartingBalance,
+        });
+
+      if (createError) {
+        console.error('Error creating account currency:', createError);
+        throw new Error('Failed to create account currency');
+      }
+    }
+  },
 };

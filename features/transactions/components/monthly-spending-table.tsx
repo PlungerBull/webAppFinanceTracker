@@ -43,12 +43,12 @@ export function MonthlySpendingTable() {
       if (!user) throw new Error('Not authenticated');
 
       // Get main currency
-      const { data: currencyData } = await supabase
+      const { data: currencyData, error: currencyError } = await supabase
         .from('currencies')
         .select('code')
         .eq('user_id', user.id)
         .eq('is_main', true)
-        .single();
+        .maybeSingle();
 
       const mainCurrency = currencyData?.code || 'USD';
 
