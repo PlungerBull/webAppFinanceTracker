@@ -81,10 +81,15 @@ CREATE TRIGGER update_account_currencies_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_account_currencies_updated_at();
 
--- Step 8: Create NEW account_balances view (replaces the old one)
+-- Step 8: Create NEW account_balances view (WITHOUT SECURITY DEFINER)
 -- This view returns one row per account per currency with current balance
--- Used by the sidebar to display balances
-CREATE OR REPLACE VIEW account_balances AS
+-- Drop old view first
+DROP VIEW IF EXISTS account_balances;
+
+-- Create view WITHOUT any security definer property
+CREATE VIEW account_balances 
+WITH (security_invoker = true)  -- ✅ This is the key - explicitly set security invoker
+AS
 SELECT
     ac.id,
     ba.id as account_id,
@@ -100,3 +105,6 @@ FROM account_currencies ac
 JOIN bank_accounts ba ON ba.id = ac.account_id
 LEFT JOIN transactions t ON t.account_id = ac.account_id AND t.currency_original = ac.currency_code
 GROUP BY ac.id, ba.id, ba.user_id, ba.name, ac.currency_code, ac.starting_balance, ba.created_at, ba.updated_at;
+
+-- Grant select permission to authenticated users
+GRANT SELECT ON account_balances TO authenticated;
