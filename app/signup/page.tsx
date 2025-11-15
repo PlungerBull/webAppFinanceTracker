@@ -72,6 +72,38 @@ export default function SignUpPage() {
                 {error}
               </div>
             )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="John"
+                  {...register('firstName')}
+                  disabled={isSubmitting}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-red-600">
+                    {errors.firstName.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  {...register('lastName')}
+                  disabled={isSubmitting}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-red-600">
+                    {errors.lastName.message}
+                  </p>
+                )}
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

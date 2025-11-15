@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
@@ -14,7 +14,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel, // Keep this import, it's still part of the component file
 } from '@/components/ui/dropdown-menu';
 import {
   Home,
@@ -26,14 +28,14 @@ import {
   ChevronRight,
   Plus,
   ChevronDown,
-  ChevronUp,
-  Lock,
-  Trash2,
   MoreHorizontal,
   Edit,
+  Crown,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/types/database.types';
+import { getInitials } from '@/lib/utils'; // <-- IMPORT THE HELPER
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
 
@@ -48,14 +50,34 @@ export function Sidebar({ className }: SidebarProps) {
   const { data: accounts = [], isLoading } = useAccounts();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAccountsExpanded, setIsAccountsExpanded] = useState(true);
-  const [isUserMenuExpanded, setIsUserMenuExpanded] = useState(false);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<BankAccount | null>(null);
   const [hoveredAccountId, setHoveredAccountId] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  // TODO: Fetch user nickname from database
-  const userDisplayName = user?.email || 'User';
+  const userDisplayName = useMemo(() => {
+    if (!user) return 'User';
+    if (user.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    return user.email || 'User';
+  }, [user]);
+
+  const initials = useMemo(() => {
+    if (!user) return '?';
+    const firstName = user.user_metadata?.firstName;
+    const lastName = user.user_metadata?.lastName;
+
+    if (firstName || lastName) {
+      return getInitials(firstName, lastName);
+    }
+    // Fallback if no name is set
+    return getInitials(user.email);
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -91,6 +113,18 @@ export function Sidebar({ className }: SidebarProps) {
     }));
   }, [accounts]);
 
+  const renderUserAvatar = () => (
+    <div
+      className={cn(
+        'flex-shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium',
+        !isCollapsed && 'mr-2',
+        isCollapsed ? 'h-6 w-6 text-sm' : 'h-5 w-5 text-xs' // Different sizes for collapsed/expanded
+      )}
+    >
+      {initials}
+    </div>
+  );
+
   return (
     <aside
       className={cn(
@@ -99,24 +133,102 @@ export function Sidebar({ className }: SidebarProps) {
         className
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800">
-        {!isCollapsed && (
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
-            Finance Tracker
-          </h2>
+      {/* Header - User Menu */}
+      <div
+        className={cn(
+          'flex items-center p-4 border-b border-zinc-200 dark:border-zinc-800',
+          isCollapsed && 'p-2 justify-center' // Center icons when collapsed
         )}
+      >
+        {!isClient ? (
+          // Render a static placeholder on the server to prevent layout shift
+          <Button
+            variant="ghost"
+            className={cn(
+              'justify-start text-left h-auto',
+              isCollapsed
+                ? 'w-full justify-center p-2'
+                : 'flex-1 min-w-0 px-2 py-1.5'
+            )}
+            disabled={true}
+          >
+            <div className="flex items-center min-w-0">
+              <User
+                className={cn(
+                  'h-5 w-5 flex-shrink-0',
+                  !isCollapsed && 'mr-2'
+                )}
+              />
+              {!isCollapsed && (
+                <span className="truncate text-sm font-medium text-zinc-400">
+                  Loading...
+                </span>
+              )}
+            </div>
+          </Button>
+        ) : (
+          // This part now *only* renders on the client, fixing the error
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  'justify-start text-left h-auto',
+                  isCollapsed
+                    ? 'w-full justify-center p-2'
+                    : 'flex-1 min-w-0 px-2 py-1.5'
+                )}
+              >
+                <div className="flex items-center min-w-0">
+                  {renderUserAvatar()}
+                  {!isCollapsed && (
+                    <span className="truncate text-sm font-medium">
+                      {userDisplayName}
+                    </span>
+                  )}
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align={isCollapsed ? 'end' : 'start'}
+              className="w-56"
+            >
+              <DropdownMenuItem onClick={() => router.push('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Crown className="mr-2 h-4 w-4" />
+                Premium
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {/* Collapse/Expand Button */}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="ml-auto"
+          className={cn(isCollapsed ? 'hidden' : 'block')} // Sits next to the user menu
         >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={cn(isCollapsed ? 'block' : 'hidden')} // Centered with user icon
+        >
+          <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
@@ -197,7 +309,9 @@ export function Sidebar({ className }: SidebarProps) {
                     <div
                       key={account.account_id}
                       className="relative group px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer"
-                      onClick={() => router.push(`/accounts/${account.account_id}`)}
+                      onClick={() =>
+                        router.push(`/accounts/${account.account_id}`)
+                      }
                     >
                       {/* Account Header with Icon and Name */}
                       <div className="flex items-center w-full text-sm">
@@ -211,16 +325,25 @@ export function Sidebar({ className }: SidebarProps) {
                             >
                               <MoreHorizontal className="h-3 w-3" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="z-50">
+                            <DropdownMenuContent
+                              align="end"
+                              className="z-50"
+                            >
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const balance = account.balances[0];
-                                  if (balance.account_id && balance.user_id && balance.created_at && balance.updated_at) {
+                                  if (
+                                    balance.account_id &&
+                                    balance.user_id &&
+                                    balance.created_at &&
+                                    balance.updated_at
+                                  ) {
                                     const bankAccount: BankAccount = {
                                       id: balance.account_id,
                                       user_id: balance.user_id,
-                                      name: balance.name ?? 'Unknown Account',
+                                      name:
+                                        balance.name ?? 'Unknown Account',
                                       created_at: balance.created_at,
                                       updated_at: balance.updated_at,
                                     };
@@ -235,11 +358,17 @@ export function Sidebar({ className }: SidebarProps) {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const balance = account.balances[0];
-                                  if (balance.account_id && balance.user_id && balance.created_at && balance.updated_at) {
+                                  if (
+                                    balance.account_id &&
+                                    balance.user_id &&
+                                    balance.created_at &&
+                                    balance.updated_at
+                                  ) {
                                     const bankAccount: BankAccount = {
                                       id: balance.account_id,
                                       user_id: balance.user_id,
-                                      name: balance.name ?? 'Unknown Account',
+                                      name:
+                                        balance.name ?? 'Unknown Account',
                                       created_at: balance.created_at,
                                       updated_at: balance.updated_at,
                                     };
@@ -266,13 +395,18 @@ export function Sidebar({ className }: SidebarProps) {
                             <span className="text-zinc-600 dark:text-zinc-400 font-medium">
                               {balance.currency ?? 'N/A'}
                             </span>
-                            <span className={cn(
-                              "font-medium tabular-nums",
-                              (balance.current_balance ?? 0) >= 0
-                                ? "text-zinc-700 dark:text-zinc-300"
-                                : "text-red-600 dark:text-red-400"
-                            )}>
-                              {formatCurrency(balance.current_balance ?? 0, balance.currency ?? 'USD')}
+                            <span
+                              className={cn(
+                                'font-medium tabular-nums',
+                                (balance.current_balance ?? 0) >= 0
+                                  ? 'text-zinc-700 dark:text-zinc-300'
+                                  : 'text-red-600 dark:text-red-400'
+                              )}
+                            >
+                              {formatCurrency(
+                                balance.current_balance ?? 0,
+                                balance.currency ?? 'USD'
+                              )}
                             </span>
                           </div>
                         ))}
@@ -299,85 +433,6 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         )}
       </nav>
-
-      {/* User Section */}
-      <div className="border-t border-zinc-200 dark:border-zinc-800 p-2">
-        {!isCollapsed ? (
-          <div>
-            <Button
-              variant="ghost"
-              className="w-full justify-between"
-              onClick={() => setIsUserMenuExpanded(!isUserMenuExpanded)}
-            >
-              <div className="flex items-center min-w-0">
-                <User className="h-5 w-5 mr-2 flex-shrink-0" />
-                <span className="truncate text-sm">{userDisplayName}</span>
-              </div>
-              {isUserMenuExpanded ? (
-                <ChevronUp className="h-4 w-4 flex-shrink-0" />
-              ) : (
-                <ChevronDown className="h-4 w-4 flex-shrink-0" />
-              )}
-            </Button>
-
-            {isUserMenuExpanded && (
-              <div className="space-y-1 mt-1 pl-2">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-sm"
-                  onClick={() => router.push('/profile')}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Profile
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-sm"
-                  onClick={() => router.push('/change-password')}
-                >
-                  <Lock className="h-4 w-4 mr-2" />
-                  Change Password
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-sm text-red-600 dark:text-red-400"
-                  onClick={() => router.push('/delete-account')}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Account
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-sm"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full"
-              onClick={() => setIsCollapsed(false)}
-            >
-              <User className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        )}
-      </div>
 
       {/* Add Account Modal */}
       <AddAccountModal
