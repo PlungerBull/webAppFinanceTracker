@@ -1,12 +1,13 @@
 'use client';
 
+'use client';
+
 import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { accountsApi } from '../api/accounts';
-import { accountCurrenciesApi } from '../api/account-currencies';
 import { useCurrencies, useAddCurrency } from '@/features/currencies/hooks/use-currencies';
 import {
   Dialog,
@@ -74,7 +75,6 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       return;
     }
 
-    // NEW CODE - CLEANER:
     // Always try to add currency - upsert will handle duplicates
     try {
       await addCurrencyMutation.mutateAsync(code);
@@ -115,17 +115,15 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
         return;
       }
 
-      // Step 1: Create the account
-      const account = await accountsApi.create(data);
-
-      // Step 2: Add currencies to the account
-      const accountCurrenciesToCreate = selectedCurrencies.map(c => ({
-        account_id: account.id,
-        currency_code: c.currency_code,
-        starting_balance: c.starting_balance,
-      }));
-
-      await accountCurrenciesApi.createMany(accountCurrenciesToCreate);
+      // ✅ NEW: Use atomic database function instead of two separate operations
+      // This guarantees either everything is created or nothing is created
+      await accountsApi.createWithCurrencies(
+        data.name,
+        selectedCurrencies.map(c => ({
+          code: c.currency_code,
+          starting_balance: c.starting_balance,
+        }))
+      );
 
       // Invalidate accounts query to refresh the list
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -184,10 +182,12 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
 
           {/* Add Currency Section */}
           <div className="space-y-2">
-            <Label>Add Currencies *</Label>
+            <Label htmlFor="currency-input">Add Currencies *</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Input
+                  id="currency-input"
+                  name="currency"
                   type="text"
                   placeholder="Currency (e.g., USD)"
                   value={currencyInput}
@@ -203,6 +203,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                   maxLength={3}
                   disabled={isSubmitting}
                   className="uppercase"
+                  autoComplete="off"
                 />
 
                 {/* Suggestions Dropdown */}
@@ -240,6 +241,8 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
               </div>
 
               <Input
+                id="balance-input"
+                name="balance"
                 type="number"
                 step="0.01"
                 placeholder="Balance"
@@ -247,6 +250,8 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                 onChange={(e) => setBalanceInput(e.target.value)}
                 disabled={isSubmitting}
                 className="w-32"
+                autoComplete="off"
+                aria-label="Starting balance"
               />
 
               <Button
@@ -278,6 +283,8 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                       {currency.currency_code}
                     </span>
                     <Input
+                      id={`balance-${currency.currency_code}`}
+                      name={`balance-${currency.currency_code}`}
                       type="number"
                       step="0.01"
                       value={currency.starting_balance}
@@ -286,6 +293,8 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                       }
                       disabled={isSubmitting}
                       className="flex-1"
+                      autoComplete="off"
+                      aria-label={`Starting balance for ${currency.currency_code}`}
                     />
                     <Button
                       type="button"

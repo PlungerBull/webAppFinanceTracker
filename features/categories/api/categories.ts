@@ -43,7 +43,7 @@ export const categoriesApi = {
   },
 
   // Create a new category
-  create: async (categoryData: { name: string; icon: string; color: string }) => {
+  create: async (categoryData: { name: string; icon: string; color: string; type: string }) => {
     const supabase = createClient();
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -58,7 +58,8 @@ export const categoriesApi = {
         name: categoryData.name,
         icon: categoryData.icon,
         color: categoryData.color,
-      })
+        type: categoryData.type,
+      } as any)
       .select()
       .single();
 

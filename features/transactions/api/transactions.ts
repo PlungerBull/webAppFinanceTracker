@@ -17,7 +17,7 @@ export const transactionsApi = {
         *,
         category:categories(id, name, icon, color),
         account:bank_accounts(id, name)
-      `) // 
+      `)
       .eq('user_id', user.id)
       .order('date', { ascending: false });
 
@@ -44,7 +44,7 @@ export const transactionsApi = {
         *,
         category:categories(id, name, icon, color),
         account:bank_accounts(id, name)
-      `) // 
+      `)
       .eq('id', id)
       .eq('user_id', user.id)
       .single();
@@ -72,7 +72,8 @@ export const transactionsApi = {
         user_id: user.id,
         description: transactionData.description || null,
         amount_original: transactionData.amount_original,
-        amount_home: 0, // 
+        // ✅ amount_home is now automatically calculated by database trigger
+        // No need to pass it - the calculate_amount_home() function handles it
         date: transactionData.date,
         category_id: transactionData.category_id || null,
         account_id: transactionData.account_id,
@@ -101,7 +102,7 @@ export const transactionsApi = {
 
     const { data, error } = await supabase
       .from('transactions')
-      .update(transactionData) // This will now be correctly typed
+      .update(transactionData) // amount_home will be recalculated by trigger if needed
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

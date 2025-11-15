@@ -48,15 +48,43 @@ export const accountsApi = {
   },
 
   /**
-   * Create a new account
+   * Create a new account with currencies atomically
+   * Uses database function to ensure all-or-nothing creation
+   */
+  createWithCurrencies: async (
+    accountName: string,
+    currencies: Array<{ code: string; starting_balance: number }>
+  ) => {
+    const supabase = createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Call database function for atomic creation
+    const { data, error } = await supabase.rpc('create_account_with_currencies', {
+      p_user_id: user.id,
+      p_account_name: accountName,
+      p_currencies: currencies,
+    });
+
+    if (error) {
+      console.error('Error creating account with currencies:', error);
+      throw new Error(error.message || 'Failed to create account');
+    }
+
+    return data;
+  },
+
+  /**
+   * Create a new account (legacy - kept for backwards compatibility)
+   * WARNING: This doesn't create currencies! Use createWithCurrencies instead
    */
   create: async (accountData: CreateAccountFormData) => {
     const supabase = createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('User not authenticated');
     }

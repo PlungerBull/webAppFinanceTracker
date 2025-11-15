@@ -71,7 +71,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     reset,
     control,
   } = useForm<CreateTransactionFormData>({
-    resolver: zodResolver(createTransactionSchema),
+    resolver: zodResolver(createTransactionSchema) as any,
     defaultValues: {
       description: '',
       amount_original: 0,

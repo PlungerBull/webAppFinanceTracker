@@ -30,6 +30,7 @@ export const createTransactionSchema = z.object({
   exchange_rate: z
     .number()
     .positive('Exchange rate must be positive')
+    .optional()
     .default(1),
 });
 
