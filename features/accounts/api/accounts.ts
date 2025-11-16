@@ -3,20 +3,14 @@ import type { CreateAccountFormData, UpdateAccountFormData } from '../schemas/ac
 
 export const accountsApi = {
   /**
-   * Get all accounts for the current user with current balances
+   * Get all accounts for the current user with current balances (RLS handles user filtering)
    */
   getAll: async () => {
     const supabase = createClient();
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
-
     const { data, error } = await supabase
       .from('account_balances')
       .select('*')
-      .eq('user_id', user.id)
       .order('name', { ascending: true });
 
     if (error) {
@@ -50,6 +44,7 @@ export const accountsApi = {
   /**
    * Create a new account with currencies atomically
    * Uses database function to ensure all-or-nothing creation
+   * Note: Uses auth.uid() internally for security
    */
   createWithCurrencies: async (
     accountName: string,
@@ -62,9 +57,8 @@ export const accountsApi = {
       throw new Error('User not authenticated');
     }
 
-    // Call database function for atomic creation
+    // Call database function for atomic creation (uses auth.uid() internally)
     const { data, error } = await supabase.rpc('create_account_with_currencies', {
-      p_user_id: user.id,
       p_account_name: accountName,
       p_currencies: currencies,
     });

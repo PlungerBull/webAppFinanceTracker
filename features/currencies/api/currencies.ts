@@ -2,23 +2,14 @@ import { createClient } from '@/lib/supabase/client';
 
 export const currenciesApi = {
   /**
-   * Get all currencies for the current user
+   * Get all currencies for the current user (RLS handles user filtering)
    */
   getAll: async () => {
     const supabase = createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
     const { data, error } = await supabase
       .from('currencies')
       .select('*')
-      .eq('user_id', user.id)
       .order('code', { ascending: true });
 
     if (error) {

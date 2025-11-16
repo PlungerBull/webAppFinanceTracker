@@ -1,19 +1,15 @@
 import { createClient } from '@/lib/supabase/client';
 
 export const categoriesApi = {
-  // Get all categories for the current user
+  // Get all categories (user categories + global categories)
+  // Note: This intentionally fetches both user-owned AND global (user_id IS NULL) categories
+  // RLS ensures users only see their own + global categories
   getAll: async () => {
     const supabase = createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
 
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .or(`user_id.eq.${user.id},user_id.is.null`)
       .order('name', { ascending: true });
 
     if (error) {
@@ -71,20 +67,14 @@ export const categoriesApi = {
     return data;
   },
 
-  // Update an existing category
+  // Update an existing category (RLS handles user filtering)
   update: async (id: string, categoryData: Partial<{ name: string; icon: string; color: string }>) => {
     const supabase = createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
 
     const { data, error } = await supabase
       .from('categories')
       .update(categoryData)
       .eq('id', id)
-      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -96,20 +86,14 @@ export const categoriesApi = {
     return data;
   },
 
-  // Delete a category
+  // Delete a category (RLS handles user filtering)
   delete: async (id: string) => {
     const supabase = createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
 
     const { error } = await supabase
       .from('categories')
       .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('id', id);
 
     if (error) {
       console.error('Error deleting category:', error);

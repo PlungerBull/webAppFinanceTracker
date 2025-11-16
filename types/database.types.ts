@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_currencies: {
@@ -184,7 +159,7 @@ export type Database = {
         }
         Insert: {
           account_id: string
-          amount_home?: number
+          amount_home: number
           amount_original: number
           category_id?: string | null
           created_at?: string
@@ -281,10 +256,19 @@ export type Database = {
       }
     }
     Functions: {
-      create_account_with_currencies: {
-        Args: { p_account_name: string; p_currencies: Json; p_user_id: string }
-        Returns: Json
-      }
+      create_account_with_currencies:
+        | {
+            Args: { p_account_name: string; p_currencies: Json }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_account_name: string
+              p_currencies: Json
+              p_user_id: string
+            }
+            Returns: Json
+          }
       create_transfer: {
         Args: {
           p_amount: number
@@ -303,16 +287,18 @@ export type Database = {
         Args: { p_transfer_id: string; p_user_id: string }
         Returns: undefined
       }
-      get_monthly_spending_by_category: {
-        Args: { p_months_back?: number; p_user_id: string }
-        Returns: {
-          category_icon: string
-          category_id: string
-          category_name: string
-          month_key: string
-          total_amount: number
-        }[]
-      }
+      get_monthly_spending_by_category:
+        | { Args: { p_months_back?: number }; Returns: Json[] }
+        | {
+            Args: { p_months_back?: number; p_user_id: string }
+            Returns: {
+              category_icon: string
+              category_id: string
+              category_name: string
+              month_key: string
+              total_amount: number
+            }[]
+          }
       replace_account_currency: {
         Args: {
           p_account_id: string
@@ -457,9 +443,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       account_type: [

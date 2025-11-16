@@ -39,24 +39,18 @@ export function MonthlySpendingTable() {
     queryFn: async () => {
       const supabase = createClient();
 
-      // Get user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Get main currency
+      // Get main currency (RLS handles user filtering)
       const { data: currencyData } = await supabase
         .from('currencies')
         .select('code')
-        .eq('user_id', user.id)
         .eq('is_main', true)
         .maybeSingle();
 
       const mainCurrency = currencyData?.code || 'USD';
 
-      // Call our new database function!
+      // Call database function (uses auth.uid() internally for security)
       const { data: rawData, error } = await supabase
         .rpc('get_monthly_spending_by_category', {
-          p_user_id: user.id,
           p_months_back: 6,
         });
 

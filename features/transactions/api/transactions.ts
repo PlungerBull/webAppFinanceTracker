@@ -2,14 +2,9 @@ import { createClient } from '@/lib/supabase/client';
 import type { CreateTransactionFormData, UpdateTransactionFormData } from '../schemas/transaction.schema';
 
 export const transactionsApi = {
-  // Get all transactions for the current user
+  // Get all transactions for the current user (RLS handles user filtering)
   getAll: async () => {
     const supabase = createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
 
     const { data, error } = await supabase
       .from('transactions')
@@ -18,7 +13,6 @@ export const transactionsApi = {
         category:categories(id, name, icon, color),
         account:bank_accounts(id, name)
       `)
-      .eq('user_id', user.id)
       .order('date', { ascending: false });
 
     if (error) {
@@ -29,14 +23,9 @@ export const transactionsApi = {
     return data;
   },
 
-  // Get a single transaction by ID
+  // Get a single transaction by ID (RLS handles user filtering)
   getById: async (id: string) => {
     const supabase = createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
 
     const { data, error } = await supabase
       .from('transactions')
@@ -46,7 +35,6 @@ export const transactionsApi = {
         account:bank_accounts(id, name)
       `)
       .eq('id', id)
-      .eq('user_id', user.id)
       .single();
 
     if (error) {
@@ -61,8 +49,9 @@ export const transactionsApi = {
   create: async (transactionData: CreateTransactionFormData) => {
     const supabase = createClient();
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // Get user for user_id (no DB default exists yet)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       throw new Error('User not authenticated');
     }
 
@@ -91,20 +80,14 @@ export const transactionsApi = {
     return data;
   },
 
-  // Update an existing transaction
+  // Update an existing transaction (RLS handles user filtering)
   update: async (id: string, transactionData: UpdateTransactionFormData) => {
     const supabase = createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
 
     const { data, error } = await supabase
       .from('transactions')
       .update(transactionData) // amount_home will be recalculated by trigger if needed
       .eq('id', id)
-      .eq('user_id', user.id)
       .select()
       .single();
 
@@ -116,20 +99,14 @@ export const transactionsApi = {
     return data;
   },
 
-  // Delete a transaction
+  // Delete a transaction (RLS handles user filtering)
   delete: async (id: string) => {
     const supabase = createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
 
     const { error } = await supabase
       .from('transactions')
       .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('id', id);
 
     if (error) {
       console.error('Error deleting transaction:', error);

@@ -37,10 +37,7 @@ export function AccountTransactionsTable({ accountId }: AccountTransactionsTable
     queryFn: async () => {
       const supabase = createClient();
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Fetch transactions for this specific account
+      // Fetch transactions for this specific account (RLS handles user filtering)
       const { data, error } = await supabase
         .from('transactions')
         .select(`
@@ -52,18 +49,16 @@ export function AccountTransactionsTable({ accountId }: AccountTransactionsTable
           exchange_rate,
           category_id
         `)
-        .eq('user_id', user.id)
         .eq('account_id', accountId)
         .order('date', { ascending: false });
 
       if (error) throw error;
       if (!data) return [];
 
-      // Fetch categories
+      // Fetch categories (RLS handles user filtering)
       const { data: categories } = await supabase
         .from('categories')
-        .select('id, name, icon')
-        .or(`user_id.eq.${user.id},user_id.is.null`);
+        .select('id, name, icon');
 
       // Create lookup map
       const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
