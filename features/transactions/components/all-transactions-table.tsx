@@ -1,20 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { format } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Sidebar } from '@/components/layout/sidebar';
+import { useSearchParams } from 'next/navigation';
 
 interface TransactionRow {
   id: string;
@@ -29,16 +23,20 @@ interface TransactionRow {
 }
 
 export function AllTransactionsTable() {
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ['transactions', 'all'],
+  const searchParams = useSearchParams();
+  const accountId = searchParams.get('account');
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['transactions', 'all', accountId],
     queryFn: async () => {
       const supabase = createClient();
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Fetch transactions with related data
-      const { data, error } = await supabase
+      // Build query with optional account filter
+      let query = supabase
         .from('transactions')
         .select(`
           id,
@@ -50,11 +48,17 @@ export function AllTransactionsTable() {
           category_id,
           account_id
         `)
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
+        .eq('user_id', user.id);
+
+      // Apply account filter if accountId is present
+      if (accountId) {
+        query = query.eq('account_id', accountId);
+      }
+
+      const { data: transactionsData, error } = await query.order('date', { ascending: false });
 
       if (error) throw error;
-      if (!data) return [];
+      if (!transactionsData) return { transactions: [], accountName: null };
 
       // Fetch categories
       const { data: categories } = await supabase
@@ -73,7 +77,7 @@ export function AllTransactionsTable() {
       const accountMap = new Map(accounts?.map(a => [a.id, a]) || []);
 
       // Enrich transactions with category and account data
-      return data.map(transaction => {
+      const enrichedData = transactionsData.map(transaction => {
         const category = transaction.category_id ? categoryMap.get(transaction.category_id) : null;
         const account = accountMap.get(transaction.account_id);
 
@@ -89,84 +93,178 @@ export function AllTransactionsTable() {
           exchange_rate: transaction.exchange_rate !== 1 ? transaction.exchange_rate : null,
         };
       });
+
+      return {
+        transactions: enrichedData,
+        accountName: accountId && accounts?.length ? accounts.find(a => a.id === accountId)?.name : null,
+      };
     },
   });
 
-  if (isLoading) {
-    return (
-      <Card className="p-8">
-        <div className="flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        </div>
-      </Card>
-    );
-  }
-
-  if (transactions.length === 0) {
-    return (
-      <Card className="p-8">
-        <div className="text-center text-zinc-500 dark:text-zinc-400">
-          No transactions found. Start adding transactions to see them here.
-        </div>
-      </Card>
-    );
-  }
+  const transactions = data?.transactions || [];
+  const accountName = data?.accountName;
 
   return (
-    <Card>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[120px]">Date</TableHead>
-              <TableHead className="min-w-[200px]">Description</TableHead>
-              <TableHead className="w-[150px]">Category</TableHead>
-              <TableHead className="text-right w-[120px]">Amount</TableHead>
-              <TableHead className="w-[80px]">Currency</TableHead>
-              <TableHead className="w-[150px]">Account</TableHead>
-              <TableHead className="text-right w-[100px]">Exchange Rate</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transactions.map((transaction) => (
-              <TableRow key={transaction.id}>
-                <TableCell className="font-medium">
-                  {format(new Date(transaction.date), 'MMM dd, yyyy')}
-                </TableCell>
-                <TableCell>{transaction.description}</TableCell>
-                <TableCell>
-                  {transaction.category_name ? (
-                    <div className="flex items-center gap-2">
-                      <span>{transaction.category_icon}</span>
-                      <span>{transaction.category_name}</span>
+    <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-900">
+      {/* Section 1: Sidebar */}
+      <Sidebar />
+
+      {/* Section 2: Transactions List */}
+      <div className="flex-1 flex flex-col overflow-hidden border-r border-zinc-200 dark:border-zinc-800">
+        {/* Header */}
+        <div className="flex-shrink-0 px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            {accountName || 'Transactions'}
+          </h1>
+        </div>
+
+        {/* Transactions List */}
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-950">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-zinc-500 dark:text-zinc-400">
+                No transactions found. Start adding transactions to see them here.
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {transactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  onClick={() => setSelectedTransactionId(transaction.id)}
+                  className={cn(
+                    'px-6 py-4 cursor-pointer transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900',
+                    selectedTransactionId === transaction.id && 'bg-zinc-100 dark:bg-zinc-900'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    {/* Left: Description */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50 truncate">
+                        {transaction.description}
+                      </p>
                     </div>
-                  ) : (
-                    <span className="text-zinc-400 dark:text-zinc-500">Uncategorized</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <span className={transaction.amount_original >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}>
-                    {formatCurrency(transaction.amount_original, transaction.currency_original)}
-                  </span>
-                </TableCell>
-                <TableCell className="font-medium">
-                  {transaction.currency_original}
-                </TableCell>
-                <TableCell>{transaction.account_name}</TableCell>
-                <TableCell className="text-right">
-                  {transaction.exchange_rate ? (
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {transaction.exchange_rate.toFixed(4)}
-                    </span>
-                  ) : (
-                    <span className="text-zinc-400">-</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+
+                    {/* Right: Amount and Date */}
+                    <div className="flex items-center gap-6 ml-4">
+                      <div className="text-right">
+                        <p
+                          className={cn(
+                            'text-sm font-semibold tabular-nums',
+                            transaction.amount_original >= 0
+                              ? 'text-green-600 dark:text-green-500'
+                              : 'text-red-600 dark:text-red-500'
+                          )}
+                        >
+                          {formatCurrency(transaction.amount_original, transaction.currency_original)}
+                        </p>
+                      </div>
+                      <div className="text-right w-24">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </Card>
+
+      {/* Section 3: Transaction Details Panel */}
+      <div className="w-96 bg-white dark:bg-zinc-950 overflow-y-auto">
+        {selectedTransactionId ? (
+          (() => {
+            const transaction = transactions.find(t => t.id === selectedTransactionId);
+            if (!transaction) return null;
+
+            return (
+              <div className="p-6">
+                {/* Top: Description and Amount */}
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+                    {transaction.description}
+                  </h2>
+                  <p
+                    className={cn(
+                      'text-2xl font-bold tabular-nums',
+                      transaction.amount_original >= 0
+                        ? 'text-green-600 dark:text-green-500'
+                        : 'text-red-600 dark:text-red-500'
+                    )}
+                  >
+                    {formatCurrency(transaction.amount_original, transaction.currency_original)}
+                  </p>
+                </div>
+
+                {/* Details Section */}
+                <div className="space-y-4">
+                  {/* Date */}
+                  <div>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
+                      Date
+                    </p>
+                    <p className="text-sm text-zinc-900 dark:text-zinc-50">
+                      {format(new Date(transaction.date), 'MMMM dd, yyyy')}
+                    </p>
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
+                      Category
+                    </p>
+                    {transaction.category_name ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{transaction.category_icon}</span>
+                        <span className="text-sm text-zinc-900 dark:text-zinc-50">
+                          {transaction.category_name}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-zinc-400 dark:text-zinc-500">Uncategorized</p>
+                    )}
+                  </div>
+
+                  {/* Bank Account */}
+                  <div>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
+                      Bank Account
+                    </p>
+                    <p className="text-sm text-zinc-900 dark:text-zinc-50">
+                      {transaction.account_name}
+                    </p>
+                  </div>
+
+                  {/* Exchange Rate - Only show if not 1 */}
+                  {transaction.exchange_rate && transaction.exchange_rate !== 1 && (
+                    <div>
+                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
+                        Exchange Rate
+                      </p>
+                      <p className="text-sm text-zinc-900 dark:text-zinc-50">
+                        {transaction.exchange_rate.toFixed(4)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()
+        ) : (
+          <div className="flex items-center justify-center h-full p-6">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+              Select a transaction to view details
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

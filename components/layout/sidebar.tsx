@@ -32,6 +32,7 @@ import {
   Edit,
   Crown,
   Trash2,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Database } from '@/types/database.types';
@@ -91,6 +92,7 @@ export function Sidebar({ className }: SidebarProps) {
 
   const navItems = [
     { href: '/dashboard', label: 'Home', icon: Home },
+    { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   ];
 
   // Group account balances by account_id
@@ -261,12 +263,9 @@ export function Sidebar({ className }: SidebarProps) {
           <div className="mb-4">
             <div className="px-2 mb-2">
               <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
-                <button
-                  onClick={() => router.push('/transactions')}
-                  className="flex-1 text-left px-2 py-1 rounded-md text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                >
-                  All Accounts
-                </button>
+                <span className="flex-1 text-left px-2 py-1 text-zinc-500 dark:text-zinc-400">
+                  Accounts
+                </span>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
@@ -309,7 +308,7 @@ export function Sidebar({ className }: SidebarProps) {
                       key={account.account_id}
                       className="relative group px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer"
                       onClick={() =>
-                        router.push(`/accounts/${account.account_id}`)
+                        router.push(`/transactions?account=${account.account_id}`)
                       }
                     >
                       {/* Account Header with Icon and Name */}
