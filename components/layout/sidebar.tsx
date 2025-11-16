@@ -91,7 +91,6 @@ export function Sidebar({ className }: SidebarProps) {
 
   const navItems = [
     { href: '/dashboard', label: 'Home', icon: Home },
-    { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
   // Group account balances by account_id
