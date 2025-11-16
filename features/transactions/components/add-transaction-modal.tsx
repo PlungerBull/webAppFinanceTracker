@@ -77,6 +77,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       amount_original: 0,
       date: format(new Date(), 'yyyy-MM-dd'),
       exchange_rate: 1,
+      notes: '',
     },
   });
 
@@ -197,7 +198,11 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
               className="resize-none text-sm"
               rows={2}
               disabled={isSubmitting}
+              {...register('notes')}
             />
+            {errors.notes && (
+              <p className="text-sm text-red-600">{errors.notes.message}</p>
+            )}
           </div>
 
           {/* Icons Row */}

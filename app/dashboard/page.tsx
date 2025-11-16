@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { MonthlySpendingTable } from '@/features/transactions/components/monthly-spending-table';
+import { DashboardContent } from '@/features/dashboard/components/dashboard-content';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -16,14 +16,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-            Home
-          </h1>
-        </div>
-        <MonthlySpendingTable />
-      </div>
+      <DashboardContent />
     </DashboardLayout>
   );
 }

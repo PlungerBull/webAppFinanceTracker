@@ -32,6 +32,11 @@ export const createTransactionSchema = z.object({
     .positive('Exchange rate must be positive')
     .optional()
     .default(1),
+  notes: z
+    .string()
+    .max(500, 'Notes must be less than 500 characters')
+    .nullable()
+    .optional(),
 });
 
 // Update transaction schema
@@ -67,6 +72,11 @@ export const updateTransactionSchema = z.object({
   exchange_rate: z
     .number()
     .positive('Exchange rate must be positive')
+    .optional(),
+  notes: z
+    .string()
+    .max(500, 'Notes must be less than 500 characters')
+    .nullable()
     .optional(),
 });
 

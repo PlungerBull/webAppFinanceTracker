@@ -177,6 +177,7 @@ export type Database = {
           description: string | null
           exchange_rate: number
           id: string
+          notes: string | null
           transfer_id: string | null
           updated_at: string
           user_id: string
@@ -192,6 +193,7 @@ export type Database = {
           description?: string | null
           exchange_rate?: number
           id?: string
+          notes?: string | null
           transfer_id?: string | null
           updated_at?: string
           user_id: string
@@ -207,6 +209,7 @@ export type Database = {
           description?: string | null
           exchange_rate?: number
           id?: string
+          notes?: string | null
           transfer_id?: string | null
           updated_at?: string
           user_id?: string
