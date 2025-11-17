@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { AuthProvider } from '@/providers/auth-provider';
 import { QueryProvider } from '@/providers/query-provider';
+import { CurrencyProvider } from '@/contexts/currency-context';
 import './globals.css';
 
 const geistSans = Geist({
@@ -33,10 +34,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>
-          <AuthProvider>
-            {children}
-            {modal} {/* <-- ADD THIS */}
-          </AuthProvider>
+          <CurrencyProvider>
+            <AuthProvider>
+              {children}
+              {modal} {/* <-- ADD THIS */}
+            </AuthProvider>
+          </CurrencyProvider>
         </QueryProvider>
       </body>
     </html>

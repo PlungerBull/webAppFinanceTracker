@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { format, subMonths, startOfMonth } from 'date-fns';
-import { formatCurrencyShort } from '@/hooks/use-formatted-balance';
+import { useCurrency } from '@/contexts/currency-context';
 import {
   Table,
   TableBody,
@@ -14,9 +14,12 @@ import {
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useMonthlySpending } from '../hooks/use-monthly-spending';
-import { UI, CURRENCY } from '@/lib/constants';
+import { UI } from '@/lib/constants';
 
 export function MonthlySpendingTable() {
+  // Use optimized currency formatting
+  const { formatCurrencyShort } = useCurrency();
+
   // Generate last 6 months for column headers
   const months = useMemo(() => {
     const monthsArray: Date[] = [];
@@ -40,7 +43,6 @@ export function MonthlySpendingTable() {
   }
 
   const data = spendingData?.data || [];
-  const mainCurrency = spendingData?.mainCurrency || CURRENCY.DEFAULT;
 
   if (data.length === 0) {
     return (
@@ -84,7 +86,7 @@ export function MonthlySpendingTable() {
                     <TableCell key={month.toISOString()} className="text-right">
                       {amount !== 0 ? (
                         <span className={amount > 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}>
-                          {formatCurrencyShort(amount, mainCurrency)}
+                          {formatCurrencyShort(amount)}
                         </span>
                       ) : (
                         <span className="text-zinc-400">-</span>

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import type { CreateAccountFormData, UpdateAccountFormData } from '../schemas/account.schema';
+import type { UpdateAccountFormData } from '../schemas/account.schema';
 
 export const accountsApi = {
   /**
@@ -60,35 +60,6 @@ export const accountsApi = {
 
     if (error) {
       console.error('Error creating account with currencies:', error);
-      throw new Error(error.message || 'Failed to create account');
-    }
-
-    return data;
-  },
-
-  /**
-   * Create a new account (legacy - kept for backwards compatibility)
-   * WARNING: This doesn't create currencies! Use createWithCurrencies instead
-   */
-  create: async (accountData: CreateAccountFormData) => {
-    const supabase = createClient();
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    const { data, error } = await supabase
-      .from('bank_accounts')
-      .insert({
-        user_id: user.id,
-        name: accountData.name,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating account:', error);
       throw new Error(error.message || 'Failed to create account');
     }
 
