@@ -1,8 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { format, subMonths, startOfMonth } from 'date-fns';
 import { formatCurrencyShort } from '@/hooks/use-formatted-balance';
 import {
@@ -15,77 +13,21 @@ import {
 } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-
-interface CategorySpending {
-  categoryId: string;
-  categoryName: string;
-  categoryIcon: string;
-  monthlyAmounts: { [key: string]: number };
-}
+import { useMonthlySpending } from '../hooks/use-monthly-spending';
+import { UI, CURRENCY } from '@/lib/constants';
 
 export function MonthlySpendingTable() {
   // Generate last 6 months for column headers
   const months = useMemo(() => {
     const monthsArray: Date[] = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = UI.MONTHS_DISPLAY.SPENDING_TABLE - 1; i >= 0; i--) {
       monthsArray.push(subMonths(new Date(), i));
     }
     return monthsArray;
   }, []);
 
-  // Fetch data using the new database function
-  const { data: spendingData, isLoading: loading } = useQuery({
-    queryKey: ['transactions', 'monthly-spending'],
-    queryFn: async () => {
-      const supabase = createClient();
-
-      // Get main currency (RLS handles user filtering)
-      const { data: currencyData } = await supabase
-        .from('currencies')
-        .select('code')
-        .eq('is_main', true)
-        .maybeSingle();
-
-      const mainCurrency = currencyData?.code || 'USD';
-
-      // Call database function (uses auth.uid() internally for security)
-      const { data: rawData, error } = await supabase
-        .rpc('get_monthly_spending_by_category', {
-          p_months_back: 6,
-        });
-
-      if (error) {
-        console.error('Error fetching monthly spending:', error);
-        throw error;
-      }
-
-      if (!rawData || rawData.length === 0) {
-        return { data: [], mainCurrency };
-      }
-
-      // Transform flat data into grouped format for display
-      const spendingByCategory: { [categoryId: string]: CategorySpending } = {};
-
-      rawData.forEach((row: any) => {
-        const categoryId = row.category_id;
-        
-        if (!spendingByCategory[categoryId]) {
-          spendingByCategory[categoryId] = {
-            categoryId: row.category_id,
-            categoryName: row.category_name,
-            categoryIcon: row.category_icon,
-            monthlyAmounts: {},
-          };
-        }
-
-        spendingByCategory[categoryId].monthlyAmounts[row.month_key] = row.total_amount;
-      });
-
-      const categoriesWithSpending = Object.values(spendingByCategory);
-
-      return { data: categoriesWithSpending, mainCurrency };
-    },
-  });
+  // Fetch data using custom hook
+  const { data: spendingData, isLoading: loading } = useMonthlySpending(UI.MONTHS_DISPLAY.SPENDING_TABLE);
 
   if (loading) {
     return (
@@ -98,7 +40,7 @@ export function MonthlySpendingTable() {
   }
 
   const data = spendingData?.data || [];
-  const mainCurrency = spendingData?.mainCurrency || 'USD';
+  const mainCurrency = spendingData?.mainCurrency || CURRENCY.DEFAULT;
 
   if (data.length === 0) {
     return (

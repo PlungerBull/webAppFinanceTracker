@@ -61,8 +61,9 @@ export const transactionsApi = {
         user_id: user.id,
         description: transactionData.description || null,
         amount_original: transactionData.amount_original,
-        // ✅ amount_home is now automatically calculated by database trigger
-        // No need to pass it - the calculate_amount_home() function handles it
+        // ✅ amount_home is automatically calculated by database trigger
+        // Passing 0 as placeholder - trigger will override with correct value
+        amount_home: 0,
         date: transactionData.date,
         category_id: transactionData.category_id || null,
         account_id: transactionData.account_id,

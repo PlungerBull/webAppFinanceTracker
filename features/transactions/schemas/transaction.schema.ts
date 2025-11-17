@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { VALIDATION, UI, CURRENCY } from '@/lib/constants';
 
 // Create transaction schema (matching database schema)
 export const createTransactionSchema = z.object({
   description: z
     .string()
-    .min(1, 'Description is required')
-    .max(200, 'Description must be less than 200 characters')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Description is required')
+    .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, 'Description must be less than 200 characters')
     .nullable()
     .optional(),
   amount_original: z
@@ -13,7 +14,7 @@ export const createTransactionSchema = z.object({
     .refine((val) => val !== 0, 'Amount cannot be zero'),
   date: z
     .string()
-    .min(1, 'Transaction date is required'),
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Transaction date is required'),
   category_id: z
     .string()
     .uuid('Invalid category')
@@ -22,10 +23,10 @@ export const createTransactionSchema = z.object({
   account_id: z
     .string()
     .uuid('Invalid bank account')
-    .min(1, 'Bank account is required'),
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Bank account is required'),
   currency_original: z
     .string()
-    .length(3, 'Currency must be a valid 3-letter code')
+    .length(CURRENCY.CODE_LENGTH, 'Currency must be a valid 3-letter code')
     .regex(/^[A-Z]{3}$/, 'Currency must be uppercase letters'),
   exchange_rate: z
     .number()
@@ -34,7 +35,7 @@ export const createTransactionSchema = z.object({
     .default(1),
   notes: z
     .string()
-    .max(500, 'Notes must be less than 500 characters')
+    .max(UI.MAX_LENGTH.NOTES, 'Notes must be less than 500 characters')
     .nullable()
     .optional(),
 });
@@ -43,8 +44,8 @@ export const createTransactionSchema = z.object({
 export const updateTransactionSchema = z.object({
   description: z
     .string()
-    .min(1, 'Description is required')
-    .max(200, 'Description must be less than 200 characters')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Description is required')
+    .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, 'Description must be less than 200 characters')
     .nullable()
     .optional(),
   amount_original: z
@@ -53,7 +54,7 @@ export const updateTransactionSchema = z.object({
     .optional(),
   date: z
     .string()
-    .min(1, 'Transaction date is required')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Transaction date is required')
     .optional(),
   category_id: z
     .string()
@@ -66,7 +67,7 @@ export const updateTransactionSchema = z.object({
     .optional(),
   currency_original: z
     .string()
-    .length(3, 'Currency must be a valid 3-letter code')
+    .length(CURRENCY.CODE_LENGTH, 'Currency must be a valid 3-letter code')
     .regex(/^[A-Z]{3}$/, 'Currency must be uppercase letters')
     .optional(),
   exchange_rate: z
@@ -75,7 +76,7 @@ export const updateTransactionSchema = z.object({
     .optional(),
   notes: z
     .string()
-    .max(500, 'Notes must be less than 500 characters')
+    .max(UI.MAX_LENGTH.NOTES, 'Notes must be less than 500 characters')
     .nullable()
     .optional(),
 });

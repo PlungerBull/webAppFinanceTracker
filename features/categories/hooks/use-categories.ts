@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { categoriesApi } from '../api/categories';
+import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
 
 export function useCategories() {
   return useQuery({
-    queryKey: ['categories'],
+    queryKey: QUERY_KEYS.CATEGORIES,
     queryFn: categoriesApi.getAll,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
   });
 }
 
@@ -23,7 +24,7 @@ export function useAddCategory() {
   return useMutation({
     mutationFn: (data: { name: string; icon: string; color: string; type: string }) => categoriesApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
   });
 }
@@ -35,7 +36,7 @@ export function useUpdateCategory() {
     mutationFn: ({ id, data }: { id: string; data: Partial<{ name: string; icon: string; color: string }> }) =>
       categoriesApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
   });
 }
@@ -46,7 +47,7 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: string) => categoriesApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
   });
 }

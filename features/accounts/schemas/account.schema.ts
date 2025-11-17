@@ -1,19 +1,20 @@
 import { z } from 'zod';
+import { VALIDATION, UI } from '@/lib/constants';
 
 // Create account schema (simplified - only name, currencies handled separately)
 export const createAccountSchema = z.object({
   name: z
     .string()
-    .min(1, 'Account name is required')
-    .max(50, 'Account name must be less than 50 characters'),
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required')
+    .max(UI.MAX_LENGTH.ACCOUNT_NAME, 'Account name must be less than 50 characters'),
 });
 
 // Update account schema
 export const updateAccountSchema = z.object({
   name: z
     .string()
-    .min(1, 'Account name is required')
-    .max(50, 'Account name must be less than 50 characters')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required')
+    .max(UI.MAX_LENGTH.ACCOUNT_NAME, 'Account name must be less than 50 characters')
     .optional(),
 });
 

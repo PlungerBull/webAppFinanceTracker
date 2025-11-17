@@ -44,7 +44,7 @@ export const accountsApi = {
   /**
    * Create a new account with currencies atomically
    * Uses database function to ensure all-or-nothing creation
-   * Note: Uses auth.uid() internally for security
+   * Authentication is handled by the database function via auth.uid()
    */
   createWithCurrencies: async (
     accountName: string,
@@ -52,12 +52,7 @@ export const accountsApi = {
   ) => {
     const supabase = createClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    // Call database function for atomic creation (uses auth.uid() internally)
+    // Database function handles authentication via auth.uid()
     const { data, error } = await supabase.rpc('create_account_with_currencies', {
       p_account_name: accountName,
       p_currencies: currencies,

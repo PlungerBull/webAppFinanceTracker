@@ -8,6 +8,7 @@ import { authApi } from '@/features/auth/api/auth';
 import { FormModal } from '@/components/ui/form-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UI } from '@/lib/constants';
 
 interface ChangeEmailModalProps {
   open: boolean;
@@ -24,7 +25,7 @@ export function ChangeEmailModal({ open, onOpenChange }: ChangeEmailModalProps) 
       successMessage="Success! Please check your email to confirm the change."
       schema={changeEmailSchema}
       onSubmit={authApi.changeEmail}
-      autoCloseDelay={3000}
+      autoCloseDelay={UI.AUTO_CLOSE_DELAY.LONG}
     >
       {({ register, formState: { errors, isSubmitting } }) => (
         <>

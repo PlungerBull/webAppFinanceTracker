@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { currenciesApi } from '../api/currencies';
+import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
 
 export function useCurrencies() {
   return useQuery({
-    queryKey: ['currencies'],
+    queryKey: QUERY_KEYS.CURRENCIES,
     queryFn: currenciesApi.getAll,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
   });
 }
 
@@ -15,7 +16,7 @@ export function useAddCurrency() {
   return useMutation({
     mutationFn: currenciesApi.add,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currencies'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CURRENCIES });
     },
   });
 }

@@ -8,6 +8,7 @@ import { authApi } from '@/features/auth/api/auth';
 import { FormModal } from '@/components/ui/form-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UI } from '@/lib/constants';
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -26,7 +27,7 @@ export function ChangePasswordModal({
       successMessage="Password updated successfully!"
       schema={changePasswordSchema}
       onSubmit={authApi.changePassword}
-      autoCloseDelay={2000}
+      autoCloseDelay={UI.AUTO_CLOSE_DELAY.MEDIUM}
     >
       {({ register, formState: { errors, isSubmitting } }) => (
         <>

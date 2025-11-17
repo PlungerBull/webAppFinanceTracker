@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -127,5 +127,22 @@ export default function LoginPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl">Welcome back</CardTitle>
+            <CardDescription>Loading...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

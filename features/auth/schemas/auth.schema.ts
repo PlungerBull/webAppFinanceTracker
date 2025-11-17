@@ -1,25 +1,26 @@
 import { z } from 'zod';
+import { VALIDATION } from '@/lib/constants';
 
 // Sign up schema
 export const signUpSchema = z
   .object({
-    firstName: z // Add this block
+    firstName: z
       .string()
-      .min(1, 'First name is required'),
-    lastName: z // Add this block
+      .min(VALIDATION.MIN_LENGTH.REQUIRED, 'First name is required'),
+    lastName: z
       .string()
-      .min(1, 'Last name is required'),
+      .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Last name is required'),
     email: z
       .string()
-      .min(1, 'Email is required'),
+      .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Email is required'),
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
+      .min(VALIDATION.PASSWORD.MIN_LENGTH, 'Password must be at least 8 characters')
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
         'Password must contain at least one uppercase letter, one lowercase letter, and one number'
       ),
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    confirmPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -30,16 +31,16 @@ export const signUpSchema = z
 export const loginSchema = z.object({
   email: z
     .string()
-    .min(1, 'Email is required')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Email is required')
     .email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Password is required'),
 });
 
 // Reset password schema
 export const resetPasswordSchema = z.object({
   email: z
     .string()
-    .min(1, 'Email is required')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Email is required')
     .email('Invalid email address'),
 });
 
@@ -48,12 +49,12 @@ export const updatePasswordSchema = z
   .object({
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
+      .min(VALIDATION.PASSWORD.MIN_LENGTH, 'Password must be at least 8 characters')
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
         'Password must contain at least one uppercase letter, one lowercase letter, and one number'
       ),
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    confirmPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",

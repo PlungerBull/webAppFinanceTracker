@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, X } from 'lucide-react';
+import { CURRENCY, VALIDATION, QUERY_KEYS } from '@/lib/constants';
 
 interface AddAccountModalProps {
   open: boolean;
@@ -28,7 +29,7 @@ interface AddAccountModalProps {
 
 // Schema for the form
 const accountSchema = z.object({
-  name: z.string().min(1, 'Account name is required'),
+  name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required'),
 });
 
 type AccountFormData = z.infer<typeof accountSchema>;
@@ -70,18 +71,13 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
   }, [currencies, currencyInput, selectedCurrencies]);
 
   const handleAddCurrency = async (code: string) => {
-    // Check if currency already selected
+    // Check if currency already selected in this form
     if (selectedCurrencies.some(c => c.currency_code === code)) {
       return;
     }
 
-    // Always try to add currency - upsert will handle duplicates
-    try {
-      await addCurrencyMutation.mutateAsync(code);
-    } catch (err) {
-      // Only log real errors, not duplicates
-      console.error('Error adding currency:', err);
-    }
+    // Let the API handle duplicates gracefully with upsert
+    await addCurrencyMutation.mutateAsync(code);
 
     // Add to selected currencies
     setSelectedCurrencies([
@@ -126,7 +122,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       );
 
       // Invalidate accounts query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
 
       // Reset form and close modal
       reset();
@@ -200,7 +196,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                   onBlur={() => {
                     setTimeout(() => setShowSuggestions(false), 200);
                   }}
-                  maxLength={3}
+                  maxLength={CURRENCY.CODE_LENGTH}
                   disabled={isSubmitting}
                   className="uppercase"
                   autoComplete="off"
@@ -244,7 +240,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                 id="balance-input"
                 name="balance"
                 type="number"
-                step="0.01"
+                step={CURRENCY.STEP.STANDARD}
                 placeholder="Balance"
                 value={balanceInput}
                 onChange={(e) => setBalanceInput(e.target.value)}
@@ -258,8 +254,8 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                 type="button"
                 variant="outline"
                 size="icon"
-                onClick={() => currencyInput.length === 3 && handleAddCurrency(currencyInput)}
-                disabled={!currencyInput || currencyInput.length !== 3 || isSubmitting}
+                onClick={() => currencyInput.length === CURRENCY.CODE_LENGTH && handleAddCurrency(currencyInput)}
+                disabled={!currencyInput || currencyInput.length !== CURRENCY.CODE_LENGTH || isSubmitting}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -286,7 +282,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                       id={`balance-${currency.currency_code}`}
                       name={`balance-${currency.currency_code}`}
                       type="number"
-                      step="0.01"
+                      step={CURRENCY.STEP.STANDARD}
                       value={currency.starting_balance}
                       onChange={(e) =>
                         handleUpdateBalance(currency.currency_code, parseFloat(e.target.value) || 0)
