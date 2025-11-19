@@ -48,6 +48,7 @@ export const accountsApi = {
    */
   createWithCurrencies: async (
     accountName: string,
+    accountColor: string,
     currencies: Array<{ code: string; starting_balance: number }>
   ) => {
     const supabase = createClient();
@@ -55,6 +56,7 @@ export const accountsApi = {
     // Database function handles authentication via auth.uid()
     const { data, error } = await supabase.rpc('create_account_with_currencies', {
       p_account_name: accountName,
+      p_account_color: accountColor,
       p_currencies: currencies,
     });
 

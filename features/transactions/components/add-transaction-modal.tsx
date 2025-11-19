@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { createTransactionSchema, type CreateTransactionFormData } from '../schemas/transaction.schema';
@@ -36,7 +36,7 @@ interface AddTransactionModalProps {
 
 export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalProps) {
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showAccountPicker, setShowAccountPicker] = useState(false);
@@ -47,6 +47,13 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
   const { data: accountBalances = [], isLoading: isLoadingAccounts } = useAccounts();
   const { data: currencies = [] } = useCurrencies();
+
+  // Initialize date on client side to avoid hydration mismatch
+  useEffect(() => {
+    if (selectedDate === undefined) {
+      setSelectedDate(new Date());
+    }
+  }, [selectedDate]);
 
   // Get unique accounts (group by account_id since we now have multiple rows per account)
   const accounts = useMemo(() => {
@@ -69,9 +76,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     setValue,
     watch,
     reset,
-    control,
   } = useForm<CreateTransactionFormData>({
-    resolver: zodResolver(createTransactionSchema) as any,
+    resolver: zodResolver(createTransactionSchema),
     defaultValues: {
       description: '',
       amount_original: 0,
@@ -84,7 +90,6 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const selectedCategoryId = watch('category_id');
   const selectedAccountId = watch('account_id');
   const selectedCurrency = watch('currency_original');
-  const exchangeRate = watch('exchange_rate');
 
   // Fetch currencies for selected account (must come after watch() calls)
   const { data: accountCurrencies = [] } = useAccountCurrencies(selectedAccountId);
@@ -406,7 +411,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
             {/* Display selected date */}
             <span className="ml-auto text-sm text-zinc-500">
-              {format(selectedDate, 'MMM dd, yyyy')}
+              {selectedDate ? format(selectedDate, 'MMM dd, yyyy') : 'Select date'}
             </span>
           </div>
 

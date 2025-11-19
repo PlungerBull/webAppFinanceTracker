@@ -30,9 +30,7 @@ export const createTransactionSchema = z.object({
     .regex(/^[A-Z]{3}$/, 'Currency must be uppercase letters'),
   exchange_rate: z
     .number()
-    .positive('Exchange rate must be positive')
-    .optional()
-    .default(1),
+    .positive('Exchange rate must be positive'),
   notes: z
     .string()
     .max(UI.MAX_LENGTH.NOTES, 'Notes must be less than 500 characters')

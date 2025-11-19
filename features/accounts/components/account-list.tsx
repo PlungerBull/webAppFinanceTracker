@@ -184,7 +184,7 @@ export function AccountList() {
                   <div className="ml-6 space-y-0.5">
                     {account.balances.map((balance) => (
                       <div
-                        key={balance.id ?? Math.random()}
+                        key={balance.id ?? `${account.account_id}-${balance.currency}`}
                         className="flex items-center justify-between text-xs py-0.5 px-2"
                       >
                         <span className="text-zinc-600 dark:text-zinc-400 font-medium">

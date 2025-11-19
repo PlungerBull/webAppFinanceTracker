@@ -42,6 +42,7 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currencyReplacements, setCurrencyReplacements] = useState<CurrencyReplacement[]>([]);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const { data: allCurrencies = [] } = useCurrencies();
   const addCurrencyMutation = useAddCurrency();
@@ -59,15 +60,39 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
     formState: { errors },
     reset,
     watch,
+    setValue,
   } = useForm<UpdateAccountFormData>({
     resolver: zodResolver(updateAccountSchema),
   });
+
+  const selectedColor = watch('color');
+
+  // Predefined color palette (same as add modal)
+  const colorPalette = [
+    '#ef4444', // Red
+    '#f97316', // Orange
+    '#f59e0b', // Amber
+    '#eab308', // Yellow
+    '#84cc16', // Lime
+    '#22c55e', // Green
+    '#10b981', // Emerald
+    '#14b8a6', // Teal
+    '#06b6d4', // Cyan
+    '#0ea5e9', // Sky
+    '#3b82f6', // Blue
+    '#6366f1', // Indigo
+    '#8b5cf6', // Violet
+    '#a855f7', // Purple
+    '#d946ef', // Fuchsia
+    '#ec4899', // Pink
+  ];
 
   // Initialize form and currency replacements when account or currencies change
   useEffect(() => {
     if (account && accountCurrencies.length > 0) {
       reset({
         name: account.name,
+        color: (account as any).color || '#3b82f6',
       });
 
       // Initialize currency replacements
@@ -187,6 +212,31 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
             />
             {errors.name && (
               <p className="text-sm text-red-600">{errors.name.message}</p>
+            )}
+          </div>
+
+          {/* Account Color */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-color">Account Color</Label>
+            <div className="flex gap-2 items-center">
+              <Input
+                id="edit-color"
+                type="color"
+                {...register('color')}
+                disabled={isSubmitting}
+                className="w-20 h-10 cursor-pointer"
+              />
+              <Input
+                type="text"
+                {...register('color')}
+                disabled={isSubmitting}
+                placeholder="#3b82f6"
+                className="flex-1 font-mono"
+                maxLength={7}
+              />
+            </div>
+            {errors.color && (
+              <p className="text-sm text-red-600">{errors.color.message}</p>
             )}
           </div>
 

@@ -47,7 +47,7 @@ function TransactionsContent() {
       // Fetch categories (RLS handles user filtering)
       const { data: categories } = await supabase
         .from('categories')
-        .select('id, name, icon');
+        .select('id, name, icon, color');
 
       // Fetch account names (RLS handles user filtering)
       const { data: accounts } = await supabase
@@ -69,6 +69,7 @@ function TransactionsContent() {
           description: transaction.description || '',
           category_name: category?.name || null,
           category_icon: category?.icon || null,
+          category_color: category?.color || null,
           category_id: transaction.category_id,
           amount_original: transaction.amount_original,
           currency_original: transaction.currency_original,

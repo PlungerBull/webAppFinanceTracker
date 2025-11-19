@@ -14,6 +14,7 @@ interface TransactionRow {
   description: string;
   category_name: string | null;
   category_icon: string | null;
+  category_color: string | null;
   category_id: string | null;
   amount_original: number;
   currency_original: string;
@@ -94,7 +95,14 @@ export function TransactionList({
                   isCollapsed ? 'ml-32' : 'ml-12'
                 )}>
                   {dateTransactions.map((transaction) => (
-                    <div key={transaction.id}>
+                    <div key={transaction.id} className="relative">
+                      {/* Category color line */}
+                      {transaction.category_color && (
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
+                          style={{ backgroundColor: transaction.category_color }}
+                        />
+                      )}
                       <div
                         onClick={() => onTransactionSelect(transaction.id)}
                         className={cn(

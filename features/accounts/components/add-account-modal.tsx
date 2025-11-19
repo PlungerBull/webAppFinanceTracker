@@ -30,6 +30,7 @@ interface AddAccountModalProps {
 // Schema for the form
 const accountSchema = z.object({
   name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required'),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format'),
 });
 
 type AccountFormData = z.infer<typeof accountSchema>;
@@ -47,6 +48,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
   const [balanceInput, setBalanceInput] = useState('0');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedCurrencies, setSelectedCurrencies] = useState<CurrencyBalance[]>([]);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const { data: currencies = [], isLoading: isLoadingCurrencies } = useCurrencies();
   const addCurrencyMutation = useAddCurrency();
@@ -56,9 +58,36 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
+    watch,
   } = useForm<AccountFormData>({
     resolver: zodResolver(accountSchema),
+    defaultValues: {
+      color: '#3b82f6', // Default blue color
+    },
   });
+
+  const selectedColor = watch('color');
+
+  // Predefined color palette
+  const colorPalette = [
+    '#ef4444', // Red
+    '#f97316', // Orange
+    '#f59e0b', // Amber
+    '#eab308', // Yellow
+    '#84cc16', // Lime
+    '#22c55e', // Green
+    '#10b981', // Emerald
+    '#14b8a6', // Teal
+    '#06b6d4', // Cyan
+    '#0ea5e9', // Sky
+    '#3b82f6', // Blue
+    '#6366f1', // Indigo
+    '#8b5cf6', // Violet
+    '#a855f7', // Purple
+    '#d946ef', // Fuchsia
+    '#ec4899', // Pink
+  ];
 
   // Filter currencies based on input and exclude already selected ones
   const filteredCurrencies = useMemo(() => {
@@ -115,6 +144,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       // This guarantees either everything is created or nothing is created
       await accountsApi.createWithCurrencies(
         data.name,
+        data.color,
         selectedCurrencies.map(c => ({
           code: c.currency_code,
           starting_balance: c.starting_balance,
@@ -173,6 +203,85 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
             />
             {errors.name && (
               <p className="text-sm text-red-600">{errors.name.message}</p>
+            )}
+          </div>
+
+          {/* Account Color */}
+          <div className="space-y-2">
+            <Label>Account Color *</Label>
+            <div className="flex flex-wrap gap-2 items-center">
+              {/* No Color Option */}
+              <button
+                type="button"
+                onClick={() => setValue('color', '#94a3b8')}
+                disabled={isSubmitting}
+                className={cn(
+                  'w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all',
+                  selectedColor === '#94a3b8'
+                    ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100'
+                    : 'border-zinc-300 dark:border-zinc-700'
+                )}
+              >
+                <X className="w-4 h-4 text-zinc-400" />
+              </button>
+
+              {/* Color Palette */}
+              {colorPalette.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setValue('color', color)}
+                  disabled={isSubmitting}
+                  style={{ backgroundColor: color }}
+                  className={cn(
+                    'w-8 h-8 rounded-full border-2 transition-all',
+                    selectedColor === color
+                      ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100'
+                      : 'border-transparent'
+                  )}
+                  aria-label={`Select color ${color}`}
+                />
+              ))}
+
+              {/* Custom Color Picker */}
+              <Popover open={showColorPicker} onOpenChange={setShowColorPicker}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    className="w-8 h-8 rounded-full border-2 border-zinc-300 dark:border-zinc-700 flex items-center justify-center bg-gradient-to-br from-red-500 via-green-500 to-blue-500 hover:border-zinc-900 dark:hover:border-zinc-100 transition-all"
+                  >
+                    <Plus className="w-4 h-4 text-white drop-shadow-md" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3" align="start">
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-color" className="text-sm">Custom Color</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="custom-color"
+                        type="color"
+                        value={selectedColor}
+                        onChange={(e) => setValue('color', e.target.value)}
+                        disabled={isSubmitting}
+                        className="w-16 h-10 cursor-pointer"
+                      />
+                      <Input
+                        type="text"
+                        value={selectedColor}
+                        onChange={(e) => setValue('color', e.target.value)}
+                        disabled={isSubmitting}
+                        placeholder="#3b82f6"
+                        className="flex-1 font-mono text-xs"
+                        maxLength={7}
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            {errors.color && (
+              <p className="text-sm text-red-600">{errors.color.message}</p>
             )}
           </div>
 
