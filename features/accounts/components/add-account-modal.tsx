@@ -16,11 +16,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, X } from 'lucide-react';
-import { CURRENCY, VALIDATION, QUERY_KEYS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { CURRENCY, VALIDATION, QUERY_KEYS, ACCOUNT } from '@/lib/constants';
 
 interface AddAccountModalProps {
   open: boolean;
@@ -30,7 +36,7 @@ interface AddAccountModalProps {
 // Schema for the form
 const accountSchema = z.object({
   name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required'),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format'),
+  color: z.string().regex(ACCOUNT.COLOR_REGEX, 'Invalid color format'),
 });
 
 type AccountFormData = z.infer<typeof accountSchema>;
@@ -63,31 +69,14 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
   } = useForm<AccountFormData>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
-      color: '#3b82f6', // Default blue color
+      color: ACCOUNT.DEFAULT_COLOR,
     },
   });
 
   const selectedColor = watch('color');
 
   // Predefined color palette
-  const colorPalette = [
-    '#ef4444', // Red
-    '#f97316', // Orange
-    '#f59e0b', // Amber
-    '#eab308', // Yellow
-    '#84cc16', // Lime
-    '#22c55e', // Green
-    '#10b981', // Emerald
-    '#14b8a6', // Teal
-    '#06b6d4', // Cyan
-    '#0ea5e9', // Sky
-    '#3b82f6', // Blue
-    '#6366f1', // Indigo
-    '#8b5cf6', // Violet
-    '#a855f7', // Purple
-    '#d946ef', // Fuchsia
-    '#ec4899', // Pink
-  ];
+  const colorPalette = ACCOUNT.COLOR_PALETTE;
 
   // Filter currencies based on input and exclude already selected ones
   const filteredCurrencies = useMemo(() => {
@@ -213,11 +202,11 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
               {/* No Color Option */}
               <button
                 type="button"
-                onClick={() => setValue('color', '#94a3b8')}
+                onClick={() => setValue('color', ACCOUNT.NO_COLOR)}
                 disabled={isSubmitting}
                 className={cn(
                   'w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all',
-                  selectedColor === '#94a3b8'
+                  selectedColor === ACCOUNT.NO_COLOR
                     ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100'
                     : 'border-zinc-300 dark:border-zinc-700'
                 )}
@@ -271,7 +260,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                         value={selectedColor}
                         onChange={(e) => setValue('color', e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="#3b82f6"
+                        placeholder={ACCOUNT.DEFAULT_COLOR}
                         className="flex-1 font-mono text-xs"
                         maxLength={7}
                       />

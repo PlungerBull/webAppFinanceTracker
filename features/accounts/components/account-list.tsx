@@ -22,8 +22,10 @@ import {
   Edit,
   Trash2,
   ChevronRight,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ACCOUNT } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
@@ -49,6 +51,7 @@ export function AccountList() {
     return Array.from(grouped.entries()).map(([account_id, balances]) => ({
       account_id,
       name: balances[0].name ?? 'Unknown Account',
+      color: (balances[0] as any).color || ACCOUNT.DEFAULT_COLOR, // Type assertion until types are regenerated
       balances: balances.sort((a, b) =>
         (a.currency ?? '').localeCompare(b.currency ?? '')
       ),
@@ -110,7 +113,10 @@ export function AccountList() {
                 >
                   {/* Account Header with Icon and Name */}
                   <div className="flex items-center w-full text-sm">
-                    <Wallet className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <DollarSign
+                      className="h-4 w-4 mr-2 flex-shrink-0"
+                      style={{ color: account.color }}
+                    />
                     <span className="truncate flex-1">{account.name}</span>
                     <div className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity ml-2">
                       <DropdownMenu>
