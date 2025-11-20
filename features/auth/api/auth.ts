@@ -136,6 +136,11 @@ export const authApi = {
     } = await supabase.auth.getUser();
 
     if (error) {
+      // If session is missing, just return null (not logged in)
+      if (error.name === 'AuthSessionMissingError' || error.message === 'Auth session missing!') {
+        return null;
+      }
+
       console.error('Get user error:', error);
       throw new Error(error.message || 'Failed to get user');
     }
@@ -181,7 +186,7 @@ export const authApi = {
         'Re-authentication failed. Please log out and log back in.'
       );
     }
-    
+
     // Note: Supabase reauthenticate() on its own is often enough.
     // For email/password users, we can *also* verify the password manually,
     // but updateUser is the primary step.
@@ -204,7 +209,7 @@ export const authApi = {
     const supabase = createClient();
 
     // 1. Re-authenticate
-     const {
+    const {
       data: { user },
       error: reauthError,
     } = await supabase.auth.reauthenticate();

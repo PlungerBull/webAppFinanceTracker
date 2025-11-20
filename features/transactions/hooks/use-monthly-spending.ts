@@ -5,7 +5,7 @@ import { CURRENCY, DATABASE, QUERY_KEYS } from '@/lib/constants';
 export interface CategorySpending {
   categoryId: string;
   categoryName: string;
-  categoryIcon: string;
+  categoryColor: string;
   monthlyAmounts: { [key: string]: number };
 }
 
@@ -59,7 +59,7 @@ export function useMonthlySpending(monthsBack = DATABASE.MONTHS_BACK.DEFAULT) {
           spendingByCategory[categoryId] = {
             categoryId: row.category_id,
             categoryName: row.category_name,
-            categoryIcon: row.category_icon,
+            categoryColor: row.category_color,
             monthlyAmounts: {},
           };
         }

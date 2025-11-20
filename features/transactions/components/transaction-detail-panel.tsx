@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { format } from 'date-fns';
-import { Calendar, Check, X } from 'lucide-react';
+import { Calendar, Check, X, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +29,7 @@ interface TransactionRow {
   date: string;
   description: string;
   category_name: string | null;
-  category_icon: string | null;
+  category_color: string | null;
   category_id: string | null;
   amount_original: number;
   currency_original: string;
@@ -42,7 +42,7 @@ interface TransactionRow {
 interface Category {
   id: string;
   name: string;
-  icon: string;
+  color: string;
 }
 
 interface Account {
@@ -282,7 +282,12 @@ export function TransactionDetailPanel({
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         <div className="flex items-center gap-2">
-                          <span>{category.icon}</span>
+                          <div
+                            className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 shrink-0"
+                            style={{ color: category.color }}
+                          >
+                            <Hash className="w-3 h-3" />
+                          </div>
                           <span>{category.name}</span>
                         </div>
                       </SelectItem>
@@ -313,7 +318,12 @@ export function TransactionDetailPanel({
               >
                 {transaction.category_name ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{transaction.category_icon}</span>
+                    <div
+                      className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 shrink-0"
+                      style={{ color: transaction.category_color || undefined }}
+                    >
+                      <Hash className="w-3 h-3" />
+                    </div>
                     <span className="text-sm text-zinc-900 dark:text-zinc-50">
                       {transaction.category_name}
                     </span>

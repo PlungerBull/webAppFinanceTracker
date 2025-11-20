@@ -8,7 +8,7 @@ export const categoriesApi = {
     const supabase = createClient();
 
     const { data, error } = await supabase
-      .from('categories')
+      .from('categories_with_counts')
       .select('*')
       .order('name', { ascending: true });
 
@@ -39,23 +39,18 @@ export const categoriesApi = {
   },
 
   // Create a new category
-  create: async (categoryData: { name: string; icon: string; color: string; type: string }) => {
+  create: async (category: { name: string; color: string }) => {
     const supabase = createClient();
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
 
     const { data, error } = await supabase
       .from('categories')
       .insert({
+        ...category,
         user_id: user.id,
-        name: categoryData.name,
-        icon: categoryData.icon,
-        color: categoryData.color,
-        type: categoryData.type,
-      } as any)
+      })
       .select()
       .single();
 
@@ -68,12 +63,12 @@ export const categoriesApi = {
   },
 
   // Update an existing category (RLS handles user filtering)
-  update: async (id: string, categoryData: Partial<{ name: string; icon: string; color: string }>) => {
+  update: async (id: string, category: { name?: string; color?: string }) => {
     const supabase = createClient();
 
     const { data, error } = await supabase
       .from('categories')
-      .update(categoryData)
+      .update(category)
       .eq('id', id)
       .select()
       .single();

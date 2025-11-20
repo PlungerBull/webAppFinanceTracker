@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { AddAccountModal } from '@/features/accounts/components/add-account-modal';
 import { EditAccountModal } from '@/features/accounts/components/edit-account-modal';
@@ -36,6 +36,27 @@ export function AccountList() {
   const [isAccountsExpanded, setIsAccountsExpanded] = useState(true);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+  const searchParams = useSearchParams();
+  const currentAccountId = searchParams.get('account');
+
+  const handleAccountClick = (accountId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    // Toggle selection: if already selected, remove filter
+    if (currentAccountId === accountId) {
+      params.delete('account');
+    } else {
+      params.set('account', accountId);
+      // Clear category filter when selecting an account (mutually exclusive)
+      params.delete('categoryId');
+    }
+
+    // Reset page if pagination exists
+    params.delete('page');
+
+    router.push(`/transactions?${params.toString()}`);
+  };
+
   const [deletingAccount, setDeletingAccount] = useState<BankAccount | null>(null);
 
   // Group account balances by account_id
@@ -106,10 +127,11 @@ export function AccountList() {
               groupedAccounts.map((account) => (
                 <div
                   key={account.account_id}
-                  className="relative group px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer"
-                  onClick={() =>
-                    router.push(`/transactions?account=${account.account_id}`)
-                  }
+                  className={cn(
+                    "relative group px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer",
+                    currentAccountId === account.account_id && "bg-zinc-100 dark:bg-zinc-800"
+                  )}
+                  onClick={() => handleAccountClick(account.account_id)}
                 >
                   {/* Account Header with Icon and Name */}
                   <div className="flex items-center w-full text-sm">

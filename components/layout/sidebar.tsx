@@ -7,6 +7,7 @@ import { useSidebar } from '@/contexts/sidebar-context';
 import { UserMenu } from '@/components/layout/user-menu';
 import { MainNavigation } from '@/components/layout/main-navigation';
 import { AccountList } from '@/features/accounts/components/account-list';
+import { CategoryList } from '@/features/categories/components/category-list';
 
 interface SidebarProps {
   className?: string;
@@ -43,18 +44,28 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Sidebar Content - Hidden when collapsed */}
       {!isCollapsed && (
         <>
-          {/* Header - User Menu */}
-          <div className="flex items-center p-4 border-b border-zinc-200 dark:border-zinc-800">
-            <UserMenu isCollapsed={isCollapsed} />
+          {/* Zone A: Fixed Content (User Menu + Main Nav) */}
+          <div className="flex flex-col flex-shrink-0 border-b border-zinc-200 dark:border-zinc-800">
+            {/* Header - User Menu */}
+            <div className="flex items-center p-4">
+              <UserMenu isCollapsed={isCollapsed} />
+            </div>
+
+            {/* Main Navigation */}
+            <div className="px-2 pb-2">
+              <MainNavigation isCollapsed={isCollapsed} />
+            </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-2">
-            {/* Main Navigation */}
-            <MainNavigation isCollapsed={isCollapsed} />
-
-            {/* Accounts Section */}
-            {!isCollapsed && <AccountList />}
+          {/* Zone B: Scrollable Content (Accounts + Categories) */}
+          <nav className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+            {!isCollapsed && (
+              <>
+                <AccountList />
+                <div className="my-4 border-t border-zinc-100 dark:border-zinc-800/50" />
+                <CategoryList />
+              </>
+            )}
           </nav>
         </>
       )}

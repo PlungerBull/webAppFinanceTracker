@@ -75,7 +75,6 @@ export function MonthlySpendingTable() {
               <TableRow key={category.categoryId}>
                 <TableCell className="font-medium sticky left-0 bg-white dark:bg-zinc-950 z-10">
                   <div className="flex items-center gap-2">
-                    <span>{category.categoryIcon}</span>
                     <span>{category.categoryName}</span>
                   </div>
                 </TableCell>

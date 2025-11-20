@@ -26,7 +26,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Loader2, CalendarIcon, Tag, Wallet, DollarSign } from 'lucide-react';
+import { Loader2, CalendarIcon, Tag, Wallet, DollarSign, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AddTransactionModalProps {
@@ -254,7 +254,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                   style={selectedCategory ? { borderColor: selectedCategory.color } : undefined}
                 >
                   {selectedCategory ? (
-                    <span>{selectedCategory.icon}</span>
+                    <Hash className="h-4 w-4" style={{ color: selectedCategory.color }} />
                   ) : (
                     <Tag className="h-4 w-4" />
                   )}
@@ -281,7 +281,12 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                         }}
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left"
                       >
-                        <span>{category.icon}</span>
+                        <div
+                          className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 shrink-0"
+                          style={{ color: category.color }}
+                        >
+                          <Hash className="w-3 h-3" />
+                        </div>
                         <span>{category.name}</span>
                       </button>
                     ))

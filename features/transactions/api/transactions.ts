@@ -3,10 +3,10 @@ import type { CreateTransactionFormData, UpdateTransactionFormData } from '../sc
 
 export const transactionsApi = {
   // Get all transactions for the current user (RLS handles user filtering)
-  getAll: async () => {
+  getAll: async (filters?: { categoryId?: string }) => {
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('transactions')
       .select(`
         *,
@@ -14,6 +14,12 @@ export const transactionsApi = {
         account:bank_accounts(id, name)
       `)
       .order('date', { ascending: false });
+
+    if (filters?.categoryId) {
+      query = query.eq('category_id', filters.categoryId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching transactions:', error);
@@ -31,7 +37,7 @@ export const transactionsApi = {
       .from('transactions')
       .select(`
         *,
-        category:categories(id, name, icon, color),
+        category:categories(id, name, color),
         account:bank_accounts(id, name)
       `)
       .eq('id', id)

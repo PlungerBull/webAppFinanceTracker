@@ -12,10 +12,11 @@ import { TransactionDetailPanel } from '@/features/transactions/components/trans
 function TransactionsContent() {
   const searchParams = useSearchParams();
   const accountId = searchParams.get('account');
+  const categoryId = searchParams.get('categoryId');
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', 'all', accountId],
+    queryKey: ['transactions', 'all', accountId, categoryId],
     queryFn: async () => {
       const supabase = createClient();
 
@@ -39,6 +40,11 @@ function TransactionsContent() {
         query = query.eq('account_id', accountId);
       }
 
+      // Apply category filter if categoryId is present
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+
       const { data: transactionsData, error } = await query.order('date', { ascending: false });
 
       if (error) throw error;
@@ -47,7 +53,7 @@ function TransactionsContent() {
       // Fetch categories (RLS handles user filtering)
       const { data: categories } = await supabase
         .from('categories')
-        .select('id, name, icon, color');
+        .select('id, name, color');
 
       // Fetch account names (RLS handles user filtering)
       const { data: accounts } = await supabase
@@ -68,7 +74,6 @@ function TransactionsContent() {
           date: transaction.date,
           description: transaction.description || '',
           category_name: category?.name || null,
-          category_icon: category?.icon || null,
           category_color: category?.color || null,
           category_id: transaction.category_id,
           amount_original: transaction.amount_original,
@@ -85,6 +90,7 @@ function TransactionsContent() {
         categories: categories || [],
         accounts: accounts || [],
         accountName: accountId && accounts?.length ? accounts.find(a => a.id === accountId)?.name : null,
+        categoryName: categoryId && categories?.length ? categories.find(c => c.id === categoryId)?.name : null,
       };
     },
   });
@@ -93,6 +99,10 @@ function TransactionsContent() {
   const categories = data?.categories || [];
   const accounts = data?.accounts || [];
   const accountName = data?.accountName;
+  const categoryName = data?.categoryName;
+
+  // Determine the title for the transaction list
+  const pageTitle = categoryName || accountName || 'Transactions';
 
   const selectedTransaction = selectedTransactionId
     ? transactions.find(t => t.id === selectedTransactionId) || null
@@ -109,7 +119,7 @@ function TransactionsContent() {
         isLoading={isLoading}
         selectedTransactionId={selectedTransactionId}
         onTransactionSelect={setSelectedTransactionId}
-        accountName={accountName}
+        title={pageTitle}
       />
 
       {/* Section 3: Transaction Details Panel */}

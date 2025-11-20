@@ -13,7 +13,6 @@ interface TransactionRow {
   date: string;
   description: string;
   category_name: string | null;
-  category_icon: string | null;
   category_color: string | null;
   category_id: string | null;
   amount_original: number;
@@ -29,7 +28,7 @@ interface TransactionListProps {
   isLoading: boolean;
   selectedTransactionId: string | null;
   onTransactionSelect: (id: string) => void;
-  accountName?: string | null;
+  title?: string | null;
 }
 
 export function TransactionList({
@@ -37,7 +36,7 @@ export function TransactionList({
   isLoading,
   selectedTransactionId,
   onTransactionSelect,
-  accountName,
+  title,
 }: TransactionListProps) {
   const { isCollapsed } = useSidebar();
 
@@ -57,7 +56,7 @@ export function TransactionList({
   return (
     <div className="flex-1 flex flex-col overflow-hidden border-r border-zinc-200 dark:border-zinc-800">
       {/* Header */}
-      <PageHeader title={accountName || 'Transactions'} sidebarCollapsed={isCollapsed} />
+      <PageHeader title={title || 'Transactions'} sidebarCollapsed={isCollapsed} />
 
       {/* Transactions List */}
       <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-950">
@@ -84,17 +83,13 @@ export function TransactionList({
                     {format(new Date(dateKey), 'EEEE dd, MMM yyyy')}
                   </h3>
                 </div>
-                <div className={cn(
-                  'border-t border-zinc-200 dark:border-zinc-800 transition-all duration-300',
-                  isCollapsed ? 'ml-32' : 'ml-12'
-                )} />
 
                 {/* Transactions for this date */}
                 <div className={cn(
                   'transition-all duration-300',
                   isCollapsed ? 'ml-32' : 'ml-12'
                 )}>
-                  {dateTransactions.map((transaction) => (
+                  {dateTransactions.map((transaction, index) => (
                     <div key={transaction.id} className="relative">
                       {/* Category color line */}
                       {transaction.category_color && (
