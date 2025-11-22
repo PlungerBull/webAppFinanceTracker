@@ -103,7 +103,14 @@ export default function SettingsPage() {
   );
 }
 
-function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }: any) {
+interface AccountSettingsProps {
+  user: any; // Supabase User type
+  initialize: () => void;
+  openPasswordModal: () => void;
+  openEmailModal: () => void;
+}
+
+function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }: AccountSettingsProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 

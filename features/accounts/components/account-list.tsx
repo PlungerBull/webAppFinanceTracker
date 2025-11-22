@@ -72,7 +72,7 @@ export function AccountList() {
     return Array.from(grouped.entries()).map(([account_id, balances]) => ({
       account_id,
       name: balances[0].name ?? 'Unknown Account',
-      color: (balances[0] as any).color || ACCOUNT.DEFAULT_COLOR, // Type assertion until types are regenerated
+      color: balances[0].color || ACCOUNT.DEFAULT_COLOR,
       balances: balances.sort((a, b) =>
         (a.currency ?? '').localeCompare(b.currency ?? '')
       ),
@@ -165,8 +165,8 @@ export function AccountList() {
                                 const bankAccount: BankAccount = {
                                   id: balance.account_id,
                                   user_id: balance.user_id,
-                                  name:
-                                    balance.name ?? 'Unknown Account',
+                                  name: balance.name ?? 'Unknown Account',
+                                  color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
                                   created_at: balance.created_at,
                                   updated_at: balance.updated_at,
                                 };
@@ -190,8 +190,8 @@ export function AccountList() {
                                 const bankAccount: BankAccount = {
                                   id: balance.account_id,
                                   user_id: balance.user_id,
-                                  name:
-                                    balance.name ?? 'Unknown Account',
+                                  name: balance.name ?? 'Unknown Account',
+                                  color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
                                   created_at: balance.created_at,
                                   updated_at: balance.updated_at,
                                 };

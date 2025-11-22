@@ -2,6 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCY, DATABASE, QUERY_KEYS } from '@/lib/constants';
 
+interface MonthlySpendingRow {
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  month_key: string;
+  total_amount: number;
+}
+
 export interface CategorySpending {
   categoryId: string;
   categoryName: string;
@@ -52,7 +60,7 @@ export function useMonthlySpending(monthsBack = DATABASE.MONTHS_BACK.DEFAULT) {
       // Transform flat data into grouped format for display
       const spendingByCategory: { [categoryId: string]: CategorySpending } = {};
 
-      rawData.forEach((row: any) => {
+      rawData.forEach((row: MonthlySpendingRow) => {
         const categoryId = row.category_id;
 
         if (!spendingByCategory[categoryId]) {

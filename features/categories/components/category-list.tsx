@@ -38,6 +38,7 @@ export function CategoryList() {
     const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     const handleCategoryClick = (categoryId: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -135,14 +136,22 @@ export function CategoryList() {
                                     </div>
 
                                     <div className="flex items-center">
-                                        {/* Transaction Count - Visible by default, hidden on hover */}
-                                        <span className="text-xs text-zinc-500 font-medium px-2 group-hover:hidden">
+                                        {/* Transaction Count - Visible by default, hidden on hover or when menu is open */}
+                                        <span className={cn(
+                                            "text-xs text-zinc-500 font-medium px-2",
+                                            openMenuId === category.id ? "hidden" : "group-hover:hidden"
+                                        )}>
                                             {category.transaction_count}
                                         </span>
 
-                                        {/* Actions Menu - Hidden by default, visible on hover */}
-                                        <div className="hidden group-hover:block">
-                                            <DropdownMenu>
+                                        {/* Actions Menu - Hidden by default, visible on hover or when menu is open */}
+                                        <div className={cn(
+                                            openMenuId === category.id ? "block" : "hidden group-hover:block"
+                                        )}>
+                                            <DropdownMenu
+                                                open={openMenuId === category.id}
+                                                onOpenChange={(open) => setOpenMenuId(open ? category.id : null)}
+                                            >
                                                 <DropdownMenuTrigger asChild>
                                                     <Button
                                                         variant="ghost"

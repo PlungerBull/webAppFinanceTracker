@@ -67,12 +67,12 @@ export function TransactionDetailPanel({
 }: TransactionDetailPanelProps) {
   const queryClient = useQueryClient();
   const [editingField, setEditingField] = useState<EditingField>(null);
-  const [editedValue, setEditedValue] = useState<any>(null);
+  const [editedValue, setEditedValue] = useState<string | number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Mutation for updating transaction
   const updateMutation = useMutation({
-    mutationFn: async ({ id, field, value }: { id: string; field: string; value: any }) => {
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: string | number | null }) => {
       const supabase = createClient();
       const { error } = await supabase
         .from('transactions')
@@ -101,7 +101,7 @@ export function TransactionDetailPanel({
     );
   }
 
-  const startEdit = (field: EditingField, currentValue: any) => {
+  const startEdit = (field: EditingField, currentValue: string | number | null) => {
     setEditingField(field);
     setEditedValue(currentValue);
   };
@@ -112,7 +112,7 @@ export function TransactionDetailPanel({
     setShowDatePicker(false);
   };
 
-  const saveEdit = async (field: string, value: any) => {
+  const saveEdit = async (field: string, value: string | number | null) => {
     if (!transaction?.id) return;
     await updateMutation.mutateAsync({ id: transaction.id, field, value });
   };
@@ -272,7 +272,7 @@ export function TransactionDetailPanel({
             {editingField === 'category' ? (
               <div className="flex items-center gap-2">
                 <Select
-                  value={editedValue || ''}
+                  value={String(editedValue || '')}
                   onValueChange={(value) => setEditedValue(value)}
                 >
                   <SelectTrigger className="flex-1">
@@ -298,7 +298,7 @@ export function TransactionDetailPanel({
                   size="icon"
                   variant="ghost"
                   className="h-8 w-8 text-green-600"
-                  onClick={() => saveEdit('category_id', editedValue)}
+                  onClick={() => saveEdit('category_id', editedValue || null)}
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -343,7 +343,7 @@ export function TransactionDetailPanel({
             {editingField === 'account' ? (
               <div className="flex items-center gap-2">
                 <Select
-                  value={editedValue || ''}
+                  value={String(editedValue || '')}
                   onValueChange={(value) => setEditedValue(value)}
                 >
                   <SelectTrigger className="flex-1">
@@ -361,7 +361,7 @@ export function TransactionDetailPanel({
                   size="icon"
                   variant="ghost"
                   className="h-8 w-8 text-green-600"
-                  onClick={() => saveEdit('account_id', editedValue)}
+                  onClick={() => saveEdit('account_id', editedValue || null)}
                 >
                   <Check className="h-4 w-4" />
                 </Button>

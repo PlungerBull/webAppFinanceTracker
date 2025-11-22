@@ -27,8 +27,9 @@ interface TransactionListProps {
   transactions: TransactionRow[];
   isLoading: boolean;
   selectedTransactionId: string | null;
-  onTransactionSelect: (id: string) => void;
+  onTransactionSelect?: (id: string) => void;
   title?: string | null;
+  variant?: 'default' | 'compact';
 }
 
 export function TransactionList({
@@ -37,8 +38,12 @@ export function TransactionList({
   selectedTransactionId,
   onTransactionSelect,
   title,
+  variant = 'default',
 }: TransactionListProps) {
   const { isCollapsed } = useSidebar();
+
+  // In compact mode, we don't use the sidebar context for padding
+  const isCompact = variant === 'compact';
 
   // Group transactions by date
   const groupedTransactions = useMemo(() => {
@@ -54,9 +59,14 @@ export function TransactionList({
   }, [transactions]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-r border-zinc-200 dark:border-zinc-800">
-      {/* Header */}
-      <PageHeader title={title || 'Transactions'} sidebarCollapsed={isCollapsed} />
+    <div className={cn(
+      "flex-1 flex flex-col overflow-hidden",
+      !isCompact && "border-r border-zinc-200 dark:border-zinc-800"
+    )}>
+      {/* Header - only show in default mode */}
+      {!isCompact && (
+        <PageHeader title={title || 'Transactions'} sidebarCollapsed={isCollapsed} />
+      )}
 
       {/* Transactions List */}
       <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-950">
@@ -77,7 +87,8 @@ export function TransactionList({
                 {/* Date Header */}
                 <div className={cn(
                   'transition-all duration-300',
-                  isCollapsed ? 'px-32' : 'px-12'
+                  'transition-all duration-300',
+                  isCompact ? 'px-4' : (isCollapsed ? 'px-32' : 'px-12')
                 )}>
                   <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 py-3">
                     {format(new Date(dateKey), 'EEEE dd, MMM yyyy')}
@@ -87,7 +98,8 @@ export function TransactionList({
                 {/* Transactions for this date */}
                 <div className={cn(
                   'transition-all duration-300',
-                  isCollapsed ? 'ml-32' : 'ml-12'
+                  'transition-all duration-300',
+                  isCompact ? 'ml-4' : (isCollapsed ? 'ml-32' : 'ml-12')
                 )}>
                   {dateTransactions.map((transaction, index) => (
                     <div key={transaction.id} className="relative">
@@ -99,11 +111,12 @@ export function TransactionList({
                         />
                       )}
                       <div
-                        onClick={() => onTransactionSelect(transaction.id)}
+                        onClick={() => onTransactionSelect?.(transaction.id)}
                         className={cn(
                           'py-4 cursor-pointer transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all duration-300',
-                          isCollapsed ? 'pl-8 pr-32' : 'pl-8 pr-12',
-                          selectedTransactionId === transaction.id && 'bg-zinc-100 dark:bg-zinc-900'
+                          isCompact ? 'pl-4 pr-4' : (isCollapsed ? 'pl-8 pr-32' : 'pl-8 pr-12'),
+                          selectedTransactionId === transaction.id && 'bg-zinc-100 dark:bg-zinc-900',
+                          !onTransactionSelect && 'cursor-default hover:bg-transparent'
                         )}
                       >
                         <div className="flex items-center justify-between">

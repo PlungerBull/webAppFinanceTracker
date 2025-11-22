@@ -2,30 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { formatCurrency } from '@/hooks/use-formatted-balance';
-import { format } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Card } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface TransactionRow {
-  id: string;
-  date: string;
-  description: string;
-  category_name: string | null;
-  category_icon: string | null;
-  amount_original: number;
-  currency_original: string;
-  exchange_rate: number | null;
-}
+import { TransactionList } from './transaction-list';
 
 interface AccountTransactionsTableProps {
   accountId: string;
@@ -47,7 +24,8 @@ export function AccountTransactionsTable({ accountId }: AccountTransactionsTable
           amount_original,
           currency_original,
           exchange_rate,
-          category_id
+          category_id,
+          notes
         `)
         .eq('account_id', accountId)
         .order('date', { ascending: false });
@@ -58,7 +36,14 @@ export function AccountTransactionsTable({ accountId }: AccountTransactionsTable
       // Fetch categories (RLS handles user filtering)
       const { data: categories } = await supabase
         .from('categories')
-        .select('id, name, icon');
+        .select('id, name, color');
+
+      // Fetch account name
+      const { data: account } = await supabase
+        .from('bank_accounts')
+        .select('name')
+        .eq('id', accountId)
+        .single();
 
       // Create lookup map
       const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
@@ -70,93 +55,29 @@ export function AccountTransactionsTable({ accountId }: AccountTransactionsTable
         return {
           id: transaction.id,
           date: transaction.date,
-          description: transaction.description,
+          description: transaction.description || '',
           category_name: category?.name || null,
-          category_icon: category?.icon || null,
+          category_color: category?.color || null,
+          category_id: transaction.category_id,
           amount_original: transaction.amount_original,
           currency_original: transaction.currency_original,
+          account_name: account?.name || 'Unknown',
+          account_id: accountId,
           exchange_rate: transaction.exchange_rate !== 1 ? transaction.exchange_rate : null,
+          notes: transaction.notes,
         };
       });
     },
   });
 
-  if (isLoading) {
-    return (
-      <Card className="p-8">
-        <div className="flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        </div>
-      </Card>
-    );
-  }
-
-  if (transactions.length === 0) {
-    return (
-      <Card className="p-8">
-        <div className="text-center text-zinc-500 dark:text-zinc-400">
-          No transactions available yet!
-        </div>
-      </Card>
-    );
-  }
-
   return (
-    <Card>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[120px]">Date</TableHead>
-              <TableHead className="min-w-[200px]">Description</TableHead>
-              <TableHead className="w-[150px]">Category</TableHead>
-              <TableHead className="text-right w-[120px]">Amount</TableHead>
-              <TableHead className="w-[80px]">Currency</TableHead>
-              <TableHead className="text-right w-[100px]">Exchange Rate</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transactions.map((transaction) => (
-              <TableRow key={transaction.id}>
-                <TableCell className="font-medium">
-                  {format(new Date(transaction.date), 'MMM dd, yyyy')}
-                </TableCell>
-                <TableCell>{transaction.description}</TableCell>
-                <TableCell>
-                  {transaction.category_name ? (
-                    <div className="flex items-center gap-2">
-                      <span>{transaction.category_icon}</span>
-                      <span>{transaction.category_name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-zinc-400 dark:text-zinc-500">Uncategorized</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <span className={cn(
-                    "font-medium",
-                    transaction.amount_original >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'
-                  )}>
-                    {formatCurrency(transaction.amount_original, transaction.currency_original)}
-                  </span>
-                </TableCell>
-                <TableCell className="font-medium">
-                  {transaction.currency_original}
-                </TableCell>
-                <TableCell className="text-right">
-                  {transaction.exchange_rate ? (
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {transaction.exchange_rate.toFixed(4)}
-                    </span>
-                  ) : (
-                    <span className="text-zinc-400">-</span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
+    <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden h-[600px] flex flex-col">
+      <TransactionList
+        transactions={transactions}
+        isLoading={isLoading}
+        selectedTransactionId={null}
+        variant="compact"
+      />
+    </div>
   );
 }

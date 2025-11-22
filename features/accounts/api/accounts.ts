@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
+import { ACCOUNTS } from '@/lib/constants';
+import type { Database } from '@/types/database.types';
 import type { UpdateAccountFormData } from '../schemas/account.schema';
 
 export const accountsApi = {
@@ -14,8 +16,8 @@ export const accountsApi = {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Error fetching accounts:', error);
-      throw new Error(error.message || 'Failed to fetch accounts');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.FETCH_ACCOUNTS}: `, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.FETCH_FAILED);
     }
 
     return data;
@@ -34,8 +36,8 @@ export const accountsApi = {
       .single();
 
     if (error) {
-      console.error('Error fetching account:', error);
-      throw new Error(error.message || 'Failed to fetch account');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.FETCH_ACCOUNT}: `, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.FETCH_ONE_FAILED);
     }
 
     return data;
@@ -61,8 +63,8 @@ export const accountsApi = {
     });
 
     if (error) {
-      console.error('Error creating account with currencies:', error);
-      throw new Error(error.message || 'Failed to create account');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.CREATE_ACCOUNT}: `, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CREATE_FAILED);
     }
 
     return data;
@@ -82,8 +84,8 @@ export const accountsApi = {
       .single();
 
     if (error) {
-      console.error('Error updating account:', error);
-      throw new Error(error.message || 'Failed to update account');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.UPDATE_ACCOUNT}: `, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.UPDATE_FAILED);
     }
 
     return data;
@@ -101,8 +103,8 @@ export const accountsApi = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting account:', error);
-      throw new Error(error.message || 'Failed to delete account');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.DELETE_ACCOUNT}: `, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.DELETE_FAILED);
     }
   },
 };

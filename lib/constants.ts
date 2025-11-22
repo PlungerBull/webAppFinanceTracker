@@ -104,6 +104,114 @@ export const ACCOUNT = {
 } as const;
 
 // ============================================================================
+// ACCOUNTS CONFIGURATION
+// ============================================================================
+
+export const ACCOUNTS = {
+  /**
+   * Error messages for account operations
+   */
+  MESSAGES: {
+    ERROR: {
+      FETCH_FAILED: 'Failed to fetch accounts',
+      FETCH_ONE_FAILED: 'Failed to fetch account',
+      CREATE_FAILED: 'Failed to create account',
+      UPDATE_FAILED: 'Failed to update account',
+      DELETE_FAILED: 'Failed to delete account',
+
+      CURRENCY_FETCH_FAILED: 'Failed to fetch account currencies',
+      CURRENCY_ADD_FAILED: 'Failed to add currency to account',
+      CURRENCY_UPDATE_FAILED: 'Failed to update account currency',
+      CURRENCY_REMOVE_FAILED: 'Failed to remove currency from account',
+      CURRENCY_BULK_ADD_FAILED: 'Failed to add currencies to account',
+      CURRENCY_REPLACE_FAILED: 'Failed to replace currency',
+
+      VALIDATION_NO_CURRENCY: 'Please add at least one currency to the account',
+      VALIDATION_NAME_REQUIRED: 'Account name is required',
+      VALIDATION_NAME_TOO_LONG: 'Account name must be less than 50 characters',
+      VALIDATION_COLOR_INVALID: 'Invalid color format',
+    },
+    WARNING: {
+      CURRENCY_CHANGE_AFFECTS_TRANSACTIONS: 'The changes you made will affect all related transactions',
+    },
+    CONFIRM: {
+      DELETE_ACCOUNT: 'Are you sure you want to delete this account?',
+    },
+  },
+
+  /**
+   * UI labels and text
+   */
+  LABELS: {
+    MODAL_ADD_TITLE: 'Add New Account',
+    MODAL_ADD_DESC: 'Create a new account and configure currencies',
+    MODAL_EDIT_TITLE: 'Edit Account',
+    MODAL_DELETE_TITLE: 'Delete Account',
+
+    CURRENCIES: 'Currencies',
+    ADD_CURRENCIES: 'Add Currencies *',
+    CURRENCY_INPUT_PLACEHOLDER: 'Currency (e.g., USD)',
+    STARTING_BALANCE: 'Starting Balance',
+
+    ACCOUNT_NAME: 'Account Name *',
+    ACCOUNT_NAME_PLACEHOLDER: 'e.g., BCP Credit Card, Checking Account',
+    ACCOUNT_COLOR: 'Account Color *',
+    CUSTOM_COLOR: 'Custom Color',
+
+    GRID_FROM: 'FROM',
+    GRID_TO: 'TO',
+    GRID_INITIAL_AMOUNT: 'INITIAL AMOUNT',
+  },
+
+  /**
+   * Button text
+   */
+  BUTTONS: {
+    CREATE: 'Create Account',
+    UPDATE: 'Update Account',
+    DELETE: 'Delete',
+    CANCEL: 'Cancel',
+    ADD_CURRENCY: (code: string) => `Add "${code}"`,
+  },
+
+  /**
+   * Default values
+   */
+  VALUES: {
+    DEFAULT_BALANCE: '0',
+    DEFAULT_BALANCE_DECIMAL: '0.00',
+  },
+
+  /**
+   * Modal configuration
+   */
+  MODAL: {
+    ADD_MAX_WIDTH: 'sm:max-w-[550px]',
+    EDIT_MAX_WIDTH: 'sm:max-w-[600px]',
+    MAX_HEIGHT: 'max-h-[90vh]',
+    OVERFLOW: 'overflow-y-auto',
+  },
+
+  /**
+   * Console log messages
+   */
+  CONSOLE: {
+    ERROR_PREFIX: 'Error',
+    FETCH_ACCOUNTS: 'fetching accounts',
+    FETCH_ACCOUNT: 'fetching account',
+    CREATE_ACCOUNT: 'creating account with currencies',
+    UPDATE_ACCOUNT: 'updating account',
+    DELETE_ACCOUNT: 'deleting account',
+    FETCH_CURRENCIES: 'fetching account currencies',
+    CREATE_CURRENCY: 'creating account currency',
+    UPDATE_CURRENCY: 'updating account currency',
+    DELETE_CURRENCY: 'deleting account currency',
+    REPLACE_CURRENCY: 'replacing currency',
+    ADD_CURRENCY_MODAL: 'adding currency',
+  },
+} as const;
+
+// ============================================================================
 // CATEGORY CONFIGURATION
 // ============================================================================
 

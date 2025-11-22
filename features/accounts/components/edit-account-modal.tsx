@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, ArrowRight, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACCOUNT } from '@/lib/constants';
+import { AccountForm } from './account-form';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
 type AccountCurrency = Database['public']['Tables']['account_currencies']['Row'];
@@ -48,8 +49,8 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [currencyReplacements, setCurrencyReplacements] = useState<CurrencyReplacement[]>([]);
-  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const { data: allCurrencies = [] } = useCurrencies();
   const addCurrencyMutation = useAddCurrency();
@@ -74,15 +75,12 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
 
   const selectedColor = watch('color');
 
-  // Predefined color palette (same as add modal)
-  const colorPalette = ACCOUNT.COLOR_PALETTE;
-
   // Initialize form and currency replacements when account or currencies change
   useEffect(() => {
     if (account && accountCurrencies.length > 0) {
       reset({
         name: account.name,
-        color: (account as any).color || ACCOUNT.DEFAULT_COLOR,
+        color: account.color || ACCOUNT.DEFAULT_COLOR,
       });
 
       // Initialize currency replacements
@@ -190,99 +188,14 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
             </div>
           )}
 
-          {/* Account Name */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-name">Account Name *</Label>
-            <Input
-              id="edit-name"
-              type="text"
-              placeholder="e.g., Checking Account, Savings, Cash"
-              {...register('name')}
-              disabled={isSubmitting}
-            />
-            {errors.name && (
-              <p className="text-sm text-red-600">{errors.name.message}</p>
-            )}
-          </div>
-
-          {/* Account Color */}
-          <div className="space-y-2">
-            <Label>Account Color</Label>
-            <div className="flex flex-wrap gap-2 items-center">
-              {/* No Color Option */}
-              <button
-                type="button"
-                onClick={() => setValue('color', ACCOUNT.NO_COLOR)}
-                disabled={isSubmitting}
-                className={cn(
-                  'w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all',
-                  selectedColor === ACCOUNT.NO_COLOR
-                    ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100'
-                    : 'border-zinc-300 dark:border-zinc-700'
-                )}
-              >
-                <X className="w-4 h-4 text-zinc-400" />
-              </button>
-
-              {/* Color Palette */}
-              {colorPalette.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setValue('color', color)}
-                  disabled={isSubmitting}
-                  style={{ backgroundColor: color }}
-                  className={cn(
-                    'w-8 h-8 rounded-full border-2 transition-all',
-                    selectedColor === color
-                      ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100'
-                      : 'border-transparent'
-                  )}
-                  aria-label={`Select color ${color}`}
-                />
-              ))}
-
-              {/* Custom Color Picker */}
-              <Popover open={showColorPicker} onOpenChange={setShowColorPicker}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    className="w-8 h-8 rounded-full border-2 border-zinc-300 dark:border-zinc-700 flex items-center justify-center bg-gradient-to-br from-red-500 via-green-500 to-blue-500 hover:border-zinc-900 dark:hover:border-zinc-100 transition-all"
-                  >
-                    <Plus className="w-4 h-4 text-white drop-shadow-md" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-3" align="start">
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-color" className="text-sm">Custom Color</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="custom-color"
-                        type="color"
-                        value={selectedColor}
-                        onChange={(e) => setValue('color', e.target.value)}
-                        disabled={isSubmitting}
-                        className="w-16 h-10 cursor-pointer"
-                      />
-                      <Input
-                        type="text"
-                        value={selectedColor}
-                        onChange={(e) => setValue('color', e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder={ACCOUNT.DEFAULT_COLOR}
-                        className="flex-1 font-mono text-xs"
-                        maxLength={7}
-                      />
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            {errors.color && (
-              <p className="text-sm text-red-600">{errors.color.message}</p>
-            )}
-          </div>
+          {/* Account Form Fields */}
+          <AccountForm
+            register={register}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            isSubmitting={isSubmitting}
+          />
 
           {/* Currency Management */}
           <div className="space-y-3">

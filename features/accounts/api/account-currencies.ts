@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { ACCOUNTS } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 
 type AccountCurrency = Database['public']['Tables']['account_currencies']['Row'];
@@ -19,8 +20,8 @@ export const accountCurrenciesApi = {
       .order('currency_code', { ascending: true });
 
     if (error) {
-      console.error('Error fetching account currencies:', error);
-      throw new Error(error.message || 'Failed to fetch account currencies');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.FETCH_CURRENCIES}:`, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CURRENCY_FETCH_FAILED);
     }
 
     return data;
@@ -34,13 +35,13 @@ export const accountCurrenciesApi = {
 
     const { data, error } = await supabase
       .from('account_currencies')
-      .insert(accountCurrency as any)
+      .insert(accountCurrency)
       .select()
       .single();
 
     if (error) {
-      console.error('Error creating account currency:', error);
-      throw new Error(error.message || 'Failed to add currency to account');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.CREATE_CURRENCY}:`, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CURRENCY_ADD_FAILED);
     }
 
     return data;
@@ -54,14 +55,14 @@ export const accountCurrenciesApi = {
 
     const { data, error } = await supabase
       .from('account_currencies')
-      .update(updates as any)
+      .update(updates)
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
-      console.error('Error updating account currency:', error);
-      throw new Error(error.message || 'Failed to update account currency');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.UPDATE_CURRENCY}:`, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CURRENCY_UPDATE_FAILED);
     }
 
     return data;
@@ -79,8 +80,8 @@ export const accountCurrenciesApi = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting account currency:', error);
-      throw new Error(error.message || 'Failed to remove currency from account');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.DELETE_CURRENCY}:`, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CURRENCY_REMOVE_FAILED);
     }
   },
 
@@ -92,12 +93,12 @@ export const accountCurrenciesApi = {
 
     const { data, error } = await supabase
       .from('account_currencies')
-      .insert(accountCurrencies as any)
+      .insert(accountCurrencies)
       .select();
 
     if (error) {
-      console.error('Error creating account currencies:', error);
-      throw new Error(error.message || 'Failed to add currencies to account');
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.CREATE_CURRENCY}:`, error);
+      throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CURRENCY_BULK_ADD_FAILED);
     }
 
     return data;
@@ -123,8 +124,8 @@ export const accountCurrenciesApi = {
     });
 
     if (error) {
-      console.error('Error replacing currency:', error);
-      throw new Error('Failed to replace currency: ' + error.message);
+      console.error(`${ACCOUNTS.CONSOLE.ERROR_PREFIX} ${ACCOUNTS.CONSOLE.REPLACE_CURRENCY}:`, error);
+      throw new Error(`${ACCOUNTS.MESSAGES.ERROR.CURRENCY_REPLACE_FAILED}: ${error.message}`);
     }
   },
 };

@@ -1,27 +1,26 @@
 import { z } from 'zod';
-import { VALIDATION, UI } from '@/lib/constants';
+import { VALIDATION, UI, ACCOUNT, ACCOUNTS } from '@/lib/constants';
 
 // Create account schema (simplified - only name, currencies handled separately)
 export const createAccountSchema = z.object({
   name: z
     .string()
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required')
-    .max(UI.MAX_LENGTH.ACCOUNT_NAME, 'Account name must be less than 50 characters'),
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, ACCOUNTS.MESSAGES.ERROR.VALIDATION_NAME_REQUIRED)
+    .max(UI.MAX_LENGTH.ACCOUNT_NAME, ACCOUNTS.MESSAGES.ERROR.VALIDATION_NAME_TOO_LONG),
+  color: z.string().regex(ACCOUNT.COLOR_REGEX, ACCOUNTS.MESSAGES.ERROR.VALIDATION_COLOR_INVALID),
 });
 
-// Update account schema
 export const updateAccountSchema = z.object({
   name: z
     .string()
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required')
-    .max(UI.MAX_LENGTH.ACCOUNT_NAME, 'Account name must be less than 50 characters')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, ACCOUNTS.MESSAGES.ERROR.VALIDATION_NAME_REQUIRED)
+    .max(UI.MAX_LENGTH.ACCOUNT_NAME, ACCOUNTS.MESSAGES.ERROR.VALIDATION_NAME_TOO_LONG)
     .optional(),
   color: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format')
+    .regex(ACCOUNT.COLOR_REGEX, ACCOUNTS.MESSAGES.ERROR.VALIDATION_COLOR_INVALID)
     .optional(),
 });
 
-// Export types
 export type CreateAccountFormData = z.infer<typeof createAccountSchema>;
 export type UpdateAccountFormData = z.infer<typeof updateAccountSchema>;
