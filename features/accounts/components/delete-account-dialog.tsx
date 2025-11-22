@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { accountsApi } from '../api/accounts';
 import type { Database } from '@/types/database.types';
+import { QUERY_KEYS } from '@/lib/constants';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Loader2 } from 'lucide-react';
+import { ACCOUNT_UI } from '@/lib/constants';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
 
@@ -39,12 +41,12 @@ export function DeleteAccountDialog({ open, onOpenChange, account }: DeleteAccou
       await accountsApi.delete(account.id);
 
       // Invalidate accounts query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
 
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete account');
-      console.error('Failed to delete account:', err);
+      setError(err instanceof Error ? err.message : ACCOUNT_UI.MESSAGES.DELETE_FAILED);
+      console.error(ACCOUNT_UI.MESSAGES.DELETE_FAILED, err);
     } finally {
       setIsDeleting(false);
     }
@@ -54,10 +56,15 @@ export function DeleteAccountDialog({ open, onOpenChange, account }: DeleteAccou
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{ACCOUNT_UI.LABELS.DELETE_ACCOUNT}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete the account "<strong>{account?.name}</strong>" and all
-            transactions associated with it. This action cannot be undone.
+            {ACCOUNT_UI.MESSAGES.DELETE_CONFIRMATION}
+            <br />
+            <strong>{account?.name}</strong>
+            <br />
+            <span className="text-red-500 mt-2 block">
+              {ACCOUNT_UI.MESSAGES.DELETE_WARNING}
+            </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -68,19 +75,22 @@ export function DeleteAccountDialog({ open, onOpenChange, account }: DeleteAccou
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>{ACCOUNT_UI.BUTTONS.CANCEL}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
+            onClick={(e) => {
+              e.preventDefault();
+              handleDelete();
+            }}
             disabled={isDeleting}
             className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
           >
             {isDeleting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                {ACCOUNT_UI.BUTTONS.DELETE}...
               </>
             ) : (
-              'Delete'
+              ACCOUNT_UI.BUTTONS.DELETE
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

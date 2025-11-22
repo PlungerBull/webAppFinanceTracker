@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { CATEGORY } from '@/lib/constants';
 
 export const categoriesApi = {
   // Get all categories (user categories)

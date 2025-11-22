@@ -23,8 +23,8 @@ export function ChangePasswordModal({
     <FormModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Change Password"
-      successMessage="Password updated successfully!"
+      title={UI.MODALS.CHANGE_PASSWORD.TITLE}
+      successMessage={UI.MODALS.CHANGE_PASSWORD.SUCCESS}
       schema={changePasswordSchema}
       onSubmit={authApi.changePassword}
       autoCloseDelay={UI.AUTO_CLOSE_DELAY.MEDIUM}
@@ -32,7 +32,7 @@ export function ChangePasswordModal({
       {({ register, formState: { errors, isSubmitting } }) => (
         <>
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
+            <Label htmlFor="currentPassword">{UI.MODALS.CHANGE_PASSWORD.LABELS.CURRENT_PASSWORD}</Label>
             <Input
               id="currentPassword"
               type="password"
@@ -46,7 +46,7 @@ export function ChangePasswordModal({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
+            <Label htmlFor="newPassword">{UI.MODALS.CHANGE_PASSWORD.LABELS.NEW_PASSWORD}</Label>
             <Input
               id="newPassword"
               type="password"
@@ -60,7 +60,7 @@ export function ChangePasswordModal({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <Label htmlFor="confirmPassword">{UI.MODALS.CHANGE_PASSWORD.LABELS.CONFIRM_PASSWORD}</Label>
             <Input
               id="confirmPassword"
               type="password"

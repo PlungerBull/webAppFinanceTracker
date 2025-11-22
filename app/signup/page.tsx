@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { AUTH } from '@/lib/constants';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -34,10 +35,10 @@ export default function SignUpPage() {
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        router.push('/login?message=Please check your email to verify your account');
+        router.push(`/login?message=${AUTH.SIGNUP.MESSAGES.SUCCESS_REDIRECT}`);
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign up');
+      setError(err instanceof Error ? err.message : AUTH.SIGNUP.MESSAGES.ERROR);
     }
   };
 
@@ -46,9 +47,9 @@ export default function SignUpPage() {
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardTitle className="text-2xl">{AUTH.SIGNUP.CHECK_EMAIL_TITLE}</CardTitle>
             <CardDescription>
-              We've sent you a verification link. Please check your email to verify your account.
+              {AUTH.SIGNUP.CHECK_EMAIL_DESC}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -60,9 +61,9 @@ export default function SignUpPage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Create an account</CardTitle>
+          <CardTitle className="text-2xl">{AUTH.SIGNUP.TITLE}</CardTitle>
           <CardDescription>
-            Enter your information to create your Finance Tracker account
+            {AUTH.SIGNUP.DESCRIPTION}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -74,11 +75,11 @@ export default function SignUpPage() {
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName">{AUTH.SIGNUP.LABELS.FIRST_NAME}</Label>
                 <Input
                   id="firstName"
                   type="text"
-                  placeholder="John"
+                  placeholder={AUTH.SIGNUP.PLACEHOLDERS.FIRST_NAME}
                   {...register('firstName')}
                   disabled={isSubmitting}
                 />
@@ -89,11 +90,11 @@ export default function SignUpPage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">{AUTH.SIGNUP.LABELS.LAST_NAME}</Label>
                 <Input
                   id="lastName"
                   type="text"
-                  placeholder="Doe"
+                  placeholder={AUTH.SIGNUP.PLACEHOLDERS.LAST_NAME}
                   {...register('lastName')}
                   disabled={isSubmitting}
                 />
@@ -106,11 +107,11 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{AUTH.SIGNUP.LABELS.EMAIL}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={AUTH.SIGNUP.PLACEHOLDERS.EMAIL}
                 {...register('email')}
                 disabled={isSubmitting}
               />
@@ -120,11 +121,11 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{AUTH.SIGNUP.LABELS.PASSWORD}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder={AUTH.SIGNUP.PLACEHOLDERS.PASSWORD}
                 {...register('password')}
                 disabled={isSubmitting}
               />
@@ -134,11 +135,11 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{AUTH.SIGNUP.LABELS.CONFIRM_PASSWORD}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="••••••••"
+                placeholder={AUTH.SIGNUP.PLACEHOLDERS.PASSWORD}
                 {...register('confirmPassword')}
                 disabled={isSubmitting}
               />
@@ -153,17 +154,17 @@ export default function SignUpPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  {AUTH.SIGNUP.BUTTONS.CREATING_ACCOUNT}
                 </>
               ) : (
-                'Sign up'
+                AUTH.SIGNUP.BUTTONS.SIGN_UP
               )}
             </Button>
 
             <p className="text-sm text-center text-zinc-600 dark:text-zinc-400">
-              Already have an account?{' '}
+              {AUTH.SIGNUP.LABELS.ALREADY_HAVE_ACCOUNT}{' '}
               <Link href="/login" className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline">
-                Login
+                {AUTH.SIGNUP.LABELS.LOGIN}
               </Link>
             </p>
           </CardFooter>

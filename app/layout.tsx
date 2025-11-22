@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { AuthProvider } from '@/providers/auth-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { CurrencyProvider } from '@/contexts/currency-context';
+import { APP_METADATA } from '@/lib/constants';
 import './globals.css';
 
 const geistSans = Geist({
@@ -16,9 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Finance Tracker - Manage Your Finances Across Multiple Currencies',
-  description:
-    'A personal finance tracking application that helps you manage your money across multiple accounts and currencies with a beautiful, intuitive interface.',
+  title: APP_METADATA.TITLE,
+  description: APP_METADATA.DESCRIPTION,
 };
 
 export default function RootLayout({

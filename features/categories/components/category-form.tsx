@@ -4,9 +4,9 @@ import { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from 'rea
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ACCOUNT } from '@/lib/constants';
+import { ACCOUNT, CATEGORY } from '@/lib/constants';
 
 export interface CategoryFormData {
     name: string;
@@ -35,11 +35,11 @@ export function CategoryForm({
         <div className="space-y-4">
             {/* Category Name */}
             <div className="space-y-2">
-                <Label htmlFor="name">Category Name *</Label>
+                <Label htmlFor="name">{CATEGORY.UI.LABELS.CATEGORY_NAME}</Label>
                 <Input
                     id="name"
                     type="text"
-                    placeholder="e.g., Groceries, Rent, Salary"
+                    placeholder={CATEGORY.UI.LABELS.CATEGORY_NAME_PLACEHOLDER}
                     {...register('name')}
                     disabled={isSubmitting}
                 />
@@ -50,7 +50,7 @@ export function CategoryForm({
 
             {/* Category Color */}
             <div className="space-y-2">
-                <Label>Color *</Label>
+                <Label>{CATEGORY.UI.LABELS.COLOR}</Label>
                 <div className="flex flex-wrap gap-2 items-center">
                     {/* Color Palette */}
                     {colorPalette.map((color) => (

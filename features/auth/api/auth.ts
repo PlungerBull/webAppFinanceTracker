@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { AUTH } from '@/lib/constants';
 import type {
   SignUpData,
   LoginData,
@@ -33,8 +34,8 @@ export const authApi = {
     });
 
     if (error) {
-      console.error('Sign up error:', error);
-      throw new Error(error.message || 'Failed to sign up');
+      console.error(AUTH.ERRORS.SIGN_UP_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_SIGN_UP);
     }
 
     return authData;
@@ -52,8 +53,8 @@ export const authApi = {
     });
 
     if (error) {
-      console.error('Login error:', error);
-      throw new Error(error.message || 'Failed to login');
+      console.error(AUTH.ERRORS.LOGIN_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_LOGIN);
     }
 
     return authData;
@@ -68,8 +69,8 @@ export const authApi = {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      console.error('Logout error:', error);
-      throw new Error(error.message || 'Failed to logout');
+      console.error(AUTH.ERRORS.LOGOUT_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_LOGOUT);
     }
   },
 
@@ -84,8 +85,8 @@ export const authApi = {
     });
 
     if (error) {
-      console.error('Reset password error:', error);
-      throw new Error(error.message || 'Failed to send reset email');
+      console.error(AUTH.ERRORS.RESET_PASSWORD_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_RESET_EMAIL);
     }
   },
 
@@ -100,8 +101,8 @@ export const authApi = {
     });
 
     if (error) {
-      console.error('Update password error:', error);
-      throw new Error(error.message || 'Failed to update password');
+      console.error(AUTH.ERRORS.UPDATE_PASSWORD_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_UPDATE_PASSWORD);
     }
   },
 
@@ -117,8 +118,8 @@ export const authApi = {
     } = await supabase.auth.getSession();
 
     if (error) {
-      console.error('Get session error:', error);
-      throw new Error(error.message || 'Failed to get session');
+      console.error(AUTH.ERRORS.GET_SESSION_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_GET_SESSION);
     }
 
     return session;
@@ -137,12 +138,12 @@ export const authApi = {
 
     if (error) {
       // If session is missing, just return null (not logged in)
-      if (error.name === 'AuthSessionMissingError' || error.message === 'Auth session missing!') {
+      if (error.name === AUTH.ERRORS.AUTH_SESSION_MISSING_ERROR || error.message === AUTH.ERRORS.AUTH_SESSION_MISSING_MESSAGE) {
         return null;
       }
 
-      console.error('Get user error:', error);
-      throw new Error(error.message || 'Failed to get user');
+      console.error(AUTH.ERRORS.GET_USER_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_GET_USER);
     }
 
     return user;
@@ -163,8 +164,8 @@ export const authApi = {
     });
 
     if (error) {
-      console.error('Error updating user metadata:', error);
-      throw new Error(error.message || 'Failed to update profile');
+      console.error(AUTH.ERRORS.UPDATE_METADATA_ERROR, error);
+      throw new Error(error.message || AUTH.ERRORS.FAILED_UPDATE_PROFILE);
     }
   },
 
@@ -181,10 +182,8 @@ export const authApi = {
     } = await supabase.auth.reauthenticate();
 
     if (reauthError || !user) {
-      console.error('Re-authentication error:', reauthError);
-      throw new Error(
-        'Re-authentication failed. Please log out and log back in.'
-      );
+      console.error(AUTH.ERRORS.REAUTH_ERROR, reauthError);
+      throw new Error(AUTH.ERRORS.REAUTH_FAILED);
     }
 
     // Note: Supabase reauthenticate() on its own is often enough.
@@ -197,8 +196,8 @@ export const authApi = {
     });
 
     if (updateError) {
-      console.error('Error changing password:', updateError);
-      throw new Error(updateError.message || 'Failed to change password');
+      console.error(AUTH.ERRORS.CHANGE_PASSWORD_ERROR, updateError);
+      throw new Error(updateError.message || AUTH.ERRORS.FAILED_CHANGE_PASSWORD);
     }
   },
 
@@ -215,10 +214,8 @@ export const authApi = {
     } = await supabase.auth.reauthenticate();
 
     if (reauthError || !user) {
-      console.error('Re-authentication error:', reauthError);
-      throw new Error(
-        'Re-authentication failed. Please log out and log back in.'
-      );
+      console.error(AUTH.ERRORS.REAUTH_ERROR, reauthError);
+      throw new Error(AUTH.ERRORS.REAUTH_FAILED);
     }
 
     // 2. Update to new email
@@ -230,8 +227,8 @@ export const authApi = {
     });
 
     if (updateError) {
-      console.error('Error changing email:', updateError);
-      throw new Error(updateError.message || 'Failed to change email');
+      console.error(AUTH.ERRORS.CHANGE_EMAIL_ERROR, updateError);
+      throw new Error(updateError.message || AUTH.ERRORS.FAILED_CHANGE_EMAIL);
     }
   },
 };

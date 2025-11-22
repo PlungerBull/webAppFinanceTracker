@@ -20,9 +20,9 @@ export function ChangeEmailModal({ open, onOpenChange }: ChangeEmailModalProps) 
     <FormModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Change Email"
-      description="Enter your new email and current password. A confirmation will be sent to both your old and new email addresses."
-      successMessage="Success! Please check your email to confirm the change."
+      title={UI.MODALS.CHANGE_EMAIL.TITLE}
+      description={UI.MODALS.CHANGE_EMAIL.DESCRIPTION}
+      successMessage={UI.MODALS.CHANGE_EMAIL.SUCCESS}
       schema={changeEmailSchema}
       onSubmit={authApi.changeEmail}
       autoCloseDelay={UI.AUTO_CLOSE_DELAY.LONG}
@@ -30,7 +30,7 @@ export function ChangeEmailModal({ open, onOpenChange }: ChangeEmailModalProps) 
       {({ register, formState: { errors, isSubmitting } }) => (
         <>
           <div className="space-y-2">
-            <Label htmlFor="newEmail">New Email</Label>
+            <Label htmlFor="newEmail">{UI.MODALS.CHANGE_EMAIL.LABELS.NEW_EMAIL}</Label>
             <Input
               id="newEmail"
               type="email"
@@ -44,7 +44,7 @@ export function ChangeEmailModal({ open, onOpenChange }: ChangeEmailModalProps) 
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="currentPassword-email">Current Password</Label>
+            <Label htmlFor="currentPassword-email">{UI.MODALS.CHANGE_EMAIL.LABELS.CURRENT_PASSWORD}</Label>
             <Input
               id="currentPassword-email"
               type="password"

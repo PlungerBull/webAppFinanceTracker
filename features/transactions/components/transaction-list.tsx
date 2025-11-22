@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { useSidebar } from '@/contexts/sidebar-context';
 import { PageHeader } from '@/components/layout/page-header';
+import { TRANSACTIONS } from '@/lib/constants';
 
 interface TransactionRow {
   id: string;
@@ -65,7 +66,7 @@ export function TransactionList({
     )}>
       {/* Header - only show in default mode */}
       {!isCompact && (
-        <PageHeader title={title || 'Transactions'} sidebarCollapsed={isCollapsed} />
+        <PageHeader title={title || TRANSACTIONS.UI.LABELS.TRANSACTIONS} sidebarCollapsed={isCollapsed} />
       )}
 
       {/* Transactions List */}
@@ -77,7 +78,7 @@ export function TransactionList({
         ) : transactions.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-zinc-500 dark:text-zinc-400">
-              No transactions found. Start adding transactions to see them here.
+              {TRANSACTIONS.UI.MESSAGES.NO_TRANSACTIONS}
             </div>
           </div>
         ) : (

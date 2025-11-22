@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { UI } from '@/lib/constants';
 
 export function SettingsModal({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -20,7 +21,7 @@ export function SettingsModal({ children }: { children: React.ReactNode }) {
     <Dialog open={true} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-5xl p-0 overflow-hidden h-[80vh] flex flex-col">
         <div className="sr-only">
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>{UI.MODALS.MAIN.TITLE}</DialogTitle>
         </div>
         {children}
       </DialogContent>

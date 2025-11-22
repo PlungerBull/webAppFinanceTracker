@@ -23,6 +23,7 @@ import {
     Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CATEGORY } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 
 // Use the view type which includes transaction_count
@@ -120,13 +121,13 @@ export function CategoryList() {
                                         "relative group px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer flex items-center justify-between",
                                         currentCategoryId === category.id && "bg-zinc-100 dark:bg-zinc-800"
                                     )}
-                                    onClick={() => handleCategoryClick(category.id)}
+                                    onClick={() => category.id && handleCategoryClick(category.id)}
                                 >
                                     {/* Category Icon and Name */}
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div
                                             className="flex items-center justify-center w-8 h-8 shrink-0"
-                                            style={{ color: category.color }}
+                                            style={{ color: category.color || undefined }}
                                         >
                                             <Hash className="w-4 h-4" />
                                         </div>
@@ -166,14 +167,14 @@ export function CategoryList() {
                                                 <DropdownMenuContent align="end" className="w-40">
                                                     <DropdownMenuItem onClick={(e) => handleEdit(category, e)}>
                                                         <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit
+                                                        {CATEGORY.UI.LABELS.EDIT_CATEGORY}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         onClick={(e) => handleDelete(category, e)}
                                                         className="text-red-600 focus:text-red-600"
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
+                                                        {CATEGORY.UI.LABELS.DELETE_CATEGORY}
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>

@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CURRENCY, VALIDATION, QUERY_KEYS, ACCOUNT } from '@/lib/constants';
+import { CURRENCY, VALIDATION, QUERY_KEYS, ACCOUNT, ACCOUNTS, ACCOUNT_UI } from '@/lib/constants';
 import { AccountForm } from './account-form';
 
 interface AddAccountModalProps {
@@ -36,7 +36,7 @@ interface AddAccountModalProps {
 
 // Schema for the form
 const accountSchema = z.object({
-  name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Account name is required'),
+  name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, ACCOUNT_UI.MESSAGES.ACCOUNT_NAME_REQUIRED),
   color: z.string().regex(ACCOUNT.COLOR_REGEX, 'Invalid color format'),
 });
 
@@ -123,7 +123,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
 
       // Validation: At least one currency must be selected
       if (selectedCurrencies.length === 0) {
-        setError('Please add at least one currency to the account');
+        setError(ACCOUNT_UI.MESSAGES.AT_LEAST_ONE_CURRENCY);
         return;
       }
 
@@ -148,7 +148,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       setBalanceInput('0');
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create account');
+      setError(err instanceof Error ? err.message : ACCOUNT_UI.MESSAGES.CREATE_FAILED);
     }
   };
 
@@ -165,9 +165,9 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Account</DialogTitle>
+          <DialogTitle>{ACCOUNT_UI.LABELS.CREATE_ACCOUNT}</DialogTitle>
           <DialogDescription>
-            Create a new account and configure currencies
+            {ACCOUNT_UI.DESCRIPTIONS.CREATE_ACCOUNT}
           </DialogDescription>
         </DialogHeader>
 
@@ -189,14 +189,14 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
 
           {/* Add Currency Section */}
           <div className="space-y-2">
-            <Label htmlFor="currency-input">Add Currencies *</Label>
+            <Label htmlFor="currency">{ACCOUNT_UI.LABELS.CURRENCY}</Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Input
                   id="currency-input"
                   name="currency"
                   type="text"
-                  placeholder="Currency (e.g., USD)"
+                  placeholder={ACCOUNT_UI.LABELS.CURRENCY_PLACEHOLDER}
                   value={currencyInput}
                   onChange={(e) => {
                     const value = e.target.value.toUpperCase();
@@ -218,7 +218,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                   <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-lg max-h-48 overflow-auto">
                     {isLoadingCurrencies ? (
                       <div className="p-3 text-center text-sm text-zinc-500">
-                        Loading...
+                        {ACCOUNT_UI.MESSAGES.LOADING}
                       </div>
                     ) : filteredCurrencies.length > 0 ? (
                       <div className="py-1">
@@ -240,7 +240,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                         className="w-full px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm flex items-center gap-2"
                       >
                         <Plus className="h-4 w-4" />
-                        <span>Add "{currencyInput}"</span>
+                        <span>{ACCOUNT_UI.MESSAGES.ADD_CURRENCY(currencyInput)}</span>
                       </button>
                     ) : null}
                   </div>
@@ -252,13 +252,13 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                 name="balance"
                 type="number"
                 step={CURRENCY.STEP.STANDARD}
-                placeholder="Balance"
+                placeholder={ACCOUNT_UI.LABELS.BALANCE}
                 value={balanceInput}
                 onChange={(e) => setBalanceInput(e.target.value)}
                 disabled={isSubmitting}
                 className="w-32"
                 autoComplete="off"
-                aria-label="Starting balance"
+                aria-label={ACCOUNT_UI.LABELS.STARTING_BALANCE}
               />
 
               <Button
@@ -272,14 +272,14 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
               </Button>
             </div>
             <p className="text-xs text-zinc-500">
-              Add one or more currencies for this account
+              {ACCOUNT_UI.DESCRIPTIONS.ADD_CURRENCIES}
             </p>
           </div>
 
           {/* Selected Currencies List */}
           {selectedCurrencies.length > 0 && (
             <div className="space-y-2">
-              <Label>Selected Currencies ({selectedCurrencies.length})</Label>
+              <Label>{ACCOUNT_UI.LABELS.SELECTED_CURRENCIES(selectedCurrencies.length)}</Label>
               <div className="space-y-2 max-h-48 overflow-y-auto border border-zinc-200 dark:border-zinc-800 rounded-md p-2">
                 {selectedCurrencies.map((currency) => (
                   <div
@@ -301,7 +301,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                       disabled={isSubmitting}
                       className="flex-1"
                       autoComplete="off"
-                      aria-label={`Starting balance for ${currency.currency_code}`}
+                      aria-label={ACCOUNT_UI.LABELS.STARTING_BALANCE_FOR(currency.currency_code)}
                     />
                     <Button
                       type="button"
@@ -320,24 +320,18 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
           )}
 
           {/* Form Actions */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              Cancel
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" type="button" onClick={handleClose} disabled={isSubmitting}>
+              {ACCOUNT_UI.BUTTONS.CANCEL}
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {ACCOUNT_UI.BUTTONS.CREATE}...
                 </>
               ) : (
-                'Create Account'
+                ACCOUNT_UI.BUTTONS.CREATE
               )}
             </Button>
           </div>

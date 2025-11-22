@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { AUTH } from '@/lib/constants';
 
 function LoginForm() {
   const router = useRouter();
@@ -41,7 +42,7 @@ function LoginForm() {
       router.push('/dashboard');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to login');
+      setError(err instanceof Error ? err.message : AUTH.LOGIN.MESSAGES.ERROR);
     }
   };
 
@@ -49,9 +50,9 @@ function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Welcome back</CardTitle>
+          <CardTitle className="text-2xl">{AUTH.LOGIN.TITLE}</CardTitle>
           <CardDescription>
-            Enter your credentials to access your account
+            {AUTH.LOGIN.DESCRIPTION}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -69,11 +70,11 @@ function LoginForm() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{AUTH.LOGIN.LABELS.EMAIL}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={AUTH.LOGIN.PLACEHOLDERS.EMAIL}
                 {...register('email')}
                 disabled={isSubmitting}
               />
@@ -84,18 +85,18 @@ function LoginForm() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{AUTH.LOGIN.LABELS.PASSWORD}</Label>
                 <Link
                   href="/reset-password"
                   className="text-sm text-zinc-600 dark:text-zinc-400 hover:underline"
                 >
-                  Forgot password?
+                  {AUTH.LOGIN.LABELS.FORGOT_PASSWORD}
                 </Link>
               </div>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder={AUTH.LOGIN.PLACEHOLDERS.PASSWORD}
                 {...register('password')}
                 disabled={isSubmitting}
               />
@@ -110,17 +111,17 @@ function LoginForm() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Logging in...
+                  {AUTH.LOGIN.BUTTONS.LOGGING_IN}
                 </>
               ) : (
-                'Login'
+                AUTH.LOGIN.BUTTONS.LOGIN
               )}
             </Button>
 
             <p className="text-sm text-center text-zinc-600 dark:text-zinc-400">
-              Don't have an account?{' '}
+              {AUTH.LOGIN.LABELS.NO_ACCOUNT}{' '}
               <Link href="/signup" className="font-medium text-zinc-900 dark:text-zinc-100 hover:underline">
-                Sign up
+                {AUTH.LOGIN.LABELS.SIGN_UP}
               </Link>
             </p>
           </CardFooter>
@@ -136,8 +137,8 @@ export default function LoginPage() {
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>Loading...</CardDescription>
+            <CardTitle className="text-2xl">{AUTH.LOGIN.TITLE}</CardTitle>
+            <CardDescription>{AUTH.LOGIN.MESSAGES.LOADING}</CardDescription>
           </CardHeader>
         </Card>
       </div>

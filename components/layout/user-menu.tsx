@@ -14,6 +14,7 @@ import {
 import { Settings, User, LogOut, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInitials } from '@/lib/utils';
+import { USER_MENU } from '@/lib/constants';
 
 interface UserMenuProps {
   isCollapsed: boolean;
@@ -30,15 +31,15 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
   }, []);
 
   const userDisplayName = useMemo(() => {
-    if (!user) return 'User';
+    if (!user) return USER_MENU.DEFAULT_NAME;
     if (user.user_metadata?.full_name) {
       return user.user_metadata.full_name;
     }
-    return user.email || 'User';
+    return user.email || USER_MENU.DEFAULT_NAME;
   }, [user]);
 
   const initials = useMemo(() => {
-    if (!user) return '?';
+    if (!user) return USER_MENU.FALLBACK_INITIALS;
     const firstName = user.user_metadata?.firstName;
     const lastName = user.user_metadata?.lastName;
 
@@ -85,7 +86,7 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
         <div className="flex items-center min-w-0">
           <User className="h-5 w-5 flex-shrink-0 mr-2" />
           <span className="truncate text-sm font-medium text-zinc-400">
-            Loading...
+            {USER_MENU.LOADING}
           </span>
         </div>
       </Button>
@@ -113,11 +114,11 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuItem onClick={() => router.push('/settings')}>
           <Settings className="mr-2 h-4 w-4" />
-          Settings
+          {USER_MENU.LABELS.SETTINGS}
         </DropdownMenuItem>
         <DropdownMenuItem>
           <Crown className="mr-2 h-4 w-4" />
-          Premium
+          {USER_MENU.LABELS.PREMIUM}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -125,7 +126,7 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
           className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Logout
+          {USER_MENU.LABELS.LOGOUT}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

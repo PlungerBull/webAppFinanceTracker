@@ -13,6 +13,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Loader2 } from 'lucide-react';
+import { CATEGORY } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 
 // Use the view type which includes transaction_count
@@ -37,7 +38,9 @@ export function DeleteCategoryDialog({
 
         try {
             setIsDeleting(true);
-            await deleteCategoryMutation.mutateAsync(category.id);
+            if (category.id) {
+                await deleteCategoryMutation.mutateAsync(category.id);
+            }
             onOpenChange(false);
         } catch (error) {
             console.error('Failed to delete category:', error);
@@ -53,20 +56,24 @@ export function DeleteCategoryDialog({
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                    <AlertDialogTitle>{CATEGORY.UI.LABELS.DELETE_CATEGORY}</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Are you sure you want to delete <strong>{category.name}</strong>?
-                        {category.transaction_count > 0 && (
-                            <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 rounded-md text-sm">
-                                ⚠️ This category has <strong>{category.transaction_count}</strong> associated transactions.
-                                Deleting it will remove the category from these transactions.
-                            </div>
+                        {CATEGORY.UI.MESSAGES.DELETE_CONFIRMATION}
+                        <br />
+                        <strong>{category.name}</strong>
+                        <br />
+                        <span className="text-red-500 mt-2 block">
+                            {CATEGORY.UI.MESSAGES.DELETE_WARNING}
+                        </span>
+                        {(category.transaction_count || 0) > 0 && (
+                            <span className="text-red-500 mt-1 block font-semibold">
+                                {CATEGORY.UI.MESSAGES.TRANSACTION_COUNT_WARNING(category.transaction_count || 0)}
+                            </span>
                         )}
-                        <div className="mt-2">This action cannot be undone.</div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={isDeleting}>{CATEGORY.UI.BUTTONS.CANCEL}</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={(e) => {
                             e.preventDefault();
@@ -78,10 +85,10 @@ export function DeleteCategoryDialog({
                         {isDeleting ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Deleting...
+                                {CATEGORY.UI.BUTTONS.DELETE}...
                             </>
                         ) : (
-                            'Delete'
+                            CATEGORY.UI.BUTTONS.DELETE
                         )}
                     </AlertDialogAction>
                 </AlertDialogFooter>

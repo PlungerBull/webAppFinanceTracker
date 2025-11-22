@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { AUTH } from '@/lib/constants';
 
 export default function UpdatePasswordPage() {
   const router = useRouter();
@@ -28,9 +29,9 @@ export default function UpdatePasswordPage() {
     try {
       setError(null);
       await authApi.updatePassword(data.password);
-      router.push('/login?message=Password updated successfully. Please login with your new password.');
+      router.push(`/login?message=${AUTH.UPDATE_PASSWORD.MESSAGES.SUCCESS_REDIRECT}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update password');
+      setError(err instanceof Error ? err.message : AUTH.UPDATE_PASSWORD.MESSAGES.ERROR);
     }
   };
 
@@ -38,9 +39,9 @@ export default function UpdatePasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Update your password</CardTitle>
+          <CardTitle className="text-2xl">{AUTH.UPDATE_PASSWORD.TITLE}</CardTitle>
           <CardDescription>
-            Enter your new password below
+            {AUTH.UPDATE_PASSWORD.DESCRIPTION}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -52,11 +53,11 @@ export default function UpdatePasswordPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
+              <Label htmlFor="password">{AUTH.UPDATE_PASSWORD.LABELS.NEW_PASSWORD}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder={AUTH.UPDATE_PASSWORD.PLACEHOLDERS.PASSWORD}
                 {...register('password')}
                 disabled={isSubmitting}
               />
@@ -66,11 +67,11 @@ export default function UpdatePasswordPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Label htmlFor="confirmPassword">{AUTH.UPDATE_PASSWORD.LABELS.CONFIRM_PASSWORD}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="••••••••"
+                placeholder={AUTH.UPDATE_PASSWORD.PLACEHOLDERS.PASSWORD}
                 {...register('confirmPassword')}
                 disabled={isSubmitting}
               />
@@ -85,10 +86,10 @@ export default function UpdatePasswordPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating password...
+                  {AUTH.UPDATE_PASSWORD.BUTTONS.UPDATING}
                 </>
               ) : (
-                'Update password'
+                AUTH.UPDATE_PASSWORD.BUTTONS.UPDATE
               )}
             </Button>
           </CardFooter>

@@ -12,17 +12,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ACCOUNT, VALIDATION } from '@/lib/constants';
+import { Loader2 } from 'lucide-react';
+import { ACCOUNT, VALIDATION, CATEGORY } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 import { CategoryForm } from './category-form';
 
@@ -66,8 +58,8 @@ export function EditCategoryModal({ open, onOpenChange, category }: EditCategory
     useEffect(() => {
         if (category) {
             reset({
-                name: category.name,
-                color: category.color,
+                name: category.name || '',
+                color: category.color || '',
             });
         }
     }, [category, reset]);
@@ -77,13 +69,15 @@ export function EditCategoryModal({ open, onOpenChange, category }: EditCategory
 
         try {
             setError(null);
-            await updateCategoryMutation.mutateAsync({
-                id: category.id,
-                data: {
-                    name: data.name,
-                    color: data.color,
-                },
-            });
+            if (category.id) {
+                await updateCategoryMutation.mutateAsync({
+                    id: category.id,
+                    data: {
+                        name: data.name,
+                        color: data.color,
+                    },
+                });
+            }
             handleClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to update category');
@@ -100,7 +94,7 @@ export function EditCategoryModal({ open, onOpenChange, category }: EditCategory
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Category</DialogTitle>
+                    <DialogTitle>{CATEGORY.UI.LABELS.EDIT_CATEGORY}</DialogTitle>
                     <DialogDescription>
                         Update category details
                     </DialogDescription>
@@ -131,16 +125,16 @@ export function EditCategoryModal({ open, onOpenChange, category }: EditCategory
                             disabled={isSubmitting}
                             className="flex-1"
                         >
-                            Cancel
+                            {CATEGORY.UI.BUTTONS.CANCEL}
                         </Button>
                         <Button type="submit" disabled={isSubmitting} className="flex-1">
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Updating...
+                                    {CATEGORY.UI.BUTTONS.UPDATE}...
                                 </>
                             ) : (
-                                'Update Category'
+                                CATEGORY.UI.BUTTONS.UPDATE
                             )}
                         </Button>
                     </div>

@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, ArrowRight, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ACCOUNT } from '@/lib/constants';
+import { ACCOUNT, ACCOUNTS, ACCOUNT_UI, QUERY_KEYS } from '@/lib/constants';
 import { AccountForm } from './account-form';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
@@ -57,7 +57,7 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
 
   // Fetch account currencies when modal opens
   const { data: accountCurrencies = [], isLoading: loadingCurrencies } = useQuery({
-    queryKey: ['account-currencies', account?.id],
+    queryKey: QUERY_KEYS.ACCOUNT_CURRENCIES(account?.id),
     queryFn: () => accountCurrenciesApi.getByAccountId(account!.id),
     enabled: !!account?.id && open,
   });
@@ -130,7 +130,7 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
             await addCurrencyMutation.mutateAsync(newCode);
           } catch (err) {
             // Only log real errors, not duplicates
-            console.error('Error adding currency:', err);
+            console.error(ACCOUNT_UI.MESSAGES.ERROR_ADDING_CURRENCY, err);
           }
 
           // Replace currency in account and all transactions
@@ -149,16 +149,16 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
       }
 
       // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['account-currencies'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNT_CURRENCIES() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL });
 
       // Reset and close
       reset();
       setCurrencyReplacements([]);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update account');
+      setError(err instanceof Error ? err.message : ACCOUNT_UI.MESSAGES.UPDATE_FAILED);
     } finally {
       setIsSubmitting(false);
     }
@@ -175,9 +175,9 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Account</DialogTitle>
+          <DialogTitle>{ACCOUNT_UI.LABELS.EDIT_ACCOUNT}</DialogTitle>
           <DialogDescription>
-            Update account name and manage currencies
+            {ACCOUNT_UI.DESCRIPTIONS.EDIT_ACCOUNT}
           </DialogDescription>
         </DialogHeader>
 
@@ -200,9 +200,9 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
           {/* Currency Management */}
           <div className="space-y-3">
             <div>
-              <Label className="text-base font-semibold">Currencies</Label>
+              <Label className="text-base font-semibold">{ACCOUNT_UI.LABELS.CURRENCIES}</Label>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Replace currencies in this account. All matching transactions will be updated.
+                {ACCOUNT_UI.DESCRIPTIONS.REPLACE_CURRENCIES}
               </p>
             </div>
 
@@ -212,15 +212,15 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
               </div>
             ) : currencyReplacements.length === 0 ? (
               <div className="text-center text-sm text-zinc-500 p-4 border border-zinc-200 dark:border-zinc-800 rounded-md">
-                No currencies configured for this account
+                {ACCOUNT_UI.MESSAGES.NO_CURRENCIES}
               </div>
             ) : (
               <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
                 {/* Table Header */}
                 <div className="grid grid-cols-3 gap-4 p-3 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-                  <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">FROM</div>
-                  <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">TO</div>
-                  <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 text-right">INITIAL AMOUNT</div>
+                  <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{ACCOUNT_UI.LABELS.TABLE_FROM}</div>
+                  <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{ACCOUNT_UI.LABELS.TABLE_TO}</div>
+                  <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 text-right">{ACCOUNT_UI.LABELS.TABLE_INITIAL_AMOUNT}</div>
                 </div>
 
                 {/* Table Rows */}
@@ -241,7 +241,7 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
                           onChange={(e) =>
                             handleCurrencyChange(index, 'newCurrencyCode', e.target.value.toUpperCase())
                           }
-                          placeholder="USD"
+                          placeholder={ACCOUNT_UI.LABELS.CURRENCY_PLACEHOLDER.split('(')[1].replace(')', '')}
                           maxLength={3}
                           disabled={isSubmitting}
                           className="uppercase font-medium text-center"
@@ -259,14 +259,14 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
                           }
                           disabled={isSubmitting}
                           className="text-right"
-                          placeholder="0.00"
+                          placeholder={ACCOUNT_UI.LABELS.BALANCE_PLACEHOLDER}
                         />
                       </div>
 
                       {/* Warning message if currency changed */}
                       {replacement.oldCurrency.currency_code !== replacement.newCurrencyCode && (
                         <div className="col-span-3 text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
-                          ⚠️ All {replacement.oldCurrency.currency_code} transactions will be changed to {replacement.newCurrencyCode}
+                          {ACCOUNT_UI.MESSAGES.CURRENCY_CHANGE_WARNING(replacement.oldCurrency.currency_code, replacement.newCurrencyCode)}
                         </div>
                       )}
                     </div>
@@ -285,16 +285,16 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
               disabled={isSubmitting}
               className="flex-1"
             >
-              Cancel
+              {ACCOUNT_UI.BUTTONS.CANCEL}
             </Button>
             <Button type="submit" disabled={isSubmitting || loadingCurrencies} className="flex-1">
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
+                  {ACCOUNT_UI.BUTTONS.UPDATE}...
                 </>
               ) : (
-                'Update Account'
+                ACCOUNT_UI.BUTTONS.UPDATE
               )}
             </Button>
           </div>

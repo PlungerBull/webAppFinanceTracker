@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, ArrowLeft } from 'lucide-react';
+import { AUTH } from '@/lib/constants';
 
 export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export default function ResetPasswordPage() {
       await authApi.resetPassword(data);
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset email');
+      setError(err instanceof Error ? err.message : AUTH.RESET_PASSWORD.MESSAGES.ERROR);
     }
   };
 
@@ -39,16 +40,16 @@ export default function ResetPasswordPage() {
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardTitle className="text-2xl">{AUTH.RESET_PASSWORD.CHECK_EMAIL_TITLE}</CardTitle>
             <CardDescription>
-              We've sent you a password reset link. Please check your email and follow the instructions.
+              {AUTH.RESET_PASSWORD.CHECK_EMAIL_DESC}
             </CardDescription>
           </CardHeader>
           <CardFooter>
             <Link href="/login" className="w-full">
               <Button variant="outline" className="w-full">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to login
+                {AUTH.RESET_PASSWORD.BUTTONS.BACK_TO_LOGIN}
               </Button>
             </Link>
           </CardFooter>
@@ -61,9 +62,9 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Reset your password</CardTitle>
+          <CardTitle className="text-2xl">{AUTH.RESET_PASSWORD.TITLE}</CardTitle>
           <CardDescription>
-            Enter your email address and we'll send you a link to reset your password
+            {AUTH.RESET_PASSWORD.DESCRIPTION}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -75,11 +76,11 @@ export default function ResetPasswordPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{AUTH.RESET_PASSWORD.LABELS.EMAIL}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={AUTH.RESET_PASSWORD.PLACEHOLDERS.EMAIL}
                 {...register('email')}
                 disabled={isSubmitting}
               />
@@ -94,17 +95,17 @@ export default function ResetPasswordPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending reset link...
+                  {AUTH.RESET_PASSWORD.BUTTONS.SENDING_LINK}
                 </>
               ) : (
-                'Send reset link'
+                AUTH.RESET_PASSWORD.BUTTONS.SEND_LINK
               )}
             </Button>
 
             <Link href="/login" className="w-full">
               <Button variant="outline" className="w-full">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to login
+                {AUTH.RESET_PASSWORD.BUTTONS.BACK_TO_LOGIN}
               </Button>
             </Link>
           </CardFooter>

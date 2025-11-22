@@ -12,17 +12,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ACCOUNT, VALIDATION } from '@/lib/constants';
+import { Loader2 } from 'lucide-react';
+import { ACCOUNT, VALIDATION, CATEGORY } from '@/lib/constants';
 import { CategoryForm } from './category-form';
 
 interface AddCategoryModalProps {
@@ -56,8 +48,6 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
         },
     });
 
-    const selectedColor = watch('color');
-
     const onSubmit = async (data: CategoryFormData) => {
         try {
             setError(null);
@@ -81,7 +71,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Add New Category</DialogTitle>
+                    <DialogTitle>{CATEGORY.UI.LABELS.CREATE_CATEGORY}</DialogTitle>
                     <DialogDescription>
                         Create a new category to organize your transactions
                     </DialogDescription>
@@ -112,16 +102,16 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
                             disabled={isSubmitting}
                             className="flex-1"
                         >
-                            Cancel
+                            {CATEGORY.UI.BUTTONS.CANCEL}
                         </Button>
                         <Button type="submit" disabled={isSubmitting} className="flex-1">
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Creating...
+                                    {CATEGORY.UI.BUTTONS.CREATE}...
                                 </>
                             ) : (
-                                'Create Category'
+                                CATEGORY.UI.BUTTONS.CREATE
                             )}
                         </Button>
                     </div>

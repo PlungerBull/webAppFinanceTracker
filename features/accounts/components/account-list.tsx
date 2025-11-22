@@ -23,9 +23,10 @@ import {
   Trash2,
   ChevronRight,
   DollarSign,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ACCOUNT } from '@/lib/constants';
+import { ACCOUNT, ACCOUNTS, ACCOUNT_UI } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
@@ -71,7 +72,7 @@ export function AccountList() {
     });
     return Array.from(grouped.entries()).map(([account_id, balances]) => ({
       account_id,
-      name: balances[0].name ?? 'Unknown Account',
+      name: balances[0].name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
       color: balances[0].color || ACCOUNT.DEFAULT_COLOR,
       balances: balances.sort((a, b) =>
         (a.currency ?? '').localeCompare(b.currency ?? '')
@@ -85,7 +86,7 @@ export function AccountList() {
         <div className="px-2 mb-2">
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
             <span className="flex-1 text-left px-2 py-1 text-zinc-500 dark:text-zinc-400">
-              Accounts
+              {ACCOUNT_UI.LABELS.ACCOUNTS}
             </span>
             <div className="flex items-center gap-1">
               <Button
@@ -93,7 +94,7 @@ export function AccountList() {
                 size="icon"
                 className="h-6 w-6"
                 onClick={() => setIsAddAccountModalOpen(true)}
-                title="Add Account"
+                title={ACCOUNT_UI.LABELS.ADD_ACCOUNT}
               >
                 <Plus className="h-3 w-3" />
               </Button>
@@ -117,11 +118,11 @@ export function AccountList() {
           <div className="space-y-1">
             {isLoading ? (
               <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                Loading...
+                {ACCOUNT_UI.MESSAGES.LOADING}
               </div>
             ) : groupedAccounts.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                No accounts yet!
+                {ACCOUNT_UI.MESSAGES.NO_ACCOUNTS}
               </div>
             ) : (
               groupedAccounts.map((account) => (
@@ -165,7 +166,7 @@ export function AccountList() {
                                 const bankAccount: BankAccount = {
                                   id: balance.account_id,
                                   user_id: balance.user_id,
-                                  name: balance.name ?? 'Unknown Account',
+                                  name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
                                   color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
                                   created_at: balance.created_at,
                                   updated_at: balance.updated_at,
@@ -174,10 +175,11 @@ export function AccountList() {
                               }
                             }}
                           >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
+                            <Pencil className="mr-2 h-4 w-4" />
+                            {ACCOUNT_UI.LABELS.EDIT_ACCOUNT}
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            className="text-red-600"
                             onClick={(e) => {
                               e.stopPropagation();
                               const balance = account.balances[0];
@@ -190,7 +192,7 @@ export function AccountList() {
                                 const bankAccount: BankAccount = {
                                   id: balance.account_id,
                                   user_id: balance.user_id,
-                                  name: balance.name ?? 'Unknown Account',
+                                  name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
                                   color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
                                   created_at: balance.created_at,
                                   updated_at: balance.updated_at,
@@ -198,10 +200,9 @@ export function AccountList() {
                                 setDeletingAccount(bankAccount);
                               }
                             }}
-                            className="text-red-600 dark:text-red-400"
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {ACCOUNT_UI.LABELS.DELETE_ACCOUNT}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -216,7 +217,7 @@ export function AccountList() {
                         className="flex items-center justify-between text-xs py-0.5 px-2"
                       >
                         <span className="text-zinc-600 dark:text-zinc-400 font-medium">
-                          {balance.currency ?? 'N/A'}
+                          {balance.currency ?? ACCOUNT_UI.LABELS.NOT_AVAILABLE}
                         </span>
                         <span
                           className={cn(
