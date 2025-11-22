@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   updateProfileSchema,
   type UpdateProfileFormData,
@@ -29,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { SETTINGS_TABS } from '@/lib/constants';
+import { SETTINGS_TABS, IMPORT_EXPORT, SETTINGS, QUERY_KEYS } from '@/lib/constants';
 
 type SettingsTab = 'account' | 'data';
 
@@ -136,9 +137,9 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
       setSuccess(true);
       initialize();
       reset(data);
-      setTimeout(() => setSuccess(false), 2000);
+      setTimeout(() => setSuccess(false), SETTINGS.TIMEOUTS.SUCCESS_MESSAGE);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      setError(err instanceof Error ? err.message : SETTINGS.MESSAGES.ERROR.UPDATE_FAILED);
     }
   };
 
@@ -150,9 +151,9 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
   return (
     <div className="space-y-8">
       <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6">
-        <h3 className="text-xl font-semibold mb-1">{SETTINGS_TABS.ACCOUNT}</h3>
+        <h3 className="text-xl font-semibold mb-1">{SETTINGS.HEADERS.ACCOUNT}</h3>
         <p className="text-sm text-muted-foreground">
-          Update your personal information and security settings.
+          {SETTINGS.DESCRIPTIONS.ACCOUNT}
         </p>
       </div>
 
@@ -164,19 +165,19 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
         )}
         {success && (
           <div className="p-3 text-sm text-green-700 bg-green-50 dark:bg-green-900/20 rounded-md">
-            Profile updated successfully!
+            {SETTINGS.MESSAGES.SUCCESS.PROFILE_UPDATED}
           </div>
         )}
 
         {/* Photo Section */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Photo</h4>
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{SETTINGS.HEADERS.PHOTO}</h4>
           <div className="flex items-center gap-6">
             <div className="flex-shrink-0 h-20 w-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-3xl font-medium ring-4 ring-zinc-50 dark:ring-zinc-900">
               {initials || '?'}
             </div>
             <Button type="button" variant="outline" size="sm" disabled>
-              Upload photo
+              {SETTINGS.BUTTONS.UPLOAD_PHOTO}
             </Button>
           </div>
         </div>
@@ -185,14 +186,14 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
+              <Label htmlFor="firstName">{SETTINGS.LABELS.FIRST_NAME}</Label>
               <Input id="firstName" {...register('firstName')} />
               {errors.firstName && (
                 <p className="text-sm text-red-600">{errors.firstName.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
+              <Label htmlFor="lastName">{SETTINGS.LABELS.LAST_NAME}</Label>
               <Input id="lastName" {...register('lastName')} />
               {errors.lastName && (
                 <p className="text-sm text-red-600">{errors.lastName.message}</p>
@@ -206,7 +207,7 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="space-y-0.5 overflow-hidden">
-                <Label className="text-base">Email</Label>
+                <Label className="text-base">{SETTINGS.LABELS.EMAIL}</Label>
                 <p className="text-sm text-muted-foreground truncate" title={user?.email}>{user?.email}</p>
               </div>
               <Button
@@ -216,13 +217,13 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
                 onClick={openEmailModal}
                 className="flex-shrink-0 ml-2"
               >
-                Change
+                {SETTINGS.BUTTONS.CHANGE}
               </Button>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="space-y-0.5">
-                <Label className="text-base">Password</Label>
-                <p className="text-sm text-muted-foreground">••••••••</p>
+                <Label className="text-base">{SETTINGS.LABELS.PASSWORD}</Label>
+                <p className="text-sm text-muted-foreground">{SETTINGS.LABELS.PASSWORD_PLACEHOLDER}</p>
               </div>
               <Button
                 type="button"
@@ -230,7 +231,7 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
                 size="sm"
                 onClick={openPasswordModal}
               >
-                Change
+                {SETTINGS.BUTTONS.CHANGE}
               </Button>
             </div>
           </div>
@@ -240,7 +241,7 @@ function AccountSettings({ user, initialize, openPasswordModal, openEmailModal }
         <div className="pt-4 flex justify-end">
           <Button type="submit" disabled={isSubmitting || !isDirty}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Update Profile
+            {SETTINGS.BUTTONS.UPDATE_PROFILE}
           </Button>
         </div>
       </form>
@@ -253,6 +254,7 @@ function DataSettings() {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const supabase = createClient();
+  const queryClient = useQueryClient();
 
   const handleClearData = async () => {
     try {
@@ -262,36 +264,45 @@ function DataSettings() {
       const { error } = await supabase.rpc('clear_user_data', { p_user_id: user.id });
       if (error) throw error;
 
-      alert('All data has been successfully deleted.');
+      alert(SETTINGS.MESSAGES.SUCCESS.DATA_CLEARED);
+
+      // Invalidate all data queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CURRENCIES }),
+      ]);
+
       router.refresh();
     } catch (error) {
       console.error('Failed to clear data:', error);
-      alert('Failed to clear data. Please try again.');
+      alert(SETTINGS.MESSAGES.ERROR.CLEAR_FAILED);
     }
   };
 
   return (
     <div className="space-y-8">
       <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6">
-        <h3 className="text-xl font-semibold mb-1">{SETTINGS_TABS.DATA}</h3>
+        <h3 className="text-xl font-semibold mb-1">{SETTINGS.HEADERS.DATA}</h3>
         <p className="text-sm text-muted-foreground">
-          Manage your financial data. Import from Excel, export for backup, or reset your account.
+          {SETTINGS.DESCRIPTIONS.DATA}
         </p>
       </div>
 
       {/* Import Section */}
       <div className="space-y-4">
-        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Import & Export</h4>
+        <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{SETTINGS.HEADERS.IMPORT_EXPORT}</h4>
 
         <div className="grid gap-4">
           <div className="flex items-start justify-between p-4 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <div className="space-y-1">
               <div className="font-medium flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                Import Data
+                {SETTINGS.LABELS.IMPORT_DATA}
               </div>
               <p className="text-sm text-muted-foreground">
-                Import transactions from an Excel file (.xlsx, .xls).
+                {SETTINGS.DESCRIPTIONS.IMPORT}
               </p>
             </div>
             <div className="relative">
@@ -311,19 +322,26 @@ function DataSettings() {
                     const result = await service.importFromExcel(file);
 
                     if (result.failed > 0) {
-                      setImportError(`Imported ${result.success} records. Failed: ${result.failed}. Errors: ${result.errors.slice(0, 3).join(', ')}...`);
+                      setImportError(SETTINGS.MESSAGES.ERROR.IMPORT_ERRORS(result.success, result.failed, result.errors));
                     } else {
-                      setImportSuccess(`Successfully imported ${result.success} records!`);
+                      setImportSuccess(SETTINGS.MESSAGES.SUCCESS.IMPORT_SUCCESS(result.success));
+                      // Invalidate all data queries to reflect imported data
+                      await Promise.all([
+                        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
+                        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS }),
+                        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES }),
+                        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CURRENCIES }),
+                      ]);
                     }
                     e.target.value = '';
                   } catch (err) {
-                    setImportError(err instanceof Error ? err.message : 'Import failed');
+                    setImportError(err instanceof Error ? err.message : SETTINGS.MESSAGES.ERROR.IMPORT_FAILED);
                     e.target.value = '';
                   }
                 }}
               />
               <Button variant="secondary" size="sm">
-                Select File
+                {SETTINGS.BUTTONS.SELECT_FILE}
               </Button>
             </div>
           </div>
@@ -334,14 +352,48 @@ function DataSettings() {
             <div className="text-sm text-green-600 bg-green-50 p-2 rounded">{importSuccess}</div>
           )}
 
+          {/* Import Instructions Warning */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-900/10 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="space-y-3 text-sm">
+                <div>
+                  <h5 className="font-medium text-amber-800 dark:text-amber-400 mb-1">{SETTINGS.LABELS.FILE_STRUCTURE_REQ}</h5>
+                  <p className="text-amber-700 dark:text-amber-500/90">
+                    {SETTINGS.MESSAGES.FILE_STRUCTURE_INTRO(IMPORT_EXPORT.FILE_TYPES.join(', '))}
+                  </p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-semibold text-amber-800 dark:text-amber-400 block mb-1">{SETTINGS.LABELS.REQUIRED_COLUMNS}</span>
+                    <ul className="list-disc pl-4 space-y-0.5 text-amber-700 dark:text-amber-500/90">
+                      {IMPORT_EXPORT.REQUIRED_COLUMNS.map(col => (
+                        <li key={col}>{col}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-amber-800 dark:text-amber-400 block mb-1">{SETTINGS.LABELS.OPTIONAL_COLUMNS}</span>
+                    <ul className="list-disc pl-4 space-y-0.5 text-amber-700 dark:text-amber-500/90">
+                      {IMPORT_EXPORT.OPTIONAL_COLUMNS.map(col => (
+                        <li key={col}>{col}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-start justify-between p-4 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <div className="space-y-1">
               <div className="font-medium flex items-center gap-2">
                 <Download className="h-4 w-4" />
-                Export Data
+                {SETTINGS.LABELS.EXPORT_DATA}
               </div>
               <p className="text-sm text-muted-foreground">
-                Download a backup of all your transactions in Excel format.
+                {SETTINGS.DESCRIPTIONS.EXPORT}
               </p>
             </div>
             <Button
@@ -353,11 +405,11 @@ function DataSettings() {
                   const service = new DataExportService();
                   await service.exportToExcel();
                 } catch (err) {
-                  alert('Export failed');
+                  alert(SETTINGS.MESSAGES.ERROR.EXPORT_FAILED);
                 }
               }}
             >
-              Download
+              {SETTINGS.BUTTONS.DOWNLOAD}
             </Button>
           </div>
         </div>
@@ -367,42 +419,42 @@ function DataSettings() {
 
       {/* Clear Data Section */}
       <div className="space-y-4">
-        <h4 className="text-sm font-medium text-red-600 uppercase tracking-wider">Danger Zone</h4>
+        <h4 className="text-sm font-medium text-red-600 uppercase tracking-wider">{SETTINGS.HEADERS.DANGER_ZONE}</h4>
 
         <div className="flex items-start justify-between p-4 rounded-lg border border-red-100 dark:border-red-900/20 bg-red-50/50 dark:bg-red-900/10">
           <div className="space-y-1">
             <div className="font-medium text-red-700 dark:text-red-400 flex items-center gap-2">
               <Trash2 className="h-4 w-4" />
-              Clear All Data
+              {SETTINGS.LABELS.CLEAR_ALL_DATA}
             </div>
             <p className="text-sm text-red-600/80 dark:text-red-400/80">
-              Permanently delete all your transactions, accounts, and categories.
+              {SETTINGS.DESCRIPTIONS.CLEAR_DATA}
             </p>
           </div>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm">
-                Clear Data
+                {SETTINGS.BUTTONS.CLEAR_DATA}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2 text-red-600">
                   <AlertTriangle className="h-5 w-5" />
-                  Clear All Data?
+                  {SETTINGS.LABELS.CLEAR_ALL_DATA_QUESTION}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete all your transactions, bank accounts, categories, and currencies from our servers.
+                  {SETTINGS.DESCRIPTIONS.CLEAR_DATA_CONFIRM}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{SETTINGS.BUTTONS.CANCEL}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleClearData}
                   className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
                 >
-                  Yes, delete everything
+                  {SETTINGS.BUTTONS.CONFIRM_DELETE}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

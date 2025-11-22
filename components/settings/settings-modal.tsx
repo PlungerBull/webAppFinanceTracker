@@ -18,7 +18,7 @@ export function SettingsModal({ children }: { children: React.ReactNode }) {
 
   return (
     <Dialog open={true} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-5xl p-0 overflow-hidden h-[80vh]">
+      <DialogContent className="sm:max-w-5xl p-0 overflow-hidden h-[80vh] flex flex-col">
         <div className="sr-only">
           <DialogTitle>Settings</DialogTitle>
         </div>

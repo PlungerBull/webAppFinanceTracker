@@ -12,10 +12,10 @@ export interface ImportResult {
 interface ImportRow {
     Date: string | number;
     Amount: number;
-    Description?: string;
-    Category?: string;
+    Description: string;
+    Category: string;
     Account: string;
-    Currency?: string;
+    Currency: string;
     'Exchange Rate'?: number;
     Notes?: string;
 }
@@ -65,6 +65,11 @@ export class DataImportService {
                         if (isNaN(date.getTime())) throw new Error(`Invalid date format: ${row.Date}`);
                         dateStr = date.toISOString().split('T')[0];
                     }
+
+                    // Validate other required fields
+                    if (!row.Description) throw new Error('Description is required');
+                    if (!row.Category) throw new Error('Category is required');
+                    if (!row.Currency) throw new Error('Currency is required');
 
                     return {
                         ...row,
