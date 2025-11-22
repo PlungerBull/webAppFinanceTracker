@@ -315,6 +315,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      import_transactions: {
+        Args: {
+          p_user_id: string
+          p_transactions: Json
+          p_default_account_color: string
+          p_default_category_color: string
+        }
+        Returns: Json
+      }
+      clear_user_data: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type:

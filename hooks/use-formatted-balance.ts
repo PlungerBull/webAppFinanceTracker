@@ -7,12 +7,11 @@ import { useMemo } from 'react';
 export function useFormattedBalance(amount: number, currency: string) {
   return useMemo(() => {
     return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
+      style: 'decimal',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
-  }, [amount, currency]);
+  }, [amount]);
 }
 
 /**
@@ -21,12 +20,11 @@ export function useFormattedBalance(amount: number, currency: string) {
 export function useFormattedBalanceShort(amount: number, currency: string) {
   return useMemo(() => {
     return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
+      style: 'decimal',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
-  }, [amount, currency]);
+  }, [amount]);
 }
 
 /**
@@ -34,8 +32,7 @@ export function useFormattedBalanceShort(amount: number, currency: string) {
  */
 export function formatCurrency(amount: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
+    style: 'decimal',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
@@ -43,8 +40,7 @@ export function formatCurrency(amount: number, currency: string): string {
 
 export function formatCurrencyShort(amount: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
+    style: 'decimal',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);

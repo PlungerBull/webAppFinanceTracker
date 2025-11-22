@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 
@@ -19,10 +18,10 @@ export function SettingsModal({ children }: { children: React.ReactNode }) {
 
   return (
     <Dialog open={true} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-5xl p-0 overflow-hidden h-[80vh]">
+        <div className="sr-only">
           <DialogTitle>Settings</DialogTitle>
-        </DialogHeader>
+        </div>
         {children}
       </DialogContent>
     </Dialog>

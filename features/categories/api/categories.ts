@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 
 export const categoriesApi = {
-  // Get all categories (user categories + global categories)
-  // Note: This intentionally fetches both user-owned AND global (user_id IS NULL) categories
-  // RLS ensures users only see their own + global categories
+  // Get all categories (user categories)
+  // RLS ensures users only see their own categories
   getAll: async () => {
     const supabase = createClient();
 

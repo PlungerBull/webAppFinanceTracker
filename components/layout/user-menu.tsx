@@ -17,9 +17,10 @@ import { getInitials } from '@/lib/utils';
 
 interface UserMenuProps {
   isCollapsed: boolean;
+  className?: string;
 }
 
-export function UserMenu({ isCollapsed }: UserMenuProps) {
+export function UserMenu({ isCollapsed, className }: UserMenuProps) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const [isClient, setIsClient] = useState(false);
@@ -75,7 +76,10 @@ export function UserMenu({ isCollapsed }: UserMenuProps) {
     return (
       <Button
         variant="ghost"
-        className="flex-1 min-w-0 px-2 py-1.5 justify-start text-left h-auto"
+        className={cn(
+          "flex-1 min-w-0 px-2 py-1.5 justify-start text-left h-auto",
+          className
+        )}
         disabled={true}
       >
         <div className="flex items-center min-w-0">
@@ -93,7 +97,10 @@ export function UserMenu({ isCollapsed }: UserMenuProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex-1 min-w-0 px-2 py-1.5 justify-start text-left h-auto"
+          className={cn(
+            "flex-1 min-w-0 px-2 py-1.5 justify-start text-left h-auto",
+            className
+          )}
         >
           <div className="flex items-center min-w-0">
             {renderUserAvatar()}

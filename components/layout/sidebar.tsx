@@ -47,7 +47,7 @@ export function Sidebar({ className }: SidebarProps) {
           {/* Zone A: Fixed Content (User Menu + Main Nav) */}
           <div className="flex flex-col flex-shrink-0 border-b border-zinc-200 dark:border-zinc-800">
             {/* Header - User Menu */}
-            <div className="flex items-center p-4">
+            <div className="flex items-center pl-4 py-4 pr-1">
               <UserMenu isCollapsed={isCollapsed} />
             </div>
 
