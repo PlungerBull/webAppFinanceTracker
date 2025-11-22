@@ -43,7 +43,7 @@ export function DeleteCategoryDialog({
             }
             onOpenChange(false);
         } catch (error) {
-            console.error('Failed to delete category:', error);
+            console.error(CATEGORY.API.CONSOLE.DELETE_CATEGORY_FAILED, error);
             // Ideally show error toast here
         } finally {
             setIsDeleting(false);

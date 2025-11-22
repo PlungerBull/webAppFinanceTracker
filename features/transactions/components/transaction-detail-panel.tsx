@@ -7,6 +7,7 @@ import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { format } from 'date-fns';
 import { Calendar, Check, X, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TRANSACTIONS, CURRENCY, UI } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -94,7 +95,7 @@ export function TransactionDetailPanel({
       <div className="w-96 bg-white dark:bg-zinc-950 overflow-y-auto flex flex-col">
         <div className="flex items-center justify-center h-full p-6">
           <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
-            Select a transaction to view details
+            {TRANSACTIONS.UI.MESSAGES.SELECT_TO_VIEW}
           </p>
         </div>
       </div>
@@ -130,7 +131,7 @@ export function TransactionDetailPanel({
                   value={editedValue || ''}
                   onChange={(e) => setEditedValue(e.target.value)}
                   className="text-lg font-semibold flex-1"
-                  placeholder="Description"
+                  placeholder={TRANSACTIONS.UI.PLACEHOLDERS.DESCRIPTION}
                   autoFocus
                 />
                 <Button
@@ -169,7 +170,7 @@ export function TransactionDetailPanel({
                   value={editedValue || 0}
                   onChange={(e) => setEditedValue(parseFloat(e.target.value))}
                   className="text-2xl font-bold flex-1"
-                  placeholder="Amount"
+                  placeholder={TRANSACTIONS.UI.PLACEHOLDERS.AMOUNT_INPUT}
                   autoFocus
                 />
                 <Button
@@ -210,7 +211,7 @@ export function TransactionDetailPanel({
           {/* Date */}
           <div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
-              Date
+              {TRANSACTIONS.UI.LABELS.DATE}
             </p>
             {editingField === 'date' ? (
               <div className="flex items-center gap-2">
@@ -221,7 +222,7 @@ export function TransactionDetailPanel({
                       className="w-full justify-start text-left font-normal flex-1"
                     >
                       <Calendar className="mr-2 h-4 w-4" />
-                      {editedValue ? format(new Date(editedValue), 'PPP') : <span>Pick a date</span>}
+                      {editedValue ? format(new Date(editedValue), 'PPP') : <span>{TRANSACTIONS.UI.LABELS.PICK_DATE}</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -267,7 +268,7 @@ export function TransactionDetailPanel({
           {/* Category */}
           <div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
-              Category
+              {TRANSACTIONS.UI.LABELS.CATEGORY}
             </p>
             {editingField === 'category' ? (
               <div className="flex items-center gap-2">
@@ -276,7 +277,7 @@ export function TransactionDetailPanel({
                   onValueChange={(value) => setEditedValue(value)}
                 >
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={TRANSACTIONS.UI.LABELS.SELECT_CATEGORY} />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
@@ -329,7 +330,7 @@ export function TransactionDetailPanel({
                     </span>
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-400 dark:text-zinc-500">Uncategorized</p>
+                  <p className="text-sm text-zinc-400 dark:text-zinc-500">{TRANSACTIONS.UI.LABELS.UNCATEGORIZED}</p>
                 )}
               </div>
             )}
@@ -338,7 +339,7 @@ export function TransactionDetailPanel({
           {/* Bank Account */}
           <div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
-              Bank Account
+              {TRANSACTIONS.UI.LABELS.BANK_ACCOUNT}
             </p>
             {editingField === 'account' ? (
               <div className="flex items-center gap-2">
@@ -347,7 +348,7 @@ export function TransactionDetailPanel({
                   onValueChange={(value) => setEditedValue(value)}
                 >
                   <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select account" />
+                    <SelectValue placeholder={TRANSACTIONS.UI.LABELS.SELECT_ACCOUNT} />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts.map((account) => (
@@ -388,10 +389,10 @@ export function TransactionDetailPanel({
           {transaction.exchange_rate && transaction.exchange_rate !== 1 && (
             <div>
               <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
-                Exchange Rate
+                {TRANSACTIONS.UI.LABELS.EXCHANGE_RATE}
               </p>
               <p className="text-sm text-zinc-900 dark:text-zinc-50">
-                {transaction.exchange_rate.toFixed(4)}
+                {transaction.exchange_rate.toFixed(CURRENCY.FORMAT.EXCHANGE_RATE_PRECISION)}
               </p>
             </div>
           )}
@@ -399,16 +400,16 @@ export function TransactionDetailPanel({
           {/* Notes - Always show */}
           <div className="group">
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
-              Notes
+              {TRANSACTIONS.UI.LABELS.NOTES}
             </p>
             {editingField === 'notes' ? (
               <div className="flex items-start gap-2">
                 <Textarea
                   value={editedValue || ''}
                   onChange={(e) => setEditedValue(e.target.value)}
-                  placeholder="Add a note..."
+                  placeholder={TRANSACTIONS.UI.LABELS.ADD_NOTE_PLACEHOLDER}
                   className="resize-none text-sm flex-1"
-                  rows={3}
+                  rows={UI.ROWS.NOTES_EXPANDED}
                   autoFocus
                 />
                 <div className="flex flex-col gap-1">
@@ -433,7 +434,7 @@ export function TransactionDetailPanel({
             ) : (
               <p className="text-sm text-zinc-900 dark:text-zinc-50 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 px-2 py-1 -mx-2 rounded min-h-[60px]"
                 onClick={() => startEdit('notes', transaction.notes)}>
-                {transaction.notes || 'No notes'}
+                {transaction.notes || TRANSACTIONS.UI.MESSAGES.NO_NOTES}
               </p>
             )}
           </div>

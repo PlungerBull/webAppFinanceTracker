@@ -75,7 +75,7 @@ export function CategoryList() {
                 <div className="px-2 mb-2">
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
                         <span className="flex-1 text-left px-2 py-1 text-zinc-500 dark:text-zinc-400">
-                            Categories
+                            {CATEGORY.UI.LABELS.CATEGORIES}
                         </span>
                         <div className="flex items-center gap-1">
                             <Button
@@ -83,7 +83,7 @@ export function CategoryList() {
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() => setIsAddCategoryModalOpen(true)}
-                                title="Add Category"
+                                title={CATEGORY.UI.LABELS.ADD_CATEGORY}
                             >
                                 <Plus className="h-3 w-3" />
                             </Button>
@@ -107,11 +107,11 @@ export function CategoryList() {
                     <div className="space-y-1">
                         {isLoading ? (
                             <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                                Loading...
+                                {CATEGORY.UI.MESSAGES.LOADING}
                             </div>
                         ) : categories.length === 0 ? (
                             <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                                No categories yet!
+                                {CATEGORY.UI.MESSAGES.NO_CATEGORIES}
                             </div>
                         ) : (
                             categories.map((category) => (
@@ -161,7 +161,7 @@ export function CategoryList() {
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
                                                         <MoreHorizontal className="h-4 w-4 text-zinc-500" />
-                                                        <span className="sr-only">Open menu</span>
+                                                        <span className="sr-only">{CATEGORY.UI.LABELS.OPEN_MENU_ARIA}</span>
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-40">

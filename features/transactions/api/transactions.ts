@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { TRANSACTIONS } from '@/lib/constants';
 import type { CreateTransactionFormData, UpdateTransactionFormData } from '../schemas/transaction.schema';
 
 export const transactionsApi = {
@@ -22,8 +23,8 @@ export const transactionsApi = {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching transactions:', error);
-      throw new Error(error.message || 'Failed to fetch transactions');
+      console.error(TRANSACTIONS.API.CONSOLE.FETCH_TRANSACTIONS, error);
+      throw new Error(error.message || TRANSACTIONS.API.ERRORS.FETCH_ALL_FAILED);
     }
 
     return data;
@@ -44,8 +45,8 @@ export const transactionsApi = {
       .single();
 
     if (error) {
-      console.error('Error fetching transaction:', error);
-      throw new Error(error.message || 'Failed to fetch transaction');
+      console.error(TRANSACTIONS.API.CONSOLE.FETCH_TRANSACTION, error);
+      throw new Error(error.message || TRANSACTIONS.API.ERRORS.FETCH_ONE_FAILED);
     }
 
     return data;
@@ -58,7 +59,7 @@ export const transactionsApi = {
     // Get user for user_id (no DB default exists yet)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      throw new Error('User not authenticated');
+      throw new Error(TRANSACTIONS.API.ERRORS.USER_NOT_AUTHENTICATED);
     }
 
     const { data, error } = await supabase
@@ -80,8 +81,8 @@ export const transactionsApi = {
       .single();
 
     if (error) {
-      console.error('Error creating transaction:', error);
-      throw new Error(error.message || 'Failed to create transaction');
+      console.error(TRANSACTIONS.API.CONSOLE.CREATE_TRANSACTION, error);
+      throw new Error(error.message || TRANSACTIONS.API.ERRORS.CREATE_FAILED);
     }
 
     return data;
@@ -99,8 +100,8 @@ export const transactionsApi = {
       .single();
 
     if (error) {
-      console.error('Error updating transaction:', error);
-      throw new Error(error.message || 'Failed to update transaction');
+      console.error(TRANSACTIONS.API.CONSOLE.UPDATE_TRANSACTION, error);
+      throw new Error(error.message || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
     }
 
     return data;
@@ -116,8 +117,8 @@ export const transactionsApi = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting transaction:', error);
-      throw new Error(error.message || 'Failed to delete transaction');
+      console.error(TRANSACTIONS.API.CONSOLE.DELETE_TRANSACTION, error);
+      throw new Error(error.message || TRANSACTIONS.API.ERRORS.DELETE_FAILED);
     }
   },
 };

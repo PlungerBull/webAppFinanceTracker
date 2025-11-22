@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Loader2, CalendarIcon, Tag, Wallet, DollarSign, Hash } from 'lucide-react';
-import { ACCOUNT, VALIDATION, TRANSACTIONS } from '@/lib/constants';
+import { ACCOUNT, VALIDATION, TRANSACTIONS, CURRENCY } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface AddTransactionModalProps {
@@ -42,11 +42,11 @@ interface AddTransactionModalProps {
 
 // Schema for the form
 const transactionSchema = z.object({
-  description: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Description is required'),
-  amount: z.number().min(0.01, 'Amount must be greater than 0'),
+  description: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.DESCRIPTION_REQUIRED),
+  amount: z.number().min(0.01, VALIDATION.MESSAGES.AMOUNT_MIN),
   date: z.string(),
-  categoryId: z.string().min(1, 'Category is required'),
-  accountId: z.string().min(1, 'Account is required'),
+  categoryId: z.string().min(1, VALIDATION.MESSAGES.CATEGORY_REQUIRED),
+  accountId: z.string().min(1, VALIDATION.MESSAGES.ACCOUNT_REQUIRED),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -88,12 +88,12 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
         date: data.date,
         category_id: data.categoryId,
         account_id: data.accountId,
-        currency_original: 'USD', // Default for now, should come from account
-        exchange_rate: 1,
+        currency_original: CURRENCY.DEFAULT, // Default for now, should come from account
+        exchange_rate: CURRENCY.DEFAULTS.EXCHANGE_RATE,
       });
       handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create transaction');
+      setError(err instanceof Error ? err.message : TRANSACTIONS.API.ERRORS.CREATE_FAILED);
     }
   };
 
@@ -110,7 +110,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
         <DialogHeader>
           <DialogTitle>{TRANSACTIONS.UI.LABELS.ADD_TRANSACTION}</DialogTitle>
           <DialogDescription>
-            Add a new transaction to track your spending
+            {TRANSACTIONS.UI.MESSAGES.ADD_DESCRIPTION}
           </DialogDescription>
         </DialogHeader>
 
@@ -144,8 +144,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                 <Input
                   id="amount"
                   type="number"
-                  step="0.01"
-                  placeholder="0.00"
+                  step={CURRENCY.STEP.STANDARD}
+                  placeholder={TRANSACTIONS.UI.PLACEHOLDERS.AMOUNT}
                   className="pl-9 text-base font-medium text-right"
                   {...register('amount', { valueAsNumber: true })}
                   disabled={isSubmitting}

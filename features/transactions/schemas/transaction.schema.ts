@@ -5,35 +5,35 @@ import { VALIDATION, UI, CURRENCY } from '@/lib/constants';
 export const createTransactionSchema = z.object({
   description: z
     .string()
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Description is required')
-    .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, 'Description must be less than 200 characters')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.DESCRIPTION_REQUIRED)
+    .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, VALIDATION.MESSAGES.DESCRIPTION_MAX(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION))
     .nullable()
     .optional(),
   amount_original: z
     .number()
-    .refine((val) => val !== 0, 'Amount cannot be zero'),
+    .refine((val) => val !== 0, VALIDATION.MESSAGES.AMOUNT_ZERO),
   date: z
     .string()
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Transaction date is required'),
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.TRANSACTION_DATE_REQUIRED),
   category_id: z
     .string()
-    .uuid('Invalid category')
+    .uuid(VALIDATION.MESSAGES.INVALID_CATEGORY)
     .nullable()
     .optional(),
   account_id: z
     .string()
-    .uuid('Invalid bank account')
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Bank account is required'),
+    .uuid(VALIDATION.MESSAGES.INVALID_BANK_ACCOUNT)
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.BANK_ACCOUNT_REQUIRED),
   currency_original: z
     .string()
-    .length(CURRENCY.CODE_LENGTH, 'Currency must be a valid 3-letter code')
-    .regex(/^[A-Z]{3}$/, 'Currency must be uppercase letters'),
+    .length(CURRENCY.CODE_LENGTH, VALIDATION.MESSAGES.CURRENCY_VALID_CODE)
+    .regex(VALIDATION.REGEX.CURRENCY_CODE, VALIDATION.MESSAGES.CURRENCY_UPPERCASE),
   exchange_rate: z
     .number()
-    .positive('Exchange rate must be positive'),
+    .positive(VALIDATION.MESSAGES.EXCHANGE_RATE_POSITIVE),
   notes: z
     .string()
-    .max(UI.MAX_LENGTH.NOTES, 'Notes must be less than 500 characters')
+    .max(UI.MAX_LENGTH.NOTES, VALIDATION.MESSAGES.NOTES_MAX(UI.MAX_LENGTH.NOTES))
     .nullable()
     .optional(),
 });
@@ -42,39 +42,39 @@ export const createTransactionSchema = z.object({
 export const updateTransactionSchema = z.object({
   description: z
     .string()
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Description is required')
-    .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, 'Description must be less than 200 characters')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.DESCRIPTION_REQUIRED)
+    .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, VALIDATION.MESSAGES.DESCRIPTION_MAX(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION))
     .nullable()
     .optional(),
   amount_original: z
     .number()
-    .refine((val) => val !== 0, 'Amount cannot be zero')
+    .refine((val) => val !== 0, VALIDATION.MESSAGES.AMOUNT_ZERO)
     .optional(),
   date: z
     .string()
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, 'Transaction date is required')
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.TRANSACTION_DATE_REQUIRED)
     .optional(),
   category_id: z
     .string()
-    .uuid('Invalid category')
+    .uuid(VALIDATION.MESSAGES.INVALID_CATEGORY)
     .nullable()
     .optional(),
   account_id: z
     .string()
-    .uuid('Invalid bank account')
+    .uuid(VALIDATION.MESSAGES.INVALID_BANK_ACCOUNT)
     .optional(),
   currency_original: z
     .string()
-    .length(CURRENCY.CODE_LENGTH, 'Currency must be a valid 3-letter code')
-    .regex(/^[A-Z]{3}$/, 'Currency must be uppercase letters')
+    .length(CURRENCY.CODE_LENGTH, VALIDATION.MESSAGES.CURRENCY_VALID_CODE)
+    .regex(VALIDATION.REGEX.CURRENCY_CODE, VALIDATION.MESSAGES.CURRENCY_UPPERCASE)
     .optional(),
   exchange_rate: z
     .number()
-    .positive('Exchange rate must be positive')
+    .positive(VALIDATION.MESSAGES.EXCHANGE_RATE_POSITIVE)
     .optional(),
   notes: z
     .string()
-    .max(UI.MAX_LENGTH.NOTES, 'Notes must be less than 500 characters')
+    .max(UI.MAX_LENGTH.NOTES, VALIDATION.MESSAGES.NOTES_MAX(UI.MAX_LENGTH.NOTES))
     .nullable()
     .optional(),
 });

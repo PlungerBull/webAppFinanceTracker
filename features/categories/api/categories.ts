@@ -13,8 +13,8 @@ export const categoriesApi = {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Error fetching categories:', error);
-      throw new Error(error.message || 'Failed to fetch categories');
+      console.error(CATEGORY.API.CONSOLE.FETCH_CATEGORIES, error);
+      throw new Error(error.message || CATEGORY.API.ERRORS.FETCH_ALL_FAILED);
     }
 
     return data;
@@ -31,8 +31,8 @@ export const categoriesApi = {
       .single();
 
     if (error) {
-      console.error('Error fetching category:', error);
-      throw new Error(error.message || 'Failed to fetch category');
+      console.error(CATEGORY.API.CONSOLE.FETCH_CATEGORY, error);
+      throw new Error(error.message || CATEGORY.API.ERRORS.FETCH_ONE_FAILED);
     }
 
     return data;
@@ -43,7 +43,7 @@ export const categoriesApi = {
     const supabase = createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    if (!user) throw new Error(CATEGORY.API.ERRORS.USER_NOT_AUTHENTICATED);
 
     const { data, error } = await supabase
       .from('categories')
@@ -55,8 +55,8 @@ export const categoriesApi = {
       .single();
 
     if (error) {
-      console.error('Error creating category:', error);
-      throw new Error(error.message || 'Failed to create category');
+      console.error(CATEGORY.API.CONSOLE.CREATE_CATEGORY, error);
+      throw new Error(error.message || CATEGORY.API.ERRORS.CREATE_FAILED);
     }
 
     return data;
@@ -74,8 +74,8 @@ export const categoriesApi = {
       .single();
 
     if (error) {
-      console.error('Error updating category:', error);
-      throw new Error(error.message || 'Failed to update category');
+      console.error(CATEGORY.API.CONSOLE.UPDATE_CATEGORY, error);
+      throw new Error(error.message || CATEGORY.API.ERRORS.UPDATE_FAILED);
     }
 
     return data;
@@ -91,8 +91,8 @@ export const categoriesApi = {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting category:', error);
-      throw new Error(error.message || 'Failed to delete category');
+      console.error(CATEGORY.API.CONSOLE.DELETE_CATEGORY, error);
+      throw new Error(error.message || CATEGORY.API.ERRORS.DELETE_FAILED);
     }
   },
 };

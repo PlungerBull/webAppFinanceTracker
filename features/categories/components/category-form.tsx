@@ -66,7 +66,7 @@ export function CategoryForm({
                                     ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100'
                                     : 'border-transparent'
                             )}
-                            aria-label={`Select color ${color}`}
+                            aria-label={CATEGORY.UI.LABELS.SELECT_COLOR_ARIA(color)}
                         />
                     ))}
 
@@ -83,7 +83,7 @@ export function CategoryForm({
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-3" align="start">
                             <div className="space-y-2">
-                                <Label htmlFor="custom-color" className="text-sm">Custom Color</Label>
+                                <Label htmlFor="custom-color" className="text-sm">{CATEGORY.UI.LABELS.CUSTOM_COLOR}</Label>
                                 <div className="flex gap-2 items-center">
                                     <Input
                                         id="custom-color"
@@ -100,7 +100,7 @@ export function CategoryForm({
                                         disabled={isSubmitting}
                                         placeholder={ACCOUNT.DEFAULT_COLOR}
                                         className="flex-1 font-mono text-xs"
-                                        maxLength={7}
+                                        maxLength={ACCOUNT.COLOR_INPUT.MAX_LENGTH}
                                     />
                                 </div>
                             </div>

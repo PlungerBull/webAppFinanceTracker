@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { CURRENCY } from '@/lib/constants';
 
 export const currenciesApi = {
   /**
@@ -13,8 +14,8 @@ export const currenciesApi = {
       .order('code', { ascending: true });
 
     if (error) {
-      console.error('Error fetching currencies:', error);
-      throw new Error(error.message || 'Failed to fetch currencies');
+      console.error(CURRENCY.API.CONSOLE.FETCH_CURRENCIES, error);
+      throw new Error(error.message || CURRENCY.API.ERRORS.FETCH_ALL_FAILED);
     }
 
     return data || [];
@@ -32,7 +33,7 @@ add: async (code: string) => {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error('User not authenticated');
+    throw new Error(CURRENCY.API.ERRORS.USER_NOT_AUTHENTICATED);
   }
 
   // Use upsert to handle duplicates gracefully
@@ -53,8 +54,8 @@ add: async (code: string) => {
     .maybeSingle(); // Use maybeSingle instead of single to avoid error if no row returned
 
   if (error) {
-    console.error('Error adding currency:', error);
-    throw new Error(error.message || 'Failed to add currency');
+    console.error(CURRENCY.API.CONSOLE.ADD_CURRENCY, error);
+    throw new Error(error.message || CURRENCY.API.ERRORS.ADD_FAILED);
   }
 
   return data;

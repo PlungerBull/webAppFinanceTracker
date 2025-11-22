@@ -3,32 +3,32 @@ import { VALIDATION } from '@/lib/constants';
 
 // For updating First and Last Name
 export const updateProfileSchema = z.object({
-  firstName: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'First name is required'),
-  lastName: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Last name is required'),
+  firstName: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.FIRST_NAME_REQUIRED),
+  lastName: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.LAST_NAME_REQUIRED),
 });
 
 // For changing password
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Current password is required'),
+    currentPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.CURRENT_PASSWORD_REQUIRED),
     newPassword: z
       .string()
-      .min(VALIDATION.PASSWORD.MIN_LENGTH, 'Password must be at least 8 characters')
+      .min(VALIDATION.PASSWORD.MIN_LENGTH, VALIDATION.MESSAGES.PASSWORD_MIN_LENGTH)
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+        VALIDATION.REGEX.PASSWORD,
+        VALIDATION.MESSAGES.PASSWORD_REQUIREMENTS
       ),
-    confirmPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Please confirm your new password'),
+    confirmPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.CONFIRM_NEW_PASSWORD),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "New passwords don't match",
+    message: VALIDATION.MESSAGES.PASSWORDS_DONT_MATCH,
     path: ['confirmPassword'],
   });
 
 // For changing email
 export const changeEmailSchema = z.object({
-  newEmail: z.string().email('Invalid email address'),
-  currentPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Current password is required'),
+  newEmail: z.string().email(VALIDATION.MESSAGES.INVALID_EMAIL),
+  currentPassword: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.CURRENT_PASSWORD_REQUIRED),
 });
 
 // Export types

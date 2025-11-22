@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { ACCOUNT, VALIDATION, CATEGORY } from '@/lib/constants';
+import { ACCOUNT, ACCOUNTS, VALIDATION, CATEGORY } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 import { CategoryForm } from './category-form';
 
@@ -29,8 +29,8 @@ interface EditCategoryModalProps {
 
 // Schema for the form
 const categorySchema = z.object({
-    name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Category name is required'),
-    color: z.string().regex(ACCOUNT.COLOR_REGEX, 'Invalid color format'),
+    name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.CATEGORY_NAME_REQUIRED),
+    color: z.string().regex(ACCOUNT.COLOR_REGEX, ACCOUNTS.MESSAGES.ERROR.VALIDATION_COLOR_INVALID),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -80,7 +80,7 @@ export function EditCategoryModal({ open, onOpenChange, category }: EditCategory
             }
             handleClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to update category');
+            setError(err instanceof Error ? err.message : CATEGORY.API.ERRORS.UPDATE_FAILED);
         }
     };
 
@@ -96,7 +96,7 @@ export function EditCategoryModal({ open, onOpenChange, category }: EditCategory
                 <DialogHeader>
                     <DialogTitle>{CATEGORY.UI.LABELS.EDIT_CATEGORY}</DialogTitle>
                     <DialogDescription>
-                        Update category details
+                        {CATEGORY.UI.DESCRIPTIONS.EDIT_CATEGORY}
                     </DialogDescription>
                 </DialogHeader>
 

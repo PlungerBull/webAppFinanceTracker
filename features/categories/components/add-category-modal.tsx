@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { ACCOUNT, VALIDATION, CATEGORY } from '@/lib/constants';
+import { ACCOUNT, ACCOUNTS, VALIDATION, CATEGORY } from '@/lib/constants';
 import { CategoryForm } from './category-form';
 
 interface AddCategoryModalProps {
@@ -24,8 +24,8 @@ interface AddCategoryModalProps {
 
 // Schema for the form
 const categorySchema = z.object({
-    name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, 'Category name is required'),
-    color: z.string().regex(ACCOUNT.COLOR_REGEX, 'Invalid color format'),
+    name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.CATEGORY_NAME_REQUIRED),
+    color: z.string().regex(ACCOUNT.COLOR_REGEX, ACCOUNTS.MESSAGES.ERROR.VALIDATION_COLOR_INVALID),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -57,7 +57,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
             });
             handleClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create category');
+            setError(err instanceof Error ? err.message : CATEGORY.API.ERRORS.CREATE_FAILED);
         }
     };
 
@@ -73,7 +73,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
                 <DialogHeader>
                     <DialogTitle>{CATEGORY.UI.LABELS.CREATE_CATEGORY}</DialogTitle>
                     <DialogDescription>
-                        Create a new category to organize your transactions
+                        {CATEGORY.UI.DESCRIPTIONS.CREATE_CATEGORY}
                     </DialogDescription>
                 </DialogHeader>
 
