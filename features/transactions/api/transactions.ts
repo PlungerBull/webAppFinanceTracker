@@ -8,12 +8,8 @@ export const transactionsApi = {
     const supabase = createClient();
 
     let query = supabase
-      .from('transactions')
-      .select(`
-        *,
-        category:categories(id, name, icon, color),
-        account:bank_accounts(id, name)
-      `)
+      .from('transactions_view')
+      .select('*')
       .order('date', { ascending: false });
 
     if (filters?.categoryId) {
@@ -35,12 +31,8 @@ export const transactionsApi = {
     const supabase = createClient();
 
     const { data, error } = await supabase
-      .from('transactions')
-      .select(`
-        *,
-        category:categories(id, name, color),
-        account:bank_accounts(id, name)
-      `)
+      .from('transactions_view')
+      .select('*')
       .eq('id', id)
       .single();
 

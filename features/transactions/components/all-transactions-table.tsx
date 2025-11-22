@@ -20,20 +20,10 @@ function TransactionsContent() {
     queryFn: async () => {
       const supabase = createClient();
 
-      // Build query with optional account filter (RLS handles user filtering)
+      // Query the enriched view (includes pre-joined category and account data)
       let query = supabase
-        .from('transactions')
-        .select(`
-          id,
-          date,
-          description,
-          amount_original,
-          currency_original,
-          exchange_rate,
-          category_id,
-          account_id,
-          notes
-        `);
+        .from('transactions_view')
+        .select('*');
 
       // Apply account filter if accountId is present
       if (accountId) {
@@ -45,48 +35,37 @@ function TransactionsContent() {
         query = query.eq('category_id', categoryId);
       }
 
-      const { data: transactionsData, error } = await query.order('date', { ascending: false });
+      const { data: transactions, error } = await query.order('date', { ascending: false });
 
       if (error) throw error;
-      if (!transactionsData) return { transactions: [], accountName: null };
 
-      // Fetch categories (RLS handles user filtering)
+      // Fetch categories and accounts for sidebar filters and metadata
       const { data: categories } = await supabase
         .from('categories')
         .select('id, name, color');
 
-      // Fetch account names (RLS handles user filtering)
       const { data: accounts } = await supabase
         .from('bank_accounts')
         .select('id, name');
 
-      // Create lookup maps
-      const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
-      const accountMap = new Map(accounts?.map(a => [a.id, a]) || []);
-
-      // Enrich transactions with category and account data
-      const enrichedData = transactionsData.map(transaction => {
-        const category = transaction.category_id ? categoryMap.get(transaction.category_id) : null;
-        const account = accountMap.get(transaction.account_id);
-
-        return {
-          id: transaction.id,
-          date: transaction.date,
-          description: transaction.description || '',
-          category_name: category?.name || null,
-          category_color: category?.color || null,
-          category_id: transaction.category_id,
-          amount_original: transaction.amount_original,
-          currency_original: transaction.currency_original,
-          account_name: account?.name || 'Unknown',
-          account_id: transaction.account_id,
-          exchange_rate: transaction.exchange_rate !== 1 ? transaction.exchange_rate : null,
-          notes: transaction.notes,
-        };
-      });
+      // Map transactions to match the expected TransactionRow interface
+      const mappedTransactions = transactions?.map(t => ({
+        id: t.id,
+        date: t.date,
+        description: t.description || '',
+        category_name: t.category_name,
+        category_color: t.category_color,
+        category_id: t.category_id,
+        amount_original: t.amount_original,
+        currency_original: t.currency_original,
+        account_name: t.account_name,
+        account_id: t.account_id,
+        exchange_rate: t.exchange_rate !== 1 ? t.exchange_rate : null,
+        notes: t.notes,
+      } as const)) || [];
 
       return {
-        transactions: enrichedData,
+        transactions: mappedTransactions as any,
         categories: categories || [],
         accounts: accounts || [],
         accountName: accountId && accounts?.length ? accounts.find(a => a.id === accountId)?.name : null,
@@ -105,7 +84,7 @@ function TransactionsContent() {
   const pageTitle = categoryName || accountName || 'Transactions';
 
   const selectedTransaction = selectedTransactionId
-    ? transactions.find(t => t.id === selectedTransactionId) || null
+    ? transactions.find((t: any) => t.id === selectedTransactionId) || null
     : null;
 
   return (
