@@ -1,84 +1,30 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useState } from 'react';
+import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useAccountNavigation } from '@/hooks/use-account-navigation';
 import { AddAccountModal } from '@/features/accounts/components/add-account-modal';
 import { EditAccountModal } from '@/features/accounts/components/edit-account-modal';
 import { DeleteAccountDialog } from '@/features/accounts/components/delete-account-dialog';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/hooks/use-formatted-balance';
+import { AccountListItem } from './account-list-item';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Wallet,
   Plus,
   ChevronDown,
-  MoreHorizontal,
-  Edit,
-  Trash2,
   ChevronRight,
-  DollarSign,
-  Pencil,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ACCOUNT, ACCOUNTS, ACCOUNT_UI } from '@/lib/constants';
+import { ACCOUNT_UI } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
 
 export function AccountList() {
-  const router = useRouter();
-  const { data: accounts = [], isLoading } = useAccounts();
+  const { groupedAccounts, isLoading } = useGroupedAccounts();
+  const { handleAccountClick, currentAccountId } = useAccountNavigation();
   const [isAccountsExpanded, setIsAccountsExpanded] = useState(true);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
-  const searchParams = useSearchParams();
-  const currentAccountId = searchParams.get('account');
-
-  const handleAccountClick = (accountId: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-
-    // Toggle selection: if already selected, remove filter
-    if (currentAccountId === accountId) {
-      params.delete('account');
-    } else {
-      params.set('account', accountId);
-      // Clear category filter when selecting an account (mutually exclusive)
-      params.delete('categoryId');
-    }
-
-    // Reset page if pagination exists
-    params.delete('page');
-
-    router.push(`/transactions?${params.toString()}`);
-  };
-
   const [deletingAccount, setDeletingAccount] = useState<BankAccount | null>(null);
-
-  // Group account balances by account_id
-  const groupedAccounts = useMemo(() => {
-    const grouped = new Map<string, typeof accounts>();
-    accounts.forEach((balance) => {
-      // Filter out balances without account_id
-      if (!balance.account_id) return;
-
-      const existing = grouped.get(balance.account_id) || [];
-      grouped.set(balance.account_id, [...existing, balance]);
-    });
-    return Array.from(grouped.entries()).map(([account_id, balances]) => ({
-      account_id,
-      name: balances[0].name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-      color: balances[0].color || ACCOUNT.DEFAULT_COLOR,
-      balances: balances.sort((a, b) =>
-        (a.currency ?? '').localeCompare(b.currency ?? '')
-      ),
-    }));
-  }, [accounts]);
 
   return (
     <>
@@ -126,116 +72,14 @@ export function AccountList() {
               </div>
             ) : (
               groupedAccounts.map((account) => (
-                <div
+                <AccountListItem
                   key={account.account_id}
-                  className={cn(
-                    "relative group px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer",
-                    currentAccountId === account.account_id && "bg-zinc-100 dark:bg-zinc-800"
-                  )}
+                  account={account}
+                  isActive={currentAccountId === account.account_id}
                   onClick={() => handleAccountClick(account.account_id)}
-                >
-                  {/* Account Header with Icon and Name */}
-                  <div className="flex items-center w-full text-sm">
-                    <DollarSign
-                      className="h-4 w-4 mr-2 flex-shrink-0"
-                      style={{ color: account.color }}
-                    />
-                    <span className="truncate flex-1">{account.name}</span>
-                    <div className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity ml-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded text-xs text-zinc-500 dark:text-zinc-400 border-0 bg-transparent flex items-center justify-center outline-none"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-3 w-3" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="z-50"
-                        >
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const balance = account.balances[0];
-                              if (
-                                balance.account_id &&
-                                balance.user_id &&
-                                balance.created_at &&
-                                balance.updated_at
-                              ) {
-                                const bankAccount: BankAccount = {
-                                  id: balance.account_id,
-                                  user_id: balance.user_id,
-                                  name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-                                  color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
-                                  created_at: balance.created_at,
-                                  updated_at: balance.updated_at,
-                                };
-                                setEditingAccount(bankAccount);
-                              }
-                            }}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            {ACCOUNT_UI.LABELS.EDIT_ACCOUNT}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const balance = account.balances[0];
-                              if (
-                                balance.account_id &&
-                                balance.user_id &&
-                                balance.created_at &&
-                                balance.updated_at
-                              ) {
-                                const bankAccount: BankAccount = {
-                                  id: balance.account_id,
-                                  user_id: balance.user_id,
-                                  name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-                                  color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
-                                  created_at: balance.created_at,
-                                  updated_at: balance.updated_at,
-                                };
-                                setDeletingAccount(bankAccount);
-                              }
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {ACCOUNT_UI.LABELS.DELETE_ACCOUNT}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-
-                  {/* Currency Balances - Indented */}
-                  <div className="ml-6 space-y-0.5">
-                    {account.balances.map((balance) => (
-                      <div
-                        key={balance.id ?? `${account.account_id}-${balance.currency}`}
-                        className="flex items-center justify-between text-xs py-0.5 px-2"
-                      >
-                        <span className="text-zinc-600 dark:text-zinc-400 font-medium">
-                          {balance.currency ?? ACCOUNT_UI.LABELS.NOT_AVAILABLE}
-                        </span>
-                        <span
-                          className={cn(
-                            'font-medium tabular-nums',
-                            (balance.current_balance ?? 0) >= 0
-                              ? 'text-zinc-700 dark:text-zinc-300'
-                              : 'text-red-600 dark:text-red-400'
-                          )}
-                        >
-                          {formatCurrency(
-                            balance.current_balance ?? 0,
-                            balance.currency ?? 'USD'
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  onEdit={setEditingAccount}
+                  onDelete={setDeletingAccount}
+                />
               ))
             )}
           </div>

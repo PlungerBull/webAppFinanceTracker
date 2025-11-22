@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
-import { useAddCurrency } from '@/features/currencies/hooks/use-add-currency';
+import { useCurrencies, useAddCurrency } from '@/features/currencies/hooks/use-currencies';
 
 /**
  * Currency balance type for managing currencies in account forms

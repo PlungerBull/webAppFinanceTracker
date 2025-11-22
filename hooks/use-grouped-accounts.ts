@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
+import type { Database } from '@/types/database.types';
+
+type AccountBalance = Database['public']['Views']['account_balances']['Row'];
 
 /**
  * Hook to group account balances by account_id
@@ -55,17 +58,11 @@ export type GroupedAccount = {
   account_id: string;
   name: string;
   color: string;
-  balances: Array<{
-    account_id: string | null;
-    currency: string | null;
-    balance: number | null;
-    name: string | null;
-    color: string | null;
-  }>;
+  balances: AccountBalance[];
 };
 
 export type UseGroupedAccountsReturn = {
   groupedAccounts: GroupedAccount[];
   isLoading: boolean;
-  accounts: any[]; // Raw accounts array
+  accounts: AccountBalance[]; // Raw accounts array
 };

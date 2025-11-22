@@ -1,20 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useDeleteCategory } from '../hooks/use-categories';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Loader2 } from 'lucide-react';
+import { useDeleteItem } from '@/hooks/shared/use-delete-item';
+import { categoriesApi } from '../api/categories';
+import { QUERY_KEYS } from '@/lib/constants';
 import { CATEGORY } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
+import { DeleteDialog } from '@/components/shared/delete-dialog';
 
 // Use the view type which includes transaction_count
 type Category = Database['public']['Views']['categories_with_counts']['Row'];
@@ -30,69 +21,48 @@ export function DeleteCategoryDialog({
     onOpenChange,
     category,
 }: DeleteCategoryDialogProps) {
-    const [isDeleting, setIsDeleting] = useState(false);
-    const deleteCategoryMutation = useDeleteCategory();
+    const { handleDelete, isDeleting, error } = useDeleteItem(
+        async (id: string) => {
+            return categoriesApi.delete(id);
+        },
+        [QUERY_KEYS.CATEGORIES]
+    );
 
-    const handleDelete = async () => {
-        if (!category) return;
-
-        try {
-            setIsDeleting(true);
-            if (category.id) {
-                await deleteCategoryMutation.mutateAsync(category.id);
-            }
+    const onDelete = async () => {
+        if (category?.id) {
+            await handleDelete(category.id);
             onOpenChange(false);
-        } catch (error) {
-            console.error(CATEGORY.API.CONSOLE.DELETE_CATEGORY_FAILED, error);
-            // Ideally show error toast here
-        } finally {
-            setIsDeleting(false);
         }
     };
 
     if (!category) return null;
 
     return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{CATEGORY.UI.LABELS.DELETE_CATEGORY}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {CATEGORY.UI.MESSAGES.DELETE_CONFIRMATION}
-                        <br />
-                        <strong>{category.name}</strong>
-                        <br />
-                        <span className="text-red-500 mt-2 block">
-                            {CATEGORY.UI.MESSAGES.DELETE_WARNING}
+        <DeleteDialog
+            open={open}
+            onOpenChange={onOpenChange}
+            title={CATEGORY.UI.LABELS.DELETE_CATEGORY}
+            description={
+                <>
+                    {CATEGORY.UI.MESSAGES.DELETE_CONFIRMATION}
+                    <br />
+                    <strong>{category.name}</strong>
+                    <br />
+                    <span className="text-red-500 mt-2 block">
+                        {CATEGORY.UI.MESSAGES.DELETE_WARNING}
+                    </span>
+                    {(category.transaction_count || 0) > 0 && (
+                        <span className="text-red-500 mt-1 block font-semibold">
+                            {CATEGORY.UI.MESSAGES.TRANSACTION_COUNT_WARNING(category.transaction_count || 0)}
                         </span>
-                        {(category.transaction_count || 0) > 0 && (
-                            <span className="text-red-500 mt-1 block font-semibold">
-                                {CATEGORY.UI.MESSAGES.TRANSACTION_COUNT_WARNING(category.transaction_count || 0)}
-                            </span>
-                        )}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>{CATEGORY.UI.BUTTONS.CANCEL}</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={(e) => {
-                            e.preventDefault();
-                            handleDelete();
-                        }}
-                        disabled={isDeleting}
-                        className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                    >
-                        {isDeleting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                {CATEGORY.UI.BUTTONS.DELETE}...
-                            </>
-                        ) : (
-                            CATEGORY.UI.BUTTONS.DELETE
-                        )}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+                    )}
+                </>
+            }
+            onConfirm={onDelete}
+            isDeleting={isDeleting}
+            error={error}
+            confirmLabel={CATEGORY.UI.BUTTONS.DELETE}
+            cancelLabel={CATEGORY.UI.BUTTONS.CANCEL}
+        />
     );
 }

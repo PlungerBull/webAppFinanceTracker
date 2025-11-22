@@ -31,7 +31,7 @@ export function useFormModal<T extends FieldValues>(
 
   const form = useForm<T>({
     ...options,
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema as any),
   });
 
   const handleClose = useCallback(() => {

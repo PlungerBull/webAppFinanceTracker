@@ -1,22 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect } from 'react';
+import { useFormModal } from '@/hooks/shared/use-form-modal';
 import { z } from 'zod';
 import { useUpdateCategory } from '../hooks/use-categories';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { ACCOUNT, ACCOUNTS, VALIDATION, CATEGORY } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 import { CategoryForm } from './category-form';
+import { FormModal } from '@/components/shared/form-modal';
 
 // Use the view type which includes transaction_count
 type Category = Database['public']['Views']['categories_with_counts']['Row'];
@@ -36,24 +29,33 @@ const categorySchema = z.object({
 type CategoryFormData = z.infer<typeof categorySchema>;
 
 export function EditCategoryModal({ open, onOpenChange, category }: EditCategoryModalProps) {
-    const [error, setError] = useState<string | null>(null);
     const updateCategoryMutation = useUpdateCategory();
 
     const {
-        register,
+        form,
+        error,
+        handleClose: resetForm,
         handleSubmit,
-        formState: { errors, isSubmitting },
+    } = useFormModal(categorySchema, async (data: CategoryFormData) => {
+        if (!category?.id) return;
+
+        await updateCategoryMutation.mutateAsync({
+            id: category.id,
+            data: {
+                name: data.name,
+                color: data.color,
+            },
+        });
+        onOpenChange(false);
+    });
+
+    const {
+        register,
+        formState: { errors },
         reset,
         setValue,
         watch,
-    } = useForm<CategoryFormData>({
-        resolver: zodResolver(categorySchema),
-        defaultValues: {
-            color: ACCOUNT.DEFAULT_COLOR,
-        },
-    });
-
-    const selectedColor = watch('color');
+    } = form;
 
     useEffect(() => {
         if (category) {
@@ -64,82 +66,31 @@ export function EditCategoryModal({ open, onOpenChange, category }: EditCategory
         }
     }, [category, reset]);
 
-    const onSubmit = async (data: CategoryFormData) => {
-        if (!category) return;
-
-        try {
-            setError(null);
-            if (category.id) {
-                await updateCategoryMutation.mutateAsync({
-                    id: category.id,
-                    data: {
-                        name: data.name,
-                        color: data.color,
-                    },
-                });
-            }
-            handleClose();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : CATEGORY.API.ERRORS.UPDATE_FAILED);
-        }
-    };
-
     const handleClose = () => {
-        reset();
-        setError(null);
+        resetForm();
         onOpenChange(false);
     };
 
     return (
-        <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{CATEGORY.UI.LABELS.EDIT_CATEGORY}</DialogTitle>
-                    <DialogDescription>
-                        {CATEGORY.UI.DESCRIPTIONS.EDIT_CATEGORY}
-                    </DialogDescription>
-                </DialogHeader>
-
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    {error && (
-                        <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-md">
-                            {error}
-                        </div>
-                    )}
-
-                    {/* Category Form Fields */}
-                    <CategoryForm
-                        register={register}
-                        errors={errors}
-                        setValue={setValue}
-                        watch={watch}
-                        isSubmitting={isSubmitting}
-                    />
-
-                    {/* Form Actions */}
-                    <div className="flex gap-3 pt-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleClose}
-                            disabled={isSubmitting}
-                            className="flex-1"
-                        >
-                            {CATEGORY.UI.BUTTONS.CANCEL}
-                        </Button>
-                        <Button type="submit" disabled={isSubmitting} className="flex-1">
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    {CATEGORY.UI.BUTTONS.UPDATE}...
-                                </>
-                            ) : (
-                                CATEGORY.UI.BUTTONS.UPDATE
-                            )}
-                        </Button>
-                    </div>
-                </form>
-            </DialogContent>
-        </Dialog>
+        <FormModal
+            open={open}
+            onOpenChange={handleClose}
+            title={CATEGORY.UI.LABELS.EDIT_CATEGORY}
+            description={CATEGORY.UI.DESCRIPTIONS.EDIT_CATEGORY}
+            onSubmit={(e) => void handleSubmit(e)}
+            isSubmitting={form.formState.isSubmitting}
+            submitLabel={CATEGORY.UI.BUTTONS.UPDATE}
+            cancelLabel={CATEGORY.UI.BUTTONS.CANCEL}
+            error={error}
+        >
+            {/* Category Form Fields */}
+            <CategoryForm
+                register={register}
+                errors={errors}
+                setValue={setValue}
+                watch={watch}
+                isSubmitting={form.formState.isSubmitting}
+            />
+        </FormModal>
     );
 }
