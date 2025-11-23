@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFormModal } from '@/hooks/shared/use-form-modal';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -102,7 +102,10 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const selectedAccount = groupedAccounts.find(a => a.account_id === selectedAccountId);
 
   // Determine available currencies for the selected account
-  const availableCurrencies = selectedAccount?.balances.map((b) => b.currency).filter((c): c is string => !!c) || [];
+  const availableCurrencies = useMemo(() => {
+    return selectedAccount?.balances.map((b) => b.currency).filter((c): c is string => !!c) || [];
+  }, [selectedAccount]);
+
   const showCurrencySelector = availableCurrencies.length > 1;
 
   // Set default currency if account changes and has only one currency
@@ -321,7 +324,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
               </PopoverTrigger>
               <PopoverContent className="w-[120px] p-0" align="start">
                 <div className="p-2">
-                  {availableCurrencies.map((currency) => (
+                  {availableCurrencies.map((currency: string) => (
                     <div
                       key={currency}
                       className="flex items-center gap-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
