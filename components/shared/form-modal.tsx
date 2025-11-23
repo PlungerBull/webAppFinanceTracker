@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 interface FormModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    title: string;
+    title?: string;
     description?: string;
     children: React.ReactNode;
     onSubmit: (e: React.FormEvent) => Promise<void> | void;
@@ -47,8 +47,8 @@ export function FormModal({
     return (
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className={cn(maxWidth, "max-h-[90vh] overflow-y-auto")}>
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
+                <DialogHeader className={cn(!title && !description && "sr-only")}>
+                    <DialogTitle>{title || "Modal"}</DialogTitle>
                     {description && <DialogDescription>{description}</DialogDescription>}
                 </DialogHeader>
 

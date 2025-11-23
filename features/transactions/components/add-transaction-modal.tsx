@@ -40,6 +40,7 @@ const transactionSchema = z.object({
   date: z.string(),
   categoryId: z.string().min(1, VALIDATION.MESSAGES.CATEGORY_REQUIRED),
   accountId: z.string().min(1, VALIDATION.MESSAGES.ACCOUNT_REQUIRED),
+  notes: z.string().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -62,13 +63,15 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       date: data.date,
       category_id: data.categoryId,
       account_id: data.accountId,
-      currency_original: CURRENCY.DEFAULT, // Default for now, should come from account
+      notes: data.notes,
+      currency_original: CURRENCY.DEFAULT,
       exchange_rate: CURRENCY.DEFAULTS.EXCHANGE_RATE,
     });
     handleClose();
   }, {
     defaultValues: {
       date: new Date().toISOString(),
+      notes: '',
     },
   });
 
@@ -78,6 +81,12 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     setValue,
     watch,
   } = form;
+
+  const selectedCategoryId = watch('categoryId');
+  const selectedAccountId = watch('accountId');
+
+  const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+  const selectedAccount = accounts.find(a => a.id === selectedAccountId);
 
   useEffect(() => {
     if (open) {
@@ -96,8 +105,6 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     <FormModal
       open={open}
       onOpenChange={handleClose}
-      title={TRANSACTIONS.UI.LABELS.ADD_TRANSACTION}
-      description={TRANSACTIONS.UI.MESSAGES.ADD_DESCRIPTION}
       onSubmit={(e) => void handleSubmit(e)}
       isSubmitting={form.formState.isSubmitting}
       submitLabel={TRANSACTIONS.UI.BUTTONS.ADD}
@@ -105,131 +112,176 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       error={error}
       maxWidth="sm:max-w-[600px]"
     >
-      {/* Description and Amount Row */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="description">{TRANSACTIONS.UI.LABELS.DESCRIPTION}</Label>
-          <Input
-            id="description"
-            placeholder={TRANSACTIONS.UI.LABELS.DESCRIPTION_PLACEHOLDER}
-            {...register('description')}
-            disabled={form.formState.isSubmitting}
-            className="text-base font-medium"
-          />
-          {errors.description && (
-            <p className="text-sm text-red-500">{errors.description.message}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="amount">{TRANSACTIONS.UI.LABELS.AMOUNT}</Label>
-          <div className="relative">
-            <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="space-y-4">
+        {/* Row 1: Description and Amount */}
+        <div className="flex gap-4 items-start">
+          <div className="flex-1 space-y-2">
             <Input
-              id="amount"
-              type="number"
-              step={CURRENCY.STEP.STANDARD}
-              placeholder={TRANSACTIONS.UI.PLACEHOLDERS.AMOUNT}
-              className="pl-9 text-base font-medium text-right"
-              {...register('amount', { valueAsNumber: true })}
+              id="description"
+              placeholder={TRANSACTIONS.UI.LABELS.DESCRIPTION_PLACEHOLDER}
+              {...register('description')}
               disabled={form.formState.isSubmitting}
+              className="text-lg font-medium border-none shadow-none px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50"
             />
+            {errors.description && (
+              <p className="text-sm text-red-500">{errors.description.message}</p>
+            )}
           </div>
-          {errors.amount && (
-            <p className="text-sm text-red-500">{errors.amount.message}</p>
+
+          <div className="w-[120px] space-y-2">
+            <div className="relative">
+              <DollarSign className="absolute left-0 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="amount"
+                type="number"
+                step={CURRENCY.STEP.STANDARD}
+                placeholder="0.00"
+                className="pl-6 text-lg font-medium text-right border-none shadow-none px-0 focus-visible:ring-0"
+                {...register('amount', { valueAsNumber: true })}
+                disabled={form.formState.isSubmitting}
+              />
+            </div>
+            {errors.amount && (
+              <p className="text-sm text-red-500">{errors.amount.message}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Note */}
+        <div className="space-y-2">
+          <Input
+            id="notes"
+            placeholder="Add a note..."
+            {...register('notes')}
+            disabled={form.formState.isSubmitting}
+            className="text-sm border-none shadow-none px-0 focus-visible:ring-0 text-muted-foreground"
+          />
+          {errors.notes && (
+            <p className="text-sm text-red-500">{errors.notes.message}</p>
           )}
         </div>
-      </div>
 
-      {/* Date Picker */}
-      <div className="space-y-2">
-        <Label>{TRANSACTIONS.UI.LABELS.DATE}</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !date && "text-muted-foreground"
-              )}
-              type="button"
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, 'PPP') : <span>{TRANSACTIONS.UI.LABELS.PICK_DATE}</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={(selectedDate) => {
-                setDate(selectedDate);
-                if (selectedDate) {
-                  setValue('date', selectedDate.toISOString());
-                }
-              }}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-        {errors.date && (
-          <p className="text-sm text-red-500">{errors.date.message}</p>
-        )}
-      </div>
+        <div className="border-t border-border/50 my-2" />
 
-      {/* Category Select */}
-      <div className="space-y-2">
-        <Label>{TRANSACTIONS.UI.LABELS.CATEGORY}</Label>
-        <Select
-          value={watch('categoryId')}
-          onValueChange={(value) => setValue('categoryId', value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={TRANSACTIONS.UI.LABELS.SELECT_CATEGORY} />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.filter(c => c.id !== null).map((category) => (
-              <SelectItem key={category.id!} value={category.id!}>
-                <div className="flex items-center gap-2">
+        {/* Row 3: Icons (Date, Category, Account) */}
+        <div className="flex items-center gap-2">
+          {/* Date Picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-2 text-muted-foreground hover:text-foreground",
+                  date && "text-foreground bg-accent/50"
+                )}
+                type="button"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, 'MMM d') : <span>Date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(selectedDate) => {
+                  setDate(selectedDate);
+                  if (selectedDate) {
+                    setValue('date', selectedDate.toISOString());
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Category Select */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-2 text-muted-foreground hover:text-foreground",
+                  selectedCategoryId && "text-foreground bg-accent/50"
+                )}
+                type="button"
+              >
+                {selectedCategory ? (
+                  <>
+                    <div
+                      className="w-3 h-3 rounded-full mr-2"
+                      style={{ backgroundColor: selectedCategory.color || undefined }}
+                    />
+                    {selectedCategory.name}
+                  </>
+                ) : (
+                  <>
+                    <span className="mr-2">#</span>
+                    <span>Category</span>
+                  </>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0" align="start">
+              <div className="p-2">
+                {categories.filter(c => c.id !== null).map((category) => (
                   <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: category.color || undefined }}
-                  />
-                  {category.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.categoryId && (
-          <p className="text-sm text-red-500">{errors.categoryId.message}</p>
-        )}
-      </div>
+                    key={category.id!}
+                    className="flex items-center gap-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
+                    onClick={() => setValue('categoryId', category.id!)}
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: category.color || undefined }}
+                    />
+                    <span className="text-sm">{category.name}</span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-      {/* Account Select */}
-      <div className="space-y-2">
-        <Label>{TRANSACTIONS.UI.LABELS.ACCOUNT}</Label>
-        <Select
-          value={watch('accountId')}
-          onValueChange={(value) => setValue('accountId', value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={TRANSACTIONS.UI.LABELS.SELECT_ACCOUNT} />
-          </SelectTrigger>
-          <SelectContent>
-            {accounts.filter(a => a.id !== null).map((account) => (
-              <SelectItem key={account.id!} value={account.id!}>
-                <div className="flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-muted-foreground" />
-                  {account.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.accountId && (
-          <p className="text-sm text-red-500">{errors.accountId.message}</p>
-        )}
+          {/* Account Select */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-2 text-muted-foreground hover:text-foreground",
+                  selectedAccountId && "text-foreground bg-accent/50"
+                )}
+                type="button"
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {selectedAccount ? selectedAccount.name : "Account"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-0" align="start">
+              <div className="p-2">
+                {accounts.filter(a => a.id !== null).map((account) => (
+                  <div
+                    key={account.id!}
+                    className="flex items-center gap-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
+                    onClick={() => setValue('accountId', account.id!)}
+                  >
+                    <Wallet className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">{account.name}</span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Hidden validation messages for required fields if not touched */}
+        <div className="flex gap-4">
+          {errors.date && !date && <p className="text-xs text-red-500">{errors.date.message}</p>}
+          {errors.categoryId && !selectedCategoryId && <p className="text-xs text-red-500">{errors.categoryId.message}</p>}
+          {errors.accountId && !selectedAccountId && <p className="text-xs text-red-500">{errors.accountId.message}</p>}
+        </div>
       </div>
     </FormModal>
   );
