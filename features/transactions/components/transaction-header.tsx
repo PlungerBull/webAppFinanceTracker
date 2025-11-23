@@ -6,7 +6,7 @@ import { TRANSACTIONS } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
-import type { EditingField } from '@/hooks/use-transaction-editor';
+import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
 
 // Define the interface locally since it's not exported from a shared type file yet
 // Ideally this should come from types/database.types or similar
@@ -28,11 +28,11 @@ interface TransactionRow {
 interface TransactionHeaderProps {
     transaction: TransactionRow;
     editingField: EditingField | null;
-    editedValue: any;
-    setEditedValue: (value: any) => void;
-    startEdit: (field: EditingField, value: any) => void;
+    editedValue: TransactionValue;
+    setEditedValue: (value: TransactionValue) => void;
+    startEdit: (field: EditingField, value: TransactionValue) => void;
     cancelEdit: () => void;
-    saveEdit: (id: string, field: string, value: any) => Promise<void>;
+    saveEdit: (id: string, field: string, value: TransactionValue) => Promise<void>;
 }
 
 export function TransactionHeader({

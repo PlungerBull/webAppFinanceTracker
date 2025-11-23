@@ -8,6 +8,11 @@ import { createClient } from '@/lib/supabase/client';
 export type EditingField = 'description' | 'amount' | 'date' | 'category_id' | 'account_id' | 'notes' | null;
 
 /**
+ * Type for the value being edited
+ */
+export type TransactionValue = string | number | null;
+
+/**
  * Hook for managing inline transaction editing
  * Extracts editing logic from transaction-detail-panel.tsx
  *
@@ -39,7 +44,7 @@ export type EditingField = 'description' | 'amount' | 'date' | 'category_id' | '
 export function useTransactionEditor(accountId?: string | null) {
   const queryClient = useQueryClient();
   const [editingField, setEditingField] = useState<EditingField>(null);
-  const [editedValue, setEditedValue] = useState<string | number | null>(null);
+  const [editedValue, setEditedValue] = useState<TransactionValue>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   /**
@@ -53,7 +58,7 @@ export function useTransactionEditor(accountId?: string | null) {
     }: {
       id: string;
       field: string;
-      value: string | number | null;
+      value: TransactionValue;
     }) => {
       const supabase = createClient();
       const { error } = await supabase
@@ -74,7 +79,7 @@ export function useTransactionEditor(accountId?: string | null) {
   /**
    * Start editing a field
    */
-  const startEdit = useCallback((field: EditingField, currentValue: string | number | null) => {
+  const startEdit = useCallback((field: EditingField, currentValue: TransactionValue) => {
     setEditingField(field);
     setEditedValue(currentValue);
   }, []);
@@ -92,7 +97,7 @@ export function useTransactionEditor(accountId?: string | null) {
    * Save the edited value
    */
   const saveEdit = useCallback(
-    async (transactionId: string, field: string, value: string | number | null) => {
+    async (transactionId: string, field: string, value: TransactionValue) => {
       if (!transactionId) return;
       await updateMutation.mutateAsync({ id: transactionId, field, value });
     },
@@ -122,12 +127,12 @@ export function useTransactionEditor(accountId?: string | null) {
  */
 export type UseTransactionEditorReturn = {
   editingField: EditingField;
-  editedValue: string | number | null;
+  editedValue: TransactionValue;
   showDatePicker: boolean;
   isUpdating: boolean;
-  setEditedValue: (value: string | number | null) => void;
+  setEditedValue: (value: TransactionValue) => void;
   setShowDatePicker: (value: boolean) => void;
-  startEdit: (field: EditingField, currentValue: string | number | null) => void;
+  startEdit: (field: EditingField, currentValue: TransactionValue) => void;
   cancelEdit: () => void;
-  saveEdit: (transactionId: string, field: string, value: string | number | null) => Promise<void>;
+  saveEdit: (transactionId: string, field: string, value: TransactionValue) => Promise<void>;
 };

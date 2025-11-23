@@ -18,7 +18,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import type { EditingField } from '@/hooks/use-transaction-editor';
+import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
 
 // Duplicate interface until we have a shared types file
 interface TransactionRow {
@@ -52,13 +52,13 @@ interface TransactionInfoProps {
     categories: Category[];
     accounts: Account[];
     editingField: EditingField | null;
-    editedValue: any;
+    editedValue: TransactionValue;
     showDatePicker: boolean;
-    setEditedValue: (value: any) => void;
+    setEditedValue: (value: TransactionValue) => void;
     setShowDatePicker: (show: boolean) => void;
-    startEdit: (field: EditingField, value: any) => void;
+    startEdit: (field: EditingField, value: TransactionValue) => void;
     cancelEdit: () => void;
-    saveEdit: (id: string, field: string, value: any) => Promise<void>;
+    saveEdit: (id: string, field: string, value: TransactionValue) => Promise<void>;
 }
 
 export function TransactionInfo({
