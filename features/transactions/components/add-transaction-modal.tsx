@@ -57,14 +57,17 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     handleClose: resetForm,
     handleSubmit,
   } = useFormModal(transactionSchema, async (data: TransactionFormData) => {
+    const selectedAccount = accounts.find(a => a.id === data.accountId);
+    if (!selectedAccount?.account_id || !selectedAccount?.currency) return;
+
     await addTransactionMutation.mutateAsync({
       description: data.description,
       amount_original: data.amount,
       date: data.date,
       category_id: data.categoryId,
-      account_id: data.accountId,
+      account_id: selectedAccount.account_id, // Use the actual bank account ID
       notes: data.notes,
-      currency_original: CURRENCY.DEFAULT,
+      currency_original: selectedAccount.currency, // Use the account's currency
       exchange_rate: CURRENCY.DEFAULTS.EXCHANGE_RATE,
     });
     handleClose();
