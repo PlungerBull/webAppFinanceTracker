@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { useAddTransaction } from '../hooks/use-transactions';
 import { useCategories } from '@/features/categories/hooks/use-categories';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +41,8 @@ const transactionSchema = z.object({
   categoryId: z.string().min(1, VALIDATION.MESSAGES.CATEGORY_REQUIRED),
   accountId: z.string().min(1, VALIDATION.MESSAGES.ACCOUNT_REQUIRED),
   notes: z.string().optional(),
+  currency: z.string().optional(),
+  exchangeRate: z.number().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -49,7 +51,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const [date, setDate] = useState<Date | undefined>(new Date());
   const addTransactionMutation = useAddTransaction();
   const { data: categories = [] } = useCategories();
-  const { data: accounts = [] } = useAccounts();
+  const { groupedAccounts } = useGroupedAccounts();
 
   const {
     form,
@@ -57,24 +59,31 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     handleClose: resetForm,
     handleSubmit,
   } = useFormModal(transactionSchema, async (data: TransactionFormData) => {
-    const selectedAccount = accounts.find(a => a.id === data.accountId);
-    if (!selectedAccount?.account_id || !selectedAccount?.currency) return;
+    // data.accountId is now the bank_account_id (from groupedAccounts)
+    // We need to find the selected currency
+    const selectedAccount = groupedAccounts.find(a => a.account_id === data.accountId);
+    if (!selectedAccount) return;
+
+    // If currency is not selected (single currency account), use the first one
+    const currencyCode = data.currency || selectedAccount.balances[0]?.currency;
+    if (!currencyCode) return;
 
     await addTransactionMutation.mutateAsync({
       description: data.description,
       amount_original: data.amount,
       date: data.date,
       category_id: data.categoryId,
-      account_id: selectedAccount.account_id, // Use the actual bank account ID
+      account_id: data.accountId,
       notes: data.notes,
-      currency_original: selectedAccount.currency, // Use the account's currency
-      exchange_rate: CURRENCY.DEFAULTS.EXCHANGE_RATE,
+      currency_original: currencyCode,
+      exchange_rate: data.exchangeRate || CURRENCY.DEFAULTS.EXCHANGE_RATE,
     });
     handleClose();
   }, {
     defaultValues: {
       date: new Date().toISOString(),
       notes: '',
+      exchangeRate: 1,
     },
   });
 
@@ -87,9 +96,24 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   const selectedCategoryId = watch('categoryId');
   const selectedAccountId = watch('accountId');
+  const selectedCurrency = watch('currency');
 
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
-  const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+  const selectedAccount = groupedAccounts.find(a => a.account_id === selectedAccountId);
+
+  // Determine available currencies for the selected account
+  const availableCurrencies = selectedAccount?.balances.map((b) => b.currency).filter((c): c is string => !!c) || [];
+  const showCurrencySelector = availableCurrencies.length > 1;
+
+  // Set default currency if account changes and has only one currency
+  useEffect(() => {
+    if (selectedAccount && availableCurrencies.length === 1) {
+      setValue('currency', availableCurrencies[0]);
+    } else if (selectedAccount && !selectedCurrency && availableCurrencies.length > 0) {
+      // Default to first currency if none selected
+      setValue('currency', availableCurrencies[0]);
+    }
+  }, [selectedAccountId, selectedAccount, availableCurrencies, setValue, selectedCurrency]);
 
   useEffect(() => {
     if (open) {
@@ -166,8 +190,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
         <div className="border-t border-border/50 my-2" />
 
-        {/* Row 3: Icons (Date, Category, Account) */}
-        <div className="flex items-center gap-2">
+        {/* Row 3: Icons (Date, Category, Account, Currency, Exchange Rate) */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Date Picker */}
           <Popover>
             <PopoverTrigger asChild>
@@ -264,11 +288,11 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-0" align="start">
               <div className="p-2">
-                {accounts.filter(a => a.id !== null).map((account) => (
+                {groupedAccounts.map((account) => (
                   <div
-                    key={account.id!}
+                    key={account.account_id}
                     className="flex items-center gap-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
-                    onClick={() => setValue('accountId', account.id!)}
+                    onClick={() => setValue('accountId', account.account_id)}
                   >
                     <Wallet className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm">{account.name}</span>
@@ -277,13 +301,62 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Currency Select (Only if multiple currencies) */}
+          {showCurrencySelector && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-8 px-2 text-muted-foreground hover:text-foreground",
+                    selectedCurrency && "text-foreground bg-accent/50"
+                  )}
+                  type="button"
+                >
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  {selectedCurrency || "Currency"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[120px] p-0" align="start">
+                <div className="p-2">
+                  {availableCurrencies.map((currency) => (
+                    <div
+                      key={currency}
+                      className="flex items-center gap-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
+                      onClick={() => setValue('currency', currency)}
+                    >
+                      <span className="text-sm font-medium">{currency}</span>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {/* Exchange Rate Input (Only if currency selected) */}
+          {selectedCurrency && (
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-xs text-muted-foreground">Rate:</span>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="1.00"
+                className="h-8 w-20 text-sm"
+                {...register('exchangeRate', { valueAsNumber: true })}
+              />
+            </div>
+          )}
+
         </div>
 
         {/* Hidden validation messages for required fields if not touched */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
           {errors.date && !date && <p className="text-xs text-red-500">{errors.date.message}</p>}
           {errors.categoryId && !selectedCategoryId && <p className="text-xs text-red-500">{errors.categoryId.message}</p>}
           {errors.accountId && !selectedAccountId && <p className="text-xs text-red-500">{errors.accountId.message}</p>}
+          {errors.currency && showCurrencySelector && !selectedCurrency && <p className="text-xs text-red-500">{errors.currency.message}</p>}
         </div>
       </div>
     </FormModal>
