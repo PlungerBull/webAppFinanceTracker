@@ -62,7 +62,7 @@ export function MonthlySpendingTable() {
                   {month.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </TableHead>
               ))}
-              <TableHead className="text-right font-bold min-w-[120px]">{TRANSACTIONS.UI.LABELS.TOTAL}</TableHead>
+
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -88,9 +88,7 @@ export function MonthlySpendingTable() {
                     </TableCell>
                   );
                 })}
-                <TableCell className="text-right font-bold">
-                  {formatCurrencyShort(Object.values(category.monthlyAmounts).reduce((sum, amt) => sum + amt, 0), 'USD')}
-                </TableCell>
+
               </TableRow>
             ))}
           </TableBody>
