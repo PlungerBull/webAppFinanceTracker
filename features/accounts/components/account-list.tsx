@@ -71,16 +71,18 @@ export function AccountList() {
                 {ACCOUNT_UI.MESSAGES.NO_ACCOUNTS}
               </div>
             ) : (
-              groupedAccounts.map((account) => (
-                <AccountListItem
-                  key={account.account_id}
-                  account={account}
-                  isActive={currentAccountId === account.account_id}
-                  onClick={() => handleAccountClick(account.account_id)}
-                  onEdit={setEditingAccount}
-                  onDelete={setDeletingAccount}
-                />
-              ))
+              groupedAccounts
+                .filter(account => account.is_visible !== false) // Default to true if undefined
+                .map((account) => (
+                  <AccountListItem
+                    key={account.account_id}
+                    account={account}
+                    isActive={currentAccountId === account.account_id}
+                    onClick={() => handleAccountClick(account.account_id)}
+                    onEdit={setEditingAccount}
+                    onDelete={setDeletingAccount}
+                  />
+                ))
             )}
           </div>
         )}

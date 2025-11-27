@@ -3,15 +3,16 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
-import { User, Database } from 'lucide-react';
+import { User, Database, Palette } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/settings/change-password-modal';
 import { ChangeEmailModal } from '@/components/settings/change-email-modal';
 import { cn } from '@/lib/utils';
 import { SETTINGS_TABS } from '@/lib/constants';
 import { ProfileSettings } from '@/features/settings/components/profile-settings';
 import { DataManagement } from '@/features/settings/components/data-management';
+import { AppearanceSettings } from '@/features/settings/components/appearance-settings';
 
-type SettingsTab = 'account' | 'data';
+type SettingsTab = 'account' | 'data' | 'appearance';
 
 export default function SettingsPage() {
   const { user, initialize } = useAuthStore();
@@ -50,6 +51,17 @@ export default function SettingsPage() {
             <Database className="mr-3 h-4 w-4 text-muted-foreground" />
             {SETTINGS_TABS.DATA}
           </Button>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start px-3 py-2 h-auto font-normal",
+              activeTab === 'appearance' ? "bg-zinc-200/60 dark:bg-zinc-800 font-medium" : "hover:bg-zinc-200/40 dark:hover:bg-zinc-800/50"
+            )}
+            onClick={() => setActiveTab('appearance')}
+          >
+            <Palette className="mr-3 h-4 w-4 text-muted-foreground" />
+            Appearance
+          </Button>
         </div>
       </div>
 
@@ -63,8 +75,10 @@ export default function SettingsPage() {
               openPasswordModal={() => setIsPasswordModalOpen(true)}
               openEmailModal={() => setIsEmailModalOpen(true)}
             />
-          ) : (
+          ) : activeTab === 'data' ? (
             <DataManagement />
+          ) : (
+            <AppearanceSettings />
           )}
         </div>
       </div>

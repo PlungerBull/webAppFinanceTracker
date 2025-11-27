@@ -71,6 +71,7 @@ export function AccountListItem({
                                             user_id: balance.user_id,
                                             name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
                                             color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
+                                            is_visible: balance.is_visible ?? true,
                                             created_at: balance.created_at ?? new Date().toISOString(), // These might be missing from view, using fallback
                                             updated_at: balance.updated_at ?? new Date().toISOString(),
                                         };
@@ -92,6 +93,7 @@ export function AccountListItem({
                                             user_id: balance.user_id,
                                             name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
                                             color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
+                                            is_visible: balance.is_visible ?? true,
                                             created_at: balance.created_at ?? new Date().toISOString(),
                                             updated_at: balance.updated_at ?? new Date().toISOString(),
                                         };

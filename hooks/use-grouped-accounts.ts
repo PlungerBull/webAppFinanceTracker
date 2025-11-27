@@ -34,14 +34,21 @@ export function useGroupedAccounts() {
       grouped.set(balance.account_id, [...existing, balance]);
     });
 
-    return Array.from(grouped.entries()).map(([account_id, balances]) => ({
-      account_id,
-      name: balances[0].name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-      color: balances[0].color || ACCOUNT.DEFAULT_COLOR,
-      balances: balances.sort((a, b) =>
-        (a.currency ?? '').localeCompare(b.currency ?? '')
-      ),
-    }));
+    return Array.from(grouped.entries()).map(([account_id, balances]) => {
+      const first = balances[0];
+      return {
+        account_id,
+        user_id: first.user_id!,
+        name: first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
+        color: first.color || ACCOUNT.DEFAULT_COLOR,
+        is_visible: first.is_visible ?? true,
+        created_at: first.created_at!,
+        updated_at: first.updated_at!,
+        balances: balances.sort((a, b) =>
+          (a.currency ?? '').localeCompare(b.currency ?? '')
+        ),
+      };
+    });
   }, [accounts]);
 
   return {
@@ -56,8 +63,12 @@ export function useGroupedAccounts() {
  */
 export type GroupedAccount = {
   account_id: string;
+  user_id: string;
   name: string;
   color: string;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
   balances: AccountBalance[];
 };
 
