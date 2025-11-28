@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { accountsApi } from '../api/accounts';
 import { accountCurrenciesApi } from '../api/account-currencies';
 import { updateAccountSchema, type UpdateAccountFormData } from '../schemas/account.schema';
-import { useCurrencies, useAddCurrency } from '@/features/currencies/hooks/use-currencies';
+import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
 import type { Database } from '@/types/database.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,6 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
   const [currencyReplacements, setCurrencyReplacements] = useState<CurrencyReplacement[]>([]);
 
   const { data: allCurrencies = [] } = useCurrencies();
-  const addCurrencyMutation = useAddCurrency();
 
   // Fetch account currencies when modal opens
   const { data: accountCurrencies = [], isLoading: loadingCurrencies } = useQuery({
@@ -63,16 +62,9 @@ export function EditAccountModal({ open, onOpenChange, account }: EditAccountMod
         continue;
       }
 
-      // Ensure the new currency exists in user's currencies
       if (oldCode !== newCode) {
-        try {
-          await addCurrencyMutation.mutateAsync(newCode);
-        } catch (err) {
-          // Only log real errors, not duplicates
-          console.error(ACCOUNT_UI.MESSAGES.ERROR_ADDING_CURRENCY, err);
-        }
-
         // Replace currency in account and all transactions
+        // Note: Currency must exist in global_currencies table (enforced by FK)
         await accountCurrenciesApi.replaceCurrency(
           account.id,
           oldCode,

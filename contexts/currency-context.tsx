@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useMemo, ReactNode } from 'react';
-import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
+import { useUserSettings } from '@/features/settings/hooks/use-user-settings';
 import { CURRENCY } from '@/lib/constants';
 
 interface CurrencyContextValue {
@@ -17,16 +17,16 @@ const CurrencyContext = createContext<CurrencyContextValue | null>(null);
  *
  * Benefits:
  * - Single Intl.NumberFormat instance per currency (cached)
- * - Automatic main currency detection
+ * - Automatic main currency detection from user settings
  * - Better performance by avoiding repeated formatter creation
  */
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const { data: currencies } = useCurrencies();
+  const { data: userSettings } = useUserSettings();
 
-  // Get main currency from user's currencies
+  // Get main currency from user settings
   const mainCurrency = useMemo(
-    () => currencies?.find(c => c.is_main)?.code || CURRENCY.DEFAULT,
-    [currencies]
+    () => userSettings?.main_currency || CURRENCY.DEFAULT,
+    [userSettings]
   );
 
   // Create memoized formatters with caching

@@ -116,27 +116,24 @@ export type Database = {
         }
         Relationships: []
       }
-      currencies: {
+      global_currencies: {
         Row: {
           code: string
-          created_at: string
-          id: string
-          is_main: boolean | null
-          user_id: string
+          flag: string | null
+          name: string
+          symbol: string
         }
         Insert: {
           code: string
-          created_at?: string
-          id?: string
-          is_main?: boolean | null
-          user_id: string
+          flag?: string | null
+          name: string
+          symbol: string
         }
         Update: {
           code?: string
-          created_at?: string
-          id?: string
-          is_main?: boolean | null
-          user_id?: string
+          flag?: string | null
+          name?: string
+          symbol?: string
         }
         Relationships: []
       }
@@ -223,6 +220,7 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
+          main_currency: string | null
           start_of_week: number | null
           theme: string | null
           updated_at: string
@@ -230,6 +228,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          main_currency?: string | null
           start_of_week?: number | null
           theme?: string | null
           updated_at?: string
@@ -237,12 +236,21 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          main_currency?: string | null
           start_of_week?: number | null
           theme?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_main_currency_fkey"
+            columns: ["main_currency"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["code"]
+          },
+        ]
       }
     }
     Views: {

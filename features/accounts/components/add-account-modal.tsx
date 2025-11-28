@@ -154,25 +154,24 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                   <div className="py-1">
                     {filteredCurrencies.map((currency) => (
                       <button
-                        key={currency.id}
+                        key={currency.code}
                         type="button"
                         onClick={() => handleAddCurrency(currency.code)}
                         className="w-full px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm"
                       >
-                        {currency.code}
+                        <div className="flex items-center gap-2">
+                          {currency.flag && <span>{currency.flag}</span>}
+                          <span className="font-medium">{currency.code}</span>
+                          <span className="text-muted-foreground text-xs">- {currency.name}</span>
+                        </div>
                       </button>
                     ))}
                   </div>
-                ) : currencyInput.length === 3 ? (
-                  <button
-                    type="button"
-                    onClick={() => handleAddCurrency(currencyInput)}
-                    className="w-full px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>{ACCOUNT_UI.MESSAGES.ADD_CURRENCY(currencyInput)}</span>
-                  </button>
-                ) : null}
+                ) : (
+                  <div className="p-3 text-center text-sm text-zinc-500">
+                    No matching currencies found
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -190,16 +189,6 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
             autoComplete="off"
             aria-label={ACCOUNT_UI.LABELS.STARTING_BALANCE}
           />
-
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => currencyInput.length === CURRENCY.CODE_LENGTH && handleAddCurrency(currencyInput)}
-            disabled={!currencyInput || currencyInput.length !== CURRENCY.CODE_LENGTH || isSubmitting}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
         </div>
         <p className="text-xs text-zinc-500">
           {ACCOUNT_UI.DESCRIPTIONS.ADD_CURRENCIES}
@@ -207,47 +196,49 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       </div>
 
       {/* Selected Currencies List */}
-      {selectedCurrencies.length > 0 && (
-        <div className="space-y-2">
-          <Label>{ACCOUNT_UI.LABELS.SELECTED_CURRENCIES(selectedCurrencies.length)}</Label>
-          <div className="space-y-2 max-h-48 overflow-y-auto border border-zinc-200 dark:border-zinc-800 rounded-md p-2">
-            {selectedCurrencies.map((currency) => (
-              <div
-                key={currency.currency_code}
-                className="flex items-center gap-2 p-2 bg-zinc-50 dark:bg-zinc-900 rounded"
-              >
-                <span className="font-medium text-sm flex-shrink-0 w-12">
-                  {currency.currency_code}
-                </span>
-                <Input
-                  id={`balance-${currency.currency_code}`}
-                  name={`balance-${currency.currency_code}`}
-                  type="number"
-                  step={CURRENCY.STEP.STANDARD}
-                  value={currency.starting_balance}
-                  onChange={(e) =>
-                    handleUpdateBalance(currency.currency_code, parseFloat(e.target.value) || 0)
-                  }
-                  disabled={isSubmitting}
-                  className="flex-1"
-                  autoComplete="off"
-                  aria-label={ACCOUNT_UI.LABELS.STARTING_BALANCE_FOR(currency.currency_code)}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveCurrency(currency.currency_code)}
-                  disabled={isSubmitting}
-                  className="flex-shrink-0"
+      {
+        selectedCurrencies.length > 0 && (
+          <div className="space-y-2">
+            <Label>{ACCOUNT_UI.LABELS.SELECTED_CURRENCIES(selectedCurrencies.length)}</Label>
+            <div className="space-y-2 max-h-48 overflow-y-auto border border-zinc-200 dark:border-zinc-800 rounded-md p-2">
+              {selectedCurrencies.map((currency) => (
+                <div
+                  key={currency.currency_code}
+                  className="flex items-center gap-2 p-2 bg-zinc-50 dark:bg-zinc-900 rounded"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+                  <span className="font-medium text-sm flex-shrink-0 w-12">
+                    {currency.currency_code}
+                  </span>
+                  <Input
+                    id={`balance-${currency.currency_code}`}
+                    name={`balance-${currency.currency_code}`}
+                    type="number"
+                    step={CURRENCY.STEP.STANDARD}
+                    value={currency.starting_balance}
+                    onChange={(e) =>
+                      handleUpdateBalance(currency.currency_code, parseFloat(e.target.value) || 0)
+                    }
+                    disabled={isSubmitting}
+                    className="flex-1"
+                    autoComplete="off"
+                    aria-label={ACCOUNT_UI.LABELS.STARTING_BALANCE_FOR(currency.currency_code)}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveCurrency(currency.currency_code)}
+                    disabled={isSubmitting}
+                    className="flex-shrink-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-    </FormModal>
+        )
+      }
+    </FormModal >
   );
 }

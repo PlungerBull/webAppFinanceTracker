@@ -43,12 +43,10 @@ export const CURRENCY = {
   API: {
     ERRORS: {
       FETCH_ALL_FAILED: 'Failed to fetch currencies',
-      ADD_FAILED: 'Failed to add currency',
       USER_NOT_AUTHENTICATED: 'User not authenticated',
     },
     CONSOLE: {
       FETCH_CURRENCIES: 'Error fetching currencies:',
-      ADD_CURRENCY: 'Error adding currency:',
     },
   },
 } as const;

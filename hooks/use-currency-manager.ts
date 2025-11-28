@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useCurrencies, useAddCurrency } from '@/features/currencies/hooks/use-currencies';
+import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
 
 /**
  * Currency balance type for managing currencies in account forms
@@ -38,7 +38,6 @@ export function useCurrencyManager(initialCurrencies: CurrencyBalance[] = []) {
   const [selectedCurrencies, setSelectedCurrencies] = useState<CurrencyBalance[]>(initialCurrencies);
 
   const { data: currencies = [], isLoading: isLoadingCurrencies } = useCurrencies();
-  const addCurrencyMutation = useAddCurrency();
 
   /**
    * Filter currencies based on input and exclude already selected ones
@@ -62,10 +61,7 @@ export function useCurrencyManager(initialCurrencies: CurrencyBalance[] = []) {
         return;
       }
 
-      // Let the API handle duplicates gracefully with upsert
-      await addCurrencyMutation.mutateAsync(code);
-
-      // Add to selected currencies
+      // Add to selected currencies (no need to create in DB - read-only global list)
       setSelectedCurrencies([
         ...selectedCurrencies,
         { currency_code: code, starting_balance: parseFloat(balanceInput) || 0 },
@@ -76,7 +72,7 @@ export function useCurrencyManager(initialCurrencies: CurrencyBalance[] = []) {
       setBalanceInput('0');
       setShowSuggestions(false);
     },
-    [selectedCurrencies, balanceInput, addCurrencyMutation]
+    [selectedCurrencies, balanceInput]
   );
 
   /**

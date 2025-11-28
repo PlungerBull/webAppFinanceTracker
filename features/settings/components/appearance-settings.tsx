@@ -3,18 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useUpdateAccountVisibility } from '@/features/settings/hooks/use-update-account-visibility';
+import { useUserSettings, useUpdateMainCurrency } from '@/features/settings/hooks/use-user-settings';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Loader2, Save } from 'lucide-react';
 import { ACCOUNT_UI } from '@/lib/constants';
+import { CurrencySettings } from './currency-settings';
+
 
 export function AppearanceSettings() {
     const { data: accounts = [], isLoading } = useAccounts();
-    const { mutate: updateVisibility, isPending: isSaving } = useUpdateAccountVisibility();
+    const { mutate: updateVisibility, isPending: isSavingVisibility } = useUpdateAccountVisibility();
+    const { data: userSettings } = useUserSettings();
+    const { mutate: updateMainCurrency, isPending: isSavingCurrency } = useUpdateMainCurrency();
 
     // Local state for pending changes
-    // Map of accountId -> isVisible
     const [pendingVisibility, setPendingVisibility] = useState<Record<string, boolean>>({});
+    const [selectedCurrency, setSelectedCurrency] = useState<string>('');
     const [hasChanges, setHasChanges] = useState(false);
 
     // Initialize local state from fetched data
@@ -23,7 +28,6 @@ export function AppearanceSettings() {
             const initialVisibility: Record<string, boolean> = {};
             accounts.forEach(acc => {
                 if (acc.account_id) {
-                    // Default to true if undefined, though DB default is true
                     initialVisibility[acc.account_id] = acc.is_visible ?? true;
                 }
             });
@@ -31,38 +35,86 @@ export function AppearanceSettings() {
         }
     }, [accounts]);
 
-    const handleToggle = (accountId: string) => {
-        setPendingVisibility((prev) => {
-            const newState = { ...prev, [accountId]: !prev[accountId] };
+    // Initialize currency from user settings
+    useEffect(() => {
+        if (userSettings?.main_currency) {
+            setSelectedCurrency(userSettings.main_currency);
+        }
+    }, [userSettings]);
 
-            // Check for changes
-            let changed = false;
-            for (const acc of accounts) {
-                if (acc.account_id && newState[acc.account_id] !== (acc.is_visible ?? true)) {
-                    changed = true;
-                    break;
-                }
+    // Check for changes whenever state updates
+    useEffect(() => {
+        let changed = false;
+
+        // Check account visibility changes
+        for (const acc of accounts) {
+            if (acc.account_id && pendingVisibility[acc.account_id] !== (acc.is_visible ?? true)) {
+                changed = true;
+                break;
             }
-            setHasChanges(changed);
+        }
 
-            return newState;
-        });
+        // Check currency changes
+        if (!changed && selectedCurrency && selectedCurrency !== userSettings?.main_currency) {
+            changed = true;
+        }
+
+        setHasChanges(changed);
+    }, [pendingVisibility, selectedCurrency, accounts, userSettings]);
+
+    const handleToggle = (accountId: string) => {
+        setPendingVisibility((prev) => ({
+            ...prev,
+            [accountId]: !prev[accountId]
+        }));
     };
 
-    const handleSave = () => {
-        const updates = Object.entries(pendingVisibility)
+    const handleCurrencyChange = (value: string) => {
+        setSelectedCurrency(value);
+    };
+
+    const handleSave = async () => {
+        const promises: Promise<any>[] = [];
+
+        // Save account visibility changes
+        const visibilityUpdates = Object.entries(pendingVisibility)
             .filter(([accountId, isVisible]) => {
                 const original = accounts.find(a => a.account_id === accountId);
                 return original && original.is_visible !== isVisible;
             })
             .map(([accountId, isVisible]) => ({ accountId, isVisible }));
 
-        if (updates.length > 0) {
-            updateVisibility(updates, {
-                onSuccess: () => setHasChanges(false)
-            });
-        } else {
-            setHasChanges(false);
+        if (visibilityUpdates.length > 0) {
+            promises.push(
+                new Promise((resolve, reject) => {
+                    updateVisibility(visibilityUpdates, {
+                        onSuccess: resolve,
+                        onError: reject
+                    });
+                })
+            );
+        }
+
+        // Save currency changes
+        if (selectedCurrency && selectedCurrency !== userSettings?.main_currency) {
+            promises.push(
+                new Promise((resolve, reject) => {
+                    updateMainCurrency(selectedCurrency, {
+                        onSuccess: resolve,
+                        onError: reject
+                    });
+                })
+            );
+        }
+
+        // Wait for all saves to complete
+        if (promises.length > 0) {
+            try {
+                await Promise.all(promises);
+                setHasChanges(false);
+            } catch (error) {
+                console.error('Error saving settings:', error);
+            }
         }
     };
 
@@ -84,54 +136,71 @@ export function AppearanceSettings() {
         ).values()
     );
 
-    return (
-        <div className="space-y-6">
-            <div>
-                <h3 className="text-lg font-medium">Sidebar Appearance</h3>
-                <p className="text-sm text-muted-foreground">
-                    Customize what appears in your sidebar.
-                </p>
-            </div>
+    const isSaving = isSavingVisibility || isSavingCurrency;
 
-            <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                    Bank Accounts
-                </h4>
-                <div className="space-y-2">
-                    {uniqueAccounts.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">
-                            {ACCOUNT_UI.MESSAGES.NO_ACCOUNTS}
-                        </p>
-                    ) : (
-                        uniqueAccounts.map((account) => (
-                            <div
-                                key={account.account_id}
-                                className="flex items-center space-x-3 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
-                            >
-                                <Checkbox
-                                    id={`toggle-${account.account_id}`}
-                                    checked={pendingVisibility[account.account_id!] ?? true}
-                                    onCheckedChange={() => handleToggle(account.account_id!)}
-                                />
-                                <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => handleToggle(account.account_id!)}>
-                                    <DollarSign
-                                        className="h-4 w-4 flex-shrink-0"
-                                        style={{ color: account.color || undefined }}
+    return (
+        <div className="space-y-8">
+            {/* Currency Settings Section */}
+            <CurrencySettings
+                selectedCurrency={selectedCurrency}
+                onCurrencyChange={handleCurrencyChange}
+                disabled={isSaving}
+            />
+
+            {/* Divider */}
+            <div className="border-t border-zinc-200 dark:border-zinc-800" />
+
+            {/* Account Visibility Section */}
+            <div className="space-y-6">
+                <div>
+                    <h3 className="text-lg font-medium">Sidebar Appearance</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Customize what appears in your sidebar.
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                        Bank Accounts
+                    </h4>
+                    <div className="space-y-2">
+                        {uniqueAccounts.length === 0 ? (
+                            <p className="text-sm text-muted-foreground italic">
+                                {ACCOUNT_UI.MESSAGES.NO_ACCOUNTS}
+                            </p>
+                        ) : (
+                            uniqueAccounts.map((account) => (
+                                <div
+                                    key={account.account_id}
+                                    className="flex items-center space-x-3 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
+                                >
+                                    <Checkbox
+                                        id={`toggle-${account.account_id}`}
+                                        checked={pendingVisibility[account.account_id!] ?? true}
+                                        onCheckedChange={() => handleToggle(account.account_id!)}
+                                        disabled={isSaving}
                                     />
-                                    <label
-                                        htmlFor={`toggle-${account.account_id}`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                    >
-                                        {account.name}
-                                    </label>
+                                    <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => !isSaving && handleToggle(account.account_id!)}>
+                                        <DollarSign
+                                            className="h-4 w-4 flex-shrink-0"
+                                            style={{ color: account.color || undefined }}
+                                        />
+                                        <label
+                                            htmlFor={`toggle-${account.account_id}`}
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                        >
+                                            {account.name}
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex justify-end pt-4">
+            {/* Single Save Button */}
+            <div className="flex justify-end pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 <Button
                     onClick={handleSave}
                     disabled={!hasChanges || isSaving}
@@ -148,3 +217,4 @@ export function AppearanceSettings() {
         </div>
     );
 }
+
