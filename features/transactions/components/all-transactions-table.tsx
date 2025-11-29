@@ -18,7 +18,7 @@ function TransactionsContent() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['transactions', 'all', accountId, categoryId],
@@ -105,13 +105,19 @@ function TransactionsContent() {
       }
     }
 
-    // Category filter
-    if (selectedCategory && t.category_id !== selectedCategory) {
+    // Category filter - check if transaction's category is in selected categories array
+    if (selectedCategories.length > 0 && !selectedCategories.includes(t.category_id)) {
       return false;
     }
 
     return true;
   });
+
+  // Calculate transaction counts per category for the filter dropdown
+  const categoryCounts = categories.reduce((acc: Record<string, number>, category) => {
+    acc[category.id] = filteredTransactions.filter((t: any) => t.category_id === category.id).length;
+    return acc;
+  }, {});
 
   // Determine the title for the transaction list
   const pageTitle = categoryName || accountName || 'Transactions';
@@ -137,9 +143,10 @@ function TransactionsContent() {
         onSearchChange={setSearchQuery}
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        selectedCategories={selectedCategories}
+        onCategoryChange={setSelectedCategories}
         categories={categories}
+        categoryCounts={categoryCounts}
       />
 
       {/* Section 3: Transaction Details Panel */}
