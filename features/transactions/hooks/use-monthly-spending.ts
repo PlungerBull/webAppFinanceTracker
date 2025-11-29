@@ -33,14 +33,13 @@ export function useMonthlySpending(monthsBack = DATABASE.MONTHS_BACK.DEFAULT) {
     queryFn: async () => {
       const supabase = createClient();
 
-      // Get main currency (RLS handles user filtering)
-      const { data: currencyData } = await supabase
-        .from('currencies')
-        .select('code')
-        .eq('is_main', DATABASE.MAIN_CURRENCY_FLAG)
+      // Get main currency from user settings (RLS handles user filtering)
+      const { data: settingsData } = await supabase
+        .from('user_settings')
+        .select('main_currency')
         .maybeSingle();
 
-      const mainCurrency = currencyData?.code || CURRENCY.DEFAULT;
+      const mainCurrency = settingsData?.main_currency || CURRENCY.DEFAULT;
 
       // Call database function (uses auth.uid() internally for security)
       const { data: rawData, error } = await supabase
