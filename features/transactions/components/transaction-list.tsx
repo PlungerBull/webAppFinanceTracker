@@ -96,76 +96,81 @@ export function TransactionList({
     )}>
       {/* Header - only show in default mode */}
       {!isCompact && (
-        <PageHeader
-          title={title || TRANSACTIONS.UI.LABELS.TRANSACTIONS}
-          sidebarCollapsed={isCollapsed}
-          actions={
-            <div className="flex items-center gap-2">
-              {/* Search Filter */}
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-500" />
-                <Input
-                  placeholder="Search..."
-                  value={searchQuery || ''}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                  className="pl-8 bg-white dark:bg-zinc-900"
-                />
-              </div>
+        <>
+          <PageHeader
+            title={title || TRANSACTIONS.UI.LABELS.TRANSACTIONS}
+            sidebarCollapsed={isCollapsed}
+          />
 
-              {/* Date Filter */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal bg-white dark:bg-zinc-900",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : "Date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={onDateChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              {selectedDate && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDateChange?.(undefined)}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-
-              {/* Category Filter */}
-              <Select
-                value={selectedCategory || "all"}
-                onValueChange={(value) => onCategoryChange?.(value === "all" ? null : value)}
-              >
-                <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-900">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Filters Toolbar */}
+          <div className={cn(
+            'flex items-center gap-2 pb-4 transition-all duration-300',
+            isCollapsed ? 'px-32' : 'px-12'
+          )}>
+            {/* Search Filter */}
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-500" />
+              <Input
+                placeholder="Search..."
+                value={searchQuery || ''}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                className="pl-8 bg-white dark:bg-zinc-900"
+              />
             </div>
-          }
-        />
+
+            {/* Date Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "justify-start text-left font-normal bg-white dark:bg-zinc-900",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP") : "Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={onDateChange}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            {selectedDate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDateChange?.(undefined)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+
+            {/* Category Filter */}
+            <Select
+              value={selectedCategory || "all"}
+              onValueChange={(value) => onCategoryChange?.(value === "all" ? null : value)}
+            >
+              <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-900">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
       )}
 
       {/* Transactions List */}
