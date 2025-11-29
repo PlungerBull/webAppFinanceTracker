@@ -3,7 +3,7 @@ BETTERMENT UI POINTS:
     1.1 Categories should be on the transaction tab
 2. Second level of organization, above categories, like parents.
 4. "Saldo Inicial" should not be displayed on all transaction list
-5. Centralize the currencies as a global table common to everyone.
+6. How is the main currency interacting with the rest of the code?
 
 
 
