@@ -7,7 +7,7 @@ import { useSidebar } from '@/contexts/sidebar-context';
 import { UserMenu } from '@/components/layout/user-menu';
 import { MainNavigation } from '@/components/layout/main-navigation';
 import { AccountList } from '@/features/accounts/components/account-list';
-import { CategoryList } from '@/features/categories/components/category-list';
+
 
 interface SidebarProps {
   className?: string;
@@ -62,8 +62,6 @@ export function Sidebar({ className }: SidebarProps) {
             {!isCollapsed && (
               <>
                 <AccountList />
-                <div className="my-4 border-t border-zinc-100 dark:border-zinc-800/50" />
-                <CategoryList />
               </>
             )}
           </nav>

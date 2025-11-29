@@ -104,12 +104,44 @@ export function useTransactionEditor(accountId?: string | null) {
     [updateMutation]
   );
 
+  /**
+   * Mutation for deleting a transaction
+   */
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', 'all', accountId] });
+      setEditingField(null);
+      setEditedValue(null);
+      setShowDatePicker(false);
+    },
+  });
+
+  /**
+   * Delete a transaction
+   */
+  const deleteTransaction = useCallback(
+    async (transactionId: string) => {
+      if (!transactionId) return;
+      await deleteMutation.mutateAsync(transactionId);
+    },
+    [deleteMutation]
+  );
+
   return {
     // State
     editingField,
     editedValue,
     showDatePicker,
-    isUpdating: updateMutation.isPending,
+    isUpdating: updateMutation.isPending || deleteMutation.isPending,
 
     // Setters
     setEditedValue,
@@ -119,6 +151,7 @@ export function useTransactionEditor(accountId?: string | null) {
     startEdit,
     cancelEdit,
     saveEdit,
+    deleteTransaction,
   };
 }
 
@@ -135,4 +168,5 @@ export type UseTransactionEditorReturn = {
   startEdit: (field: EditingField, currentValue: TransactionValue) => void;
   cancelEdit: () => void;
   saveEdit: (transactionId: string, field: string, value: TransactionValue) => Promise<void>;
+  deleteTransaction: (transactionId: string) => Promise<void>;
 };
