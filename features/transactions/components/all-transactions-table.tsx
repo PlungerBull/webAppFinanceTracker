@@ -15,6 +15,11 @@ function TransactionsContent() {
   const categoryId = searchParams.get('categoryId');
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['transactions', 'all', accountId, categoryId],
     queryFn: async () => {
@@ -80,6 +85,34 @@ function TransactionsContent() {
   const accountName = data?.accountName;
   const categoryName = data?.categoryName;
 
+  // Apply client-side filters
+  const filteredTransactions = transactions.filter((t: any) => {
+    // Search filter
+    if (searchQuery && !t.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    // Date filter
+    if (selectedDate) {
+      const transactionDate = new Date(t.date);
+      // Compare year, month, and day
+      if (
+        transactionDate.getFullYear() !== selectedDate.getFullYear() ||
+        transactionDate.getMonth() !== selectedDate.getMonth() ||
+        transactionDate.getDate() !== selectedDate.getDate()
+      ) {
+        return false;
+      }
+    }
+
+    // Category filter
+    if (selectedCategory && t.category_id !== selectedCategory) {
+      return false;
+    }
+
+    return true;
+  });
+
   // Determine the title for the transaction list
   const pageTitle = categoryName || accountName || 'Transactions';
 
@@ -94,11 +127,19 @@ function TransactionsContent() {
 
       {/* Section 2: Transactions List */}
       <TransactionList
-        transactions={transactions}
+        transactions={filteredTransactions}
         isLoading={isLoading}
         selectedTransactionId={selectedTransactionId}
         onTransactionSelect={setSelectedTransactionId}
         title={pageTitle}
+        // Filter props
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        categories={categories}
       />
 
       {/* Section 3: Transaction Details Panel */}
