@@ -1,10 +1,10 @@
 BETTERMENT UI POINTS:
-1. Removing todoist-style categoires on sidebar, sidebar should only display bank accounts.
-    1.1 Categories should be on the transaction tab
 2. Second level of organization, above categories, like parents.
-4. "Saldo Inicial" should not be displayed on all transaction list
 6. How is the main currency interacting with the rest of the code?
-
+7. Eventually you want to use ExchangeRate-API.com
+    7.1 Create an exchange rate table
+    7.2 Register list of exchange rates against USD
+    7.3 Cross currencies calculated on demand.
 
 
 FINAL DEPLOYMENT CHECKLIST:

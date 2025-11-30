@@ -269,7 +269,7 @@ export function TransactionList({
                         <div className="flex items-center justify-between">
                           {/* Left: Description */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-normal text-gray-700 dark:text-gray-300 truncate">
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
                               {transaction.description}
                             </p>
                           </div>
