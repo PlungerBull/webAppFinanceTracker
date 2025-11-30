@@ -17,6 +17,7 @@ export * from './constants/validation.constants';
 export * from './constants/currency.constants';
 export * from './constants/account.constants';
 export * from './constants/category.constants';
+export * from './constants/grouping.constants';
 export * from './constants/transaction.constants';
 export * from './constants/auth.constants';
 export * from './constants/settings.constants';

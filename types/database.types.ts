@@ -284,6 +284,19 @@ export type Database = {
                 }
                 Relationships: []
             }
+            parent_categories_with_counts: {
+                Row: {
+                    color: string
+                    created_at: string
+                    id: string
+                    name: string
+                    parent_id: string | null
+                    transaction_count: number
+                    updated_at: string
+                    user_id: string | null
+                }
+                Relationships: []
+            }
             transactions_view: {
                 Row: {
                     account_id: string | null

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -8,20 +8,33 @@ import { useSearchParams } from 'next/navigation';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { TransactionList } from '@/features/transactions/components/transaction-list';
 import { TransactionDetailPanel } from '@/features/transactions/components/transaction-detail-panel';
+import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
 
 function TransactionsContent() {
   const searchParams = useSearchParams();
   const accountId = searchParams.get('account');
   const categoryId = searchParams.get('categoryId');
+  const groupingId = searchParams.get('grouping');
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+
+  // Fetch children if grouping is selected
+  const { data: groupingChildren = [] } = useGroupingChildren(groupingId || '');
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
+  // Build category filter for grouping
+  const categoryFilter = useMemo(() => {
+    if (groupingId && groupingChildren.length > 0) {
+      return groupingChildren.map(c => c.id);
+    }
+    return null;
+  }, [groupingId, groupingChildren]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', 'all', accountId, categoryId],
+    queryKey: ['transactions', 'all', accountId, categoryId, groupingId, categoryFilter],
     queryFn: async () => {
       const supabase = createClient();
 
@@ -40,17 +53,26 @@ function TransactionsContent() {
         query = query.eq('category_id', categoryId);
       }
 
+      // Apply grouping filter if groupingId is present (filter by all child categories)
+      if (groupingId && categoryFilter && categoryFilter.length > 0) {
+        query = query.in('category_id', categoryFilter);
+      }
+
       const { data: transactions, error } = await query.order('date', { ascending: false });
 
       if (error) throw error;
 
-      // Fetch categories and accounts for sidebar filters and metadata
+      // Fetch categories, accounts, and groupings for sidebar filters and metadata
       const { data: categories } = await supabase
         .from('categories')
         .select('id, name, color, parent_id');
 
       const { data: accounts } = await supabase
         .from('bank_accounts')
+        .select('id, name');
+
+      const { data: groupings } = await supabase
+        .from('parent_categories_with_counts')
         .select('id, name');
 
       // Map transactions to match the expected TransactionRow interface
@@ -75,6 +97,7 @@ function TransactionsContent() {
         accounts: accounts || [],
         accountName: accountId && accounts?.length ? accounts.find(a => a.id === accountId)?.name : null,
         categoryName: categoryId && categories?.length ? categories.find(c => c.id === categoryId)?.name : null,
+        groupingName: groupingId && groupings?.length ? groupings.find(g => g.id === groupingId)?.name : null,
       };
     },
   });
@@ -84,6 +107,7 @@ function TransactionsContent() {
   const accounts = data?.accounts || [];
   const accountName = data?.accountName;
   const categoryName = data?.categoryName;
+  const groupingName = data?.groupingName;
 
   // Apply client-side filters
   const filteredTransactions = transactions.filter((t: any) => {
@@ -120,7 +144,7 @@ function TransactionsContent() {
   }, {});
 
   // Determine the title for the transaction list
-  const pageTitle = categoryName || accountName || 'Transactions';
+  const pageTitle = groupingName || categoryName || accountName || 'Transactions';
 
   const selectedTransaction = selectedTransactionId
     ? transactions.find((t: any) => t.id === selectedTransactionId) || null

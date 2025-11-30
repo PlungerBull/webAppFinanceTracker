@@ -39,6 +39,7 @@ export const QUERY_KEYS = {
     accountId ? ['account-currencies', accountId] : ['account-currencies'],
   CATEGORIES: ['categories'] as const,
   CURRENCIES: ['currencies'] as const,
+  GROUPINGS: ['groupings'] as const,
   USER_SETTINGS: ['user-settings'] as const,
   TRANSACTIONS: {
     ALL: ['transactions'] as const,

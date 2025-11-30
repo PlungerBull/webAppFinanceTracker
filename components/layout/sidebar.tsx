@@ -7,6 +7,7 @@ import { useSidebar } from '@/contexts/sidebar-context';
 import { UserMenu } from '@/components/layout/user-menu';
 import { MainNavigation } from '@/components/layout/main-navigation';
 import { AccountList } from '@/features/accounts/components/account-list';
+import { GroupingList } from '@/features/groupings/components/grouping-list';
 
 
 interface SidebarProps {
@@ -57,11 +58,12 @@ export function Sidebar({ className }: SidebarProps) {
             </div>
           </div>
 
-          {/* Zone B: Scrollable Content (Accounts + Categories) */}
+          {/* Zone B: Scrollable Content (Accounts + Groupings) */}
           <nav className="flex-1 overflow-y-auto p-2 custom-scrollbar">
             {!isCollapsed && (
               <>
                 <AccountList />
+                <GroupingList />
               </>
             )}
           </nav>
