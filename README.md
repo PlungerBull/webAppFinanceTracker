@@ -1,5 +1,4 @@
 BETTERMENT UI POINTS:
-2. Second level of organization, above categories, like parents.
 6. How is the main currency interacting with the rest of the code?
 
 
@@ -14,7 +13,4 @@ FINAL DEPLOYMENT CHECKLIST:
 3. SEO & Social Sharing (Partial)
 4. User Experience Polish (Missing)
 5. Data Safety (Review Needed)
-
-
-
 

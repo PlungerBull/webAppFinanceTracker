@@ -271,12 +271,11 @@ export function TransactionList({
                   </div>
 
                   {/* Category Chip (Middle Column) - Hidden on mobile */}
-                  <div className="hidden md:flex items-center gap-1 bg-gray-50/80 rounded-full px-2 py-0.5">
-                    <Circle
-                      className="h-[10px] w-[10px] fill-current"
-                      style={{ color: transaction.category_color || '#9CA3AF' }}
-                    />
-                    <span className="text-[10px] font-medium text-gray-500">
+                  <div className="hidden md:flex items-center bg-gray-100 rounded-full px-2 py-0.5">
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{ color: transaction.category_color || '#6B7280' }}
+                    >
                       {transaction.category_name || 'Uncategorized'}
                     </span>
                   </div>

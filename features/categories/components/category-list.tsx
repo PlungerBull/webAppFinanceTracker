@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCategories } from '../hooks/use-categories';
 import { AddCategoryModal } from './add-category-modal';
-import { EditCategoryModal } from './edit-category-modal';
+import { EditGroupingModal } from './edit-grouping-modal';
 import { DeleteCategoryDialog } from './delete-category-dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -305,7 +305,8 @@ export function CategoryList() {
                 onOpenChange={setIsAddCategoryModalOpen}
             />
 
-            <EditCategoryModal
+            <EditGroupingModal
+                key={editingCategory?.id}
                 open={!!editingCategory}
                 onOpenChange={(open) => !open && setEditingCategory(null)}
                 category={editingCategory}

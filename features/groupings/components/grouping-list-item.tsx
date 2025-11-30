@@ -5,7 +5,7 @@ import {
     Pencil,
     Trash2,
     Plus,
-    Hash,
+    Archive,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -46,8 +46,8 @@ export function GroupingListItem({
         >
             {/* Grouping Header with Icon, Name, and Count */}
             <div className="flex items-center w-full text-sm text-gray-700">
-                {/* Hash icon with grouping color */}
-                <Hash
+                {/* Archive icon with grouping color */}
+                <Archive
                     className="h-4 w-4 mr-2 flex-shrink-0"
                     style={{ color: grouping.color || GROUPING.DEFAULT_COLOR }}
                 />
