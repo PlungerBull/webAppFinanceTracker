@@ -19,7 +19,7 @@ export function MainNavigation({ isCollapsed }: MainNavigationProps) {
   const pathname = usePathname();
 
   return (
-    <div className="space-y-1 mb-4">
+    <div className="px-2 space-y-1 mb-4">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;
@@ -27,13 +27,14 @@ export function MainNavigation({ isCollapsed }: MainNavigationProps) {
         return (
           <Link key={item.href} href={item.href}>
             <Button
-              variant={isActive ? 'secondary' : 'ghost'}
+              variant="ghost"
               className={cn(
-                'w-full justify-start',
-                isCollapsed && 'justify-center px-2'
+                'w-full justify-start px-3 py-2 gap-3',
+                isCollapsed && 'justify-center px-2',
+                isActive ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-100'
               )}
             >
-              <Icon className={cn('h-5 w-5', !isCollapsed && 'mr-2')} />
+              <Icon className="h-[18px] w-[18px]" />
               {!isCollapsed && <span>{item.label}</span>}
             </Button>
           </Link>

@@ -4,7 +4,7 @@ import {
     MoreHorizontal,
     Pencil,
     Trash2,
-    DollarSign,
+    CreditCard,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -38,16 +38,15 @@ export function AccountListItem({
     return (
         <div
             className={cn(
-                "relative group px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md cursor-pointer",
-                isActive && "bg-zinc-100 dark:bg-zinc-800"
+                "relative group px-2 py-1 hover:bg-gray-50 rounded-md cursor-pointer",
+                isActive && "bg-gray-50"
             )}
             onClick={onClick}
         >
             {/* Account Header with Icon and Name */}
-            <div className="flex items-center w-full text-sm">
-                <DollarSign
-                    className="h-4 w-4 mr-2 flex-shrink-0"
-                    style={{ color: account.color }}
+            <div className="flex items-center w-full text-sm text-gray-700">
+                <CreditCard
+                    className="h-4 w-4 mr-2 flex-shrink-0 text-blue-500"
                 />
                 <span className="truncate flex-1">{account.name}</span>
                 <div className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity ml-2">
@@ -110,21 +109,21 @@ export function AccountListItem({
             </div>
 
             {/* Currency Balances - Indented */}
-            <div className="ml-6 space-y-0.5">
+            <div className="ml-8 space-y-0.5">
                 {account.balances.map((balance) => (
                     <div
                         key={balance.currency ?? 'unknown'}
                         className="flex items-center justify-between text-xs py-0.5 px-2"
                     >
-                        <span className="text-zinc-600 dark:text-zinc-400 font-medium">
+                        <span className="text-gray-500 font-medium">
                             {balance.currency ?? ACCOUNT_UI.LABELS.NOT_AVAILABLE}
                         </span>
                         <span
                             className={cn(
-                                'font-medium tabular-nums',
+                                'font-mono tabular-nums',
                                 (balance.current_balance ?? 0) >= 0
-                                    ? 'text-zinc-700 dark:text-zinc-300'
-                                    : 'text-red-600 dark:text-red-400'
+                                    ? 'text-gray-500'
+                                    : 'text-red-600'
                             )}
                         >
                             {formatCurrency(

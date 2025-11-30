@@ -1,12 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
-import { format } from 'date-fns';
-import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { format, isToday } from 'date-fns';
+import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
-import { useSidebar } from '@/contexts/sidebar-context';
-import { PageHeader } from '@/components/layout/page-header';
 import { TRANSACTIONS } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -67,231 +65,242 @@ export function TransactionList({
   categories = [],
   categoryCounts = {},
 }: TransactionListProps) {
-  const { isCollapsed } = useSidebar();
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // In compact mode, we don't use the sidebar context for padding
   const isCompact = variant === 'compact';
 
-  // Group transactions by date
-  const groupedTransactions = useMemo(() => {
-    const groups: { [key: string]: typeof transactions } = {};
-    transactions.forEach((transaction) => {
-      const dateKey = format(new Date(transaction.date), 'yyyy-MM-dd');
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(transaction);
-    });
-    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
-  }, [transactions]);
+  // Format date for display
+  const formatDateDisplay = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isToday(date)) {
+      return 'Today';
+    }
+    return format(date, 'MMM dd');
+  };
 
   return (
-    <div className={cn(
-      "flex-1 flex flex-col overflow-hidden",
-      !isCompact && "border-r border-gray-200 dark:border-gray-800"
-    )}>
+    <div className="flex-1 flex flex-col h-full bg-white overflow-hidden border-r border-gray-200">
       {/* Header - only show in default mode */}
       {!isCompact && (
         <>
-          <PageHeader
-            title={title || TRANSACTIONS.UI.LABELS.TRANSACTIONS}
-            sidebarCollapsed={isCollapsed}
-          />
-
-          {/* Filters Toolbar */}
-          <div className={cn(
-            'flex items-center gap-3 pb-4 transition-all duration-300 bg-white dark:bg-zinc-950',
-            isCollapsed ? 'px-32' : 'px-12'
-          )}>
-            {/* Search Filter */}
-            <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Search..."
-                value={searchQuery || ''}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-                className="pl-8 bg-white dark:bg-zinc-900"
-              />
+          {/* Global Header (Fixed) */}
+          <div className="z-20 pt-6 pb-2 px-6">
+            {/* Title */}
+            <div className="flex items-center mb-4">
+              <h1 className="text-xl font-bold text-gray-900">
+                {title || TRANSACTIONS.UI.LABELS.TRANSACTIONS}
+              </h1>
             </div>
 
-            {/* Vertical Separator */}
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
-
-            {/* Date Filter */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
+            {/* Filter Toolbar */}
+            <div className="flex items-center gap-2">
+              {/* Search Input (Collapsible) */}
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-[15px] w-[15px] text-gray-400" />
+                <Input
+                  placeholder="Search..."
+                  value={searchQuery || ''}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
                   className={cn(
-                    "justify-start text-left font-normal bg-white dark:bg-zinc-900 hover:bg-white dark:hover:bg-zinc-900",
-                    !selectedDate && "text-muted-foreground",
-                    selectedDate && "border-blue-500 dark:border-blue-400"
+                    "pl-7 py-1.5 h-8 text-sm bg-gray-100/50 border-transparent hover:bg-gray-100 focus:bg-white focus:ring-1 focus:ring-gray-300 transition-all duration-200 placeholder:text-gray-500",
+                    isSearchFocused ? "w-48" : "w-32"
                   )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? format(selectedDate, "PPP") : "Date"}
-                  <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={onDateChange}
-                  initialFocus
                 />
-              </PopoverContent>
-            </Popover>
+              </div>
 
-            {/* Category Filter - Multi-select */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "justify-start text-left font-normal bg-white dark:bg-zinc-900 hover:bg-white dark:hover:bg-zinc-900",
-                    selectedCategories.length === 0 && "text-muted-foreground",
-                    selectedCategories.length > 0 && "border-blue-500 dark:border-blue-400"
-                  )}
-                >
-                  <Hash className="mr-2 h-4 w-4" />
-                  {selectedCategories.length > 0
-                    ? `${selectedCategories.length} selected`
-                    : "Category"}
-                  <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="start">
-                <div className="max-h-[300px] overflow-y-auto p-2">
-                  {categories.map((category) => (
-                    <div
-                      key={category.id}
-                      className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md cursor-pointer"
-                      onClick={() => {
-                        const newSelection = selectedCategories.includes(category.id)
-                          ? selectedCategories.filter(id => id !== category.id)
-                          : [...selectedCategories, category.id];
-                        onCategoryChange?.(newSelection);
-                      }}
-                    >
-                      <Checkbox
-                        checked={selectedCategories.includes(category.id)}
-                        onCheckedChange={() => {}}
-                      />
+              {/* Vertical Divider */}
+              <div className="h-5 w-px bg-gray-200" />
+
+              {/* Date Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "px-2.5 py-1.5 h-8 rounded-md text-sm border border-transparent font-normal",
+                      selectedDate
+                        ? "bg-orange-50 text-orange-700 border-orange-200"
+                        : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <CalendarIcon className="mr-1.5 h-[15px] w-[15px]" />
+                    {selectedDate ? format(selectedDate, "MMM dd") : "Date"}
+                    <ChevronDown className="ml-1.5 h-[15px] w-[15px] opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-white shadow-xl border border-gray-100 rounded-lg animate-in fade-in zoom-in-95" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={onDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {/* Category Filter - Multi-select */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "px-2.5 py-1.5 h-8 rounded-md text-sm border border-transparent font-normal",
+                      selectedCategories.length > 0
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <Hash className="mr-1.5 h-[15px] w-[15px]" />
+                    {selectedCategories.length > 0
+                      ? `${selectedCategories.length} selected`
+                      : "Category"}
+                    <ChevronDown className="ml-1.5 h-[15px] w-[15px] opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-0 bg-white shadow-xl border border-gray-100 rounded-lg animate-in fade-in zoom-in-95" align="start">
+                  <div className="p-3 border-b border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Categories
+                    </p>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto p-2">
+                    {categories.map((category) => (
                       <div
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      <span className="flex-1 text-sm">{category.name}</span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {categoryCounts[category.id] || 0}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+                        key={category.id}
+                        className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-md cursor-pointer"
+                        onClick={() => {
+                          const newSelection = selectedCategories.includes(category.id)
+                            ? selectedCategories.filter(id => id !== category.id)
+                            : [...selectedCategories, category.id];
+                          onCategoryChange?.(newSelection);
+                        }}
+                      >
+                        <Checkbox
+                          checked={selectedCategories.includes(category.id)}
+                          onCheckedChange={() => { }}
+                        />
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        <span className="flex-1 text-sm">{category.name}</span>
+                        <span className="text-sm text-gray-500">
+                          {categoryCounts[category.id] || 0}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
 
-            {/* Clear All Filters Button */}
-            {(selectedCategories.length > 0 || selectedDate || searchQuery) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onSearchChange?.('');
-                  onDateChange?.(undefined);
-                  onCategoryChange?.([]);
-                }}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                <X className="mr-1 h-4 w-4" />
-                Clear Filters
-              </Button>
-            )}
+              {/* Clear All Filters Button */}
+              {(selectedCategories.length > 0 || selectedDate || searchQuery) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    onSearchChange?.('');
+                    onDateChange?.(undefined);
+                    onCategoryChange?.([]);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 h-8 py-1.5 px-2.5"
+                >
+                  <X className="mr-1 h-[15px] w-[15px]" />
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Subtle divider below filters */}
-          <div className="border-b border-gray-200 dark:border-gray-800" />
+          {/* Divider below header */}
+          <div className="h-px bg-gray-100" />
         </>
       )}
 
-      {/* Transactions List */}
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-950">
+      {/* Flat Table List (Scrollable) */}
+      <div className="flex-1 overflow-y-auto px-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
         ) : transactions.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center text-gray-500 dark:text-gray-400">
+            <div className="text-center text-gray-500">
               {TRANSACTIONS.UI.MESSAGES.NO_TRANSACTIONS}
             </div>
           </div>
         ) : (
           <div>
-            {groupedTransactions.map(([dateKey, dateTransactions]) => (
-              <div key={dateKey}>
-                {/* Date Header */}
-                <div className={cn(
-                  'transition-all duration-300',
-                  'transition-all duration-300',
-                  isCompact ? 'px-4' : (isCollapsed ? 'px-32' : 'px-12')
-                )}>
-                  <h3 className="text-xs font-normal text-gray-500 dark:text-gray-400 py-3">
-                    {format(new Date(dateKey), 'EEEE dd, MMM yyyy')}
-                  </h3>
-                </div>
+            {transactions.map((transaction) => (
+              <div
+                key={transaction.id}
+                onClick={() => onTransactionSelect?.(transaction.id)}
+                className={cn(
+                  'relative py-2.5 cursor-pointer transition-colors border-b border-gray-50',
+                  selectedTransactionId === transaction.id
+                    ? 'bg-blue-50/60'
+                    : 'hover:bg-gray-50',
+                  !onTransactionSelect && 'cursor-default hover:bg-transparent'
+                )}
+              >
+                {/* Category color indicator (spine) */}
+                {transaction.category_color && (
+                  <div
+                    className="absolute left-0 top-1 bottom-1 w-1 rounded-r-full"
+                    style={{ backgroundColor: transaction.category_color }}
+                  />
+                )}
 
-                {/* Transactions for this date */}
-                <div className={cn(
-                  'transition-all duration-300',
-                  'transition-all duration-300',
-                  isCompact ? 'ml-4' : (isCollapsed ? 'ml-32' : 'ml-12')
-                )}>
-                  {dateTransactions.map((transaction, index) => (
-                    <div key={transaction.id} className="relative">
-                      {/* Category color line */}
-                      {transaction.category_color && (
-                        <div
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                          style={{ backgroundColor: transaction.category_color }}
-                        />
+                <div className="flex items-center gap-4 pl-4">
+                  {/* Payee (Primary Column) - Flex grow */}
+                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                    <p className={cn(
+                      'text-sm truncate',
+                      selectedTransactionId === transaction.id
+                        ? 'font-semibold text-gray-900'
+                        : 'font-medium text-gray-700'
+                    )}>
+                      {transaction.description}
+                    </p>
+                    {transaction.notes && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                    )}
+                  </div>
+
+                  {/* Category Chip (Middle Column) - Hidden on mobile */}
+                  <div className="hidden md:flex items-center gap-1 bg-gray-50/80 rounded-full px-2 py-0.5">
+                    <Circle
+                      className="h-[10px] w-[10px] fill-current"
+                      style={{ color: transaction.category_color || '#9CA3AF' }}
+                    />
+                    <span className="text-[10px] font-medium text-gray-500">
+                      {transaction.category_name || 'Uncategorized'}
+                    </span>
+                  </div>
+
+                  {/* Date (Right Column) - Fixed width */}
+                  <div className="w-24 text-right">
+                    <p className="text-xs text-gray-400">
+                      {formatDateDisplay(transaction.date)}
+                    </p>
+                  </div>
+
+                  {/* Amount (Far Right Column) - Fixed width */}
+                  <div className="w-24 text-right">
+                    <p
+                      className={cn(
+                        'text-sm font-medium tabular-nums font-mono',
+                        transaction.amount_original >= 0
+                          ? 'text-green-600'
+                          : 'text-gray-900'
                       )}
-                      <div
-                        onClick={() => onTransactionSelect?.(transaction.id)}
-                        className={cn(
-                          'py-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-900 transition-all duration-300',
-                          isCompact ? 'pl-4 pr-4' : (isCollapsed ? 'pl-8 pr-32' : 'pl-8 pr-12'),
-                          selectedTransactionId === transaction.id && 'bg-gray-100 dark:border-gray-900',
-                          !onTransactionSelect && 'cursor-default hover:bg-transparent'
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          {/* Left: Description */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
-                              {transaction.description}
-                            </p>
-                          </div>
-
-                          {/* Right: Amount */}
-                          <div className="text-right ml-4">
-                            <p
-                              className={cn(
-                                'text-sm font-medium tabular-nums font-mono',
-                                transaction.amount_original >= 0
-                                  ? 'text-green-600 dark:text-green-500'
-                                  : 'text-red-600 dark:text-red-500'
-                              )}
-                            >
-                              {formatCurrency(transaction.amount_original, transaction.currency_original)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="border-t border-gray-100 dark:border-gray-800" />
-                    </div>
-                  ))}
+                    >
+                      {formatCurrency(transaction.amount_original, transaction.currency_original)}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}

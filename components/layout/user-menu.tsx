@@ -63,9 +63,9 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
   const renderUserAvatar = () => (
     <div
       className={cn(
-        'flex-shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium',
+        'flex-shrink-0 rounded-full bg-slate-800 text-white flex items-center justify-center font-medium',
         !isCollapsed && 'mr-2',
-        isCollapsed ? 'h-6 w-6 text-sm' : 'h-5 w-5 text-xs'
+        'h-6 w-6 text-xs'
       )}
     >
       {initials}
@@ -85,7 +85,7 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
       >
         <div className="flex items-center min-w-0">
           <User className="h-5 w-5 flex-shrink-0 mr-2" />
-          <span className="truncate text-sm font-medium text-zinc-400">
+          <span className="truncate text-sm font-medium text-gray-400">
             {USER_MENU.LOADING}
           </span>
         </div>
@@ -105,7 +105,7 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
         >
           <div className="flex items-center min-w-0">
             {renderUserAvatar()}
-            <span className="truncate text-sm font-medium">
+            <span className="truncate text-sm font-medium text-gray-900">
               {userDisplayName}
             </span>
           </div>

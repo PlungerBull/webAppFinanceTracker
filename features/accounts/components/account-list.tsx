@@ -29,9 +29,9 @@ export function AccountList() {
   return (
     <>
       <div className="mb-4">
-        <div className="px-2 mb-2">
+        <div className="px-3 mb-2">
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
-            <span className="flex-1 text-left px-2 py-1 text-zinc-500 dark:text-zinc-400">
+            <span className="flex-1 text-left px-2 py-1 text-gray-400">
               {ACCOUNT_UI.LABELS.ACCOUNTS}
             </span>
             <div className="flex items-center gap-1">
@@ -42,7 +42,7 @@ export function AccountList() {
                 onClick={() => setIsAddAccountModalOpen(true)}
                 title={ACCOUNT_UI.LABELS.ADD_ACCOUNT}
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
@@ -51,9 +51,9 @@ export function AccountList() {
                 onClick={() => setIsAccountsExpanded(!isAccountsExpanded)}
               >
                 {isAccountsExpanded ? (
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-3.5 w-3.5" />
                 ) : (
-                  <ChevronRight className="h-3 w-3" />
+                  <ChevronRight className="h-3.5 w-3.5" />
                 )}
               </Button>
             </div>
@@ -63,11 +63,11 @@ export function AccountList() {
         {isAccountsExpanded && (
           <div className="space-y-1">
             {isLoading ? (
-              <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              <div className="px-2 py-4 text-center text-sm text-gray-400">
                 {ACCOUNT_UI.MESSAGES.LOADING}
               </div>
             ) : groupedAccounts.length === 0 ? (
-              <div className="px-2 py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              <div className="px-2 py-4 text-center text-sm text-gray-400">
                 {ACCOUNT_UI.MESSAGES.NO_ACCOUNTS}
               </div>
             ) : (
