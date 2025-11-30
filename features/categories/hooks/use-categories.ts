@@ -22,7 +22,7 @@ export function useAddCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; color: string }) => categoriesApi.create(data),
+    mutationFn: (data: { name: string; color: string; parent_id?: string | null }) => categoriesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
@@ -33,7 +33,7 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<{ name: string; color: string }> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<{ name: string; color: string; parent_id?: string | null }> }) =>
       categoriesApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });

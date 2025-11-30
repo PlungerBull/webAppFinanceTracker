@@ -53,6 +53,30 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const { data: categories = [] } = useCategories();
   const { groupedAccounts } = useGroupedAccounts();
 
+  const categoryGroups = useMemo(() => {
+    const groups: { parent: typeof categories[0]; children: typeof categories[0][] }[] = [];
+    const parents = categories.filter(c => c.parent_id === null);
+    const childrenMap = new Map<string, typeof categories[0][]>();
+
+    categories.filter(c => c.parent_id !== null).forEach(child => {
+      if (child.parent_id) {
+        const list = childrenMap.get(child.parent_id) || [];
+        list.push(child);
+        childrenMap.set(child.parent_id, list);
+      }
+    });
+
+    parents.forEach(parent => {
+      if (!parent.id) return;
+      const children = childrenMap.get(parent.id);
+      if (children && children.length > 0) {
+        groups.push({ parent, children });
+      }
+    });
+
+    return groups.sort((a, b) => (a.parent.name || '').localeCompare(b.parent.name || ''));
+  }, [categories]);
+
   const {
     form,
     error,
@@ -66,7 +90,11 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
     // If currency is not selected (single currency account), use the first one
     const currencyCode = data.currency || selectedAccount.balances[0]?.currency;
-    if (!currencyCode) return;
+    if (!currencyCode) {
+      // Should not happen if account has balances, but safe fallback
+      console.error("No currency found for account");
+      return;
+    }
 
     await addTransactionMutation.mutateAsync({
       description: data.description,
@@ -75,7 +103,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       category_id: data.categoryId,
       account_id: data.accountId,
       notes: data.notes,
-      currency_original: currencyCode,
+      currency_original: currencyCode as string,
       exchange_rate: data.exchangeRate || CURRENCY.DEFAULTS.EXCHANGE_RATE,
     });
     handleClose();
@@ -256,17 +284,24 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-0" align="start">
               <div className="p-2">
-                {categories.filter(c => c.id !== null).map((category) => (
-                  <div
-                    key={category.id!}
-                    className="flex items-center gap-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
-                    onClick={() => setValue('categoryId', category.id!)}
-                  >
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: category.color || undefined }}
-                    />
-                    <span className="text-sm">{category.name}</span>
+                {categoryGroups.map((group) => (
+                  <div key={group.parent.id} className="mb-2 last:mb-0">
+                    <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                      {group.parent.name}
+                    </div>
+                    {group.children.map((category) => (
+                      <div
+                        key={category.id!}
+                        className="flex items-center gap-2 p-2 hover:bg-accent rounded-sm cursor-pointer ml-1"
+                        onClick={() => setValue('categoryId', category.id!)}
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: category.color || undefined }}
+                        />
+                        <span className="text-sm truncate">{category.name}</span>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

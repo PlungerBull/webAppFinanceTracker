@@ -39,7 +39,7 @@ export const categoriesApi = {
   },
 
   // Create a new category
-  create: async (category: { name: string; color: string }) => {
+  create: async (category: { name: string; color: string; parent_id?: string | null }) => {
     const supabase = createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -63,7 +63,7 @@ export const categoriesApi = {
   },
 
   // Update an existing category (RLS handles user filtering)
-  update: async (id: string, category: { name?: string; color?: string }) => {
+  update: async (id: string, category: { name?: string; color?: string; parent_id?: string | null }) => {
     const supabase = createClient();
 
     const { data, error } = await supabase

@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import { format } from 'date-fns';
 import { Calendar, Check, X, Hash } from 'lucide-react';
 import { TRANSACTIONS, CURRENCY, UI } from '@/lib/constants';
@@ -13,7 +15,9 @@ import {
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
@@ -40,6 +44,7 @@ interface Category {
     id: string;
     name: string;
     color: string;
+    parent_id: string | null;
 }
 
 interface Account {
@@ -74,6 +79,29 @@ export function TransactionInfo({
     cancelEdit,
     saveEdit,
 }: TransactionInfoProps) {
+    const categoryGroups = useMemo(() => {
+        const groups: { parent: Category; children: Category[] }[] = [];
+        const parents = categories.filter(c => c.parent_id === null);
+        const childrenMap = new Map<string, Category[]>();
+
+        categories.filter(c => c.parent_id !== null).forEach(child => {
+            if (child.parent_id) {
+                const list = childrenMap.get(child.parent_id) || [];
+                list.push(child);
+                childrenMap.set(child.parent_id, list);
+            }
+        });
+
+        parents.forEach(parent => {
+            const children = childrenMap.get(parent.id);
+            if (children && children.length > 0) {
+                groups.push({ parent, children });
+            }
+        });
+
+        return groups.sort((a, b) => (a.parent.name || '').localeCompare(b.parent.name || ''));
+    }, [categories]);
+
     return (
         <div className="space-y-4">
             {/* Date */}
@@ -148,18 +176,23 @@ export function TransactionInfo({
                                 <SelectValue placeholder={TRANSACTIONS.UI.LABELS.SELECT_CATEGORY} />
                             </SelectTrigger>
                             <SelectContent>
-                                {categories.map((category) => (
-                                    <SelectItem key={category.id} value={category.id}>
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 shrink-0"
-                                                style={{ color: category.color }}
-                                            >
-                                                <Hash className="w-3 h-3" />
-                                            </div>
-                                            <span>{category.name}</span>
-                                        </div>
-                                    </SelectItem>
+                                {categoryGroups.map((group) => (
+                                    <SelectGroup key={group.parent.id}>
+                                        <SelectLabel>{group.parent.name}</SelectLabel>
+                                        {group.children.map((category) => (
+                                            <SelectItem key={category.id} value={category.id}>
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 shrink-0"
+                                                        style={{ color: category.color }}
+                                                    >
+                                                        <Hash className="w-3 h-3" />
+                                                    </div>
+                                                    <span>{category.name}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectGroup>
                                 ))}
                             </SelectContent>
                         </Select>

@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import { format } from 'date-fns';
 import { Calendar, Hash, CreditCard, FileText, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,7 +17,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -40,6 +44,7 @@ interface Category {
   id: string;
   name: string;
   color: string;
+  parent_id: string | null;
 }
 
 interface Account {
@@ -71,6 +76,29 @@ export function TransactionDetailPanel({
     saveEdit,
     deleteTransaction,
   } = useTransactionEditor(accountId);
+
+  const categoryGroups = useMemo(() => {
+    const groups: { parent: Category; children: Category[] }[] = [];
+    const parents = categories.filter(c => c.parent_id === null);
+    const childrenMap = new Map<string, Category[]>();
+
+    categories.filter(c => c.parent_id !== null).forEach(child => {
+      if (child.parent_id) {
+        const list = childrenMap.get(child.parent_id) || [];
+        list.push(child);
+        childrenMap.set(child.parent_id, list);
+      }
+    });
+
+    parents.forEach(parent => {
+      const children = childrenMap.get(parent.id);
+      if (children && children.length > 0) {
+        groups.push({ parent, children });
+      }
+    });
+
+    return groups.sort((a, b) => (a.parent.name || '').localeCompare(b.parent.name || ''));
+  }, [categories]);
 
   if (!transaction) {
     return (
@@ -184,10 +212,15 @@ export function TransactionDetailPanel({
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      # {category.name}
-                    </SelectItem>
+                  {categoryGroups.map((group) => (
+                    <SelectGroup key={group.parent.id}>
+                      <SelectLabel>{group.parent.name}</SelectLabel>
+                      {group.children.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          # {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>

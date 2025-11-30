@@ -37,6 +37,7 @@ export const CATEGORY = {
       EDIT_CATEGORY: 'Edit Category',
       DELETE_CATEGORY: 'Delete Category',
       ADD_CATEGORY: 'Add Category',
+      PARENT_CATEGORY: 'Parent Category',
       CATEGORY_NAME: 'Category Name',
       CATEGORY_NAME_PLACEHOLDER: 'e.g., Groceries',
       COLOR: 'Color',
