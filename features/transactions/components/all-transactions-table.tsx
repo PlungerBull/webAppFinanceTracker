@@ -47,7 +47,7 @@ function TransactionsContent() {
       // Fetch categories and accounts for sidebar filters and metadata
       const { data: categories } = await supabase
         .from('categories')
-        .select('id, name, color');
+        .select('id, name, color, parent_id');
 
       const { data: accounts } = await supabase
         .from('bank_accounts')
