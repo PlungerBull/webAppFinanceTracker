@@ -46,7 +46,8 @@ export function AccountListItem({
             {/* Account Header with Icon and Name */}
             <div className="flex items-center w-full text-sm text-gray-700">
                 <CreditCard
-                    className="h-4 w-4 mr-2 flex-shrink-0 text-blue-500"
+                    className="h-4 w-4 mr-2 flex-shrink-0"
+                    style={{ color: account.balances[0]?.color || ACCOUNT.DEFAULT_COLOR }}
                 />
                 <span className="truncate flex-1">{account.name}</span>
                 <div className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity ml-2">
