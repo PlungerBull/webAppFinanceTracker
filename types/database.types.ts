@@ -20,7 +20,6 @@ export type Database = {
                     created_at: string | null
                     currency_code: string
                     id: string
-                    starting_balance: number | null
                     updated_at: string | null
                 }
                 Insert: {
@@ -28,7 +27,6 @@ export type Database = {
                     created_at?: string | null
                     currency_code: string
                     id?: string
-                    starting_balance?: number | null
                     updated_at?: string | null
                 }
                 Update: {
@@ -36,7 +34,6 @@ export type Database = {
                     created_at?: string | null
                     currency_code?: string
                     id?: string
-                    starting_balance?: number | null
                     updated_at?: string | null
                 }
                 Relationships: [

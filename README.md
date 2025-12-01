@@ -3,6 +3,7 @@ BETTERMENT UI POINTS:
 
 
 
+
 FINAL DEPLOYMENT CHECKLIST:
 1. Deploy 3 database structure
     1.1 Development (local)

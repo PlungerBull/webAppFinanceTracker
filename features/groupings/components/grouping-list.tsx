@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useGroupings } from '../hooks/use-groupings';
 import { useGroupingNavigation } from '../hooks/use-grouping-navigation';
-import { AddGroupingModal } from './add-grouping-modal';
-import { EditGroupingModal } from './edit-grouping-modal';
+import { AddCategoryModal } from '@/features/categories/components/add-category-modal';
+import { EditGroupingModal } from '@/features/categories/components/edit-grouping-modal';
 import { DeleteGroupingDialog } from './delete-grouping-dialog';
 import { AddSubcategoryModal } from './add-subcategory-modal';
 import { Button } from '@/components/ui/button';
@@ -90,7 +90,7 @@ export function GroupingList() {
       </div>
 
       {/* Modals */}
-      <AddGroupingModal
+      <AddCategoryModal
         open={isAddGroupingModalOpen}
         onOpenChange={setIsAddGroupingModalOpen}
       />
@@ -98,7 +98,7 @@ export function GroupingList() {
       <EditGroupingModal
         open={!!editingGrouping}
         onOpenChange={(open) => !open && setEditingGrouping(null)}
-        grouping={editingGrouping}
+        category={editingGrouping}
       />
 
       <DeleteGroupingDialog

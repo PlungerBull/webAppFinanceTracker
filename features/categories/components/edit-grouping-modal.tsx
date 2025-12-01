@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -51,6 +51,10 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
     const [isMigrationDropdownOpen, setIsMigrationDropdownOpen] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
 
+    // Refs for click-outside detection
+    const subcategoryDropdownRef = useRef<HTMLDivElement>(null);
+    const migrationDropdownRef = useRef<HTMLDivElement>(null);
+
     // Filter subcategories for the current category
     const subcategories = useMemo(() =>
         allCategories.filter(c => c.parent_id === category?.id && c.id !== null) as (Category & { id: string })[],
@@ -94,6 +98,37 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
             setMigrationTargetId(null);
         }
     }, [open, category]);
+
+    // Click-outside detection for dropdowns
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            // Close subcategory dropdown if click is outside
+            if (
+                subcategoryDropdownRef.current &&
+                !subcategoryDropdownRef.current.contains(event.target as Node) &&
+                isSubcategoryDropdownOpen
+            ) {
+                setIsSubcategoryDropdownOpen(false);
+            }
+
+            // Close migration dropdown if click is outside
+            if (
+                migrationDropdownRef.current &&
+                !migrationDropdownRef.current.contains(event.target as Node) &&
+                isMigrationDropdownOpen
+            ) {
+                setIsMigrationDropdownOpen(false);
+            }
+        };
+
+        // Add event listener to document
+        document.addEventListener('mousedown', handleClickOutside);
+
+        // Cleanup on unmount
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isSubcategoryDropdownOpen, isMigrationDropdownOpen]);
 
     const handleClose = () => {
         onOpenChange(false);
@@ -184,7 +219,9 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                 <div className="bg-gray-50 p-2 rounded-full">
                                     <Pencil className="w-[18px] h-[18px] text-gray-400" />
                                 </div>
-                                <h2 className="text-sm font-bold text-gray-900">Edit Grouping</h2>
+                                <DialogPrimitive.Title asChild>
+                                    <h2 className="text-sm font-bold text-gray-900">Edit Grouping</h2>
+                                </DialogPrimitive.Title>
                             </div>
                             <button
                                 onClick={handleClose}
@@ -203,6 +240,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                     <Input
                                         {...register('name')}
                                         autoFocus
+                                        autoComplete="off"
                                         onBlur={() => setIsEditingName(false)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
@@ -262,7 +300,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                         </div>
 
                                         {/* Multi-Select Dropdown */}
-                                        <div className="relative">
+                                        <div className="relative" ref={subcategoryDropdownRef}>
                                             <button
                                                 type="button"
                                                 onClick={() => setIsSubcategoryDropdownOpen(!isSubcategoryDropdownOpen)}
@@ -283,7 +321,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
 
                                             {/* Floating Menu */}
                                             {isSubcategoryDropdownOpen && (
-                                                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95">
+                                                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95">
                                                     <div className="bg-gray-50/50 border-b border-gray-50 px-4 py-2 flex justify-between items-center">
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase">AVAILABLE SUBCATEGORIES</span>
                                                         <button
@@ -319,7 +357,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                     {selectedSubcategoryIds.length > 0 && (
                                         <div className="space-y-2 animate-in slide-in-from-top-2 fade-in">
                                             <Label className="text-[10px] font-bold text-gray-400 uppercase">MOVE SELECTED TO:</Label>
-                                            <div className="relative">
+                                            <div className="relative" ref={migrationDropdownRef}>
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsMigrationDropdownOpen(!isMigrationDropdownOpen)}
@@ -340,7 +378,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                                 </button>
 
                                                 {isMigrationDropdownOpen && (
-                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 z-40 overflow-hidden max-h-48 overflow-y-auto">
+                                                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 z-40 overflow-hidden max-h-48 overflow-y-auto">
                                                         {availableParents.map(parent => (
                                                             <div
                                                                 key={parent.id}
