@@ -39,7 +39,7 @@ export const categoriesApi = {
   },
 
   // Create a new category
-  create: async (category: { name: string; color: string; parent_id?: string | null }) => {
+  create: async (category: { name: string; color: string; parent_id?: string | null; type?: 'income' | 'expense' }) => {
     const supabase = createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -50,6 +50,7 @@ export const categoriesApi = {
       .insert({
         ...category,
         user_id: user.id,
+        type: category.type || 'expense', // Default to 'expense' if not provided
       })
       .select()
       .single();

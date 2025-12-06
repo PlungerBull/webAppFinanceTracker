@@ -90,6 +90,7 @@ export type Database = {
                     id: string
                     name: string
                     parent_id: string | null
+                    type: 'income' | 'expense'
                     updated_at: string
                     user_id: string | null
                 }
@@ -99,6 +100,7 @@ export type Database = {
                     id?: string
                     name: string
                     parent_id?: string | null
+                    type?: 'income' | 'expense'
                     updated_at?: string
                     user_id?: string | null
                 }
@@ -108,6 +110,7 @@ export type Database = {
                     id?: string
                     name?: string
                     parent_id?: string | null
+                    type?: 'income' | 'expense'
                     updated_at?: string
                     user_id?: string | null
                 }
@@ -276,6 +279,7 @@ export type Database = {
                     name: string | null
                     parent_id: string | null
                     transaction_count: number | null
+                    type: 'income' | 'expense' | null
                     updated_at: string | null
                     user_id: string | null
                 }
@@ -289,6 +293,7 @@ export type Database = {
                     name: string
                     parent_id: string | null
                     transaction_count: number
+                    type: 'income' | 'expense'
                     updated_at: string
                     user_id: string | null
                 }

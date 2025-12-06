@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,6 +33,7 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 
 export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) {
     const addCategoryMutation = useAddCategory();
+    const [categoryType, setCategoryType] = useState<'income' | 'expense'>('expense');
 
     const {
         register,
@@ -52,6 +54,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
 
     const handleClose = () => {
         reset();
+        setCategoryType('expense'); // Reset to default
         onOpenChange(false);
     };
 
@@ -61,6 +64,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
                 name: data.name,
                 color: data.color,
                 parent_id: null, // Always null for top-level groupings
+                type: categoryType, // Include type in submission
             });
             handleClose();
         } catch (error) {
@@ -146,6 +150,37 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
                                             )}
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+
+                            {/* Category Type */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-semibold text-gray-500 uppercase">CATEGORY TYPE</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCategoryType('expense')}
+                                        className={cn(
+                                            "py-3 px-4 rounded-xl text-sm font-medium transition-all",
+                                            categoryType === 'expense'
+                                                ? "bg-red-50 text-red-700 ring-2 ring-red-200"
+                                                : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                        )}
+                                    >
+                                        Expense
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCategoryType('income')}
+                                        className={cn(
+                                            "py-3 px-4 rounded-xl text-sm font-medium transition-all",
+                                            categoryType === 'income'
+                                                ? "bg-green-50 text-green-700 ring-2 ring-green-200"
+                                                : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                        )}
+                                    >
+                                        Income
+                                    </button>
                                 </div>
                             </div>
                         </div>

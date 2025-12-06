@@ -22,7 +22,7 @@ export function useAddCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; color: string; parent_id?: string | null }) => categoriesApi.create(data),
+    mutationFn: (data: { name: string; color: string; parent_id?: string | null; type?: 'income' | 'expense' }) => categoriesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
