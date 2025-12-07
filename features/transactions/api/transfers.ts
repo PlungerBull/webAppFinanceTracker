@@ -30,8 +30,10 @@ export const transfersApi = {
       p_from_account_id: data.fromAccountId,
       p_to_account_id: data.toAccountId,
       p_amount: data.sentAmount,
-      p_currency_original: data.fromCurrency,
-      p_exchange_rate: impliedRate, // Calculated from amounts, not user input
+      p_amount_received: data.receivedAmount, // NEW: Explicit received amount
+      p_from_currency: data.fromCurrency,     // Renamed parameter
+      p_to_currency: data.toCurrency,         // NEW: Explicit destination currency
+      p_exchange_rate: impliedRate,
       p_date: data.date,
       p_description: data.description || 'Transfer',
     });

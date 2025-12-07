@@ -45,3 +45,5 @@ Notion excels at contextual creation. You don't open a modal to add a row; you c
 Things 3 uses the "Magic Plus Button" which allows dragging to a specific spot in the list to insert tasks exactly where you want them.
 
 Your TransactionDetailPanel is a great step in the right direction (side-by-side editing), but your creation flow is still modal-heavy. We should discuss moving towards Inline Creation or Popovers for lighter interactions.
+
+this is a test
