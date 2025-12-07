@@ -7,7 +7,6 @@ import { useAddTransaction } from '../hooks/use-transactions';
 import { useCreateTransfer } from '../hooks/use-transfers';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
-import { useDirectionToggle } from '../hooks/use-direction-toggle';
 import { useTransferCalculation } from '../hooks/use-transfer-calculation';
 import { TransactionTypeTabs } from './transaction-type-tabs';
 import { SmartSelector } from './smart-selector';
@@ -45,6 +44,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const [date, setDate] = useState<Date>(new Date());
   const [payee, setPayee] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Transfer-specific state
   const [toAccountId, setToAccountId] = useState<string | null>(null);
@@ -54,7 +54,6 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   // Hooks
   const { data: categories = [] } = useCategories();
   const { groupedAccounts } = useGroupedAccounts();
-  const { signState, toggleDirection } = useDirectionToggle(categoryId);
   const { exchangeRate, isMultiCurrency, displayRate } = useTransferCalculation(
     amount,
     receivedAmount,
@@ -92,7 +91,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   // Validation
   const isValid = useMemo(() => {
-    const hasAmount = parseFloat(amount) > 0;
+    const hasAmount = parseFloat(amount) !== 0 && !isNaN(parseFloat(amount));
     const hasFromAccount = fromAccountId && fromCurrency;
 
     if (mode === 'transaction') {
@@ -121,6 +120,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     setDate(new Date());
     setPayee('');
     setNotes('');
+    setHasSubmitted(false);
     onOpenChange(false);
   };
 
@@ -135,6 +135,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   };
 
   const handleSubmit = async () => {
+    setHasSubmitted(true);
     if (!isValid || isSubmitting) return;
 
     try {
@@ -142,7 +143,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
         // Transaction mode
         if (!categoryId || !fromAccountId || !fromCurrency) return;
 
-        const finalAmount = signState * parseFloat(amount);
+        const finalAmount = parseFloat(amount);
         const rate = exchangeRateInput ? parseFloat(exchangeRateInput) : 1;
 
         await addTransactionMutation.mutateAsync({
@@ -199,11 +200,11 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 
             {/* ZONE 1: Header - Mode Switcher */}
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+            <div className="relative p-4 border-b border-gray-100 flex items-center justify-center shrink-0">
               <TransactionTypeTabs value={mode} onChange={setMode} disabled={isSubmitting} />
               <button
                 onClick={handleClose}
-                className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -211,19 +212,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
             {/* ZONE 2: Hero Section - Amount */}
             <div className="relative py-6 px-6 shrink-0">
-              {/* Amount Input with Sign Toggle */}
+              {/* Amount Input */}
               <div className="flex items-center justify-center gap-3">
-                {/* Sign Toggle Button - Transaction Mode Only */}
-                {mode === 'transaction' && (
-                  <button
-                    type="button"
-                    onClick={() => toggleDirection(signState === -1 ? 1 : -1)}
-                    className="text-2xl font-light text-gray-400 hover:text-gray-600 transition-colors w-6 h-6 flex items-center justify-center"
-                  >
-                    {signState === -1 ? '−' : '+'}
-                  </button>
-                )}
-
                 {/* Transfer Arrow - Transfer Mode Only */}
                 {mode === 'transfer' && (
                   <div className="text-2xl font-light text-blue-400 w-6 h-6 flex items-center justify-center">
@@ -232,23 +222,34 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                 )}
 
                 {/* Amount Display and Input */}
-                <div className="relative">
-                  <span className="text-5xl font-bold text-gray-800 tabular-nums">
+                <div className="relative flex justify-center">
+                  <span
+                    className={cn(
+                      "text-5xl tabular-nums transition-colors text-center",
+                      amount ? "font-bold text-black" : "font-medium text-gray-300"
+                    )}
+                  >
                     {amount || '0.00'}
                   </span>
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-text"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow numbers, decimal points, and + or - at the start
+                      if (/^[+-]?\d*\.?\d*$/.test(value)) {
+                        setAmount(value);
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-text text-center"
                     placeholder="0.00"
                   />
                 </div>
               </div>
 
-              {/* Currency Display */}
-              {fromCurrency && (
+              {/* Currency Display - Only for multi-currency accounts */}
+              {fromCurrency && isFromAccountMultiCurrency && (
                 <div className="text-center mt-1">
                   <span className="text-xs font-medium text-gray-400 uppercase">
                     {fromCurrency}
@@ -364,9 +365,9 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
             {/* ZONE 4: Footer - Control Center */}
             <div className="bg-white border-t border-gray-100 p-4 rounded-b-3xl shrink-0">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                {/* Left Side: Chips */}
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                {/* Centered Chips */}
+                <div className="flex items-center justify-center gap-2 flex-wrap w-full">
                   {/* Account (From) - Always visible */}
                   <SmartSelector
                     icon={CreditCard}
@@ -374,7 +375,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                     value={selectedFromAccount?.name}
                     placeholder="Account"
                     required
-                    error={!fromAccountId}
+                    error={hasSubmitted && !fromAccountId}
                   >
                     <div className="w-72 max-h-96 overflow-y-auto p-2">
                       {groupedAccounts
@@ -425,7 +426,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                       value={selectedCategory?.name || undefined}
                       placeholder="Category"
                       required
-                      error={!categoryId}
+                      error={hasSubmitted && !categoryId}
                     >
                       <CategorySelector
                         value={categoryId || undefined}
