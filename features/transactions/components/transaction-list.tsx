@@ -15,21 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-
-interface TransactionRow {
-  id: string;
-  date: string;
-  description: string;
-  category_name: string | null;
-  category_color: string | null;
-  category_id: string | null;
-  amount_original: number;
-  currency_original: string;
-  account_name: string;
-  account_id: string;
-  exchange_rate: number | null;
-  notes: string | null;
-}
+import type { TransactionRow } from '../types';
 
 interface TransactionListProps {
   transactions: TransactionRow[];

@@ -2,7 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsApi } from '../api/transactions';
 import type { CreateTransactionFormData, UpdateTransactionFormData } from '../schemas/transaction.schema';
 
-export function useTransactions(filters?: { categoryId?: string }) {
+export function useTransactions(filters?: {
+  categoryId?: string;
+  accountId?: string;
+  categoryIds?: string[];
+}) {
   return useQuery({
     queryKey: ['transactions', filters],
     queryFn: () => transactionsApi.getAll(filters),

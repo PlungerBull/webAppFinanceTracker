@@ -23,34 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
-
-// Duplicate interface until we have a shared types file
-interface TransactionRow {
-    id: string;
-    date: string;
-    description: string;
-    category_name: string | null;
-    category_color: string | null;
-    category_id: string | null;
-    amount_original: number;
-    currency_original: string;
-    account_name: string;
-    account_id: string;
-    exchange_rate: number | null;
-    notes: string | null;
-}
-
-interface Category {
-    id: string;
-    name: string;
-    color: string;
-    parent_id: string | null;
-}
-
-interface Account {
-    id: string;
-    name: string;
-}
+import type { TransactionRow, Category, Account } from '../types';
 
 interface TransactionInfoProps {
     transaction: TransactionRow;

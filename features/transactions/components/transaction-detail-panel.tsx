@@ -24,47 +24,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-
-interface TransactionRow {
-  id: string;
-  date: string;
-  description: string;
-  category_name: string | null;
-  category_color: string | null;
-  category_id: string | null;
-  amount_original: number;
-  currency_original: string;
-  account_name: string;
-  account_id: string;
-  exchange_rate: number | null;
-  notes: string | null;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-  parent_id: string | null;
-}
-
-interface Account {
-  id: string;
-  name: string;
-}
+import { useCategories } from '@/features/categories/hooks/use-categories';
+import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import type { TransactionRow } from '../types';
 
 interface TransactionDetailPanelProps {
   transaction: TransactionRow | null;
-  categories: Category[];
-  accounts: Account[];
   accountId: string | null;
 }
 
 export function TransactionDetailPanel({
   transaction,
-  categories,
-  accounts,
   accountId,
 }: TransactionDetailPanelProps) {
+  // Fetch dependencies internally instead of receiving as props
+  const { data: categories = [] } = useCategories();
+  const { data: accountsData = [] } = useGroupedAccounts();
+
+  // Extract plain accounts array from grouped accounts
+  const accounts = useMemo(() =>
+    accountsData.flatMap(group => group.accounts.map(acc => ({
+      id: acc.id,
+      name: acc.name,
+    }))),
+    [accountsData]
+  );
   const {
     editingField,
     editedValue,

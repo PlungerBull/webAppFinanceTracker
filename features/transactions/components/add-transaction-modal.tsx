@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useAddTransaction } from '../hooks/use-transactions';
@@ -77,13 +77,13 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   const isToAccountMultiCurrency = toAccountCurrencies.length > 1;
 
   // Auto-select currency if only one available
-  useMemo(() => {
+  useEffect(() => {
     if (fromAccountId && fromAccountCurrencies.length === 1 && !fromCurrency) {
       setFromCurrency(fromAccountCurrencies[0]);
     }
   }, [fromAccountId, fromAccountCurrencies, fromCurrency]);
 
-  useMemo(() => {
+  useEffect(() => {
     if (toAccountId && toAccountCurrencies.length === 1 && !toCurrency) {
       setToCurrency(toAccountCurrencies[0]);
     }
@@ -203,6 +203,9 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
             <DialogPrimitive.Title>
               {mode === 'transaction' ? 'Add Transaction' : 'Transfer Funds'}
             </DialogPrimitive.Title>
+            <DialogPrimitive.Description>
+              Form to create a new transaction or transfer funds between accounts.
+            </DialogPrimitive.Description>
           </VisuallyHidden>
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
 

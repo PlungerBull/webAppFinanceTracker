@@ -9,25 +9,18 @@ import { startOfMonth, subMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // Badge color mapping based on category type
-const getBadgeStyles = (type: 'income' | 'expense', categoryName: string) => {
+const getBadgeStyles = (type: 'income' | 'expense') => {
   if (type === 'income') {
     return 'bg-green-100 text-green-700';
   }
 
-  // For expenses, use different colors based on common category names
-  const nameLower = categoryName.toLowerCase();
-  if (nameLower.includes('housing') || nameLower.includes('rent') || nameLower.includes('mortgage')) {
-    return 'bg-blue-100 text-blue-700';
-  }
-  if (nameLower.includes('food') || nameLower.includes('groceries') || nameLower.includes('dining')) {
-    return 'bg-yellow-100 text-yellow-800';
-  }
-  if (nameLower.includes('transport') || nameLower.includes('car') || nameLower.includes('gas')) {
-    return 'bg-orange-100 text-orange-800';
-  }
-
-  // Default for other expenses
+  // For expenses, use a neutral style
   return 'bg-gray-100 text-gray-700';
+};
+
+// Convert hex color to tailwind-compatible background style
+const getCategoryColorStyle = (color: string) => {
+  return { backgroundColor: color };
 };
 
 export function FinancialOverview() {
@@ -95,6 +88,12 @@ export function FinancialOverview() {
       <tr key={category.categoryId} className="border-b border-gray-100">
         <td className="py-3" style={{ paddingLeft: `${depth * 20 + 12}px` }}>
           <div className="flex items-center gap-2">
+            {/* Category color indicator from database */}
+            <div
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={getCategoryColorStyle(category.categoryColor)}
+              title={`${category.categoryName} category`}
+            />
             <span className={cn(
               'text-sm',
               isParent ? 'font-semibold text-gray-800' : 'font-normal text-gray-600'
@@ -104,7 +103,7 @@ export function FinancialOverview() {
             {isParent && (
               <span className={cn(
                 'px-2 py-0.5 rounded-full text-[10px] font-medium uppercase',
-                getBadgeStyles(type, category.categoryName)
+                getBadgeStyles(type)
               )}>
                 {type}
               </span>

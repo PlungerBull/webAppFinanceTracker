@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useSearchParams } from 'next/navigation';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { TransactionList } from '@/features/transactions/components/transaction-list';
 import { TransactionDetailPanel } from '@/features/transactions/components/transaction-detail-panel';
 import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
+import { useTransactions } from '../hooks/use-transactions';
+import { useCategories } from '@/features/categories/hooks/use-categories';
+import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import type { TransactionRow } from '../types';
 
 function TransactionsContent() {
   const searchParams = useSearchParams();
@@ -30,89 +32,33 @@ function TransactionsContent() {
     if (groupingId && groupingChildren.length > 0) {
       return groupingChildren.map(c => c.id);
     }
-    return null;
+    return undefined;
   }, [groupingId, groupingChildren]);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['transactions', 'all', accountId, categoryId, groupingId, categoryFilter],
-    queryFn: async () => {
-      const supabase = createClient();
-
-      // Query the enriched view (includes pre-joined category and account data)
-      let query = supabase
-        .from('transactions_view')
-        .select('*');
-
-      // Apply account filter if accountId is present
-      if (accountId) {
-        query = query.eq('account_id', accountId);
-      }
-
-      // Apply category filter if categoryId is present
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
-      }
-
-      // Apply grouping filter if groupingId is present (filter by all child categories)
-      if (groupingId && categoryFilter && categoryFilter.length > 0) {
-        query = query.in('category_id', categoryFilter);
-      }
-
-      const { data: transactions, error } = await query.order('date', { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch categories, accounts, and groupings for sidebar filters and metadata
-      const { data: categories } = await supabase
-        .from('categories')
-        .select('id, name, color, parent_id');
-
-      const { data: accounts } = await supabase
-        .from('bank_accounts')
-        .select('id, name');
-
-      const { data: groupings } = await supabase
-        .from('parent_categories_with_counts')
-        .select('id, name');
-
-      // Map transactions to match the expected TransactionRow interface
-      const mappedTransactions = transactions?.map(t => ({
-        id: t.id,
-        date: t.date,
-        description: t.description || '',
-        category_name: t.category_name,
-        category_color: t.category_color,
-        category_id: t.category_id,
-        amount_original: t.amount_original,
-        currency_original: t.currency_original,
-        account_name: t.account_name,
-        account_id: t.account_id,
-        exchange_rate: t.exchange_rate !== 1 ? t.exchange_rate : null,
-        notes: t.notes,
-      } as const)) || [];
-
-      return {
-        transactions: mappedTransactions as any,
-        categories: categories || [],
-        accounts: accounts || [],
-        accountName: accountId && accounts?.length ? accounts.find(a => a.id === accountId)?.name : null,
-        categoryName: categoryId && categories?.length ? categories.find(c => c.id === categoryId)?.name : null,
-        groupingName: groupingId && groupings?.length ? groupings.find(g => g.id === groupingId)?.name : null,
-      };
-    },
+  // Use API layer hooks instead of direct database calls
+  const { data: transactions = [], isLoading: isLoadingTransactions } = useTransactions({
+    accountId: accountId || undefined,
+    categoryId: categoryId || undefined,
+    categoryIds: categoryFilter,
   });
 
-  const transactions = data?.transactions || [];
-  const categories = data?.categories || [];
-  const accounts = data?.accounts || [];
-  const accountName = data?.accountName;
-  const categoryName = data?.categoryName;
-  const groupingName = data?.groupingName;
+  const { data: categories = [] } = useCategories();
+  const { data: accountsData = [] } = useGroupedAccounts();
+
+  const isLoading = isLoadingTransactions;
+
+  // Extract plain accounts array from grouped accounts
+  const accounts = accountsData.flatMap(group => group.accounts);
+
+  // Determine display names
+  const accountName = accountId ? accounts.find(a => a.id === accountId)?.name : null;
+  const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
+  const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
 
   // Apply client-side filters
-  const filteredTransactions = transactions.filter((t: any) => {
+  const filteredTransactions = transactions.filter((t: TransactionRow) => {
     // Search filter
-    if (searchQuery && !t.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+    if (searchQuery && t.description && !t.description.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
 
@@ -130,7 +76,7 @@ function TransactionsContent() {
     }
 
     // Category filter - check if transaction's category is in selected categories array
-    if (selectedCategories.length > 0 && !selectedCategories.includes(t.category_id)) {
+    if (selectedCategories.length > 0 && t.category_id && !selectedCategories.includes(t.category_id)) {
       return false;
     }
 
@@ -139,7 +85,7 @@ function TransactionsContent() {
 
   // Calculate transaction counts per category for the filter dropdown
   const categoryCounts = categories.reduce((acc: Record<string, number>, category) => {
-    acc[category.id] = filteredTransactions.filter((t: any) => t.category_id === category.id).length;
+    acc[category.id] = filteredTransactions.filter((t: TransactionRow) => t.category_id === category.id).length;
     return acc;
   }, {});
 
@@ -147,7 +93,7 @@ function TransactionsContent() {
   const pageTitle = groupingName || categoryName || accountName || 'Transactions';
 
   const selectedTransaction = selectedTransactionId
-    ? transactions.find((t: any) => t.id === selectedTransactionId) || null
+    ? transactions.find((t: TransactionRow) => t.id === selectedTransactionId) || null
     : null;
 
   return (
@@ -176,8 +122,6 @@ function TransactionsContent() {
       {/* Section 3: Transaction Details Panel */}
       <TransactionDetailPanel
         transaction={selectedTransaction}
-        categories={categories}
-        accounts={accounts}
         accountId={accountId}
       />
     </div>

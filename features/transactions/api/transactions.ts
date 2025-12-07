@@ -4,7 +4,11 @@ import type { CreateTransactionFormData, UpdateTransactionFormData } from '../sc
 
 export const transactionsApi = {
   // Get all transactions for the current user (RLS handles user filtering)
-  getAll: async (filters?: { categoryId?: string }) => {
+  getAll: async (filters?: {
+    categoryId?: string;
+    accountId?: string;
+    categoryIds?: string[];
+  }) => {
     const supabase = createClient();
 
     let query = supabase
@@ -12,8 +16,19 @@ export const transactionsApi = {
       .select('*')
       .order('date', { ascending: false });
 
+    // Apply category filter (single category)
     if (filters?.categoryId) {
       query = query.eq('category_id', filters.categoryId);
+    }
+
+    // Apply account filter
+    if (filters?.accountId) {
+      query = query.eq('account_id', filters.accountId);
+    }
+
+    // Apply category IDs filter (multiple categories, e.g., for grouping)
+    if (filters?.categoryIds && filters.categoryIds.length > 0) {
+      query = query.in('category_id', filters.categoryIds);
     }
 
     const { data, error } = await query;

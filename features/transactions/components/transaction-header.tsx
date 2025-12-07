@@ -7,23 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
-
-// Define the interface locally since it's not exported from a shared type file yet
-// Ideally this should come from types/database.types or similar
-interface TransactionRow {
-    id: string;
-    date: string;
-    description: string;
-    category_name: string | null;
-    category_color: string | null;
-    category_id: string | null;
-    amount_original: number;
-    currency_original: string;
-    account_name: string;
-    account_id: string;
-    exchange_rate: number | null;
-    notes: string | null;
-}
+import type { TransactionRow } from '../types';
 
 interface TransactionHeaderProps {
     transaction: TransactionRow;
