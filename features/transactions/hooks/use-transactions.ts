@@ -6,10 +6,13 @@ export function useTransactions(filters?: {
   categoryId?: string;
   accountId?: string;
   categoryIds?: string[];
+  searchQuery?: string;
+  date?: Date | string;
 }) {
   return useQuery({
     queryKey: ['transactions', filters],
     queryFn: () => transactionsApi.getAll(filters),
+    placeholderData: (previousData) => previousData,
   });
 }
 

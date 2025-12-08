@@ -14,6 +14,8 @@ export const transactionsApi = {
     categoryId?: string;
     accountId?: string;
     categoryIds?: string[];
+    searchQuery?: string;
+    date?: Date | string;
   }): Promise<TransactionView[]> => {
     const supabase = createClient();
 
@@ -35,6 +37,21 @@ export const transactionsApi = {
     // Apply category IDs filter (multiple categories, e.g., for grouping)
     if (filters?.categoryIds && filters.categoryIds.length > 0) {
       query = query.in('category_id', filters.categoryIds);
+    }
+
+    // Apply search filter (description)
+    if (filters?.searchQuery) {
+      query = query.ilike('description', `%${filters.searchQuery}%`);
+    }
+
+    // Apply date filter
+    if (filters?.date) {
+      // Ensure date is formatted as YYYY-MM-DD
+      const dateStr = filters.date instanceof Date
+        ? filters.date.toISOString().split('T')[0]
+        : filters.date.split('T')[0];
+
+      query = query.eq('date', dateStr);
     }
 
     const { data, error } = await query;

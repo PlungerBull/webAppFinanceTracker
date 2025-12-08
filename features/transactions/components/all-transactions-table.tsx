@@ -40,6 +40,9 @@ function TransactionsContent() {
     accountId: accountId || undefined,
     categoryId: categoryId || undefined,
     categoryIds: categoryFilter,
+    // Server-side filtering
+    searchQuery: searchQuery || undefined,
+    date: selectedDate,
   });
 
   const { data: categories = [] } = useCategories();
@@ -55,27 +58,18 @@ function TransactionsContent() {
   const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
   const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
 
-  // Apply client-side filters
+  // Apply client-side filters (ONLY category array for now if needed, but simplified)
   const filteredTransactions = transactions.filter((t: TransactionRow) => {
-    // Search filter
-    if (searchQuery && t.description && !t.description.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-
-    // Date filter
-    if (selectedDate) {
-      const transactionDate = new Date(t.date);
-      // Compare year, month, and day
-      if (
-        transactionDate.getFullYear() !== selectedDate.getFullYear() ||
-        transactionDate.getMonth() !== selectedDate.getMonth() ||
-        transactionDate.getDate() !== selectedDate.getDate()
-      ) {
-        return false;
-      }
-    }
+    // Only apply category filter here if it's strictly client-side specific logic not handled by API
+    // Currently API handles searchQuery, date, account, and category.
 
     // Category filter - check if transaction's category is in selected categories array
+    // This part matches the behavior requested: "Search & Date" moved to server.
+    // If selectedCategories is used for multi-selection filtering, we might want to move it to server too,
+    // but the plan specifically mentioned Search & Date. 
+    // However, for consistency, let's keep this client-side for now as per plan boundaries, 
+    // OR considering the user asked for "Scalability", client-side filtering 5000 rows is bad.
+    // But since API returns filtered rows by search/date, the array is smaller.
     if (selectedCategories.length > 0 && t.categoryId && !selectedCategories.includes(t.categoryId)) {
       return false;
     }
