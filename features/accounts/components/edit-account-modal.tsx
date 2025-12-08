@@ -13,10 +13,13 @@ import { DashboardModal } from '@/components/shared/dashboard-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Pencil, Plus, Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
 import { ACCOUNT, QUERY_KEYS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { Account as DomainAccount } from '@/types/domain';
+
+import { CurrencyManager } from './currency-manager';
+import type { CurrencyBalance } from '@/hooks/use-currency-manager';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
 type AccountCurrency = Database['public']['Tables']['account_currencies']['Row'];
@@ -39,9 +42,7 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
   const queryClient = useQueryClient();
 
   const [currencyReplacements, setCurrencyReplacements] = useState<CurrencyReplacement[]>([]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isColorPopoverOpen, setIsColorPopoverOpen] = useState(false);
-  const currencyDropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: allCurrencies = [] } = useCurrencies();
 
@@ -107,7 +108,6 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
   const handleClose = () => {
     resetForm();
     setCurrencyReplacements([]);
-    setIsDropdownOpen(false);
     setIsColorPopoverOpen(false);
     onOpenChange(false);
   };
@@ -142,56 +142,43 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
     }
   }, [account, accountCurrencies, reset]);
 
-  // Click-outside detection
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        currencyDropdownRef.current &&
-        !currencyDropdownRef.current.contains(event.target as Node) &&
-        isDropdownOpen
-      ) {
-        setIsDropdownOpen(false);
-      }
-    };
+  // Transform replacements to CurrencyBalance[] for the CurrencyManager
+  const currencyBalances: CurrencyBalance[] = currencyReplacements.map(r => ({
+    currency_code: r.newCurrencyCode,
+    starting_balance: r.newStartingBalance
+  }));
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
+  // Handle changes from CurrencyManager
+  const handleCurrenciesChange = (newBalances: CurrencyBalance[]) => {
+    // 1. Identify removed items
+    const newCodes = new Set(newBalances.map(b => b.currency_code));
+    const keptReplacements = currencyReplacements.filter(r => newCodes.has(r.newCurrencyCode));
 
-  const handleCurrencyChange = (index: number, field: 'newCurrencyCode' | 'newStartingBalance', value: string | number) => {
-    setCurrencyReplacements((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? { ...item, [field]: field === 'newStartingBalance' ? Number(value) : value }
-          : item
-      )
-    );
-  };
+    // 2. Identify added items
+    const existingCodes = new Set(currencyReplacements.map(r => r.newCurrencyCode));
+    const addedBalances = newBalances.filter(b => !existingCodes.has(b.currency_code));
 
-  const handleRemoveCurrency = (index: number) => {
-    setCurrencyReplacements((prev) => prev.filter((_, i) => i !== index));
-  };
+    // 3. Update balances for kept items
+    const updatedReplacements = keptReplacements.map(r => {
+      const newBalance = newBalances.find(b => b.currency_code === r.newCurrencyCode);
+      return newBalance ? { ...r, newStartingBalance: newBalance.starting_balance } : r;
+    });
 
-  const handleAddCurrency = (currencyCode: string) => {
-    if (currencyReplacements.some(cr => cr.newCurrencyCode === currencyCode)) {
-      return;
-    }
-
-    const newReplacement: CurrencyReplacement = {
+    // 4. Create new replacements for added items
+    const newReplacements = addedBalances.map(b => ({
       oldCurrency: {
-        id: `new-${Date.now()}`,
+        id: `new-${Date.now()}-${Math.random()}`,
         account_id: account?.id || '',
-        currency_code: currencyCode,
+        currency_code: b.currency_code,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       } as AccountCurrency,
-      newCurrencyCode: currencyCode,
-      newStartingBalance: 0,
+      newCurrencyCode: b.currency_code,
+      newStartingBalance: b.starting_balance,
       originalStartingBalance: 0,
-    };
+    }));
 
-    setCurrencyReplacements((prev) => [...prev, newReplacement]);
-    setIsDropdownOpen(false);
+    setCurrencyReplacements([...updatedReplacements, ...newReplacements]);
   };
 
   const availableCurrencies = allCurrencies.filter(
@@ -286,115 +273,35 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
           <DashboardModal.Error error={error} />
 
           {/* Currencies & Balances */}
-          <div className="space-y-4">
-                  {/* Header Row */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">
-                      Currencies & Balances
-                    </span>
+          {loadingCurrencies ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <CurrencyManager
+              value={currencyBalances}
+              onChange={handleCurrenciesChange}
+              availableCurrencies={availableCurrencies}
+              allCurrencies={allCurrencies}
+              disabled={isSubmitting}
+              renderItemFooter={(item) => {
+                // Find the replacement corresponding to this item
+                const replacement = currencyReplacements.find(r => r.newCurrencyCode === item.currency_code);
+                if (!replacement) return null;
 
-                    {/* Add Currency Dropdown */}
-                    <div className="relative" ref={currencyDropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        disabled={isSubmitting}
-                        className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Add Currency
-                      </button>
-
-                      {/* Currency Dropdown */}
-                      {isDropdownOpen && (
-                        <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden max-h-48 overflow-y-auto min-w-[280px] animate-in fade-in zoom-in-95">
-                          {availableCurrencies.length > 0 ? (
-                            availableCurrencies.map((currency) => (
-                              <div
-                                key={currency.code}
-                                onClick={() => handleAddCurrency(currency.code)}
-                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-2 transition-colors"
-                              >
-                                {currency.flag && <span>{currency.flag}</span>}
-                                <span className="font-medium text-sm">{currency.code}</span>
-                                <span className="text-xs text-gray-500">- {currency.name}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-4 py-3 text-center text-sm text-gray-500">
-                              All currencies added
-                            </div>
-                          )}
-                        </div>
-                      )}
+                if (replacement.oldCurrency.currency_code !== replacement.newCurrencyCode &&
+                  !replacement.oldCurrency.id.startsWith('new-')) {
+                  return (
+                    <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg ml-[76px]">
+                      ⚠️ Changing from {replacement.oldCurrency.currency_code} to {replacement.newCurrencyCode} will update all transactions
                     </div>
-                  </div>
+                  );
+                }
+                return null;
+              }}
+            />
+          )}
 
-                  {/* Currency List */}
-                  {loadingCurrencies ? (
-                    <div className="flex items-center justify-center p-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                    </div>
-                  ) : currencyReplacements.length === 0 ? (
-                    <div className="text-center text-sm text-gray-500 p-4 bg-gray-50/30 border border-gray-100 rounded-xl">
-                      No currencies added yet
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {currencyReplacements.map((replacement, index) => {
-                        const currencyData = allCurrencies.find(c => c.code === replacement.newCurrencyCode);
-                        const currencySymbol = currencyData?.symbol || replacement.newCurrencyCode;
-
-                        return (
-                          <div key={replacement.oldCurrency.id} className="space-y-2">
-                            <div className="flex items-center gap-3 animate-in slide-in-from-left-2 fade-in">
-                              {/* Currency Badge */}
-                              <div className="w-16 text-xs font-bold text-gray-700 bg-gray-100 rounded-lg py-2 text-center">
-                                {replacement.newCurrencyCode}
-                              </div>
-
-                              {/* Amount Input with Symbol */}
-                              <div className="relative flex-1">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                                  {currencySymbol}
-                                </span>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={replacement.newStartingBalance}
-                                  onChange={(e) =>
-                                    handleCurrencyChange(index, 'newStartingBalance', e.target.value)
-                                  }
-                                  disabled={isSubmitting}
-                                  placeholder="0"
-                                  className="font-mono text-sm text-right bg-gray-50 border-transparent focus:bg-white focus:border-blue-200 rounded-lg pl-8 pr-4 py-2"
-                                />
-                              </div>
-
-                              {/* Delete Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveCurrency(index)}
-                                disabled={isSubmitting}
-                                className="p-2 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            {/* Warning */}
-                            {replacement.oldCurrency.currency_code !== replacement.newCurrencyCode &&
-                             !replacement.oldCurrency.id.startsWith('new-') && (
-                              <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg ml-[76px]">
-                                ⚠️ Changing from {replacement.oldCurrency.currency_code} to {replacement.newCurrencyCode} will update all transactions
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-          </div>
         </DashboardModal.Body>
 
         {/* FOOTER: Fixed at Bottom */}

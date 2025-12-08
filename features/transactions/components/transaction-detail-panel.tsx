@@ -24,32 +24,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { useCategories } from '@/features/categories/hooks/use-categories';
-import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import type { TransactionRow } from '../types';
 import type { CategoryWithCount } from '@/types/domain';
 
 interface TransactionDetailPanelProps {
   transaction: TransactionRow | null;
   accountId: string | null;
+  categories: CategoryWithCount[];
+  accounts: { id: string; name: string }[];
 }
 
 export function TransactionDetailPanel({
   transaction,
   accountId,
+  categories,
+  accounts,
 }: TransactionDetailPanelProps) {
-  // Fetch dependencies internally instead of receiving as props
-  const { data: categories = [] } = useCategories();
-  const { data: accountsData = [] } = useGroupedAccounts();
+  // Dependencies received as props
 
-  // Use grouped accounts directly - each group IS an account
-  const accounts = useMemo(() =>
-    accountsData.map(group => ({
-      id: group.accountId,
-      name: group.name,
-    })),
-    [accountsData]
-  );
   const {
     editingField,
     editedValue,

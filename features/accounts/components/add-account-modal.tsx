@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CreditCard, X, Plus, Trash2, Loader2, Pencil, Check, ChevronDown } from 'lucide-react';
+import { CurrencyManager } from './currency-manager';
 import { VALIDATION, QUERY_KEYS, ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -34,15 +35,11 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
   const queryClient = useQueryClient();
   const {
     selectedCurrencies,
-    handleAddCurrency,
-    handleRemoveCurrency,
-    handleUpdateBalance,
+    setSelectedCurrenciesDirectly,
     resetCurrencies,
   } = useCurrencyManager();
 
   const { data: currencies = [], isLoading: isLoadingCurrencies } = useCurrencies();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const currencyDropdownRef = useRef<HTMLDivElement>(null);
 
   const onSubmit = async (data: AccountFormData) => {
     // Validation: At least one currency must be selected
@@ -102,31 +99,10 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
     return accountName ? accountName.charAt(0).toUpperCase() : 'A';
   };
 
-  // Click-outside detection for dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        currencyDropdownRef.current &&
-        !currencyDropdownRef.current.contains(event.target as Node) &&
-        isDropdownOpen
-      ) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
-
   // Filter out already selected currencies
   const availableCurrencies = currencies.filter(
     (currency) => !selectedCurrencies.some((c) => c.currency_code === currency.code)
   );
-
-  const handleAddCurrencyFromDropdown = async (code: string) => {
-    await handleAddCurrency(code);
-    setIsDropdownOpen(false);
-  };
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={handleClose}>
@@ -225,102 +201,13 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
                 )}
 
                 {/* Currencies & Balances Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">
-                      Currencies & Balances
-                    </span>
-
-                    {/* Add Currency Dropdown */}
-                    <div className="relative" ref={currencyDropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        disabled={isSubmitting}
-                        className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Add Currency
-                      </button>
-
-                      {/* Currency Dropdown */}
-                      {isDropdownOpen && (
-                        <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden max-h-48 overflow-y-auto min-w-[280px]">
-                          {isLoadingCurrencies ? (
-                            <div className="px-4 py-3 text-center text-sm text-gray-500">
-                              Loading...
-                            </div>
-                          ) : availableCurrencies.length > 0 ? (
-                            availableCurrencies.map((currency) => (
-                              <div
-                                key={currency.code}
-                                onClick={() => handleAddCurrencyFromDropdown(currency.code)}
-                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-2 transition-colors"
-                              >
-                                {currency.flag && <span>{currency.flag}</span>}
-                                <span className="font-medium text-sm">{currency.code}</span>
-                                <span className="text-xs text-gray-500">- {currency.name}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-4 py-3 text-center text-sm text-gray-500">
-                              All currencies added
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Selected Currencies List */}
-                  {selectedCurrencies.length > 0 && (
-                    <div className="space-y-2">
-                      {selectedCurrencies.map((currency) => {
-                        const currencyData = currencies.find(c => c.code === currency.currency_code);
-                        const currencySymbol = currencyData?.symbol || currency.currency_code;
-
-                        return (
-                          <div
-                            key={currency.currency_code}
-                            className="flex items-center gap-3 animate-in slide-in-from-left-2 fade-in"
-                          >
-                            {/* Currency Badge */}
-                            <div className="w-20 text-xs font-bold text-gray-700 bg-gray-100 rounded-lg py-2 text-center">
-                              {currency.currency_code}
-                            </div>
-
-                            {/* Amount Input with Currency Symbol */}
-                            <div className="relative flex-1">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                                {currencySymbol}
-                              </span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={currency.starting_balance}
-                                onChange={(e) =>
-                                  handleUpdateBalance(currency.currency_code, parseFloat(e.target.value) || 0)
-                                }
-                                disabled={isSubmitting}
-                                className="font-mono text-sm text-right bg-gray-50 border-transparent hover:bg-white hover:border-gray-200 focus:bg-white focus:border-blue-200 rounded-xl pl-8 pr-4 py-2 transition-all"
-                              />
-                            </div>
-
-                            {/* Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveCurrency(currency.currency_code)}
-                              disabled={isSubmitting}
-                              className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <CurrencyManager
+                  value={selectedCurrencies}
+                  onChange={setSelectedCurrenciesDirectly}
+                  availableCurrencies={availableCurrencies}
+                  allCurrencies={currencies}
+                  disabled={isSubmitting}
+                />
               </div>
 
               {/* Footer - Fixed */}

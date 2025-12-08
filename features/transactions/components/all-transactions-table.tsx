@@ -123,6 +123,14 @@ function TransactionsContent() {
       <TransactionDetailPanel
         transaction={selectedTransaction}
         accountId={accountId}
+        categories={categories}
+        accounts={useMemo(() =>
+          accountsData.map(group => ({
+            id: group.accountId,
+            name: group.name,
+          })),
+          [accountsData]
+        )}
       />
     </div>
   );
