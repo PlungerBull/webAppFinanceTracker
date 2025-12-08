@@ -152,14 +152,63 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
                                     </div>
                                 )}
 
-                                {/* Inheritance Info */}
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <span>Inherits color from</span>
-                                    <div
-                                        className="h-3 w-3 rounded-full"
-                                        style={{ backgroundColor: selectedParent?.color || GROUPING.DEFAULT_COLOR }}
-                                    />
-                                    <span className="font-semibold text-gray-700">{selectedParent?.name}</span>
+                                {/* Parent Selector */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold text-gray-500 uppercase">
+                                        Parent Grouping
+                                    </Label>
+                                    <Popover open={isParentDropdownOpen} onOpenChange={setIsParentDropdownOpen}>
+                                        <PopoverTrigger asChild>
+                                            <button
+                                                type="button"
+                                                className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded-xl px-4 py-3 flex items-center gap-3 transition-all"
+                                            >
+                                                {/* Color Indicator */}
+                                                <div
+                                                    className="w-4 h-4 rounded-full flex-shrink-0"
+                                                    style={{ backgroundColor: selectedParent?.color || GROUPING.DEFAULT_COLOR }}
+                                                />
+                                                {/* Parent Name */}
+                                                <span className="flex-1 text-left text-sm font-medium text-gray-800">
+                                                    {selectedParent?.name || 'Select Parent'}
+                                                </span>
+                                                {/* Chevron */}
+                                                <ChevronDown className={cn(
+                                                    "w-4 h-4 text-gray-400 transition-transform",
+                                                    isParentDropdownOpen && "rotate-180"
+                                                )} />
+                                            </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent align="start" className="w-full p-2 bg-white rounded-xl shadow-xl border border-gray-100">
+                                            <div className="space-y-1">
+                                                {allGroupings.map((parent) => (
+                                                    <button
+                                                        key={parent.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedParent(parent);
+                                                            setIsParentDropdownOpen(false);
+                                                        }}
+                                                        className="w-full px-3 py-2 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors"
+                                                    >
+                                                        <div
+                                                            className="w-3 h-3 rounded-full flex-shrink-0"
+                                                            style={{ backgroundColor: parent.color }}
+                                                        />
+                                                        <span className="flex-1 text-left text-sm text-gray-800">
+                                                            {parent.name}
+                                                        </span>
+                                                        {selectedParent?.id === parent.id && (
+                                                            <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <p className="text-xs text-gray-500 px-1">
+                                        This subcategory will inherit the color from its parent grouping
+                                    </p>
                                 </div>
                             </div>
 
