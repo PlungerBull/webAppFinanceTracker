@@ -5,7 +5,6 @@ import { useDeleteItem } from '@/hooks/shared/use-delete-item';
 import { categoriesApi } from '../api/categories';
 import { QUERY_KEYS } from '@/lib/constants';
 import { CATEGORY } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { canDeleteParent } from '../utils/validation';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -18,14 +17,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-
-// Use the view type which includes transaction_count
-type Category = Database['public']['Views']['categories_with_counts']['Row'];
+import type { CategoryWithCount } from '@/types/domain';
 
 interface DeleteCategoryDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    category: Category | null;
+    category: CategoryWithCount | null;
 }
 
 export function DeleteCategoryDialog({
@@ -54,8 +51,8 @@ export function DeleteCategoryDialog({
     const checkDeletability = async () => {
         if (!category) return;
 
-        // Only check for parents (parent_id is null)
-        if (category.parent_id === null) {
+        // Only check for parents (parentId is null)
+        if (category.parentId === null) {
             setIsChecking(true);
             try {
                 const result = await canDeleteParent(category.id!);
@@ -138,9 +135,9 @@ export function DeleteCategoryDialog({
                     <span className="text-red-500 mt-2 block">
                         {CATEGORY.UI.MESSAGES.DELETE_WARNING}
                     </span>
-                    {(category.transaction_count || 0) > 0 && (
+                    {(category.transactionCount || 0) > 0 && (
                         <span className="text-red-500 mt-1 block font-semibold">
-                            {CATEGORY.UI.MESSAGES.TRANSACTION_COUNT_WARNING(category.transaction_count || 0)}
+                            {CATEGORY.UI.MESSAGES.TRANSACTION_COUNT_WARNING(category.transactionCount || 0)}
                         </span>
                     )}
                 </>

@@ -41,8 +41,8 @@ export function CategoryList() {
     const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true);
     const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
     const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
-    const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-    const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+    const [editingCategory, setEditingCategory] = useState<CategoryWithCount | null>(null);
+    const [deletingCategory, setDeletingCategory] = useState<CategoryWithCount | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     // Group categories into hierarchy
@@ -124,17 +124,17 @@ export function CategoryList() {
         router.push(`/transactions?${params.toString()}`);
     };
 
-    const handleEdit = (category: Category, e: React.MouseEvent) => {
+    const handleEdit = (category: CategoryWithCount, e: React.MouseEvent) => {
         e.stopPropagation();
         setEditingCategory(category);
     };
 
-    const handleDelete = (category: Category, e: React.MouseEvent) => {
+    const handleDelete = (category: CategoryWithCount, e: React.MouseEvent) => {
         e.stopPropagation();
         setDeletingCategory(category);
     };
 
-    const renderCategoryItem = (category: Category, isParent: boolean, level: number = 0) => {
+    const renderCategoryItem = (category: CategoryWithCount, isParent: boolean, level: number = 0) => {
         const isExpanded = category.id ? expandedParents.has(category.id) : false;
         const hasChildren = isParent && (category as CategoryNode).children.length > 0;
 
@@ -194,7 +194,7 @@ export function CategoryList() {
                         "text-xs text-zinc-500 font-medium px-2",
                         openMenuId === category.id ? "hidden" : "group-hover:hidden"
                     )}>
-                        {category.transaction_count}
+                        {category.transactionCount}
                     </span>
 
                     {/* Actions Menu - Hidden by default, visible on hover or when menu is open */}

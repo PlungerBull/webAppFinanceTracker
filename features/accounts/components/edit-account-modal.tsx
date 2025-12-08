@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Pencil, Plus, Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
 import { ACCOUNT, QUERY_KEYS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import type { Account as DomainAccount } from '@/types/domain';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
 type AccountCurrency = Database['public']['Tables']['account_currencies']['Row'];
@@ -23,7 +24,7 @@ type AccountCurrency = Database['public']['Tables']['account_currencies']['Row']
 interface EditAccountModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  account: BankAccount | null;
+  account: DomainAccount | null;
   onDelete?: (accountId: string) => void;
 }
 

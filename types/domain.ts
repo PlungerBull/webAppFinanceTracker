@@ -18,24 +18,38 @@
 /**
  * Transaction from transactions_view (most commonly used in UI)
  * This includes joined data from accounts and categories
+ *
+ * CRITICAL FIELDS (guaranteed non-null by transformer):
+ * - id, userId, accountId, accountName: Always present
+ * - amountOriginal, amountHome: Always present (defaults to 0)
+ * - currencyOriginal: Always present (defaults to 'USD')
+ * - exchangeRate: Always present (defaults to 1)
+ * - date, createdAt, updatedAt: Always present
+ *
+ * OPTIONAL FIELDS (can be null):
+ * - categoryId, categoryName, categoryColor: Transaction may not have a category
+ * - description, notes: Optional user-provided fields
  */
 export interface TransactionView {
-  id: string | null;
-  userId: string | null;
-  accountId: string | null;
-  accountName: string | null;
+  // Critical fields - guaranteed non-null
+  id: string;
+  userId: string;
+  accountId: string;
+  accountName: string;
+  amountOriginal: number;
+  amountHome: number;
+  currencyOriginal: string;
+  exchangeRate: number;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+
+  // Optional fields - can be null
   categoryId: string | null;
   categoryName: string | null;
   categoryColor: string | null;
-  amountOriginal: number | null;
-  amountHome: number | null;
-  currencyOriginal: string | null;
-  exchangeRate: number | null;
   description: string | null;
   notes: string | null;
-  date: string | null;
-  createdAt: string | null;
-  updatedAt: string | null;
 }
 
 /**
@@ -119,15 +133,18 @@ export interface Category {
 }
 
 export interface CategoryWithCount {
-  id: string | null;
-  name: string | null;
-  color: string | null;
-  type: 'income' | 'expense' | null;
+  // Critical fields - guaranteed non-null by transformer
+  id: string;
+  name: string;
+  color: string;
+  type: 'income' | 'expense';
+  transactionCount: number;
+  createdAt: string;
+  updatedAt: string;
+
+  // Optional fields - can be null
   parentId: string | null;
-  transactionCount: number | null;
   userId: string | null;
-  createdAt: string | null;
-  updatedAt: string | null;
 }
 
 export interface ParentCategoryWithCount {

@@ -369,27 +369,37 @@ export function dbAccountBalancesToDomain(
 /**
  * Transforms a database transactions_view row to domain type
  * NOTE: This is a VIEW that includes joined data from accounts and categories
+ *
+ * CRITICAL FIELDS (enforced non-null):
+ * - id, userId, accountId: Must exist for a valid transaction
+ * - amountOriginal, amountHome: Must exist (defaults to 0 if somehow null)
+ * - currencyOriginal: Must exist (defaults to 'USD' if somehow null)
+ * - exchangeRate: Must exist (defaults to 1 if somehow null)
+ * - date: Must exist (defaults to current date if somehow null)
  */
 export function dbTransactionViewToDomain(
   dbTransactionView: Database['public']['Views']['transactions_view']['Row']
 ) {
   return {
-    id: dbTransactionView.id,
-    userId: dbTransactionView.user_id,
-    accountId: dbTransactionView.account_id,
-    accountName: dbTransactionView.account_name,
+    // Critical fields - enforce non-null with sensible defaults
+    id: dbTransactionView.id || '',
+    userId: dbTransactionView.user_id || '',
+    accountId: dbTransactionView.account_id || '',
+    accountName: dbTransactionView.account_name || 'Unknown Account',
+    amountOriginal: dbTransactionView.amount_original ?? 0,
+    amountHome: dbTransactionView.amount_home ?? 0,
+    currencyOriginal: dbTransactionView.currency_original || 'USD',
+    exchangeRate: dbTransactionView.exchange_rate ?? 1,
+    date: dbTransactionView.date || new Date().toISOString(),
+    createdAt: dbTransactionView.created_at || new Date().toISOString(),
+    updatedAt: dbTransactionView.updated_at || new Date().toISOString(),
+
+    // Optional fields - can be null
     categoryId: dbTransactionView.category_id,
     categoryName: dbTransactionView.category_name,
     categoryColor: dbTransactionView.category_color,
-    amountOriginal: dbTransactionView.amount_original,
-    amountHome: dbTransactionView.amount_home,
-    currencyOriginal: dbTransactionView.currency_original,
-    exchangeRate: dbTransactionView.exchange_rate,
     description: dbTransactionView.description,
     notes: dbTransactionView.notes,
-    date: dbTransactionView.date,
-    createdAt: dbTransactionView.created_at,
-    updatedAt: dbTransactionView.updated_at,
   } as const;
 }
 
@@ -404,20 +414,21 @@ export function dbTransactionViewsToDomain(
 
 /**
  * Transforms a database categories_with_counts view row to domain type
+ * Enforces non-null for critical category fields
  */
 export function dbCategoryWithCountToDomain(
   dbCategory: Database['public']['Views']['categories_with_counts']['Row']
 ) {
   return {
-    id: dbCategory.id,
-    name: dbCategory.name,
-    color: dbCategory.color,
-    type: dbCategory.type,
+    id: dbCategory.id || '',
+    name: dbCategory.name || 'Unknown Category',
+    color: dbCategory.color || '#808080',
+    type: dbCategory.type || 'expense',
     parentId: dbCategory.parent_id,
-    transactionCount: dbCategory.transaction_count,
+    transactionCount: dbCategory.transaction_count ?? 0,
     userId: dbCategory.user_id,
-    createdAt: dbCategory.created_at,
-    updatedAt: dbCategory.updated_at,
+    createdAt: dbCategory.created_at || new Date().toISOString(),
+    updatedAt: dbCategory.updated_at || new Date().toISOString(),
   } as const;
 }
 

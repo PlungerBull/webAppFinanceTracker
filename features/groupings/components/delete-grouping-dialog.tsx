@@ -4,14 +4,12 @@ import { useState, useEffect } from 'react';
 import { useDeleteGrouping, useGroupingChildren } from '../hooks/use-groupings';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { GROUPING } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
-
-type ParentCategory = Database['public']['Views']['parent_categories_with_counts']['Row'];
+import type { ParentCategoryWithCount } from '@/types/domain';
 
 interface DeleteGroupingDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    grouping: ParentCategory | null;
+    grouping: ParentCategoryWithCount | null;
 }
 
 export function DeleteGroupingDialog({ open, onOpenChange, grouping }: DeleteGroupingDialogProps) {

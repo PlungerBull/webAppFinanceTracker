@@ -2,17 +2,15 @@
 
 import { useDeleteItem } from '@/hooks/shared/use-delete-item';
 import { accountsApi } from '../api/accounts';
-import type { Database } from '@/types/database.types';
 import { QUERY_KEYS } from '@/lib/constants';
 import { ACCOUNT_UI } from '@/lib/constants';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
-
-type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
+import type { Account } from '@/types/domain';
 
 interface DeleteAccountDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  account: BankAccount | null;
+  account: Account | null;
 }
 
 export function DeleteAccountDialog({ open, onOpenChange, account }: DeleteAccountDialogProps) {
