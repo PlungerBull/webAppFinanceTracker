@@ -1,24 +1,12 @@
 'use client';
 
-import {
-    MoreHorizontal,
-    Pencil,
-    Trash2,
-    CreditCard,
-} from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Pencil, Trash2, CreditCard } from 'lucide-react';
+import { ResourceListItem } from '@/components/ui/resource-list-item';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
 import type { GroupedAccount } from '@/hooks/use-grouped-accounts';
-import type { Database } from '@/types/database.types';
-
-type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
+import type { BankAccount } from '@/types/domain';
 
 interface AccountListItemProps {
     account: GroupedAccount;
@@ -35,80 +23,51 @@ export function AccountListItem({
     onEdit,
     onDelete,
 }: AccountListItemProps) {
-    return (
-        <div
-            className={cn(
-                "relative group px-2 py-1 hover:bg-gray-50 rounded-md cursor-pointer",
-                isActive && "bg-gray-50"
-            )}
-            onClick={onClick}
-        >
-            {/* Account Header with Icon and Name */}
-            <div className="flex items-center w-full text-sm text-gray-700">
-                <CreditCard
-                    className="h-4 w-4 mr-2 flex-shrink-0"
-                    style={{ color: account.balances[0]?.color || ACCOUNT.DEFAULT_COLOR }}
-                />
-                <span className="truncate flex-1">{account.name}</span>
-                <div className="opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity ml-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger
-                            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded text-xs text-zinc-500 dark:text-zinc-400 border-0 bg-transparent flex items-center justify-center outline-none"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <MoreHorizontal className="h-3 w-3" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="z-50">
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const balance = account.balances[0];
-                                    // Construct a BankAccount object from the balance view data
-                                    // This assumes the view contains all necessary fields or we provide defaults
-                                    if (balance.account_id && balance.user_id) {
-                                        const bankAccount: BankAccount = {
-                                            id: balance.account_id,
-                                            user_id: balance.user_id,
-                                            name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-                                            color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
-                                            is_visible: balance.is_visible ?? true,
-                                            created_at: balance.created_at ?? new Date().toISOString(), // These might be missing from view, using fallback
-                                            updated_at: balance.updated_at ?? new Date().toISOString(),
-                                        };
-                                        onEdit(bankAccount);
-                                    }
-                                }}
-                            >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                {ACCOUNT_UI.LABELS.EDIT_ACCOUNT}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const balance = account.balances[0];
-                                    if (balance.account_id && balance.user_id) {
-                                        const bankAccount: BankAccount = {
-                                            id: balance.account_id,
-                                            user_id: balance.user_id,
-                                            name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-                                            color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
-                                            is_visible: balance.is_visible ?? true,
-                                            created_at: balance.created_at ?? new Date().toISOString(),
-                                            updated_at: balance.updated_at ?? new Date().toISOString(),
-                                        };
-                                        onDelete(bankAccount);
-                                    }
-                                }}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {ACCOUNT_UI.LABELS.DELETE_ACCOUNT}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
+    // Helper to construct BankAccount from balance view data
+    const getBankAccount = (): BankAccount | null => {
+        const balance = account.balances[0];
+        if (!balance.account_id || !balance.user_id) return null;
 
+        return {
+            id: balance.account_id,
+            user_id: balance.user_id,
+            name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
+            color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
+            is_visible: balance.is_visible ?? true,
+            created_at: balance.created_at ?? new Date().toISOString(),
+            updated_at: balance.updated_at ?? new Date().toISOString(),
+        };
+    };
+
+    const actions = [
+        {
+            label: ACCOUNT_UI.LABELS.EDIT_ACCOUNT,
+            icon: Pencil,
+            onClick: () => {
+                const bankAccount = getBankAccount();
+                if (bankAccount) onEdit(bankAccount);
+            },
+        },
+        {
+            label: ACCOUNT_UI.LABELS.DELETE_ACCOUNT,
+            icon: Trash2,
+            onClick: () => {
+                const bankAccount = getBankAccount();
+                if (bankAccount) onDelete(bankAccount);
+            },
+            className: 'text-red-600',
+        },
+    ];
+
+    return (
+        <ResourceListItem
+            icon={CreditCard}
+            iconColor={account.balances[0]?.color || ACCOUNT.DEFAULT_COLOR}
+            title={account.name}
+            isActive={isActive}
+            onClick={onClick}
+            actions={actions}
+        >
             {/* Currency Balances - Indented */}
             <div className="ml-8 space-y-0.5">
                 {account.balances.map((balance) => (
@@ -135,6 +94,6 @@ export function AccountListItem({
                     </div>
                 ))}
             </div>
-        </div>
+        </ResourceListItem>
     );
 }

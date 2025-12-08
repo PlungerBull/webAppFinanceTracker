@@ -49,9 +49,3 @@ Your TransactionDetailPanel is a great step in the right direction (side-by-side
 4. Home view is broken, lets review where is the INCOME/EXPENSE being pulled and the logic
 
 5. The transfer is still broken.
-
-6. ✅ Violation of "Don't Repeat Yourself" (DRY) in Type Definitions: The TransactionRow, Category, and Account interfaces are manually redefined in at least 4 different files. 
-
-7. ✅ Architectural Inconsistency: Direct Database Access in UI Components
-all-transactions-table.tsx
-account-transactions-table.tsx

@@ -6,10 +6,13 @@ import { z } from 'zod';
 import { useAddSubcategory, useGroupings } from '../hooks/use-groupings';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Archive, ChevronDown, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Archive, ChevronDown, Check, X, Pencil } from 'lucide-react';
 import { VALIDATION, GROUPING } from '@/lib/constants';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import type { Database } from '@/types/database.types';
 
 type ParentCategory = Database['public']['Views']['parent_categories_with_counts']['Row'];
@@ -56,7 +59,10 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
     const {
         register,
         formState: { errors, isSubmitting },
+        watch,
     } = form;
+
+    const subcategoryName = watch('name');
 
     const handleClose = () => {
         resetForm();
@@ -75,146 +81,102 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
 
     if (!parentGrouping) return null;
 
-    // Get first letter for avatar
-    const getInitial = (name: string) => name.charAt(0).toUpperCase();
+    // Get first letter for icon
+    const getInitial = () => {
+        return subcategoryName ? subcategoryName.charAt(0).toUpperCase() : (selectedParent?.name.charAt(0).toUpperCase() || 'S');
+    };
 
     return (
-        <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-sm p-0 gap-0 rounded-3xl shadow-2xl bg-white animate-in fade-in zoom-in-95">
-                {/* Header */}
-                <div className="flex items-center gap-2 p-4 border-b border-gray-100">
-                    <div className="bg-gray-50 p-2 rounded-full">
-                        <Archive className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <DialogTitle className="text-sm font-bold text-gray-900">New Subcategory</DialogTitle>
-                </div>
+        <DialogPrimitive.Root open={open} onOpenChange={handleClose}>
+            <DialogPrimitive.Portal>
+                {/* Backdrop */}
+                <DialogPrimitive.Overlay className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
 
-                {/* Body */}
-                <form onSubmit={(e) => void handleSubmit(e)} className="p-6 space-y-6">
-                    {/* Parent Context Selector */}
-                    <div className="space-y-2 relative">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                            Parent Category
-                        </label>
-                        <button
-                            type="button"
-                            onClick={() => setIsParentDropdownOpen(!isParentDropdownOpen)}
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 hover:bg-gray-100 hover:border-gray-300 transition-all flex items-center gap-3"
-                        >
-                            {/* Avatar */}
-                            <div
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                                style={{ backgroundColor: selectedParent?.color || GROUPING.DEFAULT_COLOR }}
-                            >
-                                {selectedParent ? getInitial(selectedParent.name) : '?'}
+                    {/* Modal Container */}
+                    <DialogPrimitive.Content className="relative w-full max-w-md max-h-[85vh] bg-white rounded-3xl shadow-2xl outline-none animate-in fade-in zoom-in-95 duration-200 flex flex-col overflow-hidden">
+                        <VisuallyHidden>
+                            <DialogPrimitive.Title>New Subcategory</DialogPrimitive.Title>
+                            <DialogPrimitive.Description>
+                                Create a new subcategory under a parent grouping
+                            </DialogPrimitive.Description>
+                        </VisuallyHidden>
+
+                        <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col flex-1 overflow-hidden">
+                            {/* Hero Header (Icon + Title + Close) - Fixed */}
+                            <div className="px-6 pt-6 pb-5 flex items-start gap-4 shrink-0">
+                                {/* Icon Anchor (Inherits parent color) */}
+                                <div className="relative shrink-0">
+                                    <div
+                                        className="w-14 h-14 rounded-2xl ring-1 ring-black/5 flex items-center justify-center text-white text-xl font-bold drop-shadow-md"
+                                        style={{ backgroundColor: selectedParent?.color || GROUPING.DEFAULT_COLOR }}
+                                    >
+                                        {getInitial()}
+                                    </div>
+                                </div>
+
+                                {/* Title Input (Hero Text) */}
+                                <div className="flex-1 relative group">
+                                    <Input
+                                        {...register('name')}
+                                        className={cn(
+                                            'text-2xl font-bold text-gray-900 border-transparent bg-transparent hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-blue-200 ring-0 focus:ring-0 px-4 py-2 rounded-xl transition-all',
+                                            errors.name && 'border-red-300'
+                                        )}
+                                        placeholder="Subcategory name"
+                                        autoComplete="off"
+                                        autoFocus
+                                    />
+                                    <Pencil className="absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                    {errors.name && <p className="text-xs text-red-500 mt-1 px-4">{errors.name.message}</p>}
+                                </div>
+
+                                {/* Close Button (Top Right) */}
+                                <button
+                                    type="button"
+                                    onClick={handleClose}
+                                    className="shrink-0 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
                             </div>
 
-                            {/* Labels */}
-                            <div className="flex-1 text-left">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase">
-                                    Parent Category
-                                </p>
-                                <p className="text-sm font-semibold text-gray-800">
-                                    {selectedParent?.name || 'Select Parent'}
-                                </p>
-                            </div>
+                            {/* Divider */}
+                            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mx-6 shrink-0" />
 
-                            {/* Chevron */}
-                            <ChevronDown
-                                className={cn(
-                                    "h-4 w-4 text-gray-400 transition-transform",
-                                    isParentDropdownOpen && "rotate-180"
+                            {/* Body - Scrollable */}
+                            <div className="px-6 py-5 overflow-y-auto flex-1">
+                                {/* Error Display */}
+                                {error && (
+                                    <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl mb-4">
+                                        {error}
+                                    </div>
                                 )}
-                            />
-                        </button>
 
-                        {/* Dropdown Menu - Outside button */}
-                        {isParentDropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
-                                <div className="py-1">
-                                    {allGroupings.map((parent) => (
-                                        <button
-                                            key={parent.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedParent(parent);
-                                                setIsParentDropdownOpen(false);
-                                            }}
-                                            className="w-full px-4 py-3 hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                                        >
-                                            {/* Color Indicator */}
-                                            <div
-                                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                                style={{ backgroundColor: parent.color }}
-                                            />
-
-                                            {/* Parent Name */}
-                                            <span className="flex-1 text-left text-sm text-gray-800">
-                                                {parent.name}
-                                            </span>
-
-                                            {/* Checkmark if selected */}
-                                            {selectedParent?.id === parent.id && (
-                                                <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                            )}
-                                        </button>
-                                    ))}
+                                {/* Inheritance Info */}
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <span>Inherits color from</span>
+                                    <div
+                                        className="h-3 w-3 rounded-full"
+                                        style={{ backgroundColor: selectedParent?.color || GROUPING.DEFAULT_COLOR }}
+                                    />
+                                    <span className="font-semibold text-gray-700">{selectedParent?.name}</span>
                                 </div>
                             </div>
-                        )}
-                    </div>
 
-                    {/* Name Input */}
-                    <div className="space-y-2">
-                        <Label htmlFor="name" className="text-xs font-semibold text-gray-500 uppercase">
-                            Subcategory Name
-                        </Label>
-                        <Input
-                            id="name"
-                            type="text"
-                            placeholder="e.g. Groceries, Utility Bills"
-                            {...register('name')}
-                            disabled={isSubmitting}
-                            autoFocus
-                            className="text-lg text-gray-800 bg-gray-50 border-transparent focus:border-gray-200 focus:bg-white rounded-xl px-4 py-3 transition-all"
-                        />
-                        {errors.name && (
-                            <p className="text-sm text-red-600">{errors.name.message as string}</p>
-                        )}
-                    </div>
-
-                    {/* Inheritance Preview */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">Inherits color:</span>
-                        <div
-                            className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: selectedParent?.color || GROUPING.DEFAULT_COLOR }}
-                        />
-                        <span className="text-xs text-gray-400 font-mono">
-                            {selectedParent?.color || GROUPING.DEFAULT_COLOR}
-                        </span>
-                    </div>
-
-                    {/* Error Display */}
-                    {error && (
-                        <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
-                            {error}
-                        </div>
-                    )}
-                </form>
-
-                {/* Footer */}
-                <div className="border-t border-gray-100 p-4">
-                    <button
-                        type="submit"
-                        onClick={(e) => void handleSubmit(e)}
-                        disabled={isSubmitting}
-                        className="w-full bg-gray-900 text-white text-sm font-bold rounded-xl py-3 shadow-lg shadow-gray-200 hover:shadow-xl hover:bg-black active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSubmitting ? 'Creating...' : 'Create Subcategory'}
-                    </button>
-                </div>
-            </DialogContent>
-        </Dialog>
+                            {/* Footer - Fixed */}
+                            <div className="px-6 pb-6 pt-5 shrink-0">
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full bg-gray-900 hover:bg-black text-white font-bold py-6 rounded-xl shadow-lg shadow-gray-200 hover:shadow-xl transition-all active:scale-[0.99]"
+                                >
+                                    {isSubmitting ? 'Creating...' : 'Create Subcategory'}
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogPrimitive.Content>
+                </DialogPrimitive.Overlay>
+            </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
     );
 }

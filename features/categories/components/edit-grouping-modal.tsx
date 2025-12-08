@@ -8,15 +8,17 @@ import { useUpdateCategory, useCategories } from '../hooks/use-categories';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
     Pencil,
     X,
-    Check,
     FolderOpen,
     ChevronDown,
     Square,
     CheckSquare,
-    Loader2
+    Loader2,
+    Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACCOUNT, VALIDATION, ACCOUNTS } from '@/lib/constants';
@@ -36,6 +38,7 @@ interface EditGroupingModalProps {
 const categorySchema = z.object({
     name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.CATEGORY_NAME_REQUIRED),
     color: z.string().regex(ACCOUNT.COLOR_REGEX, ACCOUNTS.MESSAGES.ERROR.VALIDATION_COLOR_INVALID),
+    type: z.enum(['expense', 'income']).optional(),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -47,12 +50,10 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
     // State for subcategory management
     const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
     const [migrationTargetId, setMigrationTargetId] = useState<string | null>(null);
-    const [isSubcategoryDropdownOpen, setIsSubcategoryDropdownOpen] = useState(false);
+    const [isColorPopoverOpen, setIsColorPopoverOpen] = useState(false);
     const [isMigrationDropdownOpen, setIsMigrationDropdownOpen] = useState(false);
-    const [isEditingName, setIsEditingName] = useState(false);
 
     // Refs for click-outside detection
-    const subcategoryDropdownRef = useRef<HTMLDivElement>(null);
     const migrationDropdownRef = useRef<HTMLDivElement>(null);
 
     // Filter subcategories for the current category
@@ -83,14 +84,18 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         values: category ? {
             name: category.name || '',
             color: category.color || ACCOUNT.DEFAULT_COLOR,
+            type: (category.type as 'expense' | 'income') || 'expense',
         } : undefined,
         defaultValues: {
             name: '',
             color: ACCOUNT.DEFAULT_COLOR,
+            type: 'expense',
         }
     });
 
     const selectedColor = watch('color');
+    const selectedType = watch('type');
+    const categoryName = watch('name');
 
     useEffect(() => {
         if (open && category) {
@@ -99,19 +104,9 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         }
     }, [open, category]);
 
-    // Click-outside detection for dropdowns
+    // Click-outside detection for migration dropdown
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            // Close subcategory dropdown if click is outside
-            if (
-                subcategoryDropdownRef.current &&
-                !subcategoryDropdownRef.current.contains(event.target as Node) &&
-                isSubcategoryDropdownOpen
-            ) {
-                setIsSubcategoryDropdownOpen(false);
-            }
-
-            // Close migration dropdown if click is outside
             if (
                 migrationDropdownRef.current &&
                 !migrationDropdownRef.current.contains(event.target as Node) &&
@@ -121,14 +116,11 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
             }
         };
 
-        // Add event listener to document
         document.addEventListener('mousedown', handleClickOutside);
-
-        // Cleanup on unmount
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isSubcategoryDropdownOpen, isMigrationDropdownOpen]);
+    }, [isMigrationDropdownOpen]);
 
     const handleClose = () => {
         onOpenChange(false);
@@ -189,237 +181,238 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         return availableParents.find(p => p.id === migrationTargetId)?.name;
     };
 
-    // Color Palette
-    const colorPalette = [
-        '#F97316', // Orange (Active default in design)
-        '#3B82F6', // Blue
-        '#10B981', // Emerald
-        '#EAB308', // Yellow
-        '#8B5CF6', // Violet
-        '#EC4899', // Pink
-        '#EF4444', // Red
-        '#6B7280', // Gray
-        '#14B8A6', // Teal
-        '#F43F5E', // Rose
-    ];
+    // Get first letter for icon
+    const getInitial = () => {
+        return categoryName ? categoryName.charAt(0).toUpperCase() : '?';
+    };
 
     return (
         <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
             <DialogPrimitive.Portal>
                 {/* Backdrop */}
-                <DialogPrimitive.Overlay className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 animate-in fade-in duration-200" />
-
-                {/* Modal Container */}
-                <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-sm translate-x-[-50%] translate-y-[-50%] outline-none animate-in fade-in zoom-in-95 duration-200">
-                    <div className="bg-white rounded-3xl shadow-2xl overflow-visible flex flex-col max-h-[90vh]">
-
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-gray-50 p-2 rounded-full">
-                                    <Pencil className="w-[18px] h-[18px] text-gray-400" />
-                                </div>
-                                <DialogPrimitive.Title asChild>
-                                    <h2 className="text-sm font-bold text-gray-900">Edit Grouping</h2>
-                                </DialogPrimitive.Title>
-                            </div>
+                <DialogPrimitive.Overlay className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    {/* Modal Container */}
+                    <DialogPrimitive.Content className="relative w-full max-w-lg max-h-[85vh] outline-none animate-in fade-in zoom-in-95 duration-200">
+                        <VisuallyHidden>
+                            <DialogPrimitive.Title>Edit Grouping</DialogPrimitive.Title>
+                            <DialogPrimitive.Description>
+                                Edit grouping name, color, type, and manage subcategories
+                            </DialogPrimitive.Description>
+                        </VisuallyHidden>
+                        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                            {/* Close Button (Absolute) */}
                             <button
                                 onClick={handleClose}
-                                className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors z-10"
                             >
                                 <X className="w-5 h-5" />
                             </button>
-                        </div>
 
-                        {/* Body (Scrollable) */}
-                        <div className="p-6 space-y-6 overflow-y-auto">
-                            {/* Name Input */}
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-gray-500 uppercase">GROUPING NAME</Label>
-                                {isEditingName ? (
-                                    <Input
-                                        {...register('name')}
-                                        autoFocus
-                                        autoComplete="off"
-                                        onBlur={() => setIsEditingName(false)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                setIsEditingName(false);
-                                            }
-                                        }}
-                                        className="text-lg text-gray-800 bg-gray-50 border-transparent focus:bg-white focus:border-gray-200 rounded-xl px-4 py-6 shadow-none transition-all"
-                                        placeholder="Category Name"
-                                    />
-                                ) : (
-                                    <div
-                                        onClick={() => setIsEditingName(true)}
-                                        className="group flex items-center gap-2 cursor-pointer py-3 px-2 rounded-xl hover:bg-gray-50 transition-colors"
-                                    >
-                                        <span className="text-2xl font-bold text-gray-900">
-                                            {watch('name') || 'Unnamed Grouping'}
-                                        </span>
-                                        <Pencil className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-                                )}
-                                {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
-                            </div>
+                            {/* Hero Header (Merged Layout) - Fixed */}
+                            <div className="px-8 pt-10 pb-6 shrink-0">
+                                <div className="flex items-start gap-4">
+                                    {/* Icon Anchor (Color Trigger) */}
+                                    <Popover open={isColorPopoverOpen} onOpenChange={setIsColorPopoverOpen}>
+                                        <PopoverTrigger asChild>
+                                            <div className="relative">
+                                                <button
+                                                    type="button"
+                                                    className="w-14 h-14 rounded-2xl ring-1 ring-black/5 flex items-center justify-center text-white text-xl font-bold drop-shadow-md hover:scale-105 transition-transform cursor-pointer"
+                                                    style={{ backgroundColor: selectedColor }}
+                                                >
+                                                    {getInitial()}
+                                                </button>
+                                                <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-sm">
+                                                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                                                </div>
+                                            </div>
+                                        </PopoverTrigger>
+                                        <PopoverContent align="start" className="w-auto p-3 bg-white rounded-2xl shadow-xl border border-gray-100">
+                                            <div className="grid grid-cols-5 gap-3">
+                                                {ACCOUNT.COLOR_PALETTE.map((color) => (
+                                                    <button
+                                                        key={color}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setValue('color', color, { shouldDirty: true });
+                                                            setIsColorPopoverOpen(false);
+                                                        }}
+                                                        className={cn(
+                                                            'w-8 h-8 rounded-full transition-all flex items-center justify-center',
+                                                            selectedColor === color && 'ring-2 ring-offset-2 ring-gray-900'
+                                                        )}
+                                                        style={{ backgroundColor: color }}
+                                                    >
+                                                        {selectedColor === color && (
+                                                            <Check className="w-4 h-4 text-white drop-shadow-md" strokeWidth={3} />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
 
-                            {/* Color Picker */}
-                            <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-gray-500 uppercase">COLOR THEME</Label>
-                                <div className="grid grid-cols-5 gap-3">
-                                    {colorPalette.map((color) => (
-                                        <button
-                                            key={color}
-                                            type="button"
-                                            onClick={() => setValue('color', color, { shouldDirty: true })}
+                                    {/* Title Input (Hero Text) */}
+                                    <div className="flex-1 relative group">
+                                        <Input
+                                            {...register('name')}
                                             className={cn(
-                                                "w-10 h-10 rounded-full transition-all flex items-center justify-center hover:scale-110",
-                                                selectedColor === color
-                                                    ? "scale-110 ring-2 ring-offset-2 ring-gray-300 shadow-md"
-                                                    : ""
+                                                'text-2xl font-bold text-gray-900 border-transparent bg-transparent hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-blue-200 ring-0 focus:ring-0 px-4 py-2 rounded-xl transition-all',
+                                                errors.name && 'border-red-300'
                                             )}
-                                            style={{ backgroundColor: color }}
+                                            placeholder="Grouping name"
+                                        />
+                                        <Pencil className="absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                        {errors.name && <p className="text-xs text-red-500 mt-1 px-4">{errors.name.message}</p>}
+                                    </div>
+
+                                    {/* Type Toggle (Top Right) */}
+                                    <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setValue('type', 'expense', { shouldDirty: true })}
+                                            className={cn(
+                                                'px-3 py-1.5 rounded-md text-xs font-bold transition-all',
+                                                selectedType === 'expense'
+                                                    ? 'bg-white text-red-600 shadow-sm'
+                                                    : 'text-gray-500'
+                                            )}
                                         >
-                                            {selectedColor === color && (
-                                                <Check className="w-5 h-5 text-white drop-shadow-md" strokeWidth={3} />
-                                            )}
+                                            Expense
                                         </button>
-                                    ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setValue('type', 'income', { shouldDirty: true })}
+                                            className={cn(
+                                                'px-3 py-1.5 rounded-md text-xs font-bold transition-all',
+                                                selectedType === 'income'
+                                                    ? 'bg-white text-emerald-600 shadow-sm'
+                                                    : 'text-gray-500'
+                                            )}
+                                        >
+                                            Income
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Subcategory Management */}
-                            {subcategories.length > 0 && (
-                                <>
-                                    <div className="border-t border-gray-100 pt-4 space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <FolderOpen className="w-4 h-4 text-gray-400" />
-                                            <span className="text-sm font-semibold text-gray-700">Subcategories</span>
-                                        </div>
+                            {/* Divider */}
+                            <div className="h-px bg-gray-50 shrink-0" />
 
-                                        {/* Multi-Select Dropdown */}
-                                        <div className="relative" ref={subcategoryDropdownRef}>
+                            {/* Body Section - Scrollable */}
+                            <div className="px-8 py-6 space-y-6 overflow-y-auto flex-1">
+                                {/* Subcategory Management */}
+                                {subcategories.length > 0 && (
+                                    <div className="space-y-4">
+                                        {/* Header Row */}
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <FolderOpen className="w-4 h-4 text-gray-400" />
+                                                <span className="text-sm font-semibold text-gray-700">Subcategories ({subcategories.length})</span>
+                                            </div>
                                             <button
                                                 type="button"
-                                                onClick={() => setIsSubcategoryDropdownOpen(!isSubcategoryDropdownOpen)}
+                                                onClick={toggleAllSubcategories}
+                                                className="text-[10px] font-bold text-blue-500 hover:text-blue-600 uppercase tracking-wide"
+                                            >
+                                                SELECT ALL
+                                            </button>
+                                        </div>
+
+                                        {/* List Container */}
+                                        <div className="bg-gray-50/30 border border-gray-100 rounded-xl max-h-48 overflow-y-auto">
+                                            {subcategories.map((sub, index) => (
+                                                <div
+                                                    key={sub.id}
+                                                    onClick={() => toggleSubcategorySelection(sub.id)}
+                                                    className={cn(
+                                                        'flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer transition-colors',
+                                                        selectedSubcategoryIds.includes(sub.id) && 'bg-blue-50/30'
+                                                    )}
+                                                >
+                                                    {selectedSubcategoryIds.includes(sub.id) ? (
+                                                        <CheckSquare className="w-5 h-5 text-blue-500" />
+                                                    ) : (
+                                                        <Square className="w-5 h-5 text-gray-300" />
+                                                    )}
+                                                    <span className="text-sm text-gray-700">{sub.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Migration Tool (Progressive Disclosure) */}
+                                {selectedSubcategoryIds.length > 0 && (
+                                    <div className="space-y-2 animate-in slide-in-from-top-2 fade-in">
+                                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                                            MOVE {selectedSubcategoryIds.length} ITEMS TO:
+                                        </Label>
+                                        <div className="relative" ref={migrationDropdownRef}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsMigrationDropdownOpen(!isMigrationDropdownOpen)}
                                                 className={cn(
-                                                    "w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-colors border",
-                                                    isSubcategoryDropdownOpen
-                                                        ? "bg-gray-100 border-gray-300"
-                                                        : "bg-gray-50 border-gray-100 text-gray-500"
+                                                    'w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white border text-sm transition-colors',
+                                                    isMigrationDropdownOpen ? 'border-blue-300' : 'border-gray-200 hover:border-gray-300'
                                                 )}
                                             >
-                                                <span className={cn(selectedSubcategoryIds.length > 0 ? "text-gray-900 font-medium" : "")}>
-                                                    {selectedSubcategoryIds.length > 0
-                                                        ? `${selectedSubcategoryIds.length} selected`
-                                                        : "Select subcategories..."}
-                                                </span>
-                                                <ChevronDown className={cn("w-4 h-4 transition-transform", isSubcategoryDropdownOpen ? "rotate-180" : "")} />
+                                                <div className="flex items-center gap-2">
+                                                    {migrationTargetId && (
+                                                        <div
+                                                            className="w-2 h-2 rounded-full"
+                                                            style={{ backgroundColor: availableParents.find(p => p.id === migrationTargetId)?.color || '#9CA3AF' }}
+                                                        />
+                                                    )}
+                                                    <span className={migrationTargetId ? "text-gray-900 font-medium" : "text-gray-500"}>
+                                                        {getMigrationTargetName() || "Select new parent group..."}
+                                                    </span>
+                                                </div>
+                                                <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform", isMigrationDropdownOpen && "rotate-180")} />
                                             </button>
 
-                                            {/* Floating Menu */}
-                                            {isSubcategoryDropdownOpen && (
-                                                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95">
-                                                    <div className="bg-gray-50/50 border-b border-gray-50 px-4 py-2 flex justify-between items-center">
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">AVAILABLE SUBCATEGORIES</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={toggleAllSubcategories}
-                                                            className="text-[10px] font-bold text-blue-500 hover:text-blue-600 uppercase"
+                                            {isMigrationDropdownOpen && (
+                                                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 z-40 overflow-hidden max-h-48 overflow-y-auto animate-in fade-in zoom-in-95">
+                                                    {availableParents.map(parent => (
+                                                        <div
+                                                            key={parent.id}
+                                                            onClick={() => {
+                                                                setMigrationTargetId(parent.id);
+                                                                setIsMigrationDropdownOpen(false);
+                                                            }}
+                                                            className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-2 transition-colors"
                                                         >
-                                                            {selectedSubcategoryIds.length === subcategories.length ? "DESELECT ALL" : "SELECT ALL"}
-                                                        </button>
-                                                    </div>
-                                                    <div className="max-h-48 overflow-y-auto">
-                                                        {subcategories.map(sub => (
-                                                            <div
-                                                                key={sub.id}
-                                                                onClick={() => toggleSubcategorySelection(sub.id)}
-                                                                className="px-4 py-3 border-b border-gray-50 last:border-0 flex items-center gap-3 hover:bg-gray-50 cursor-pointer"
-                                                            >
-                                                                {selectedSubcategoryIds.includes(sub.id) ? (
-                                                                    <CheckSquare className="w-5 h-5 text-blue-500 fill-blue-50" />
-                                                                ) : (
-                                                                    <Square className="w-5 h-5 text-gray-300" />
-                                                                )}
-                                                                <span className="text-sm text-gray-700">{sub.name}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: parent.color || '#9CA3AF' }} />
+                                                            <span className="text-sm text-gray-700">{parent.name}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-
-                                    {/* Migration Target Selector (Conditional) */}
-                                    {selectedSubcategoryIds.length > 0 && (
-                                        <div className="space-y-2 animate-in slide-in-from-top-2 fade-in">
-                                            <Label className="text-[10px] font-bold text-gray-400 uppercase">MOVE SELECTED TO:</Label>
-                                            <div className="relative" ref={migrationDropdownRef}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsMigrationDropdownOpen(!isMigrationDropdownOpen)}
-                                                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white border border-gray-200 text-sm hover:border-gray-300 transition-colors"
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        {migrationTargetId && (
-                                                            <div
-                                                                className="w-2 h-2 rounded-full"
-                                                                style={{ backgroundColor: availableParents.find(p => p.id === migrationTargetId)?.color || '#9CA3AF' }}
-                                                            />
-                                                        )}
-                                                        <span className={migrationTargetId ? "text-gray-900" : "text-gray-500"}>
-                                                            {getMigrationTargetName() || "Select new parent..."}
-                                                        </span>
-                                                    </div>
-                                                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                                                </button>
-
-                                                {isMigrationDropdownOpen && (
-                                                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 z-40 overflow-hidden max-h-48 overflow-y-auto">
-                                                        {availableParents.map(parent => (
-                                                            <div
-                                                                key={parent.id}
-                                                                onClick={() => {
-                                                                    setMigrationTargetId(parent.id);
-                                                                    setIsMigrationDropdownOpen(false);
-                                                                }}
-                                                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-2"
-                                                            >
-                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: parent.color || '#9CA3AF' }} />
-                                                                <span className="text-sm text-gray-700">{parent.name}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-4 border-t border-gray-100 shrink-0">
-                            <Button
-                                onClick={handleSubmit(onSubmit)}
-                                disabled={isSubmitting}
-                                className="w-full bg-gray-900 hover:bg-black text-white font-bold py-6 rounded-xl shadow-lg shadow-gray-200 hover:shadow-xl transition-all"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    'Save Changes'
                                 )}
-                            </Button>
+                            </div>
+
+                            {/* Footer - Fixed */}
+                            <div className="bg-white rounded-b-3xl border-t border-gray-100 p-4 shrink-0">
+                                <Button
+                                    onClick={handleSubmit(onSubmit)}
+                                    disabled={isSubmitting}
+                                    className="w-full bg-gray-900 hover:bg-black text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-gray-200 hover:shadow-xl transition-all"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        'Save Changes'
+                                    )}
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                </DialogPrimitive.Content>
+                    </DialogPrimitive.Content>
+                </DialogPrimitive.Overlay>
             </DialogPrimitive.Portal>
         </DialogPrimitive.Root>
     );

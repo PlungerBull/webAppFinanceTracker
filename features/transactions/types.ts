@@ -1,37 +1,23 @@
 /**
- * Shared type definitions for transactions feature
+ * Transaction feature types - Exported from centralized domain types
  *
- * These types are derived from the database schema to maintain a single source of truth.
- * Using Pick utility type to explicitly select only the fields needed by components.
+ * DEPRECATED: This file is kept for backward compatibility only.
+ * New code should import directly from @/types/domain
  */
 
-import type { Tables } from '@/types/database.types';
-
-/**
- * Transaction row type from transactions_view
- * Contains all fields commonly used across transaction components
- */
-export type TransactionRow = Pick<
-  Tables<'transactions_view'>,
-  'id' | 'date' | 'description' | 'category_name' | 'category_color' |
-  'category_id' | 'amount_original' | 'currency_original' | 'account_name' |
-  'account_id' | 'exchange_rate' | 'notes'
->;
+import type { Transaction, Category, BankAccount } from '@/types/domain';
 
 /**
- * Simplified category type
- * Contains only the essential fields needed for displaying category information
+ * @deprecated Use Transaction from @/types/domain instead
  */
-export type Category = Pick<
-  Tables<'categories'>,
-  'id' | 'name' | 'color' | 'parent_id'
->;
+export type TransactionRow = Transaction;
 
 /**
- * Simplified account type
- * Contains only the essential fields needed for displaying account information
+ * @deprecated Use Category from @/types/domain instead
  */
-export type Account = Pick<
-  Tables<'bank_accounts'>,
-  'id' | 'name'
->;
+export type { Category };
+
+/**
+ * @deprecated Use BankAccount from @/types/domain instead
+ */
+export type Account = Pick<BankAccount, 'id' | 'name'>;

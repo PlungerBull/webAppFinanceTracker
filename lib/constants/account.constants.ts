@@ -15,19 +15,16 @@ export const ACCOUNT = {
   NO_COLOR: '#94a3b8',
 
   /**
-   * Predefined color palette for accounts
+   * Predefined color palette for accounts (7 colors + custom picker = 8 total)
    */
   COLOR_PALETTE: [
-    '#ef4444', // Red
-    '#f97316', // Orange
-    '#eab308', // Yellow
-    '#22c55e', // Green
-    '#14b8a6', // Teal
-    '#06b6d4', // Cyan
     '#3b82f6', // Blue
-    '#6366f1', // Indigo
+    '#22c55e', // Green
+    '#eab308', // Yellow
+    '#ef4444', // Red
     '#a855f7', // Purple
     '#ec4899', // Pink
+    '#f97316', // Orange
   ],
 
   /**
