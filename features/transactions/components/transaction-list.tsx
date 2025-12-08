@@ -60,16 +60,19 @@ export function TransactionList({
   const formatDateDisplay = (dateString: string) => {
     if (!dateString) return '';
     try {
-      // Parse as local time by appending time component if not present
-      const dateToParse = dateString.includes('T') ? dateString : dateString + 'T00:00:00';
-      const date = new Date(dateToParse);
+      // FORCE "Wall Clock" Date Parsing
+      // 1. Take only the YYYY-MM-DD part (first 10 chars)
+      // 2. Append T00:00:00 to force local midnight
+      // 3. This ignores any time/zone info from the DB
+      const cleanDate = dateString.substring(0, 10); // Take "YYYY-MM-DD"
+      const localDate = new Date(cleanDate + 'T00:00:00');
 
-      if (isNaN(date.getTime())) return dateString; // Fallback for invalid dates
+      if (isNaN(localDate.getTime())) return dateString; // Fallback for invalid dates
 
-      if (isToday(date)) {
+      if (isToday(localDate)) {
         return 'Today';
       }
-      return format(date, 'MMM dd');
+      return format(localDate, 'MMM dd');
     } catch (e) {
       return dateString;
     }

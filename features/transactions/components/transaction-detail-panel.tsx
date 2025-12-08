@@ -130,8 +130,8 @@ export function TransactionDetailPanel({
                     <Calendar className="mr-2 h-4 w-4" />
                     {editedValue && typeof editedValue === 'string' ? (() => {
                       try {
-                        const dateToParse = editedValue.includes('T') ? editedValue : editedValue + 'T00:00:00';
-                        const date = new Date(dateToParse);
+                        const cleanDate = editedValue.substring(0, 10);
+                        const date = new Date(cleanDate + 'T00:00:00');
                         return !isNaN(date.getTime()) ? format(date, 'PPP') : editedValue;
                       } catch { return editedValue; }
                     })() : <span>Pick a date</span>}
@@ -142,8 +142,8 @@ export function TransactionDetailPanel({
                     mode="single"
                     selected={(() => {
                       if (!editedValue || typeof editedValue !== 'string') return undefined;
-                      const dateToParse = editedValue.includes('T') ? editedValue : editedValue + 'T00:00:00';
-                      const date = new Date(dateToParse);
+                      const cleanDate = editedValue.substring(0, 10);
+                      const date = new Date(cleanDate + 'T00:00:00');
                       return !isNaN(date.getTime()) ? date : undefined;
                     })()}
                     onSelect={(date) => {
@@ -180,8 +180,8 @@ export function TransactionDetailPanel({
               {(() => {
                 if (!transaction.date) return 'No date';
                 try {
-                  const dateToParse = transaction.date.includes('T') ? transaction.date : transaction.date + 'T00:00:00';
-                  const date = new Date(dateToParse);
+                  const cleanDate = transaction.date.substring(0, 10);
+                  const date = new Date(cleanDate + 'T00:00:00');
                   return !isNaN(date.getTime()) ? format(date, 'MMMM dd, yyyy') : transaction.date;
                 } catch { return transaction.date; }
               })()}
