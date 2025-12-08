@@ -46,6 +46,31 @@ Things 3 uses the "Magic Plus Button" which allows dragging to a specific spot i
 
 Your TransactionDetailPanel is a great step in the right direction (side-by-side editing), but your creation flow is still modal-heavy. We should discuss moving towards Inline Creation or Popovers for lighter interactions.
 
-4. Home view is broken, lets review where is the INCOME/EXPENSE being pulled and the logic
-
 5. The transfer is still broken.
+
+############################################
+
+Issue Report & Remediation: Category Hierarchy Consistency
+1. The Problems Encountered
+We identified three distinct issues causing "ghost" categories and data inconsistencies in your application:
+
+The "Reverting" Bug (Frontend): When editing a category group, the application was sending the new Name and Color to the database but failing to send the Type (Income vs. Expense). This caused the database to ignore your change and keep the old type.
+
+The "Empty Parent" Bug (Data Logic): The dashboard strictly separates "Income" and "Expense." When you successfully moved a Parent Category to "Income," its Subcategories remained labeled as "Expense."
+
+Result: The Parent appeared in the Income list (but empty/sumless because it had no children there), while the children remained in the Expense list (orphaned).
+
+The Root Cause (Backend): The database treated Parent and Child categories as independent entities. There was no "Enforcer" at the database level to guarantee that if a Parent is "Income," all its children must also be "Income."
+
+2. The Solution: Backend Migration
+To fix this properly, we are moving the logic from the fragile frontend to the robust backend. We will create a Database Trigger that acts as an automated enforcer.
+
+What this migration does:
+
+Auto-Sync: Immediately after you update a Parent's type, it automatically finds all its children and updates them to match.
+
+Validation: It prevents future data corruption by checking any new subcategories. If you try to insert an "Expense" child into an "Income" parent, the database will auto-correct it.
+
+
+
+
