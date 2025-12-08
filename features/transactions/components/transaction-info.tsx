@@ -54,14 +54,14 @@ export function TransactionInfo({
 }: TransactionInfoProps) {
     const categoryGroups = useMemo(() => {
         const groups: { parent: Category; children: Category[] }[] = [];
-        const parents = categories.filter(c => c.parent_id === null);
+        const parents = categories.filter(c => c.parentId === null);
         const childrenMap = new Map<string, Category[]>();
 
-        categories.filter(c => c.parent_id !== null).forEach(child => {
-            if (child.parent_id) {
-                const list = childrenMap.get(child.parent_id) || [];
+        categories.filter(c => c.parentId !== null).forEach(child => {
+            if (child.parentId) {
+                const list = childrenMap.get(child.parentId) || [];
                 list.push(child);
-                childrenMap.set(child.parent_id, list);
+                childrenMap.set(child.parentId, list);
             }
         });
 
@@ -189,18 +189,18 @@ export function TransactionInfo({
                 ) : (
                     <div
                         className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 px-2 py-1 -mx-2 rounded"
-                        onClick={() => startEdit('category_id', transaction.category_id)}
+                        onClick={() => startEdit('category_id', transaction.categoryId)}
                     >
-                        {transaction.category_name ? (
+                        {transaction.categoryName ? (
                             <div className="flex items-center gap-2">
                                 <div
                                     className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 shrink-0"
-                                    style={{ color: transaction.category_color || undefined }}
+                                    style={{ color: transaction.categoryColor || undefined }}
                                 >
                                     <Hash className="w-3 h-3" />
                                 </div>
                                 <span className="text-sm text-zinc-900 dark:text-zinc-50">
-                                    {transaction.category_name}
+                                    {transaction.categoryName}
                                 </span>
                             </div>
                         ) : (
@@ -252,21 +252,21 @@ export function TransactionInfo({
                 ) : (
                     <p
                         className="text-sm text-zinc-900 dark:text-zinc-50 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 px-2 py-1 -mx-2 rounded"
-                        onClick={() => startEdit('account_id', transaction.account_id)}
+                        onClick={() => startEdit('account_id', transaction.accountId)}
                     >
-                        {transaction.account_name}
+                        {transaction.accountName}
                     </p>
                 )}
             </div>
 
             {/* Exchange Rate - Only show if not 1 */}
-            {transaction.exchange_rate && transaction.exchange_rate !== 1 && (
+            {transaction.exchangeRate && transaction.exchangeRate !== 1 && (
                 <div>
                     <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
                         {TRANSACTIONS.UI.LABELS.EXCHANGE_RATE}
                     </p>
                     <p className="text-sm text-zinc-900 dark:text-zinc-50">
-                        {transaction.exchange_rate.toFixed(CURRENCY.FORMAT.EXCHANGE_RATE_PRECISION)}
+                        {transaction.exchangeRate.toFixed(CURRENCY.FORMAT.EXCHANGE_RATE_PRECISION)}
                     </p>
                 </div>
             )}

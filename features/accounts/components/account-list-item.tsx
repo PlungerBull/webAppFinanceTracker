@@ -26,16 +26,16 @@ export function AccountListItem({
     // Helper to construct BankAccount from balance view data
     const getBankAccount = (): BankAccount | null => {
         const balance = account.balances[0];
-        if (!balance.account_id || !balance.user_id) return null;
+        if (!balance.accountId || !balance.userId) return null;
 
         return {
-            id: balance.account_id,
-            user_id: balance.user_id,
+            id: balance.accountId,
+            userId: balance.userId,
             name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
             color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
-            is_visible: balance.is_visible ?? true,
-            created_at: balance.created_at ?? new Date().toISOString(),
-            updated_at: balance.updated_at ?? new Date().toISOString(),
+            isVisible: balance.isVisible ?? true,
+            createdAt: balance.createdAt ?? new Date().toISOString(),
+            updatedAt: balance.updatedAt ?? new Date().toISOString(),
         };
     };
 
@@ -81,13 +81,13 @@ export function AccountListItem({
                         <span
                             className={cn(
                                 'font-mono tabular-nums',
-                                (balance.current_balance ?? 0) >= 0
+                                (balance.currentBalance ?? 0) >= 0
                                     ? 'text-gray-500'
                                     : 'text-red-600'
                             )}
                         >
                             {formatCurrency(
-                                balance.current_balance ?? 0,
+                                balance.currentBalance ?? 0,
                                 balance.currency ?? 'USD'
                             )}
                         </span>

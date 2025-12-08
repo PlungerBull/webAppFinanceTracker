@@ -15,18 +15,16 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { GROUPING } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
-
-type ParentCategory = Database['public']['Views']['parent_categories_with_counts']['Row'];
+import type { ParentCategoryWithCount, CategoryWithCount } from '@/types/domain';
 
 export function GroupingList() {
   const { data: groupings = [], isLoading } = useGroupings();
   const { handleGroupingClick, currentGroupingId } = useGroupingNavigation();
   const [isGroupingsExpanded, setIsGroupingsExpanded] = useState(true);
   const [isAddGroupingModalOpen, setIsAddGroupingModalOpen] = useState(false);
-  const [editingGrouping, setEditingGrouping] = useState<ParentCategory | null>(null);
-  const [deletingGrouping, setDeletingGrouping] = useState<ParentCategory | null>(null);
-  const [subcategoryParent, setSubcategoryParent] = useState<ParentCategory | null>(null);
+  const [editingGrouping, setEditingGrouping] = useState<ParentCategoryWithCount | null>(null);
+  const [deletingGrouping, setDeletingGrouping] = useState<ParentCategoryWithCount | null>(null);
+  const [subcategoryParent, setSubcategoryParent] = useState<ParentCategoryWithCount | null>(null);
 
   return (
     <>

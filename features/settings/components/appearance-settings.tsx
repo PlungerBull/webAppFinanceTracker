@@ -27,8 +27,8 @@ export function AppearanceSettings() {
         if (accounts.length > 0) {
             const initialVisibility: Record<string, boolean> = {};
             accounts.forEach(acc => {
-                if (acc.account_id) {
-                    initialVisibility[acc.account_id] = acc.is_visible ?? true;
+                if (acc.accountId) {
+                    initialVisibility[acc.accountId] = acc.isVisible ?? true;
                 }
             });
             setPendingVisibility(initialVisibility);
@@ -48,7 +48,7 @@ export function AppearanceSettings() {
 
         // Check account visibility changes
         for (const acc of accounts) {
-            if (acc.account_id && pendingVisibility[acc.account_id] !== (acc.is_visible ?? true)) {
+            if (acc.accountId && pendingVisibility[acc.accountId] !== (acc.isVisible ?? true)) {
                 changed = true;
                 break;
             }
@@ -79,8 +79,8 @@ export function AppearanceSettings() {
         // Save account visibility changes
         const visibilityUpdates = Object.entries(pendingVisibility)
             .filter(([accountId, isVisible]) => {
-                const original = accounts.find(a => a.account_id === accountId);
-                return original && original.is_visible !== isVisible;
+                const original = accounts.find(a => a.accountId === accountId);
+                return original && original.isVisible !== isVisible;
             })
             .map(([accountId, isVisible]) => ({ accountId, isVisible }));
 
@@ -131,8 +131,8 @@ export function AppearanceSettings() {
     const uniqueAccounts = Array.from(
         new Map(
             accounts
-                .filter((a) => a.account_id) // Ensure account_id exists
-                .map((a) => [a.account_id, a])
+                .filter((a) => a.accountId) // Ensure accountId exists
+                .map((a) => [a.accountId, a])
         ).values()
     );
 
@@ -171,22 +171,22 @@ export function AppearanceSettings() {
                         ) : (
                             uniqueAccounts.map((account) => (
                                 <div
-                                    key={account.account_id}
+                                    key={account.accountId}
                                     className="flex items-center space-x-3 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
                                 >
                                     <Checkbox
-                                        id={`toggle-${account.account_id}`}
-                                        checked={pendingVisibility[account.account_id!] ?? true}
-                                        onCheckedChange={() => handleToggle(account.account_id!)}
+                                        id={`toggle-${account.accountId}`}
+                                        checked={pendingVisibility[account.accountId!] ?? true}
+                                        onCheckedChange={() => handleToggle(account.accountId!)}
                                         disabled={isSaving}
                                     />
-                                    <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => !isSaving && handleToggle(account.account_id!)}>
+                                    <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => !isSaving && handleToggle(account.accountId!)}>
                                         <DollarSign
                                             className="h-4 w-4 flex-shrink-0"
                                             style={{ color: account.color || undefined }}
                                         />
                                         <label
-                                            htmlFor={`toggle-${account.account_id}`}
+                                            htmlFor={`toggle-${account.accountId}`}
                                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                                         >
                                             {account.name}

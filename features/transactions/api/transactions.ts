@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 import { TRANSACTIONS } from '@/lib/constants';
 import type { CreateTransactionFormData, UpdateTransactionFormData } from '../schemas/transaction.schema';
+import type { TransactionView, Transaction } from '@/types/domain';
 import {
   dbTransactionViewToDomain,
   dbTransactionViewsToDomain,
@@ -13,7 +14,7 @@ export const transactionsApi = {
     categoryId?: string;
     accountId?: string;
     categoryIds?: string[];
-  }) => {
+  }): Promise<TransactionView[]> => {
     const supabase = createClient();
 
     let query = supabase
@@ -48,7 +49,7 @@ export const transactionsApi = {
   },
 
   // Get a single transaction by ID (RLS handles user filtering)
-  getById: async (id: string) => {
+  getById: async (id: string): Promise<TransactionView> => {
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -67,7 +68,7 @@ export const transactionsApi = {
   },
 
   // Create a new transaction
-  create: async (transactionData: CreateTransactionFormData) => {
+  create: async (transactionData: CreateTransactionFormData): Promise<Transaction> => {
     const supabase = createClient();
 
     // Get user for user_id (no DB default exists yet)
@@ -104,7 +105,7 @@ export const transactionsApi = {
   },
 
   // Update an existing transaction (RLS handles user filtering)
-  update: async (id: string, transactionData: UpdateTransactionFormData) => {
+  update: async (id: string, transactionData: UpdateTransactionFormData): Promise<Transaction> => {
     const supabase = createClient();
 
     const { data, error } = await supabase

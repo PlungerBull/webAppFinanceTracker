@@ -101,13 +101,13 @@ export function TransactionHeader({
                     <p
                         className={cn(
                             'text-2xl font-bold tabular-nums cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 px-2 py-1 -mx-2 rounded',
-                            transaction.amount_original >= 0
+                            transaction.amountOriginal >= 0
                                 ? 'text-green-600 dark:text-green-500'
                                 : 'text-red-600 dark:text-red-500'
                         )}
-                        onClick={() => startEdit('amount', transaction.amount_original)}
+                        onClick={() => startEdit('amount', transaction.amountOriginal)}
                     >
-                        {formatCurrency(transaction.amount_original, transaction.currency_original)}
+                        {formatCurrency(transaction.amountOriginal, transaction.currencyOriginal)}
                     </p>
                 )}
             </div>

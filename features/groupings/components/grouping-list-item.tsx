@@ -3,15 +3,15 @@
 import { Pencil, Trash2, Plus, Archive } from 'lucide-react';
 import { ResourceListItem } from '@/components/ui/resource-list-item';
 import { GROUPING } from '@/lib/constants';
-import type { ParentCategory } from '@/types/domain';
+import type { ParentCategoryWithCount } from '@/types/domain';
 
 interface GroupingListItemProps {
-    grouping: ParentCategory;
+    grouping: ParentCategoryWithCount;
     isActive: boolean;
     onClick: () => void;
-    onEdit: (grouping: ParentCategory) => void;
-    onDelete: (grouping: ParentCategory) => void;
-    onCreateSubcategory: (grouping: ParentCategory) => void;
+    onEdit: (grouping: ParentCategoryWithCount) => void;
+    onDelete: (grouping: ParentCategoryWithCount) => void;
+    onCreateSubcategory: (grouping: ParentCategoryWithCount) => void;
 }
 
 export function GroupingListItem({
@@ -46,7 +46,7 @@ export function GroupingListItem({
             icon={Archive}
             iconColor={grouping.color || GROUPING.DEFAULT_COLOR}
             title={grouping.name ?? ''}
-            subtitle={grouping.transaction_count || 0}
+            subtitle={grouping.transactionCount || 0}
             isActive={isActive}
             onClick={onClick}
             actions={actions}

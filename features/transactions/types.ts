@@ -5,12 +5,13 @@
  * New code should import directly from @/types/domain
  */
 
-import type { Transaction, Category, BankAccount } from '@/types/domain';
+import type { TransactionView, Category, BankAccount } from '@/types/domain';
 
 /**
- * @deprecated Use Transaction from @/types/domain instead
+ * @deprecated Use TransactionView from @/types/domain instead
+ * Note: TransactionRow represents view data with joined properties like categoryName, accountName
  */
-export type TransactionRow = Transaction;
+export type TransactionRow = TransactionView;
 
 /**
  * @deprecated Use Category from @/types/domain instead

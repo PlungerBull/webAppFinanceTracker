@@ -1,9 +1,7 @@
 import { useMemo } from 'react';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
-
-type AccountBalance = Database['public']['Views']['account_balances']['Row'];
+import type { AccountBalance } from '@/types/domain';
 
 /**
  * Hook to group account balances by account_id
@@ -27,23 +25,23 @@ export function useGroupedAccounts() {
     const grouped = new Map<string, typeof accounts>();
 
     accounts.forEach((balance) => {
-      // Filter out balances without account_id
-      if (!balance.account_id) return;
+      // Filter out balances without accountId
+      if (!balance.accountId) return;
 
-      const existing = grouped.get(balance.account_id) || [];
-      grouped.set(balance.account_id, [...existing, balance]);
+      const existing = grouped.get(balance.accountId) || [];
+      grouped.set(balance.accountId, [...existing, balance]);
     });
 
-    return Array.from(grouped.entries()).map(([account_id, balances]) => {
+    return Array.from(grouped.entries()).map(([accountId, balances]) => {
       const first = balances[0];
       return {
-        account_id,
-        user_id: first.user_id!,
+        accountId,
+        userId: first.userId!,
         name: first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
         color: first.color || ACCOUNT.DEFAULT_COLOR,
-        is_visible: first.is_visible ?? true,
-        created_at: first.created_at!,
-        updated_at: first.updated_at!,
+        isVisible: first.isVisible ?? true,
+        createdAt: first.createdAt!,
+        updatedAt: first.updatedAt!,
         balances: balances.sort((a, b) =>
           (a.currency ?? '').localeCompare(b.currency ?? '')
         ),
@@ -52,7 +50,8 @@ export function useGroupedAccounts() {
   }, [accounts]);
 
   return {
-    groupedAccounts,
+    data: groupedAccounts, // Renamed for consistency with other hooks (React Query pattern)
+    groupedAccounts, // Keep for backward compatibility
     isLoading,
     accounts, // Also return raw accounts in case needed
   };
@@ -62,17 +61,18 @@ export function useGroupedAccounts() {
  * Return type for useGroupedAccounts hook
  */
 export type GroupedAccount = {
-  account_id: string;
-  user_id: string;
+  accountId: string;
+  userId: string;
   name: string;
   color: string;
-  is_visible: boolean;
-  created_at: string;
-  updated_at: string;
+  isVisible: boolean;
+  createdAt: string;
+  updatedAt: string;
   balances: AccountBalance[];
 };
 
 export type UseGroupedAccountsReturn = {
+  data: GroupedAccount[]; // For React Query pattern destructuring
   groupedAccounts: GroupedAccount[];
   isLoading: boolean;
   accounts: AccountBalance[]; // Raw accounts array

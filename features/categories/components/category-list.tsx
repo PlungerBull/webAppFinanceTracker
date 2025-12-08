@@ -26,13 +26,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
+import type { CategoryWithCount, Category } from '@/types/domain';
 
-// Use the view type which includes transaction_count
-type Category = Database['public']['Views']['categories_with_counts']['Row'];
-
-type CategoryNode = Category & {
-    children: Category[];
+type CategoryNode = CategoryWithCount & {
+    children: CategoryWithCount[];
 };
 
 export function CategoryList() {
@@ -51,16 +48,16 @@ export function CategoryList() {
     // Group categories into hierarchy
     const categoryTree = useMemo(() => {
         const parents: CategoryNode[] = [];
-        const childrenMap = new Map<string, Category[]>();
+        const childrenMap = new Map<string, CategoryWithCount[]>();
 
         // First pass: identify parents and organize children
         categories.forEach(cat => {
-            if (!cat.parent_id) {
+            if (!cat.parentId) {
                 parents.push({ ...cat, children: [] });
             } else {
-                const list = childrenMap.get(cat.parent_id) || [];
+                const list = childrenMap.get(cat.parentId) || [];
                 list.push(cat);
-                childrenMap.set(cat.parent_id, list);
+                childrenMap.set(cat.parentId, list);
             }
         });
 
@@ -86,10 +83,10 @@ export function CategoryList() {
     useMemo(() => {
         if (currentCategoryId && categories.length > 0) {
             const selectedCat = categories.find(c => c.id === currentCategoryId);
-            if (selectedCat?.parent_id) {
+            if (selectedCat?.parentId) {
                 setExpandedParents(prev => {
                     const next = new Set(prev);
-                    next.add(selectedCat.parent_id!);
+                    next.add(selectedCat.parentId!);
                     return next;
                 });
             }

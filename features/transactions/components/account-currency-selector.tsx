@@ -23,15 +23,15 @@ export function AccountCurrencySelector({
 
   // Flatten accounts into account-currency combinations
   const accountCurrencyOptions = groupedAccounts
-    .filter((account) => account.is_visible)
+    .filter((account) => account.isVisible)
     .flatMap((account) =>
       account.balances.map((balance) => ({
-        accountId: account.account_id,
+        accountId: account.accountId,
         accountName: account.name,
         accountColor: account.color,
         currency: balance.currency || 'USD',
         // Create unique key for selection
-        key: `${account.account_id}-${balance.currency}`,
+        key: `${account.accountId}-${balance.currency}`,
       }))
     )
     .filter((option) => {

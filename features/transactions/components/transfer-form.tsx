@@ -34,8 +34,8 @@ export function TransferForm({
   groupedAccounts,
   isSubmitting,
 }: TransferFormProps) {
-  const selectedFromAccount = groupedAccounts.find((a) => a.account_id === data.fromAccountId);
-  const selectedToAccount = groupedAccounts.find((a) => a.account_id === data.toAccountId);
+  const selectedFromAccount = groupedAccounts.find((a) => a.accountId === data.fromAccountId);
+  const selectedToAccount = groupedAccounts.find((a) => a.accountId === data.toAccountId);
 
   // Check if accounts are multi-currency
   const fromAccountCurrencies = selectedFromAccount?.balances.map((b) => b.currency || 'USD') || [];
@@ -87,9 +87,9 @@ export function TransferForm({
               </SelectTrigger>
               <SelectContent className="max-h-80">
                 {groupedAccounts
-                  .filter((account) => account.is_visible)
+                  .filter((account) => account.isVisible)
                   .map((account) => (
-                    <SelectItem key={account.account_id} value={account.account_id}>
+                    <SelectItem key={account.accountId} value={account.accountId}>
                       {account.name}
                     </SelectItem>
                   ))}
@@ -175,9 +175,9 @@ export function TransferForm({
               </SelectTrigger>
               <SelectContent className="max-h-80">
                 {groupedAccounts
-                  .filter((account) => account.is_visible && account.account_id !== data.fromAccountId)
+                  .filter((account) => account.isVisible && account.accountId !== data.fromAccountId)
                   .map((account) => (
-                    <SelectItem key={account.account_id} value={account.account_id}>
+                    <SelectItem key={account.accountId} value={account.accountId}>
                       {account.name}
                     </SelectItem>
                   ))}

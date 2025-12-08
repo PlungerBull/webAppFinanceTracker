@@ -42,7 +42,7 @@ export function TransactionForm({
   isSubmitting,
   hasSubmitted,
 }: TransactionFormProps) {
-  const selectedAccount = groupedAccounts.find((a) => a.account_id === data.fromAccountId);
+  const selectedAccount = groupedAccounts.find((a) => a.accountId === data.fromAccountId);
   const selectedCategory = categories.find((c) => c.id === data.categoryId);
 
   // Check if account is multi-currency
@@ -144,15 +144,15 @@ export function TransactionForm({
             >
               <div className="w-72 max-h-96 overflow-y-auto p-2">
                 {groupedAccounts
-                  .filter((account) => account.is_visible)
+                  .filter((account) => account.isVisible)
                   .map((account) => (
                     <button
-                      key={account.account_id}
+                      key={account.accountId}
                       type="button"
-                      onClick={() => handleAccountChange(account.account_id)}
+                      onClick={() => handleAccountChange(account.accountId)}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                        data.fromAccountId === account.account_id
+                        data.fromAccountId === account.accountId
                           ? "bg-gray-100 text-gray-900 font-medium"
                           : "text-gray-700 hover:bg-gray-50"
                       )}

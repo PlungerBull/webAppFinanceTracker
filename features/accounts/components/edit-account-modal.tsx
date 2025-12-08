@@ -230,7 +230,7 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
           <Popover open={isColorPopoverOpen} onOpenChange={setIsColorPopoverOpen}>
             <PopoverTrigger asChild>
               <div className="relative">
-                <DashboardModal.Icon color={selectedColor}>
+                <DashboardModal.Icon color={selectedColor || ACCOUNT.DEFAULT_COLOR}>
                   {getInitial()}
                 </DashboardModal.Icon>
                 <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-sm">
@@ -393,9 +393,6 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
                       })}
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
           </div>
         </DashboardModal.Body>
 

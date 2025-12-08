@@ -233,10 +233,10 @@ export function TransactionList({
                 )}
               >
                 {/* Category color indicator (spine) */}
-                {transaction.category_color && (
+                {transaction.categoryColor && (
                   <div
                     className="absolute left-0 top-1 bottom-1 w-1 rounded-r-full"
-                    style={{ backgroundColor: transaction.category_color }}
+                    style={{ backgroundColor: transaction.categoryColor }}
                   />
                 )}
 
@@ -260,9 +260,9 @@ export function TransactionList({
                   <div className="hidden md:flex items-center bg-gray-100 rounded-full px-2 py-0.5">
                     <span
                       className="text-[10px] font-medium"
-                      style={{ color: transaction.category_color || '#6B7280' }}
+                      style={{ color: transaction.categoryColor || '#6B7280' }}
                     >
-                      {transaction.category_name || 'Uncategorized'}
+                      {transaction.categoryName || 'Uncategorized'}
                     </span>
                   </div>
 
@@ -278,12 +278,12 @@ export function TransactionList({
                     <p
                       className={cn(
                         'text-sm font-medium tabular-nums font-mono',
-                        transaction.amount_original >= 0
+                        transaction.amountOriginal >= 0
                           ? 'text-green-600'
                           : 'text-gray-900'
                       )}
                     >
-                      {formatCurrency(transaction.amount_original, transaction.currency_original)}
+                      {formatCurrency(transaction.amountOriginal, transaction.currencyOriginal)}
                     </p>
                   </div>
                 </div>

@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { useCategories } from './use-categories';
-import type { Database } from '@/types/database.types';
-
-type CategoryWithCount = Database['public']['Views']['categories_with_counts']['Row'];
+import type { CategoryWithCount } from '@/types/domain';
 
 export interface CategoryGroup {
   parent: CategoryWithCount;
@@ -24,12 +22,12 @@ export function useCategorizedCategories(): CategorizedCategories {
     const income: CategoryGroup[] = [];
     const expense: CategoryGroup[] = [];
 
-    // Get all parent categories (those with no parent_id)
-    const parents = categories.filter((c) => c.parent_id === null);
+    // Get all parent categories (those with no parentId)
+    const parents = categories.filter((c) => c.parentId === null);
 
     parents.forEach((parent) => {
       // Find all children for this parent
-      const children = categories.filter((c) => c.parent_id === parent.id);
+      const children = categories.filter((c) => c.parentId === parent.id);
 
       const group: CategoryGroup = {
         parent,

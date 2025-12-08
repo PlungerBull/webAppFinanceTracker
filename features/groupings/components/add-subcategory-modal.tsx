@@ -13,14 +13,12 @@ import { VALIDATION, GROUPING } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import type { Database } from '@/types/database.types';
-
-type ParentCategory = Database['public']['Views']['parent_categories_with_counts']['Row'];
+import type { ParentCategoryWithCount } from '@/types/domain';
 
 interface AddSubcategoryModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    parentGrouping: ParentCategory | null;
+    parentGrouping: ParentCategoryWithCount | null;
 }
 
 // Schema for the form
@@ -33,7 +31,7 @@ type SubcategoryFormData = z.infer<typeof subcategorySchema>;
 export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddSubcategoryModalProps) {
     const addSubcategoryMutation = useAddSubcategory();
     const { data: allGroupings = [] } = useGroupings();
-    const [selectedParent, setSelectedParent] = useState<ParentCategory | null>(parentGrouping);
+    const [selectedParent, setSelectedParent] = useState<ParentCategoryWithCount | null>(parentGrouping);
     const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
 
     const {

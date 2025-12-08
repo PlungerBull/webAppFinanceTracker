@@ -22,11 +22,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACCOUNT, VALIDATION, ACCOUNTS } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
+import type { CategoryWithCount } from '@/types/domain';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
-// Use the view type which includes transaction_count
-type Category = Database['public']['Views']['categories_with_counts']['Row'];
+type Category = CategoryWithCount;
 
 interface EditGroupingModalProps {
     open: boolean;
@@ -58,14 +57,14 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
 
     // Filter subcategories for the current category
     const subcategories = useMemo(() =>
-        allCategories.filter(c => c.parent_id === category?.id && c.id !== null) as (Category & { id: string })[],
+        allCategories.filter(c => c.parentId === category?.id && c.id !== null) as (Category & { id: string })[],
         [allCategories, category?.id]
     );
 
     // Filter available parents for migration (exclude current category and its children)
     const availableParents = useMemo(() =>
         allCategories.filter(c =>
-            c.parent_id === null && // Must be a parent
+            c.parentId === null && // Must be a parent
             c.id !== category?.id && // Cannot be the current category
             c.id !== null // Must have an ID
         ) as (Category & { id: string })[],

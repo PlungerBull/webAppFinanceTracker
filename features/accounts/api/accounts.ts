@@ -53,6 +53,10 @@ export const accountsApi = {
    * Create a new account with currencies atomically
    * Uses database function to ensure all-or-nothing creation
    * Authentication is handled by the database function via auth.uid()
+   *
+   * NOTE: Returns raw JSON from database function (not transformed).
+   * This is acceptable as the return value is typically not used by consumers.
+   * If you need the account data, use getById() after creation instead.
    */
   createWithCurrencies: async (
     accountName: string,
@@ -73,6 +77,8 @@ export const accountsApi = {
       throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CREATE_FAILED);
     }
 
+    // Returns raw JSON from database function
+    // NOTE: snake_case format - use getById() if you need transformed data
     return data;
   },
 

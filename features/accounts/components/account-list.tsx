@@ -14,17 +14,15 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { ACCOUNT_UI } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
-
-type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
+import type { Account } from '@/types/domain';
 
 export function AccountList() {
   const { groupedAccounts, isLoading } = useGroupedAccounts();
   const { handleAccountClick, currentAccountId } = useAccountNavigation();
   const [isAccountsExpanded, setIsAccountsExpanded] = useState(true);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
-  const [deletingAccount, setDeletingAccount] = useState<BankAccount | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
 
   return (
     <>
@@ -72,13 +70,13 @@ export function AccountList() {
               </div>
             ) : (
               groupedAccounts
-                .filter(account => account.is_visible !== false) // Default to true if undefined
+                .filter(account => account.isVisible !== false) // Default to true if undefined
                 .map((account) => (
                   <AccountListItem
-                    key={account.account_id}
+                    key={account.accountId}
                     account={account}
-                    isActive={currentAccountId === account.account_id}
-                    onClick={() => handleAccountClick(account.account_id)}
+                    isActive={currentAccountId === account.accountId}
+                    onClick={() => handleAccountClick(account.accountId)}
                     onEdit={setEditingAccount}
                     onDelete={setDeletingAccount}
                   />

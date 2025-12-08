@@ -27,6 +27,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import type { TransactionRow } from '../types';
+import type { CategoryWithCount } from '@/types/domain';
 
 interface TransactionDetailPanelProps {
   transaction: TransactionRow | null;
@@ -41,12 +42,12 @@ export function TransactionDetailPanel({
   const { data: categories = [] } = useCategories();
   const { data: accountsData = [] } = useGroupedAccounts();
 
-  // Extract plain accounts array from grouped accounts
+  // Use grouped accounts directly - each group IS an account
   const accounts = useMemo(() =>
-    accountsData.flatMap(group => group.accounts.map(acc => ({
-      id: acc.id,
-      name: acc.name,
-    }))),
+    accountsData.map(group => ({
+      id: group.accountId,
+      name: group.name,
+    })),
     [accountsData]
   );
   const {
@@ -62,20 +63,20 @@ export function TransactionDetailPanel({
   } = useTransactionEditor(accountId);
 
   const categoryGroups = useMemo(() => {
-    const groups: { parent: Category; children: Category[] }[] = [];
-    const parents = categories.filter(c => c.parent_id === null);
-    const childrenMap = new Map<string, Category[]>();
+    const groups: { parent: CategoryWithCount; children: CategoryWithCount[] }[] = [];
+    const parents = categories.filter(c => c.parentId === null);
+    const childrenMap = new Map<string, CategoryWithCount[]>();
 
-    categories.filter(c => c.parent_id !== null).forEach(child => {
-      if (child.parent_id) {
-        const list = childrenMap.get(child.parent_id) || [];
+    categories.filter(c => c.parentId !== null).forEach(child => {
+      if (child.parentId) {
+        const list = childrenMap.get(child.parentId) || [];
         list.push(child);
-        childrenMap.set(child.parent_id, list);
+        childrenMap.set(child.parentId, list);
       }
     });
 
     parents.forEach(parent => {
-      const children = childrenMap.get(parent.id);
+      const children = parent.id ? childrenMap.get(parent.id) : undefined;
       if (children && children.length > 0) {
         groups.push({ parent, children });
       }
@@ -110,12 +111,12 @@ export function TransactionDetailPanel({
         <p
           className={cn(
             'text-xl font-semibold tabular-nums font-mono mb-8',
-            transaction.amount_original >= 0
+            transaction.amountOriginal >= 0
               ? 'text-green-600 dark:text-green-500'
               : 'text-red-600 dark:text-red-500'
           )}
         >
-          {formatCurrency(transaction.amount_original, transaction.currency_original)}
+          {formatCurrency(transaction.amountOriginal, transaction.currencyOriginal)}
         </p>
 
         {/* Date */}
@@ -228,9 +229,9 @@ export function TransactionDetailPanel({
           ) : (
             <p
               className="text-sm font-normal text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-2 py-1 -mx-2 rounded"
-              onClick={() => startEdit('category_id', transaction.category_id)}
+              onClick={() => startEdit('category_id', transaction.categoryId)}
             >
-              {transaction.category_name ? `# ${transaction.category_name}` : 'Uncategorized'}
+              {transaction.categoryName ? `# ${transaction.categoryName}` : 'Uncategorized'}
             </p>
           )}
         </div>
@@ -280,12 +281,12 @@ export function TransactionDetailPanel({
           ) : (
             <p
               className="text-sm font-normal text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-2 py-1 -mx-2 rounded"
-              onClick={() => startEdit('account_id', transaction.account_id)}
+              onClick={() => startEdit('account_id', transaction.accountId)}
             >
-              {transaction.account_name}
-              {transaction.currency_original && (
+              {transaction.accountName}
+              {transaction.currencyOriginal && (
                 <span className="text-gray-500 dark:text-gray-400 ml-2">
-                  ({transaction.currency_original})
+                  ({transaction.currencyOriginal})
                 </span>
               )}
             </p>

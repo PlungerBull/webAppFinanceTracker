@@ -47,11 +47,11 @@ function TransactionsContent() {
 
   const isLoading = isLoadingTransactions;
 
-  // Extract plain accounts array from grouped accounts
-  const accounts = accountsData.flatMap(group => group.accounts);
+  // Use grouped accounts directly (each group represents an account)
+  const accounts = accountsData;
 
   // Determine display names
-  const accountName = accountId ? accounts.find(a => a.id === accountId)?.name : null;
+  const accountName = accountId ? accounts.find(a => a.accountId === accountId)?.name : null;
   const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
   const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
 
@@ -76,7 +76,7 @@ function TransactionsContent() {
     }
 
     // Category filter - check if transaction's category is in selected categories array
-    if (selectedCategories.length > 0 && t.category_id && !selectedCategories.includes(t.category_id)) {
+    if (selectedCategories.length > 0 && t.categoryId && !selectedCategories.includes(t.categoryId)) {
       return false;
     }
 
@@ -85,7 +85,7 @@ function TransactionsContent() {
 
   // Calculate transaction counts per category for the filter dropdown
   const categoryCounts = categories.reduce((acc: Record<string, number>, category) => {
-    acc[category.id] = filteredTransactions.filter((t: TransactionRow) => t.category_id === category.id).length;
+    acc[category.id] = filteredTransactions.filter((t: TransactionRow) => t.categoryId === category.id).length;
     return acc;
   }, {});
 

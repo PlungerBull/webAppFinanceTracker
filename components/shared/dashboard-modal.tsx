@@ -260,7 +260,7 @@ interface ErrorProps {
   className?: string;
 }
 
-function Error({ error, className }: ErrorProps) {
+function ErrorDisplay({ error, className }: ErrorProps) {
   if (!error) return null;
 
   return (
@@ -308,6 +308,6 @@ export const DashboardModal = Object.assign(DashboardModalRoot, {
   Divider,
   Body,
   Footer,
-  Error,
+  Error: ErrorDisplay,
   Form,
 });
