@@ -58,7 +58,8 @@ export function TransactionList({
 
   // Format date for display
   const formatDateDisplay = (dateString: string) => {
-    const date = new Date(dateString);
+    // Parse as local time by appending time component
+    const date = new Date(dateString + 'T00:00:00');
     if (isToday(date)) {
       return 'Today';
     }

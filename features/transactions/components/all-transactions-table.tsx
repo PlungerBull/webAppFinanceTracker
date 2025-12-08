@@ -35,11 +35,21 @@ function TransactionsContent() {
     return undefined;
   }, [groupingId, groupingChildren]);
 
+  // Build active category filter by merging grouping and user selection
+  const activeCategoryIds = useMemo(() => {
+    // If user has manually selected categories, use ONLY those (they are specific)
+    if (selectedCategories.length > 0) {
+      return selectedCategories;
+    }
+    // Otherwise, fallback to the grouping filter (if any)
+    return categoryFilter;
+  }, [selectedCategories, categoryFilter]);
+
   // Use API layer hooks instead of direct database calls
   const { data: transactions = [], isLoading: isLoadingTransactions } = useTransactions({
     accountId: accountId || undefined,
     categoryId: categoryId || undefined,
-    categoryIds: categoryFilter,
+    categoryIds: activeCategoryIds,
     // Server-side filtering
     searchQuery: searchQuery || undefined,
     date: selectedDate,
@@ -53,31 +63,25 @@ function TransactionsContent() {
   // Use grouped accounts directly (each group represents an account)
   const accounts = accountsData;
 
+  // Flatten accounts for the detail panel
+  const flatAccounts = useMemo(() =>
+    accountsData.map(group => ({
+      id: group.accountId,
+      name: group.name,
+    })),
+    [accountsData]
+  );
+
   // Determine display names
   const accountName = accountId ? accounts.find(a => a.accountId === accountId)?.name : null;
   const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
   const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
 
-  // Apply client-side filters (ONLY category array for now if needed, but simplified)
-  const filteredTransactions = transactions.filter((t: TransactionRow) => {
-    // Only apply category filter here if it's strictly client-side specific logic not handled by API
-    // Currently API handles searchQuery, date, account, and category.
+  // No client-side filtering needed anymore - API handles it all
+  const filteredTransactions = transactions;
 
-    // Category filter - check if transaction's category is in selected categories array
-    // This part matches the behavior requested: "Search & Date" moved to server.
-    // If selectedCategories is used for multi-selection filtering, we might want to move it to server too,
-    // but the plan specifically mentioned Search & Date. 
-    // However, for consistency, let's keep this client-side for now as per plan boundaries, 
-    // OR considering the user asked for "Scalability", client-side filtering 5000 rows is bad.
-    // But since API returns filtered rows by search/date, the array is smaller.
-    if (selectedCategories.length > 0 && t.categoryId && !selectedCategories.includes(t.categoryId)) {
-      return false;
-    }
-
-    return true;
-  });
-
-  // Calculate transaction counts per category for the filter dropdown
+  // Calculate transaction counts per category
+  // Since we are filtering on server, these counts will reflect the *filtered* set
   const categoryCounts = categories.reduce((acc: Record<string, number>, category) => {
     acc[category.id] = filteredTransactions.filter((t: TransactionRow) => t.categoryId === category.id).length;
     return acc;
@@ -118,13 +122,7 @@ function TransactionsContent() {
         transaction={selectedTransaction}
         accountId={accountId}
         categories={categories}
-        accounts={useMemo(() =>
-          accountsData.map(group => ({
-            id: group.accountId,
-            name: group.name,
-          })),
-          [accountsData]
-        )}
+        accounts={flatAccounts}
       />
     </div>
   );

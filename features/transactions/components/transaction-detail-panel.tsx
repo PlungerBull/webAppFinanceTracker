@@ -128,13 +128,13 @@ export function TransactionDetailPanel({
                     className="w-full justify-start text-left font-normal flex-1"
                   >
                     <Calendar className="mr-2 h-4 w-4" />
-                    {editedValue ? format(new Date(editedValue as string), 'PPP') : <span>Pick a date</span>}
+                    {editedValue ? format(new Date(editedValue as string + 'T00:00:00'), 'PPP') : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <CalendarComponent
                     mode="single"
-                    selected={editedValue ? new Date(editedValue as string) : undefined}
+                    selected={editedValue ? new Date(editedValue as string + 'T00:00:00') : undefined}
                     onSelect={(date) => {
                       if (date) {
                         setEditedValue(format(date, 'yyyy-MM-dd'));
@@ -166,7 +166,7 @@ export function TransactionDetailPanel({
               className="text-sm font-normal text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-2 py-1 -mx-2 rounded"
               onClick={() => startEdit('date', transaction.date)}
             >
-              {format(new Date(transaction.date), 'MMMM dd, yyyy')}
+              {format(new Date(transaction.date + 'T00:00:00'), 'MMMM dd, yyyy')}
             </p>
           )}
         </div>

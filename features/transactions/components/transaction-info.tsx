@@ -91,13 +91,13 @@ export function TransactionInfo({
                                     className="w-full justify-start text-left font-normal flex-1"
                                 >
                                     <Calendar className="mr-2 h-4 w-4" />
-                                    {editedValue ? format(new Date(editedValue), 'PPP') : <span>{TRANSACTIONS.UI.LABELS.PICK_DATE}</span>}
+                                    {editedValue ? format(new Date(editedValue + 'T00:00:00'), 'PPP') : <span>{TRANSACTIONS.UI.LABELS.PICK_DATE}</span>}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                                 <CalendarComponent
                                     mode="single"
-                                    selected={editedValue ? new Date(editedValue) : undefined}
+                                    selected={editedValue ? new Date(editedValue + 'T00:00:00') : undefined}
                                     onSelect={(date) => {
                                         if (date) {
                                             setEditedValue(format(date, 'yyyy-MM-dd'));
@@ -129,7 +129,7 @@ export function TransactionInfo({
                         className="text-sm text-zinc-900 dark:text-zinc-50 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 px-2 py-1 -mx-2 rounded"
                         onClick={() => startEdit('date', transaction.date)}
                     >
-                        {format(new Date(transaction.date), 'MMMM dd, yyyy')}
+                        {format(new Date(transaction.date + 'T00:00:00'), 'MMMM dd, yyyy')}
                     </p>
                 )}
             </div>
