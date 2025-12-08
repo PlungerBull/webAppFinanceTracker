@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCY } from '@/lib/constants';
+import { dbCurrenciesToDomain } from '@/lib/types/data-transformers';
 
 export const currenciesApi = {
   /**
@@ -18,6 +19,7 @@ export const currenciesApi = {
       throw new Error(error.message || CURRENCY.API.ERRORS.FETCH_ALL_FAILED);
     }
 
-    return data || [];
+    // Transform snake_case to camelCase before returning to frontend
+    return data ? dbCurrenciesToDomain(data) : [];
   },
 };

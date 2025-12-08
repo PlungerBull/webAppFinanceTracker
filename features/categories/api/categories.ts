@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/client';
 import { CATEGORY } from '@/lib/constants';
+import {
+  dbCategoriesWithCountsToDomain,
+  dbCategoryToDomain,
+} from '@/lib/types/data-transformers';
 
 export const categoriesApi = {
   // Get all categories (user categories)
@@ -17,7 +21,8 @@ export const categoriesApi = {
       throw new Error(error.message || CATEGORY.API.ERRORS.FETCH_ALL_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return data ? dbCategoriesWithCountsToDomain(data) : [];
   },
 
   // Get a single category by ID
@@ -35,7 +40,8 @@ export const categoriesApi = {
       throw new Error(error.message || CATEGORY.API.ERRORS.FETCH_ONE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbCategoryToDomain(data);
   },
 
   // Create a new category
@@ -60,7 +66,8 @@ export const categoriesApi = {
       throw new Error(error.message || CATEGORY.API.ERRORS.CREATE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbCategoryToDomain(data);
   },
 
   // Update an existing category (RLS handles user filtering)
@@ -79,7 +86,8 @@ export const categoriesApi = {
       throw new Error(error.message || CATEGORY.API.ERRORS.UPDATE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbCategoryToDomain(data);
   },
 
   // Delete a category (RLS handles user filtering)

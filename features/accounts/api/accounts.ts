@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/client';
 import { ACCOUNTS } from '@/lib/constants';
 import type { Database } from '@/types/database.types';
 import type { UpdateAccountFormData } from '../schemas/account.schema';
+import {
+  dbAccountBalancesToDomain,
+  dbAccountToDomain,
+} from '@/lib/types/data-transformers';
 
 export const accountsApi = {
   /**
@@ -20,7 +24,8 @@ export const accountsApi = {
       throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.FETCH_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return data ? dbAccountBalancesToDomain(data) : [];
   },
 
   /**
@@ -40,7 +45,8 @@ export const accountsApi = {
       throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.FETCH_ONE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbAccountToDomain(data);
   },
 
   /**
@@ -88,7 +94,8 @@ export const accountsApi = {
       throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.UPDATE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbAccountToDomain(data);
   },
 
   /**

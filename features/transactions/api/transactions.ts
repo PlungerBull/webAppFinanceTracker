@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/client';
 import { TRANSACTIONS } from '@/lib/constants';
 import type { CreateTransactionFormData, UpdateTransactionFormData } from '../schemas/transaction.schema';
+import {
+  dbTransactionViewToDomain,
+  dbTransactionViewsToDomain,
+  dbTransactionToDomain,
+} from '@/lib/types/data-transformers';
 
 export const transactionsApi = {
   // Get all transactions for the current user (RLS handles user filtering)
@@ -38,7 +43,8 @@ export const transactionsApi = {
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.FETCH_ALL_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return data ? dbTransactionViewsToDomain(data) : [];
   },
 
   // Get a single transaction by ID (RLS handles user filtering)
@@ -56,7 +62,8 @@ export const transactionsApi = {
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.FETCH_ONE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbTransactionViewToDomain(data);
   },
 
   // Create a new transaction
@@ -92,7 +99,8 @@ export const transactionsApi = {
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.CREATE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbTransactionToDomain(data);
   },
 
   // Update an existing transaction (RLS handles user filtering)
@@ -111,7 +119,8 @@ export const transactionsApi = {
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return dbTransactionToDomain(data);
   },
 
   // Delete a transaction (RLS handles user filtering)

@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/client';
 import { categoriesApi } from '@/features/categories/api/categories';
 import { GROUPING } from '@/lib/constants';
+import {
+  dbCategoriesToDomain,
+  dbParentCategoriesWithCountsToDomain,
+} from '@/lib/types/data-transformers';
 
 export const groupingsApi = {
   // Get all parent categories with aggregated transaction counts
@@ -17,7 +21,8 @@ export const groupingsApi = {
       throw new Error(error.message || GROUPING.API.ERRORS.FETCH_ALL_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return data ? dbParentCategoriesWithCountsToDomain(data) : [];
   },
 
   // Get children of a parent category
@@ -35,7 +40,8 @@ export const groupingsApi = {
       throw new Error(error.message || GROUPING.API.ERRORS.FETCH_CHILDREN_FAILED);
     }
 
-    return data;
+    // Transform snake_case to camelCase before returning to frontend
+    return data ? dbCategoriesToDomain(data) : [];
   },
 
   // Create parent category (reuses categories API)

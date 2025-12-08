@@ -9,15 +9,13 @@ import { accountCurrenciesApi } from '../api/account-currencies';
 import { updateAccountSchema, type UpdateAccountFormData } from '../schemas/account.schema';
 import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
 import type { Database } from '@/types/database.types';
+import { DashboardModal } from '@/components/shared/dashboard-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { CreditCard, Pencil, X, Plus, Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
-import { ACCOUNT, ACCOUNT_UI, QUERY_KEYS } from '@/lib/constants';
+import { Pencil, Plus, Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
+import { ACCOUNT, QUERY_KEYS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
 type AccountCurrency = Database['public']['Tables']['account_currencies']['Row'];
@@ -218,101 +216,76 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
   };
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={handleClose}>
-      <DialogPrimitive.Portal>
-        {/* Backdrop */}
-        <DialogPrimitive.Overlay className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          {/* Modal Container */}
-          <DialogPrimitive.Content className="relative w-full max-w-lg max-h-[85vh] outline-none animate-in fade-in zoom-in-95 duration-200">
-            <VisuallyHidden>
-              <DialogPrimitive.Title>Edit Account</DialogPrimitive.Title>
-              <DialogPrimitive.Description>
-                Edit account name, color, and manage currencies
-              </DialogPrimitive.Description>
-            </VisuallyHidden>
-            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-              {/* Close Button (Absolute) */}
-              <button
-                onClick={handleClose}
-                className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors z-10"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              {/* Hero Header (Merged Layout) - Fixed */}
-              <div className="px-8 pt-10 pb-6 shrink-0">
-                <div className="flex items-start gap-4">
-                  {/* Icon Anchor (Color Trigger) */}
-                  <Popover open={isColorPopoverOpen} onOpenChange={setIsColorPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          className="w-14 h-14 rounded-2xl ring-1 ring-black/5 flex items-center justify-center text-white text-xl font-bold drop-shadow-md hover:scale-105 transition-transform cursor-pointer"
-                          style={{ backgroundColor: selectedColor }}
-                        >
-                          {getInitial()}
-                        </button>
-                        <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-sm">
-                          <ChevronDown className="w-3 h-3 text-gray-400" />
-                        </div>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-3 bg-white rounded-2xl shadow-xl border border-gray-100">
-                      <div className="grid grid-cols-5 gap-3">
-                        {ACCOUNT.COLOR_PALETTE.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => {
-                              setValue('color', color, { shouldDirty: true });
-                              setIsColorPopoverOpen(false);
-                            }}
-                            className={cn(
-                              'w-8 h-8 rounded-full transition-all flex items-center justify-center',
-                              selectedColor === color && 'ring-2 ring-offset-2 ring-gray-900'
-                            )}
-                            style={{ backgroundColor: color }}
-                          >
-                            {selectedColor === color && (
-                              <Check className="w-4 h-4 text-white drop-shadow-md" strokeWidth={3} />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  {/* Title Input (Hero Text) */}
-                  <div className="flex-1 relative group">
-                    <Input
-                      {...register('name')}
-                      className={cn(
-                        'text-2xl font-bold text-gray-900 border-transparent bg-transparent hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-blue-200 ring-0 focus:ring-0 px-4 py-2 rounded-xl transition-all',
-                        errors.name && 'border-red-300'
-                      )}
-                      placeholder="Account name"
-                    />
-                    <Pencil className="absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                    {errors.name && <p className="text-xs text-red-500 mt-1 px-4">{errors.name.message}</p>}
-                  </div>
+    <DashboardModal
+      open={open}
+      onOpenChange={handleClose}
+      title="Edit Account"
+      description="Edit account name, color, and manage currencies"
+      maxWidth="max-w-lg"
+    >
+      <DashboardModal.Form onSubmit={handleSubmit}>
+        {/* HEADER: Icon + Title + Color Picker */}
+        <DashboardModal.Header>
+          {/* Icon with Color Picker */}
+          <Popover open={isColorPopoverOpen} onOpenChange={setIsColorPopoverOpen}>
+            <PopoverTrigger asChild>
+              <div className="relative">
+                <DashboardModal.Icon color={selectedColor}>
+                  {getInitial()}
+                </DashboardModal.Icon>
+                <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-sm">
+                  <ChevronDown className="w-3 h-3 text-gray-400" />
                 </div>
               </div>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-3 bg-white rounded-2xl shadow-xl border border-gray-100">
+              <div className="grid grid-cols-5 gap-3">
+                {ACCOUNT.COLOR_PALETTE.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => {
+                      setValue('color', color, { shouldDirty: true });
+                      setIsColorPopoverOpen(false);
+                    }}
+                    className={cn(
+                      'w-8 h-8 rounded-full transition-all flex items-center justify-center',
+                      selectedColor === color && 'ring-2 ring-offset-2 ring-gray-900'
+                    )}
+                    style={{ backgroundColor: color }}
+                  >
+                    {selectedColor === color && (
+                      <Check className="w-4 h-4 text-white drop-shadow-md" strokeWidth={3} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-              {/* Divider */}
-              <div className="h-px bg-gray-50 shrink-0" />
+          {/* Title Input */}
+          <DashboardModal.Title>
+            <Input
+              {...register('name')}
+              className={cn(
+                'text-2xl font-bold text-gray-900 border-transparent bg-transparent hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-blue-200 ring-0 focus:ring-0 px-4 py-2 rounded-xl transition-all',
+                errors.name && 'border-red-300'
+              )}
+              placeholder="Account name"
+              autoComplete="off"
+            />
+            {errors.name && <p className="text-xs text-red-500 mt-1 px-4">{errors.name.message}</p>}
+          </DashboardModal.Title>
+        </DashboardModal.Header>
 
-              {/* Body Section - Scrollable */}
-              <div className="px-8 py-6 space-y-6 overflow-y-auto flex-1">
-                {/* Error Display */}
-                {error && (
-                  <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
-                    {error}
-                  </div>
-                )}
+        <DashboardModal.Divider />
 
-                {/* Currencies & Balances */}
-                <div className="space-y-4">
+        {/* BODY: Scrollable Content */}
+        <DashboardModal.Body>
+          <DashboardModal.Error error={error} />
+
+          {/* Currencies & Balances */}
+          <div className="space-y-4">
                   {/* Header Row */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-700">
@@ -422,41 +395,42 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
                   )}
                 </div>
               </div>
-
-              {/* Footer - Fixed */}
-              <div className="bg-white rounded-b-3xl border-t border-gray-100 p-4 flex gap-3 shrink-0">
-                {/* Delete Account Button */}
-                {onDelete && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={isSubmitting}
-                    className="bg-red-50 text-red-600 hover:bg-red-100 p-3 rounded-xl transition-colors"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-
-                {/* Save Changes Button */}
-                <Button
-                  onClick={() => void handleSubmit()}
-                  disabled={isSubmitting}
-                  className="flex-1 bg-gray-900 hover:bg-black text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-gray-200 hover:shadow-xl transition-all"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </Button>
-              </div>
             </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Overlay>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+          </div>
+        </DashboardModal.Body>
+
+        {/* FOOTER: Fixed at Bottom */}
+        <DashboardModal.Footer>
+          {/* Delete Account Button */}
+          {onDelete && (
+            <Button
+              type="button"
+              onClick={handleDelete}
+              disabled={isSubmitting}
+              variant="destructive"
+              className="bg-red-50 text-red-600 hover:bg-red-100 p-3 rounded-xl transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+            </Button>
+          )}
+
+          {/* Save Changes Button */}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex-1 bg-gray-900 hover:bg-black text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-gray-200 hover:shadow-xl transition-all"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        </DashboardModal.Footer>
+      </DashboardModal.Form>
+    </DashboardModal>
   );
 }
