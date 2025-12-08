@@ -5,6 +5,7 @@ import { QueryProvider } from '@/providers/query-provider';
 import { CurrencyProvider } from '@/contexts/currency-context';
 import { APP_METADATA } from '@/lib/constants';
 import { Toaster } from '@/components/ui/sonner';
+import { TransactionModalProvider } from '@/features/transactions/contexts/transaction-modal-context';
 import './globals.css';
 
 const geistSans = Geist({
@@ -37,9 +38,11 @@ export default function RootLayout({
         <QueryProvider>
           <CurrencyProvider>
             <AuthProvider>
-              {children}
-              {modal} {/* <-- ADD THIS */}
-              <Toaster />
+              <TransactionModalProvider>
+                {children}
+                {modal}
+                <Toaster />
+              </TransactionModalProvider>
             </AuthProvider>
           </CurrencyProvider>
         </QueryProvider>
