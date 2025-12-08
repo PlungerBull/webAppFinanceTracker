@@ -69,7 +69,8 @@ export function useTransactionEditor(accountId?: string | null) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions', 'all', accountId] });
+      // Invalidate all transaction queries to ensure list updates regardless of filters
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setEditingField(null);
       setEditedValue(null);
       setShowDatePicker(false);
@@ -118,7 +119,8 @@ export function useTransactionEditor(accountId?: string | null) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions', 'all', accountId] });
+      // Invalidate all transaction queries to ensure list updates regardless of filters
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setEditingField(null);
       setEditedValue(null);
       setShowDatePicker(false);
