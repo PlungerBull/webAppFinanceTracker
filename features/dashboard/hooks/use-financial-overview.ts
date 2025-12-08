@@ -100,6 +100,24 @@ export function useFinancialOverview(monthsBack = DATABASE.MONTHS_BACK.DEFAULT) 
         }
 
         categoryDataMap[categoryId].monthlyAmounts[row.month_key] = row.total_amount;
+        categoryDataMap[categoryId].monthlyAmounts[row.month_key] = row.total_amount;
+      });
+
+      // Ensure parents exist for all children
+      Object.values(categoryDataMap).forEach((cat) => {
+        if (cat.parentId && !categoryDataMap[cat.parentId]) {
+          const parent = categoriesMap.get(cat.parentId);
+          if (parent) {
+            categoryDataMap[parent.id] = {
+              categoryId: parent.id,
+              categoryName: parent.name,
+              categoryColor: parent.color,
+              categoryType: parent.type,
+              parentId: parent.parent_id,
+              monthlyAmounts: {},
+            };
+          }
+        }
       });
 
       const allCategories = Object.values(categoryDataMap);

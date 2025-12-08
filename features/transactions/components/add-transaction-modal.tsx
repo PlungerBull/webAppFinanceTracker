@@ -63,7 +63,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   // Validation
   const isValid = useMemo(() => {
     if (mode === 'transaction') {
-      const hasAmount = parseFloat(transactionData.amount) > 0;
+      const amountVal = parseFloat(transactionData.amount);
+      const hasAmount = !isNaN(amountVal) && amountVal !== 0;
       const hasAccount = transactionData.fromAccountId && transactionData.fromCurrency;
       const hasCategory = transactionData.categoryId;
       return hasAmount && hasAccount && hasCategory;

@@ -25,19 +25,21 @@ export function MainNavigation({ isCollapsed }: MainNavigationProps) {
         const isActive = pathname === item.href;
 
         return (
-          <Link key={item.href} href={item.href}>
-            <Button
-              variant="ghost"
-              className={cn(
-                'w-full justify-start px-3 py-2 gap-3',
-                isCollapsed && 'justify-center px-2',
-                isActive ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-100'
-              )}
-            >
+          <Button
+            key={item.href}
+            variant="ghost"
+            asChild
+            className={cn(
+              'w-full justify-start px-3 py-2 gap-3',
+              isCollapsed && 'justify-center px-2',
+              isActive ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-100'
+            )}
+          >
+            <Link href={item.href}>
               <Icon className="h-[18px] w-[18px]" />
               {!isCollapsed && <span>{item.label}</span>}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         );
       })}
     </div>

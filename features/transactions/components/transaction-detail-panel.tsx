@@ -1,19 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-
 import { format } from 'date-fns';
-import { Calendar, Hash, CreditCard, FileText, Check, X } from 'lucide-react';
+import { Calendar, Hash, CreditCard, Trash2, Check, X, FileText, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
-import { useTransactionEditor } from '@/hooks/use-transaction-editor';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -23,6 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTransactionEditor } from '@/hooks/use-transaction-editor';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import type { TransactionRow } from '../types';
 import type { CategoryWithCount } from '@/types/domain';
