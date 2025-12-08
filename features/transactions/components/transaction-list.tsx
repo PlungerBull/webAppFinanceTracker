@@ -58,12 +58,21 @@ export function TransactionList({
 
   // Format date for display
   const formatDateDisplay = (dateString: string) => {
-    // Parse as local time by appending time component
-    const date = new Date(dateString + 'T00:00:00');
-    if (isToday(date)) {
-      return 'Today';
+    if (!dateString) return '';
+    try {
+      // Parse as local time by appending time component if not present
+      const dateToParse = dateString.includes('T') ? dateString : dateString + 'T00:00:00';
+      const date = new Date(dateToParse);
+
+      if (isNaN(date.getTime())) return dateString; // Fallback for invalid dates
+
+      if (isToday(date)) {
+        return 'Today';
+      }
+      return format(date, 'MMM dd');
+    } catch (e) {
+      return dateString;
     }
-    return format(date, 'MMM dd');
   };
 
   return (

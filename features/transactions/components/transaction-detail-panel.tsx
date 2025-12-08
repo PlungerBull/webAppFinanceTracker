@@ -128,13 +128,24 @@ export function TransactionDetailPanel({
                     className="w-full justify-start text-left font-normal flex-1"
                   >
                     <Calendar className="mr-2 h-4 w-4" />
-                    {editedValue ? format(new Date(editedValue as string + 'T00:00:00'), 'PPP') : <span>Pick a date</span>}
+                    {editedValue && typeof editedValue === 'string' ? (() => {
+                      try {
+                        const dateToParse = editedValue.includes('T') ? editedValue : editedValue + 'T00:00:00';
+                        const date = new Date(dateToParse);
+                        return !isNaN(date.getTime()) ? format(date, 'PPP') : editedValue;
+                      } catch { return editedValue; }
+                    })() : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <CalendarComponent
                     mode="single"
-                    selected={editedValue ? new Date(editedValue as string + 'T00:00:00') : undefined}
+                    selected={(() => {
+                      if (!editedValue || typeof editedValue !== 'string') return undefined;
+                      const dateToParse = editedValue.includes('T') ? editedValue : editedValue + 'T00:00:00';
+                      const date = new Date(dateToParse);
+                      return !isNaN(date.getTime()) ? date : undefined;
+                    })()}
                     onSelect={(date) => {
                       if (date) {
                         setEditedValue(format(date, 'yyyy-MM-dd'));
@@ -166,7 +177,14 @@ export function TransactionDetailPanel({
               className="text-sm font-normal text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 px-2 py-1 -mx-2 rounded"
               onClick={() => startEdit('date', transaction.date)}
             >
-              {format(new Date(transaction.date + 'T00:00:00'), 'MMMM dd, yyyy')}
+              {(() => {
+                if (!transaction.date) return 'No date';
+                try {
+                  const dateToParse = transaction.date.includes('T') ? transaction.date : transaction.date + 'T00:00:00';
+                  const date = new Date(dateToParse);
+                  return !isNaN(date.getTime()) ? format(date, 'MMMM dd, yyyy') : transaction.date;
+                } catch { return transaction.date; }
+              })()}
             </p>
           )}
         </div>
