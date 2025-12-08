@@ -108,6 +108,7 @@ export const transactionsApi = {
         account_id: transactionData.account_id,
         currency_original: transactionData.currency_original,
         exchange_rate: transactionData.exchange_rate,
+        notes: transactionData.notes || null, // ✅ Capture notes
       })
       .select()
       .single();
