@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, X } from 'lucide-react';
 import { Currency } from '@/types/domain';
 import { cn } from '@/lib/utils';
 import { CurrencyBalance } from '@/hooks/use-currency-manager';
@@ -38,14 +38,6 @@ export function CurrencyManager({
 
     const handleRemoveCurrency = (code: string) => {
         const newValue = value.filter((c) => c.currency_code !== code);
-        onChange(newValue);
-    };
-
-    const handleUpdateBalance = (code: string, balance: string) => {
-        const numericBalance = parseFloat(balance) || 0;
-        const newValue = value.map((c) =>
-            c.currency_code === code ? { ...c, starting_balance: numericBalance } : c
-        );
         onChange(newValue);
     };
 
@@ -96,59 +88,27 @@ export function CurrencyManager({
                 </Popover>
             </div>
 
-            {/* Selected Currencies List */}
+            {/* Selected Currencies List - Simple badges only, no balances */}
             {value.length > 0 ? (
-                <div className="space-y-2">
-                    {value.map((currency, index) => {
+                <div className="flex flex-wrap gap-2">
+                    {value.map((currency) => {
                         const currencyData = allCurrencies.find(c => c.code === currency.currency_code);
-                        const currencySymbol = currencyData?.symbol || currency.currency_code;
 
                         return (
-                            <div key={currency.currency_code} className="space-y-2">
-                                <div
-                                    className="flex items-center gap-3 animate-in slide-in-from-left-2 fade-in"
+                            <div
+                                key={currency.currency_code}
+                                className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-700 animate-in slide-in-from-left-2 fade-in"
+                            >
+                                {currencyData?.flag && <span>{currencyData.flag}</span>}
+                                <span>{currency.currency_code}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveCurrency(currency.currency_code)}
+                                    disabled={disabled}
+                                    className="ml-1 p-0.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                                 >
-                                    {/* Currency Badge */}
-                                    <div className="w-20 text-xs font-bold text-gray-700 bg-gray-100 rounded-lg py-2 text-center">
-                                        {currency.currency_code}
-                                    </div>
-
-                                    {/* Amount Input with Currency Symbol */}
-                                    <div className="relative flex-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                                            {currencySymbol}
-                                        </span>
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            value={currency.starting_balance}
-                                            onChange={(e) =>
-                                                handleUpdateBalance(currency.currency_code, e.target.value)
-                                            }
-                                            disabled={disabled}
-                                            className="font-mono text-sm text-right bg-gray-50 border-transparent hover:bg-white hover:border-gray-200 focus:bg-white focus:border-blue-200 rounded-xl pl-8 pr-4 py-2 transition-all"
-                                        />
-                                    </div>
-
-                                    {/* Delete Button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveCurrency(currency.currency_code)}
-                                        disabled={disabled}
-                                        className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors hidden sm:block"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveCurrency(currency.currency_code)}
-                                        disabled={disabled}
-                                        className="sm:hidden p-2 rounded-lg text-red-500"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                {renderItemFooter && renderItemFooter(currency, index)}
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
                             </div>
                         );
                     })}

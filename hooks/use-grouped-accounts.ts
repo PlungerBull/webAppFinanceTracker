@@ -4,8 +4,8 @@ import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
 import type { AccountBalance } from '@/types/domain';
 
 /**
- * Hook to group account balances by account_id
- * Extracts grouping logic from account-list.tsx
+ * Hook to group account balances by group_id
+ * NEW CONTAINER PATTERN: Multiple accounts (one per currency) share the same group_id
  *
  * @returns Grouped accounts with balances sorted by currency
  *
@@ -14,7 +14,7 @@ import type { AccountBalance } from '@/types/domain';
  * const { groupedAccounts, isLoading } = useGroupedAccounts();
  *
  * groupedAccounts.forEach(account => {
- *   console.log(account.name, account.balances);
+ *   console.log(account.name, account.balances); // "Chase Visa" -> [{currency: "USD", amount: 100}, {currency: "PEN", amount: 500}]
  * });
  * ```
  */
@@ -25,26 +25,32 @@ export function useGroupedAccounts() {
     const grouped = new Map<string, typeof accounts>();
 
     accounts.forEach((balance) => {
-      // Filter out balances without accountId
-      if (!balance.accountId) return;
+      // Filter out balances without groupId
+      if (!balance.groupId) return;
 
-      const existing = grouped.get(balance.accountId) || [];
-      grouped.set(balance.accountId, [...existing, balance]);
+      const existing = grouped.get(balance.groupId) || [];
+      grouped.set(balance.groupId, [...existing, balance]);
     });
 
-    return Array.from(grouped.entries()).map(([accountId, balances]) => {
+    return Array.from(grouped.entries()).map(([groupId, balances]) => {
       const first = balances[0];
+      // Clean name by removing currency suffix like " (USD)"
+      const cleanName = (first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT).split(' (')[0];
+
       return {
-        accountId,
-        userId: first.userId!,
-        name: first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-        color: first.color || ACCOUNT.DEFAULT_COLOR,
-        isVisible: first.isVisible ?? true,
-        createdAt: first.createdAt!,
-        updatedAt: first.updatedAt!,
-        balances: balances.sort((a, b) =>
-          (a.currency ?? '').localeCompare(b.currency ?? '')
-        ),
+        groupId,
+        name: cleanName,
+        // TODO: color field not available in account_balances view - using default
+        // View needs migration to add: SELECT ba.color
+        color: ACCOUNT.DEFAULT_COLOR,
+        type: first.type || 'checking',
+        balances: balances
+          .map((b) => ({
+            accountId: b.accountId!,
+            currency: b.currencyCode ?? 'USD',
+            amount: b.currentBalance ?? 0,
+          }))
+          .sort((a, b) => a.currency.localeCompare(b.currency)),
       };
     });
   }, [accounts]);
@@ -59,16 +65,18 @@ export function useGroupedAccounts() {
 
 /**
  * Return type for useGroupedAccounts hook
+ * NEW CONTAINER PATTERN: Grouped by group_id with simplified structure
  */
 export type GroupedAccount = {
-  accountId: string;
-  userId: string;
-  name: string;
+  groupId: string;
+  name: string; // Clean name without currency suffix
   color: string;
-  isVisible: boolean;
-  createdAt: string;
-  updatedAt: string;
-  balances: AccountBalance[];
+  type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other';
+  balances: Array<{
+    accountId: string; // Individual account ID (one per currency)
+    currency: string; // e.g., "USD", "PEN"
+    amount: number;
+  }>;
 };
 
 export type UseGroupedAccountsReturn = {

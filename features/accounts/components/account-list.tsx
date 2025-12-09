@@ -70,13 +70,12 @@ export function AccountList() {
               </div>
             ) : (
               groupedAccounts
-                .filter(account => account.isVisible !== false) // Default to true if undefined
                 .map((account) => (
                   <AccountListItem
-                    key={account.accountId}
+                    key={account.groupId}
                     account={account}
-                    isActive={currentAccountId === account.accountId}
-                    onClick={() => handleAccountClick(account.accountId)}
+                    isActive={currentAccountId === account.groupId}
+                    onClick={() => handleAccountClick(account.groupId)}
                     onEdit={setEditingAccount}
                     onDelete={setDeletingAccount}
                   />

@@ -14,74 +14,52 @@ export type Database = {
     }
     public: {
         Tables: {
-            account_currencies: {
-                Row: {
-                    account_id: string
-                    created_at: string | null
-                    currency_code: string
-                    id: string
-                    updated_at: string | null
-                }
-                Insert: {
-                    account_id: string
-                    created_at?: string | null
-                    currency_code: string
-                    id?: string
-                    updated_at?: string | null
-                }
-                Update: {
-                    account_id?: string
-                    created_at?: string | null
-                    currency_code?: string
-                    id?: string
-                    updated_at?: string | null
-                }
-                Relationships: [
-                    {
-                        foreignKeyName: "account_currencies_account_id_fkey"
-                        columns: ["account_id"]
-                        isOneToOne: false
-                        referencedRelation: "account_balances"
-                        referencedColumns: ["account_id"]
-                    },
-                    {
-                        foreignKeyName: "account_currencies_account_id_fkey"
-                        columns: ["account_id"]
-                        isOneToOne: false
-                        referencedRelation: "bank_accounts"
-                        referencedColumns: ["id"]
-                    },
-                ]
-            }
             bank_accounts: {
                 Row: {
                     color: string
                     created_at: string
+                    currency_code: string
+                    group_id: string
                     id: string
                     is_visible: boolean
                     name: string
+                    type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other'
                     updated_at: string
                     user_id: string
                 }
                 Insert: {
                     color?: string
                     created_at?: string
+                    currency_code: string
+                    group_id?: string
                     id?: string
                     is_visible?: boolean
                     name: string
+                    type?: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other'
                     updated_at?: string
                     user_id: string
                 }
                 Update: {
                     color?: string
                     created_at?: string
+                    currency_code?: string
+                    group_id?: string
                     id?: string
                     is_visible?: boolean
                     name?: string
+                    type?: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other'
                     updated_at?: string
                     user_id?: string
                 }
-                Relationships: []
+                Relationships: [
+                    {
+                        foreignKeyName: "bank_accounts_currency_code_fkey"
+                        columns: ["currency_code"]
+                        isOneToOne: false
+                        referencedRelation: "global_currencies"
+                        referencedColumns: ["code"]
+                    }
+                ]
             }
             categories: {
                 Row: {
@@ -151,6 +129,7 @@ export type Database = {
                     id: string
                     notes: string | null
                     transfer_id: string | null
+                    type: 'income' | 'expense' | 'opening_balance' | null
                     updated_at: string
                     user_id: string
                 }
@@ -167,6 +146,7 @@ export type Database = {
                     id?: string
                     notes?: string | null
                     transfer_id?: string | null
+                    type?: 'income' | 'expense' | 'opening_balance' | null
                     updated_at?: string
                     user_id: string
                 }
@@ -183,6 +163,7 @@ export type Database = {
                     id?: string
                     notes?: string | null
                     transfer_id?: string | null
+                    type?: 'income' | 'expense' | 'opening_balance' | null
                     updated_at?: string
                     user_id?: string
                 }
@@ -257,17 +238,11 @@ export type Database = {
             account_balances: {
                 Row: {
                     account_id: string | null
-                    color: string | null
-                    created_at: string | null
-                    currency: string | null
-                    current_balance: number | null
-                    id: string | null
-                    is_visible: boolean | null
+                    group_id: string | null
                     name: string | null
-                    starting_balance: number | null
-                    transaction_sum: number | null
-                    updated_at: string | null
-                    user_id: string | null
+                    currency_code: string | null
+                    type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other' | null
+                    current_balance: number | null
                 }
                 Relationships: []
             }
@@ -352,11 +327,13 @@ export type Database = {
         }
         Functions: {
             clear_user_data: { Args: { p_user_id: string }; Returns: undefined }
-            create_account_with_currencies: {
+            create_account_group: {
                 Args: {
-                    p_account_color: string
-                    p_account_name: string
-                    p_currencies: Json
+                    p_user_id: string
+                    p_name: string
+                    p_color: string
+                    p_type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other'
+                    p_currencies: string[]
                 }
                 Returns: Json
             }
@@ -427,6 +404,10 @@ export type Database = {
             | "loan"
             | "cash"
             | "other"
+            transaction_type:
+            | "income"
+            | "expense"
+            | "opening_balance"
         }
         CompositeTypes: {
             transaction_import_input: {
@@ -571,6 +552,11 @@ export const Constants = {
                 "loan",
                 "cash",
                 "other",
+            ],
+            transaction_type: [
+                "income",
+                "expense",
+                "opening_balance",
             ],
         },
     },

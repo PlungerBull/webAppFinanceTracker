@@ -16,8 +16,10 @@ import type { GroupedAccount } from '@/hooks/use-grouped-accounts';
 
 export interface TransactionFormData {
   amount: string;
+  type: 'income' | 'expense' | 'opening_balance' | null;
   categoryId: string | null;
-  fromAccountId: string | null;
+  fromGroupId: string | null; // NEW: Store the selected group ID
+  fromAccountId: string | null; // Resolved account ID (after currency selection)
   fromCurrency: string | null;
   exchangeRate: string;
   date: Date;
@@ -32,6 +34,7 @@ interface TransactionFormProps {
   groupedAccounts: GroupedAccount[];
   isSubmitting: boolean;
   hasSubmitted: boolean;
+  rawAccounts: any[]; // NEW: Need raw accounts to resolve groupId + currency -> accountId
 }
 
 export function TransactionForm({
@@ -41,8 +44,9 @@ export function TransactionForm({
   groupedAccounts,
   isSubmitting,
   hasSubmitted,
+  rawAccounts,
 }: TransactionFormProps) {
-  const selectedAccount = groupedAccounts.find((a) => a.accountId === data.fromAccountId);
+  const selectedAccount = groupedAccounts.find((a) => a.groupId === data.fromGroupId);
   const selectedCategory = categories.find((c) => c.id === data.categoryId);
 
   // Check if account is multi-currency
@@ -51,13 +55,25 @@ export function TransactionForm({
 
   // Auto-select currency if only one available
   useEffect(() => {
-    if (data.fromAccountId && accountCurrencies.length === 1 && !data.fromCurrency) {
+    if (data.fromGroupId && accountCurrencies.length === 1 && !data.fromCurrency) {
       onChange({ fromCurrency: accountCurrencies[0] });
     }
-  }, [data.fromAccountId, accountCurrencies.length, data.fromCurrency]);
+  }, [data.fromGroupId, accountCurrencies.length, data.fromCurrency]);
 
-  const handleAccountChange = (accountId: string) => {
-    onChange({ fromAccountId: accountId, fromCurrency: null });
+  // Resolve accountId when both groupId and currency are selected
+  useEffect(() => {
+    if (data.fromGroupId && data.fromCurrency) {
+      const targetAccount = rawAccounts.find(
+        (acc) => acc.groupId === data.fromGroupId && acc.currencyCode === data.fromCurrency
+      );
+      if (targetAccount && targetAccount.accountId !== data.fromAccountId) {
+        onChange({ fromAccountId: targetAccount.accountId });
+      }
+    }
+  }, [data.fromGroupId, data.fromCurrency, rawAccounts, data.fromAccountId, onChange]);
+
+  const handleAccountChange = (groupId: string) => {
+    onChange({ fromGroupId: groupId, fromCurrency: null, fromAccountId: null });
   };
 
   return (
@@ -102,6 +118,23 @@ export function TransactionForm({
 
       {/* ZONE 3: Form Body */}
       <div className="px-6 py-6 space-y-5 flex-1 overflow-y-auto">
+        {/* Transaction Type */}
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Type
+          </Label>
+          <Select value={data.type || ''} onValueChange={(value) => onChange({ type: value as 'income' | 'expense' | 'opening_balance', categoryId: value === 'opening_balance' ? null : data.categoryId })}>
+            <SelectTrigger className="text-base bg-gray-50 border-transparent focus:bg-white focus:border-gray-200 rounded-xl px-4 py-3 h-auto">
+              <SelectValue placeholder="Select transaction type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="expense">Expense</SelectItem>
+              <SelectItem value="income">Income</SelectItem>
+              <SelectItem value="opening_balance">Opening Balance</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Payee */}
         <div className="space-y-2">
           <Label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
@@ -140,19 +173,17 @@ export function TransactionForm({
               value={selectedAccount?.name}
               placeholder="Account"
               required
-              error={hasSubmitted && !data.fromAccountId}
+              error={hasSubmitted && !data.fromGroupId}
             >
               <div className="w-72 max-h-96 overflow-y-auto p-2">
-                {groupedAccounts
-                  .filter((account) => account.isVisible)
-                  .map((account) => (
+                {groupedAccounts.map((account) => (
                     <button
-                      key={account.accountId}
+                      key={account.groupId}
                       type="button"
-                      onClick={() => handleAccountChange(account.accountId)}
+                      onClick={() => handleAccountChange(account.groupId)}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                        data.fromAccountId === account.accountId
+                        data.fromGroupId === account.groupId
                           ? "bg-gray-100 text-gray-900 font-medium"
                           : "text-gray-700 hover:bg-gray-50"
                       )}
@@ -168,7 +199,7 @@ export function TransactionForm({
             </SmartSelector>
 
             {/* Currency Selector - Only if multi-currency account */}
-            {data.fromAccountId && isMultiCurrency && (
+            {data.fromGroupId && isMultiCurrency && (
               <Select value={data.fromCurrency || ''} onValueChange={(value) => onChange({ fromCurrency: value })}>
                 <SelectTrigger className="w-24 h-10 rounded-xl border-gray-300">
                   <SelectValue placeholder="Currency" />
@@ -183,20 +214,22 @@ export function TransactionForm({
               </Select>
             )}
 
-            {/* Category */}
-            <SmartSelector
-              icon={Tag}
-              label="Category"
-              value={selectedCategory?.name || undefined}
-              placeholder="Category"
-              required
-              error={hasSubmitted && !data.categoryId}
-            >
-              <CategorySelector
-                value={data.categoryId || undefined}
-                onChange={(value) => onChange({ categoryId: value })}
-              />
-            </SmartSelector>
+            {/* Category - Hidden for Opening Balance */}
+            {data.type !== 'opening_balance' && (
+              <SmartSelector
+                icon={Tag}
+                label="Category"
+                value={selectedCategory?.name || undefined}
+                placeholder="Category"
+                required
+                error={hasSubmitted && !data.categoryId}
+              >
+                <CategorySelector
+                  value={data.categoryId || undefined}
+                  onChange={(value) => onChange({ categoryId: value })}
+                />
+              </SmartSelector>
+            )}
 
             {/* Date */}
             <SmartSelector

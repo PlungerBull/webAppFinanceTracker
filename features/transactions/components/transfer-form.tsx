@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import type { GroupedAccount } from '@/hooks/use-grouped-accounts';
 
 export interface TransferFormData {
+  fromGroupId: string | null;
+  toGroupId: string | null;
   fromAccountId: string | null;
   toAccountId: string | null;
   fromCurrency: string | null;
@@ -25,6 +27,7 @@ interface TransferFormProps {
   data: TransferFormData;
   onChange: (data: Partial<TransferFormData>) => void;
   groupedAccounts: GroupedAccount[];
+  rawAccounts: any[];
   isSubmitting: boolean;
 }
 
@@ -32,10 +35,11 @@ export function TransferForm({
   data,
   onChange,
   groupedAccounts,
+  rawAccounts,
   isSubmitting,
 }: TransferFormProps) {
-  const selectedFromAccount = groupedAccounts.find((a) => a.accountId === data.fromAccountId);
-  const selectedToAccount = groupedAccounts.find((a) => a.accountId === data.toAccountId);
+  const selectedFromAccount = groupedAccounts.find((a) => a.groupId === data.fromGroupId);
+  const selectedToAccount = groupedAccounts.find((a) => a.groupId === data.toGroupId);
 
   // Check if accounts are multi-currency
   const fromAccountCurrencies = selectedFromAccount?.balances.map((b) => b.currency || 'USD') || [];
@@ -45,16 +49,40 @@ export function TransferForm({
 
   // Auto-select currency if only one available
   useEffect(() => {
-    if (data.fromAccountId && fromAccountCurrencies.length === 1 && !data.fromCurrency) {
+    if (data.fromGroupId && fromAccountCurrencies.length === 1 && !data.fromCurrency) {
       onChange({ fromCurrency: fromAccountCurrencies[0] });
     }
-  }, [data.fromAccountId, fromAccountCurrencies.length, data.fromCurrency]);
+  }, [data.fromGroupId, fromAccountCurrencies.length, data.fromCurrency, onChange]);
 
   useEffect(() => {
-    if (data.toAccountId && toAccountCurrencies.length === 1 && !data.toCurrency) {
+    if (data.toGroupId && toAccountCurrencies.length === 1 && !data.toCurrency) {
       onChange({ toCurrency: toAccountCurrencies[0] });
     }
-  }, [data.toAccountId, toAccountCurrencies.length, data.toCurrency]);
+  }, [data.toGroupId, toAccountCurrencies.length, data.toCurrency, onChange]);
+
+  // Resolve fromAccountId when both groupId and currency are selected
+  useEffect(() => {
+    if (data.fromGroupId && data.fromCurrency) {
+      const targetAccount = rawAccounts.find(
+        (acc) => acc.groupId === data.fromGroupId && acc.currencyCode === data.fromCurrency
+      );
+      if (targetAccount && targetAccount.accountId !== data.fromAccountId) {
+        onChange({ fromAccountId: targetAccount.accountId });
+      }
+    }
+  }, [data.fromGroupId, data.fromCurrency, rawAccounts, data.fromAccountId, onChange]);
+
+  // Resolve toAccountId when both groupId and currency are selected
+  useEffect(() => {
+    if (data.toGroupId && data.toCurrency) {
+      const targetAccount = rawAccounts.find(
+        (acc) => acc.groupId === data.toGroupId && acc.currencyCode === data.toCurrency
+      );
+      if (targetAccount && targetAccount.accountId !== data.toAccountId) {
+        onChange({ toAccountId: targetAccount.accountId });
+      }
+    }
+  }, [data.toGroupId, data.toCurrency, rawAccounts, data.toAccountId, onChange]);
 
   // Check if transfer currencies are the same
   const isSameCurrencyTransfer = data.fromCurrency === data.toCurrency;
@@ -62,12 +90,12 @@ export function TransferForm({
   // Check if it's a loop transfer (same account + same currency)
   const isLoopTransfer = data.fromAccountId === data.toAccountId && data.fromCurrency === data.toCurrency;
 
-  const handleFromAccountChange = (accountId: string) => {
-    onChange({ fromAccountId: accountId, fromCurrency: null });
+  const handleFromAccountChange = (groupId: string) => {
+    onChange({ fromGroupId: groupId, fromAccountId: null, fromCurrency: null });
   };
 
-  const handleToAccountChange = (accountId: string) => {
-    onChange({ toAccountId: accountId, toCurrency: null });
+  const handleToAccountChange = (groupId: string) => {
+    onChange({ toGroupId: groupId, toAccountId: null, toCurrency: null });
   };
 
   return (
@@ -77,22 +105,20 @@ export function TransferForm({
         <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 relative z-20">
           <div className="flex items-start justify-between mb-4">
             {/* Account Selector */}
-            <Select value={data.fromAccountId || ''} onValueChange={handleFromAccountChange}>
+            <Select value={data.fromGroupId || ''} onValueChange={handleFromAccountChange}>
               <SelectTrigger className="border-0 bg-transparent p-0 h-auto hover:bg-transparent shadow-none w-auto gap-2">
                 <SelectValue placeholder="Select source account">
-                  <span className={cn("text-lg font-semibold", !data.fromAccountId && "text-gray-400 font-normal")}>
+                  <span className={cn("text-lg font-semibold", !data.fromGroupId && "text-gray-400 font-normal")}>
                     {selectedFromAccount?.name || 'Select source account'}
                   </span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="max-h-80">
-                {groupedAccounts
-                  .filter((account) => account.isVisible)
-                  .map((account) => (
-                    <SelectItem key={account.accountId} value={account.accountId}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
+                {groupedAccounts.map((account) => (
+                  <SelectItem key={account.groupId} value={account.groupId}>
+                    {account.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -165,19 +191,19 @@ export function TransferForm({
         )}>
           <div className="flex items-start justify-between mb-4">
             {/* Account Selector */}
-            <Select value={data.toAccountId || ''} onValueChange={handleToAccountChange}>
+            <Select value={data.toGroupId || ''} onValueChange={handleToAccountChange}>
               <SelectTrigger className="border-0 bg-transparent p-0 h-auto hover:bg-transparent shadow-none w-auto gap-2">
                 <SelectValue placeholder="Select destination account">
-                  <span className={cn("text-lg font-semibold", !data.toAccountId && "text-gray-400 font-normal")}>
+                  <span className={cn("text-lg font-semibold", !data.toGroupId && "text-gray-400 font-normal")}>
                     {selectedToAccount?.name || 'Select destination account'}
                   </span>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="max-h-80">
                 {groupedAccounts
-                  .filter((account) => account.isVisible && account.accountId !== data.fromAccountId)
+                  .filter((account) => account.groupId !== data.fromGroupId)
                   .map((account) => (
-                    <SelectItem key={account.accountId} value={account.accountId}>
+                    <SelectItem key={account.groupId} value={account.groupId}>
                       {account.name}
                     </SelectItem>
                   ))}

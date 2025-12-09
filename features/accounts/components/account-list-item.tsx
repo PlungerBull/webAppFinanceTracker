@@ -23,19 +23,25 @@ export function AccountListItem({
     onEdit,
     onDelete,
 }: AccountListItemProps) {
-    // Helper to construct BankAccount from balance view data
+    // Helper to construct BankAccount from GroupedAccount data
+    // Using the first balance's accountId to represent the group
     const getBankAccount = (): BankAccount | null => {
-        const balance = account.balances[0];
-        if (!balance.accountId || !balance.userId) return null;
+        const firstBalance = account.balances[0];
+        if (!firstBalance?.accountId) return null;
 
+        // TODO: This is a temporary solution. Edit modal needs rewrite for container pattern.
+        // Currently using the first balance's accountId to represent a specific currency account
         return {
-            id: balance.accountId,
-            userId: balance.userId,
-            name: balance.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
-            color: balance.color ?? ACCOUNT.DEFAULT_COLOR,
-            isVisible: balance.isVisible ?? true,
-            createdAt: balance.createdAt ?? new Date().toISOString(),
-            updatedAt: balance.updatedAt ?? new Date().toISOString(),
+            id: firstBalance.accountId, // Use specific currency account ID
+            groupId: account.groupId,
+            name: account.name,
+            color: account.color,
+            currencyCode: firstBalance.currency,
+            type: account.type,
+            userId: '', // Not available in GroupedAccount - will be fetched by modal if needed
+            isVisible: true, // Not available in GroupedAccount
+            createdAt: new Date().toISOString(), // Not available
+            updatedAt: new Date().toISOString(), // Not available
         };
     };
 
@@ -62,7 +68,7 @@ export function AccountListItem({
     return (
         <ResourceListItem
             icon={CreditCard}
-            iconColor={account.balances[0]?.color || ACCOUNT.DEFAULT_COLOR}
+            iconColor={account.color}
             title={account.name}
             isActive={isActive}
             onClick={onClick}
@@ -72,24 +78,21 @@ export function AccountListItem({
             <div className="ml-8 space-y-0.5">
                 {account.balances.map((balance) => (
                     <div
-                        key={balance.currency ?? 'unknown'}
+                        key={balance.currency}
                         className="flex items-center justify-between text-xs py-0.5 px-2"
                     >
                         <span className="text-gray-500 font-medium">
-                            {balance.currency ?? ACCOUNT_UI.LABELS.NOT_AVAILABLE}
+                            {balance.currency}
                         </span>
                         <span
                             className={cn(
                                 'font-mono tabular-nums',
-                                (balance.currentBalance ?? 0) >= 0
+                                balance.amount >= 0
                                     ? 'text-gray-500'
                                     : 'text-red-600'
                             )}
                         >
-                            {formatCurrency(
-                                balance.currentBalance ?? 0,
-                                balance.currency ?? 'USD'
-                            )}
+                            {formatCurrency(balance.amount, balance.currency)}
                         </span>
                     </div>
                 ))}

@@ -80,41 +80,52 @@ export interface Transaction {
 /**
  * Account with calculated balances (from account_balances view)
  * This is what you get from accountsApi.getAll()
+ *
+ * NEW CONTAINER PATTERN:
+ * - Each row represents ONE account with ONE currency
+ * - Multiple accounts share the same groupId (e.g., "Chase Visa USD" and "Chase Visa PEN")
+ * - Group accounts by groupId for display
  */
 export interface AccountBalance {
-  id: string | null;
   accountId: string | null;
+  groupId: string | null;
   name: string | null;
-  color: string | null;
-  currency: string | null;
-  isVisible: boolean | null;
-  startingBalance: number | null;
-  transactionSum: number | null;
+  currencyCode: string | null;
+  type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other' | null;
   currentBalance: number | null;
-  userId: string | null;
-  createdAt: string | null;
-  updatedAt: string | null;
 }
 
 /**
  * Basic account from bank_accounts table
+ * NEW: Each account has ONE currency and belongs to a group
  */
 export interface Account {
   id: string;
+  groupId: string;
   name: string;
   color: string;
+  currencyCode: string;
+  type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other';
   userId: string;
   isVisible: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface AccountCurrency {
-  id: string;
-  accountId: string;
-  currencyCode: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+/**
+ * Grouped accounts for UI display
+ * Multiple accounts with the same groupId are displayed as one visual card
+ */
+export interface GroupedAccount {
+  groupId: string;
+  name: string; // Clean name without currency suffix
+  color: string;
+  type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other';
+  balances: Array<{
+    accountId: string;
+    currency: string;
+    amount: number;
+  }>;
 }
 
 // ============================================================================

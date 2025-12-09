@@ -18,14 +18,18 @@ import type { Database } from '@/types/database.types';
 
 /**
  * Transforms a database bank_accounts row to domain Account type
+ * NEW: Includes groupId, currencyCode, and type
  */
 export function dbAccountToDomain(
   dbAccount: Database['public']['Tables']['bank_accounts']['Row']
 ) {
   return {
     id: dbAccount.id,
+    groupId: dbAccount.group_id,
     name: dbAccount.name,
     color: dbAccount.color,
+    currencyCode: dbAccount.currency_code,
+    type: dbAccount.type,
     userId: dbAccount.user_id,
     isVisible: dbAccount.is_visible,
     createdAt: dbAccount.created_at,
@@ -66,19 +70,29 @@ export function dbCurrencyToDomain(
 }
 
 /**
- * Transforms a database account_currencies row to domain AccountCurrency type
- * NOTE: The balance is NOT in the account_currencies table - it's in the account_balances VIEW
+ * Transforms account_balances view row to domain AccountBalance type
+ * NEW: Simplified structure with groupId and currencyCode
  */
-export function dbAccountCurrencyToDomain(
-  dbAccountCurrency: Database['public']['Tables']['account_currencies']['Row']
+export function dbAccountBalanceToDomain(
+  dbBalance: Database['public']['Views']['account_balances']['Row']
 ) {
   return {
-    id: dbAccountCurrency.id,
-    accountId: dbAccountCurrency.account_id,
-    currencyCode: dbAccountCurrency.currency_code,
-    createdAt: dbAccountCurrency.created_at,
-    updatedAt: dbAccountCurrency.updated_at,
+    accountId: dbBalance.account_id,
+    groupId: dbBalance.group_id,
+    name: dbBalance.name,
+    currencyCode: dbBalance.currency_code,
+    type: dbBalance.type,
+    currentBalance: dbBalance.current_balance,
   } as const;
+}
+
+/**
+ * Transforms an array of account_balances view rows
+ */
+export function dbAccountBalancesToDomain(
+  dbBalances: Database['public']['Views']['account_balances']['Row'][]
+) {
+  return dbBalances.map(dbAccountBalanceToDomain);
 }
 
 /**
@@ -119,20 +133,25 @@ export function dbTransactionToDomain(
 
 /**
  * Transforms domain account data to database insert format
+ * TODO: DEPRECATED - Use create_account_group RPC instead (container pattern)
+ * This function is for old schema where accounts could be created without currency
  */
-export function domainAccountToDbInsert(data: {
-  name: string;
-  color: string;
-  userId: string;
-  isVisible?: boolean;
-}): Database['public']['Tables']['bank_accounts']['Insert'] {
-  return {
-    name: data.name,
-    color: data.color,
-    user_id: data.userId,
-    is_visible: data.isVisible,
-  };
-}
+// export function domainAccountToDbInsert(data: {
+//   name: string;
+//   color: string;
+//   userId: string;
+//   isVisible?: boolean;
+// }): Database['public']['Tables']['bank_accounts']['Insert'] {
+//   return {
+//     name: data.name,
+//     color: data.color,
+//     user_id: data.userId,
+//     is_visible: data.isVisible,
+//     // currency_code: MISSING - Required in new schema
+//     // group_id: MISSING - Required in new schema
+//     // type: MISSING - Required in new schema
+//   };
+// }
 
 /**
  * Transforms domain category data to database insert format
@@ -155,17 +174,18 @@ export function domainCategoryToDbInsert(data: {
 
 /**
  * Transforms domain account currency data to database insert format
- * NOTE: Balance is NOT stored in account_currencies table!
+ * TODO: DEPRECATED - account_currencies table no longer exists (container pattern)
+ * Use create_account_group RPC to create account rows with currencies
  */
-export function domainAccountCurrencyToDbInsert(data: {
-  accountId: string;
-  currencyCode: string;
-}): Database['public']['Tables']['account_currencies']['Insert'] {
-  return {
-    account_id: data.accountId,
-    currency_code: data.currencyCode,
-  };
-}
+// export function domainAccountCurrencyToDbInsert(data: {
+//   accountId: string;
+//   currencyCode: string;
+// }): Database['public']['Tables']['account_currencies']['Insert'] {
+//   return {
+//     account_id: data.accountId,
+//     currency_code: data.currencyCode,
+//   };
+// }
 
 /**
  * Transforms domain transaction data to database insert format
@@ -247,17 +267,15 @@ export function domainCategoryToDbUpdate(data: {
 
 /**
  * Transforms domain account currency data to database update format
- * NOTE: There are no updatable fields besides the FK columns (which you shouldn't update)
+ * TODO: DEPRECATED - account_currencies table no longer exists (container pattern)
  */
-export function domainAccountCurrencyToDbUpdate(data: {
-  currencyCode?: string;
-}): Database['public']['Tables']['account_currencies']['Update'] {
-  const update: Database['public']['Tables']['account_currencies']['Update'] = {};
-
-  if (data.currencyCode !== undefined) update.currency_code = data.currencyCode;
-
-  return update;
-}
+// export function domainAccountCurrencyToDbUpdate(data: {
+//   currencyCode?: string;
+// }): Database['public']['Tables']['account_currencies']['Update'] {
+//   const update: Database['public']['Tables']['account_currencies']['Update'] = {};
+//   if (data.currencyCode !== undefined) update.currency_code = data.currencyCode;
+//   return update;
+// }
 
 /**
  * Transforms domain transaction data to database update format
@@ -334,37 +352,6 @@ export function dbTransactionsToDomain(
 // VIEW TRANSFORMERS
 // ============================================================================
 
-/**
- * Transforms a database account_balances view row to domain type
- * NOTE: This is a VIEW, not a table. It includes calculated balances.
- */
-export function dbAccountBalanceToDomain(
-  dbAccountBalance: Database['public']['Views']['account_balances']['Row']
-) {
-  return {
-    id: dbAccountBalance.id,
-    accountId: dbAccountBalance.account_id,
-    name: dbAccountBalance.name,
-    color: dbAccountBalance.color,
-    currency: dbAccountBalance.currency,
-    isVisible: dbAccountBalance.is_visible,
-    startingBalance: dbAccountBalance.starting_balance,
-    transactionSum: dbAccountBalance.transaction_sum,
-    currentBalance: dbAccountBalance.current_balance,
-    userId: dbAccountBalance.user_id,
-    createdAt: dbAccountBalance.created_at,
-    updatedAt: dbAccountBalance.updated_at,
-  } as const;
-}
-
-/**
- * Transforms an array of account_balances view rows
- */
-export function dbAccountBalancesToDomain(
-  dbAccountBalances: Database['public']['Views']['account_balances']['Row'][]
-) {
-  return dbAccountBalances.map(dbAccountBalanceToDomain);
-}
 
 /**
  * Transforms a database transactions_view row to domain type

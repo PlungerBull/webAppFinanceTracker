@@ -63,17 +63,19 @@ function TransactionsContent() {
   // Use grouped accounts directly (each group represents an account)
   const accounts = accountsData;
 
-  // Flatten accounts for the detail panel
+  // Flatten accounts for the detail panel (flatten all balances)
   const flatAccounts = useMemo(() =>
-    accountsData.map(group => ({
-      id: group.accountId,
-      name: group.name,
-    })),
+    accountsData.flatMap(group =>
+      group.balances.map(balance => ({
+        id: balance.accountId,
+        name: `${group.name} (${balance.currency})`,
+      }))
+    ),
     [accountsData]
   );
 
   // Determine display names
-  const accountName = accountId ? accounts.find(a => a.accountId === accountId)?.name : null;
+  const accountName = accountId ? flatAccounts.find(a => a.id === accountId)?.name : null;
   const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
   const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
 

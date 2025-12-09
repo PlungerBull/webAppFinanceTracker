@@ -5,7 +5,8 @@ import { useFormModal } from '@/hooks/shared/use-form-modal';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { accountsApi } from '../api/accounts';
-import { accountCurrenciesApi } from '../api/account-currencies';
+// TODO: Rewrite for container pattern - see CONTAINER_ACCOUNT_MIGRATION_SUMMARY.md
+// import { accountCurrenciesApi } from '../api/account-currencies';
 import { updateAccountSchema, type UpdateAccountFormData } from '../schemas/account.schema';
 import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
 import type { Database } from '@/types/database.types';
@@ -22,7 +23,16 @@ import { CurrencyManager } from './currency-manager';
 import type { CurrencyBalance } from '@/hooks/use-currency-manager';
 
 type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
-type AccountCurrency = Database['public']['Tables']['account_currencies']['Row'];
+// type AccountCurrency = Database['public']['Tables']['account_currencies']['Row']; // OLD SCHEMA
+
+// Stub type for backward compatibility - TODO: Remove when edit modal is rewritten
+interface AccountCurrency {
+  id: string;
+  account_id: string;
+  currency_code: string;
+  created_at: string;
+  updated_at: string;
+}
 
 interface EditAccountModalProps {
   open: boolean;
@@ -46,11 +56,12 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
 
   const { data: allCurrencies = [] } = useCurrencies();
 
+  // TODO: Rewrite for container pattern - fetch grouped accounts by group_id
   // Fetch account currencies when modal opens
   const { data: accountCurrencies = [], isLoading: loadingCurrencies } = useQuery({
-    queryKey: QUERY_KEYS.ACCOUNT_CURRENCIES(account?.id),
-    queryFn: () => accountCurrenciesApi.getByAccountId(account!.id),
-    enabled: !!account?.id && open,
+    queryKey: ['edit-account-stub', account?.id],
+    queryFn: () => Promise.resolve([]), // Stub - returns empty array
+    enabled: false, // Disabled until rewrite
   });
 
   const onSubmit = async (data: UpdateAccountFormData) => {
@@ -59,39 +70,18 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
     // Step 1: Update account name and color
     await accountsApi.update(account.id, data);
 
-    // Step 2: Process currency replacements
-    for (const replacement of currencyReplacements) {
-      const oldCode = replacement.oldCurrency.currency_code;
-      const newCode = replacement.newCurrencyCode.toUpperCase();
-      const isNewCurrency = replacement.oldCurrency.id.startsWith('new-');
-
-      if (isNewCurrency) {
-        await accountCurrenciesApi.replaceCurrency(
-          account.id,
-          oldCode,
-          newCode,
-          replacement.newStartingBalance
-        );
-      } else if (oldCode !== newCode) {
-        await accountCurrenciesApi.replaceCurrency(
-          account.id,
-          oldCode,
-          newCode,
-          replacement.newStartingBalance
-        );
-      } else if (replacement.newStartingBalance !== replacement.originalStartingBalance) {
-        await accountCurrenciesApi.replaceCurrency(
-          account.id,
-          oldCode,
-          newCode,
-          replacement.newStartingBalance
-        );
-      }
-    }
+    // TODO: Rewrite currency replacement for container pattern
+    // Step 2: Process currency replacements (DISABLED - needs container pattern rewrite)
+    // for (const replacement of currencyReplacements) {
+    //   const oldCode = replacement.oldCurrency.currency_code;
+    //   const newCode = replacement.newCurrencyCode.toUpperCase();
+    //   const isNewCurrency = replacement.oldCurrency.id.startsWith('new-');
+    //   ... (API calls commented out)
+    // }
 
     // Invalidate queries
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNT_CURRENCIES() });
+    // queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNT_CURRENCIES() }); // OLD SCHEMA
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL });
 
     setCurrencyReplacements([]);
@@ -125,22 +115,23 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
 
   // Initialize form and currency replacements
   useEffect(() => {
-    if (account && accountCurrencies.length > 0) {
+    if (account) {
       reset({
         name: account.name,
         color: account.color || ACCOUNT.DEFAULT_COLOR,
       });
 
-      setCurrencyReplacements(
-        accountCurrencies.map((ac) => ({
-          oldCurrency: ac,
-          newCurrencyCode: ac.currency_code,
-          newStartingBalance: 0,
-          originalStartingBalance: 0,
-        }))
-      );
+      // TODO: Rewrite for container pattern - fetch grouped accounts and initialize currency replacements
+      // setCurrencyReplacements(
+      //   accountCurrencies.map((ac) => ({
+      //     oldCurrency: ac,
+      //     newCurrencyCode: ac.currency_code,
+      //     newStartingBalance: 0,
+      //     originalStartingBalance: 0,
+      //   }))
+      // );
     }
-  }, [account, accountCurrencies, reset]);
+  }, [account, reset]);
 
   // Transform replacements to CurrencyBalance[] for the CurrencyManager
   const currencyBalances: CurrencyBalance[] = currencyReplacements.map(r => ({

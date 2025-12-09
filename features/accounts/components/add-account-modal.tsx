@@ -47,13 +47,12 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       throw new Error(ACCOUNT_UI.MESSAGES.AT_LEAST_ONE_CURRENCY);
     }
 
+    // NEW CONTAINER PATTERN: Pass account type and currency codes only (no starting balances)
     await accountsApi.createWithCurrencies(
       data.name,
       data.color,
-      selectedCurrencies.map((c) => ({
-        code: c.currency_code,
-        starting_balance: c.starting_balance,
-      }))
+      'checking', // Default type - TODO: Add account type selector to form
+      selectedCurrencies.map((c) => c.currency_code) // Just currency codes, no balances
     );
 
     // Invalidate accounts query to refresh the list

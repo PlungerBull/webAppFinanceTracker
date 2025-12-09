@@ -31,6 +31,10 @@ export const createTransactionSchema = z.object({
   exchange_rate: z
     .number()
     .positive(VALIDATION.MESSAGES.EXCHANGE_RATE_POSITIVE),
+  type: z
+    .enum(['income', 'expense', 'opening_balance'])
+    .nullable()
+    .optional(),
   notes: z
     .string()
     .max(UI.MAX_LENGTH.NOTES, VALIDATION.MESSAGES.NOTES_MAX(UI.MAX_LENGTH.NOTES))
@@ -71,6 +75,10 @@ export const updateTransactionSchema = z.object({
   exchange_rate: z
     .number()
     .positive(VALIDATION.MESSAGES.EXCHANGE_RATE_POSITIVE)
+    .optional(),
+  type: z
+    .enum(['income', 'expense', 'opening_balance'])
+    .nullable()
     .optional(),
   notes: z
     .string()

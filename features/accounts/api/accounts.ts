@@ -50,9 +50,9 @@ export const accountsApi = {
   },
 
   /**
-   * Create a new account with currencies atomically
+   * Create a new account group with multiple currencies atomically
+   * NEW CONTAINER PATTERN: Each currency creates a separate account row with the same group_id
    * Uses database function to ensure all-or-nothing creation
-   * Authentication is handled by the database function via auth.uid()
    *
    * NOTE: Returns raw JSON from database function (not transformed).
    * This is acceptable as the return value is typically not used by consumers.
@@ -61,15 +61,21 @@ export const accountsApi = {
   createWithCurrencies: async (
     accountName: string,
     accountColor: string,
-    currencies: Array<{ code: string; starting_balance: number }>
+    accountType: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other',
+    currencies: string[] // NEW: Just an array of currency codes (no starting balances)
   ) => {
     const supabase = createClient();
 
-    // Database function handles authentication via auth.uid()
-    const { data, error } = await supabase.rpc('create_account_with_currencies', {
-      p_account_name: accountName,
-      p_account_color: accountColor,
-      p_currencies: currencies,
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error(ACCOUNTS.MESSAGES.ERROR.USER_NOT_AUTHENTICATED);
+
+    // Database function handles authentication and creates multiple account rows
+    const { data, error } = await supabase.rpc('create_account_group', {
+      p_user_id: user.id,
+      p_name: accountName,
+      p_color: accountColor,
+      p_type: accountType,
+      p_currencies: currencies, // Array of currency codes like ["USD", "PEN"]
     });
 
     if (error) {
@@ -77,8 +83,7 @@ export const accountsApi = {
       throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.CREATE_FAILED);
     }
 
-    // Returns raw JSON from database function
-    // NOTE: snake_case format - use getById() if you need transformed data
+    // Returns raw JSON from database function with group_id
     return data;
   },
 

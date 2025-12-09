@@ -46,6 +46,7 @@ export const ACCOUNTS = {
    */
   MESSAGES: {
     ERROR: {
+      USER_NOT_AUTHENTICATED: 'User not authenticated',
       FETCH_FAILED: 'Failed to fetch accounts',
       FETCH_ONE_FAILED: 'Failed to fetch account',
       CREATE_FAILED: 'Failed to create account',

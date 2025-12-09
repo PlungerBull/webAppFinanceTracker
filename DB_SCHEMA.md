@@ -1,176 +1,253 @@
-# Database Schema Documentation
+# Database Documentation
+Generated on: 2025-12-09
 
-**Project:** Finance Tracker Web
-**Framework:** Supabase (PostgreSQL)
-**Last Updated:** [Current Date]
+## Tables
 
----
+### 📄 Table: bank_accounts
 
-## 1. Enums (Custom Types)
-
-### `account_type`
-*Used to classify bank accounts.*
-* `checking`
-* `savings`
-* `credit_card`
-* `investment`
-* `loan`
-* `cash`
-* `other`
-
-### `transaction_type`
-*Used to classify the nature of a transaction.*
-* `income`
-* `expense`
-* `transfer`
-* `adjustment`
-* `opening_balance`
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| **id** | uuid | NO | `uuid_generate_v4()` |  |
+| **user_id** | uuid | NO | `-` |  |
+| **name** | text | NO | `-` |  |
+| **created_at** | timestamptz | NO | `now()` |  |
+| **updated_at** | timestamptz | NO | `now()` |  |
+| **color** | text | NO | `'#3b82f6'::text` | Hex color code for visual identification of the account (e.g., #3b82f6) |
+| **is_visible** | bool | NO | `true` |  |
+| **currency_code** | text | NO | `'USD'::text` |  |
+| **group_id** | uuid | NO | `gen_random_uuid()` |  |
+| **type** | account_type | NO | `'checking'::account_type` |  |
 
 ---
 
-## 2. Tables (Public Schema)
+### 📄 Table: categories
 
-### `bank_accounts`
-*Stores user financial accounts.*
-* **Primary Key:** `id`
-* **Columns:**
-  * `id` (uuid)
-  * `user_id` (uuid) → *Links to auth.users*
-  * `name` (text)
-  * `color` (text)
-  * `is_visible` (boolean)
-  * `created_at` (timestamptz)
-  * `updated_at` (timestamptz)
-
-### `categories`
-*Income and expense categories with hierarchy.*
-* **Primary Key:** `id`
-* **Columns:**
-  * `id` (uuid)
-  * `user_id` (uuid, Optional)
-  * `parent_id` (uuid, Optional) → *Self-reference for subcategories*
-  * `name` (text)
-  * `color` (text)
-  * `type` (text)
-  * `created_at` (timestamptz)
-  * `updated_at` (timestamptz)
-
-### `transactions`
-*The central ledger for all financial activity.*
-* **Primary Key:** `id`
-* **Columns:**
-  * `id` (uuid)
-  * `user_id` (uuid)
-  * `account_id` (uuid) → *Links to bank_accounts*
-  * `category_id` (uuid, Optional) → *Links to categories*
-  * `transfer_id` (uuid, Optional) → *Groups linked transfers*
-  * `date` (timestamptz)
-  * `description` (text, Optional)
-  * `amount_original` (numeric)
-  * `amount_home` (numeric)
-  * `currency_original` (text)
-  * `exchange_rate` (numeric)
-  * `notes` (text, Optional)
-  * `created_at` (timestamptz)
-  * `updated_at` (timestamptz)
-
-### `global_currencies`
-*Reference table for supported currencies.*
-* **Primary Key:** `code`
-* **Columns:**
-  * `code` (text)
-  * `name` (text)
-  * `symbol` (text)
-  * `flag` (text, Optional)
-
-### `account_currencies`
-*Junction table linking accounts to specific currencies.*
-* **Columns:**
-  * `id` (uuid)
-  * `account_id` (uuid)
-  * `currency_code` (varchar)
-  * `created_at` (timestamptz, Optional)
-  * `updated_at` (timestamptz, Optional)
-
-### `user_settings`
-*User-specific application preferences.*
-* **Columns:**
-  * `user_id` (uuid)
-  * `main_currency` (text, Optional)
-  * `theme` (text, Optional)
-  * `start_of_week` (integer, Optional)
-  * `created_at` (timestamptz)
-  * `updated_at` (timestamptz)
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| **id** | uuid | NO | `uuid_generate_v4()` |  |
+| **user_id** | uuid | YES | `-` |  |
+| **name** | text | NO | `-` |  |
+| **color** | text | NO | `-` |  |
+| **created_at** | timestamptz | NO | `now()` |  |
+| **updated_at** | timestamptz | NO | `now()` |  |
+| **parent_id** | uuid | YES | `-` |  |
+| **type** | transaction_type | NO | `'expense'::transaction_type` |  |
 
 ---
 
-## 3. Database Views (Virtual Tables)
+### 📄 Table: global_currencies
 
-### `account_balances`
-*Calculates live balances by summing transactions per account.*
-* **Returns:** `account_id`, `current_balance`, `name`, `color`, `currency`, `is_visible`...
-
-### `transactions_view`
-*Enriches raw transactions with joined names (account/category names).*
-* **Returns:** `id`, `date`, `description`, `amount_home`, `category_name`, `account_name`...
-
-### `categories_with_counts`
-*Categories enriched with usage statistics.*
-* **Returns:** `id`, `name`, `transaction_count`, `type`...
-
-### `parent_categories_with_counts`
-*Aggregated stats for top-level groupings.*
-* **Returns:** `id`, `name`, `transaction_count`, `parent_id`...
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| **code** | text | NO | `-` |  |
+| **name** | text | NO | `-` |  |
+| **symbol** | text | NO | `-` |  |
+| **flag** | text | YES | `-` |  |
 
 ---
 
-## 4. API Functions (RPCs)
-*Callable from the frontend via `supabase.rpc()`.*
+### 📄 Table: transactions
 
-### `create_transfer`
-*Creates two linked transactions (withdrawal + deposit) in one atomic step.*
-* **Arguments:** `p_user_id`, `p_from_account_id`, `p_to_account_id`, `p_amount`, `p_exchange_rate`...
-* **Returns:** `json`
+> Transactions table. Type is determined implicitly: transfer (transfer_id NOT NULL), opening balance (category_id NULL and transfer_id NULL), or standard (category_id NOT NULL with type from category).
 
-### `create_account_with_currencies`
-*Creates an account and initializes its currency list.*
-* **Arguments:** `p_account_name`, `p_account_color`, `p_currencies` (jsonb)
-* **Returns:** `jsonb`
-
-### `get_monthly_spending_by_category`
-*Aggregates spending for charts/graphs.*
-* **Arguments:** `p_months_back` (int), `p_user_id` (uuid)
-* **Returns:** Table of category stats per month.
-
-### `import_transactions`
-*Bulk insert function for CSV imports.*
-* **Arguments:** `p_transactions` (jsonb), `p_user_id`...
-* **Returns:** `jsonb`
-
-### `replace_account_currency`
-*Swaps the currency of an account and recalculates balances.*
-* **Arguments:** `p_account_id`, `p_old_currency_code`, `p_new_currency_code`...
-* **Returns:** `void`
-
-### `clear_user_data`
-*Hard deletes all data for a specific user (Reset Account).*
-* **Arguments:** `p_user_id`
-* **Returns:** `void`
-
-### `delete_transfer`
-*Deletes both legs of a transfer.*
-* **Arguments:** `p_transfer_id`
-* **Returns:** `void`
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| **id** | uuid | NO | `uuid_generate_v4()` |  |
+| **user_id** | uuid | NO | `-` |  |
+| **account_id** | uuid | NO | `-` |  |
+| **category_id** | uuid | YES | `-` |  |
+| **date** | timestamptz | NO | `now()` |  |
+| **description** | text | YES | `-` |  |
+| **amount_original** | numeric | NO | `-` |  |
+| **currency_original** | text | NO | `-` |  |
+| **exchange_rate** | numeric | NO | `1.0` |  |
+| **amount_home** | numeric | NO | `-` |  |
+| **transfer_id** | uuid | YES | `-` |  |
+| **created_at** | timestamptz | NO | `now()` |  |
+| **updated_at** | timestamptz | NO | `now()` |  |
+| **notes** | text | YES | `-` | Optional notes or memo for the transaction |
 
 ---
 
-## 5. Internal Trigger Functions
-*Automatic logic executed on DB events. Not callable from API.*
+### 📄 Table: user_settings
 
-* **`handle_new_user`**: Sets up default settings/categories when a user signs up.
-* **`calculate_amount_home`**: Automatically converts `amount_original` to `amount_home` using the exchange rate.
-* **`validate_category_hierarchy_func`**: Prevents circular dependencies in categories.
-* **`cascade_color_to_children`**: If a parent category color changes, update children.
-* **`sync_category_type_hierarchy`**: Enforces parent-child type consistency (income/expense). When a parent's type changes, automatically updates all children. When a child is inserted or moved, it inherits the parent's type.
-* **`cleanup_orphaned_categories`**: Maintenance function to fix data integrity.
-* **`update_updated_at_column`**: Auto-updates the `updated_at` timestamp on edit.
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| **user_id** | uuid | NO | `-` |  |
+| **theme** | text | YES | `'system'::text` |  |
+| **start_of_week** | int4 | YES | `0` |  |
+| **created_at** | timestamptz | NO | `now()` |  |
+| **updated_at** | timestamptz | NO | `now()` |  |
+| **main_currency** | text | YES | `'USD'::text` |  |
+
+---
+
+## Views
+
+### 👁️ View: account_balances
+
+| Column | Type | Description |
+|---|---|---|
+| **account_id** | uuid |  |
+| **group_id** | uuid |  |
+| **name** | text |  |
+| **currency_code** | text |  |
+| **type** | account_type |  |
+| **current_balance** | numeric |  |
+
+---
+
+### 👁️ View: categories_with_counts
+
+| Column | Type | Description |
+|---|---|---|
+| **id** | uuid |  |
+| **name** | text |  |
+| **type** | transaction_type |  |
+| **parent_id** | uuid |  |
+| **transaction_count** | int8 |  |
+
+---
+
+### 👁️ View: transactions_view
+
+| Column | Type | Description |
+|---|---|---|
+| **id** | uuid |  |
+| **date** | timestamptz |  |
+| **description** | text |  |
+| **amount_original** | numeric |  |
+| **amount_home** | numeric |  |
+| **currency_original** | text |  |
+| **category_name** | text |  |
+| **category_type** | transaction_type |  |
+| **account_name** | text |  |
+| **account_currency** | text |  |
+
+---
+
+## Functions
+
+### ⚡ Function: update_account_currencies_updated_at
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: handle_new_user
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: sync_category_type_hierarchy
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: update_updated_at_column
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: delete_transfer
+- **Return Type:** `void`
+- **Arguments:** `p_user_id uuid, p_transfer_id uuid`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: get_monthly_spending_by_category
+- **Return Type:** `TABLE(category_id uuid, category_name text, category_icon text, month_key text, total_amount numeric)`
+- **Arguments:** `p_user_id uuid, p_months_back integer DEFAULT 6`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: import_transactions
+- **Return Type:** `jsonb`
+- **Arguments:** `p_user_id uuid, p_transactions jsonb, p_default_account_color text, p_default_category_color text`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: calculate_amount_home
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: clear_user_data
+- **Return Type:** `void`
+- **Arguments:** `p_user_id uuid`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: create_account_with_currencies
+- **Return Type:** `jsonb`
+- **Arguments:** `p_account_name text, p_account_color text, p_currencies jsonb`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: create_transfer
+- **Return Type:** `json`
+- **Arguments:** `p_user_id uuid, p_from_account_id uuid, p_to_account_id uuid, p_amount numeric, p_from_currency text, p_to_currency text, p_amount_received numeric, p_exchange_rate numeric, p_date timestamp with time zone, p_description text, p_category_id uuid`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: replace_account_currency
+- **Return Type:** `void`
+- **Arguments:** `p_account_id uuid, p_old_currency_code character varying, p_new_currency_code character varying, p_new_starting_balance numeric`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: sync_child_category_color
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: cascade_color_to_children
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: validate_category_hierarchy_func
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: check_transaction_category_hierarchy
+- **Return Type:** `trigger`
+- **Arguments:** ``
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: create_account_group
+- **Return Type:** `json`
+- **Arguments:** `p_user_id uuid, p_name text, p_color text, p_type account_type, p_currencies text[]`
+- **Language:** `plpgsql`
+
+---
+
+### ⚡ Function: cleanup_orphaned_categories
+- **Return Type:** `TABLE(category_id uuid, category_name text, was_orphaned boolean)`
+- **Arguments:** ``
+- **Language:** `plpgsql`

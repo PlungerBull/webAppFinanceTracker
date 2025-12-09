@@ -29,8 +29,10 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   // Transaction form state
   const [transactionData, setTransactionData] = useState<TransactionFormData>({
     amount: '',
+    type: null,
     categoryId: null,
-    fromAccountId: null,
+    fromGroupId: null, // NEW: Store group ID
+    fromAccountId: null, // Resolved after currency selection
     fromCurrency: null,
     exchangeRate: '',
     date: new Date(),
@@ -40,6 +42,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   // Transfer form state
   const [transferData, setTransferData] = useState<TransferFormData>({
+    fromGroupId: null,
+    toGroupId: null,
     fromAccountId: null,
     toAccountId: null,
     fromCurrency: null,
@@ -52,7 +56,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   // Hooks
   const { data: categories = [] } = useCategories();
-  const { groupedAccounts } = useGroupedAccounts();
+  const { groupedAccounts, accounts: rawAccounts } = useGroupedAccounts();
 
   // Mutations
   const addTransactionMutation = useAddTransaction();
@@ -65,9 +69,11 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     if (mode === 'transaction') {
       const amountVal = parseFloat(transactionData.amount);
       const hasAmount = !isNaN(amountVal) && amountVal !== 0;
-      const hasAccount = transactionData.fromAccountId && transactionData.fromCurrency;
-      const hasCategory = transactionData.categoryId;
-      return hasAmount && hasAccount && hasCategory;
+      const hasAccount = transactionData.fromGroupId && transactionData.fromCurrency;
+      const hasType = transactionData.type !== null;
+      // Category is required for income/expense, but not for opening_balance
+      const hasCategory = transactionData.type === 'opening_balance' || transactionData.categoryId;
+      return hasAmount && hasAccount && hasType && hasCategory;
     } else {
       const hasAmount = parseFloat(transferData.sentAmount) > 0;
       const hasFromAccount = transferData.fromAccountId && transferData.fromCurrency;
@@ -87,7 +93,9 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     setMode('transaction');
     setTransactionData({
       amount: '',
+      type: null,
       categoryId: null,
+      fromGroupId: null,
       fromAccountId: null,
       fromCurrency: null,
       exchangeRate: '',
@@ -96,6 +104,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       notes: '',
     });
     setTransferData({
+      fromGroupId: null,
+      toGroupId: null,
       fromAccountId: null,
       toAccountId: null,
       fromCurrency: null,
@@ -116,7 +126,9 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     try {
       if (mode === 'transaction') {
         // Transaction mode
-        if (!transactionData.categoryId || !transactionData.fromAccountId || !transactionData.fromCurrency) return;
+        if (!transactionData.fromAccountId || !transactionData.fromCurrency || !transactionData.type) return;
+        // For opening_balance, category is null; for income/expense, category is required
+        if (transactionData.type !== 'opening_balance' && !transactionData.categoryId) return;
 
         const finalAmount = parseFloat(transactionData.amount);
         const rate = transactionData.exchangeRate ? parseFloat(transactionData.exchangeRate) : 1;
@@ -126,7 +138,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           amount_original: finalAmount,
           currency_original: transactionData.fromCurrency,
           account_id: transactionData.fromAccountId,
-          category_id: transactionData.categoryId,
+          category_id: transactionData.type === 'opening_balance' ? null : transactionData.categoryId,
+          type: transactionData.type,
           date: format(transactionData.date, 'yyyy-MM-dd'),
           notes: transactionData.notes || undefined,
           exchange_rate: rate,
@@ -196,6 +209,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                 onChange={(updates) => setTransactionData((prev) => ({ ...prev, ...updates }))}
                 categories={categories}
                 groupedAccounts={groupedAccounts}
+                rawAccounts={rawAccounts}
                 isSubmitting={isSubmitting}
                 hasSubmitted={hasSubmitted}
               />
@@ -204,6 +218,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                 data={transferData}
                 onChange={(updates) => setTransferData((prev) => ({ ...prev, ...updates }))}
                 groupedAccounts={groupedAccounts}
+                rawAccounts={rawAccounts}
                 isSubmitting={isSubmitting}
               />
             )}

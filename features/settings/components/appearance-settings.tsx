@@ -28,7 +28,8 @@ export function AppearanceSettings() {
             const initialVisibility: Record<string, boolean> = {};
             accounts.forEach(acc => {
                 if (acc.accountId) {
-                    initialVisibility[acc.accountId] = acc.isVisible ?? true;
+                    // TODO: isVisible not available in account_balances view - needs to fetch from bank_accounts table
+                    initialVisibility[acc.accountId] = true; // Default to visible
                 }
             });
             setPendingVisibility(initialVisibility);
@@ -46,21 +47,22 @@ export function AppearanceSettings() {
     useEffect(() => {
         let changed = false;
 
+        // TODO: Account visibility checking disabled - isVisible not available in account_balances view
         // Check account visibility changes
-        for (const acc of accounts) {
-            if (acc.accountId && pendingVisibility[acc.accountId] !== (acc.isVisible ?? true)) {
-                changed = true;
-                break;
-            }
-        }
+        // for (const acc of accounts) {
+        //     if (acc.accountId && pendingVisibility[acc.accountId] !== (acc.isVisible ?? true)) {
+        //         changed = true;
+        //         break;
+        //     }
+        // }
 
         // Check currency changes
-        if (!changed && selectedCurrency && selectedCurrency !== userSettings?.main_currency) {
+        if (selectedCurrency && selectedCurrency !== userSettings?.main_currency) {
             changed = true;
         }
 
         setHasChanges(changed);
-    }, [pendingVisibility, selectedCurrency, accounts, userSettings]);
+    }, [pendingVisibility, selectedCurrency, userSettings]);
 
     const handleToggle = (accountId: string) => {
         setPendingVisibility((prev) => ({
@@ -77,10 +79,11 @@ export function AppearanceSettings() {
         const promises: Promise<any>[] = [];
 
         // Save account visibility changes
+        // TODO: Account visibility feature disabled - isVisible not available in account_balances view
         const visibilityUpdates = Object.entries(pendingVisibility)
             .filter(([accountId, isVisible]) => {
-                const original = accounts.find(a => a.accountId === accountId);
-                return original && original.isVisible !== isVisible;
+                // Always include all pending changes since we can't compare with current state
+                return true;
             })
             .map(([accountId, isVisible]) => ({ accountId, isVisible }));
 
@@ -182,8 +185,7 @@ export function AppearanceSettings() {
                                     />
                                     <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => !isSaving && handleToggle(account.accountId!)}>
                                         <DollarSign
-                                            className="h-4 w-4 flex-shrink-0"
-                                            style={{ color: account.color || undefined }}
+                                            className="h-4 w-4 flex-shrink-0 text-gray-400"
                                         />
                                         <label
                                             htmlFor={`toggle-${account.accountId}`}
