@@ -86,7 +86,7 @@ export function CurrencyManager({
 
                     {/* Currency Dropdown */}
                     {isDropdownOpen && (
-                        <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden max-h-48 overflow-y-auto min-w-[280px]">
+                        <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 z-[60] overflow-hidden max-h-48 overflow-y-auto min-w-[280px]">
                             {availableCurrencies.length > 0 ? (
                                 availableCurrencies.map((currency) => (
                                     <div
