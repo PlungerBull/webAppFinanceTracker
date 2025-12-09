@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, Trash2 } from 'lucide-react';
 import { Currency } from '@/types/domain';
 import { cn } from '@/lib/utils';
@@ -25,23 +26,6 @@ export function CurrencyManager({
     renderItemFooter,
 }: CurrencyManagerProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    // Click-outside detection for dropdown
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(event.target as Node) &&
-                isDropdownOpen
-            ) {
-                setIsDropdownOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isDropdownOpen]);
 
     const handleAddCurrency = (code: string) => {
         const newValue = [
@@ -73,20 +57,23 @@ export function CurrencyManager({
                 </span>
 
                 {/* Add Currency Dropdown */}
-                <div className="relative" ref={dropdownRef}>
-                    <button
-                        type="button"
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        disabled={disabled}
-                        className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+                    <PopoverTrigger asChild>
+                        <button
+                            type="button"
+                            disabled={disabled}
+                            className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                            <Plus className="w-3 h-3" />
+                            Add Currency
+                        </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        align="end"
+                        side="top"
+                        className="w-[280px] p-0 bg-white rounded-xl shadow-xl border border-gray-100"
                     >
-                        <Plus className="w-3 h-3" />
-                        Add Currency
-                    </button>
-
-                    {/* Currency Dropdown */}
-                    {isDropdownOpen && (
-                        <div className="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-gray-100 z-[60] overflow-hidden max-h-48 overflow-y-auto min-w-[280px]">
+                        <div className="max-h-48 overflow-y-auto">
                             {availableCurrencies.length > 0 ? (
                                 availableCurrencies.map((currency) => (
                                     <div
@@ -105,8 +92,8 @@ export function CurrencyManager({
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
+                    </PopoverContent>
+                </Popover>
             </div>
 
             {/* Selected Currencies List */}
