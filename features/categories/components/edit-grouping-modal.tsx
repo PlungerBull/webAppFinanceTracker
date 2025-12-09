@@ -136,6 +136,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                     data: {
                         name: data.name,
                         color: data.color,
+                        type: data.type, // Fix: Include type field in update payload
                     },
                 })
             ];

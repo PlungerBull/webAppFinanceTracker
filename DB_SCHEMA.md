@@ -171,5 +171,6 @@
 * **`calculate_amount_home`**: Automatically converts `amount_original` to `amount_home` using the exchange rate.
 * **`validate_category_hierarchy_func`**: Prevents circular dependencies in categories.
 * **`cascade_color_to_children`**: If a parent category color changes, update children.
+* **`sync_category_type_hierarchy`**: Enforces parent-child type consistency (income/expense). When a parent's type changes, automatically updates all children. When a child is inserted or moved, it inherits the parent's type.
 * **`cleanup_orphaned_categories`**: Maintenance function to fix data integrity.
 * **`update_updated_at_column`**: Auto-updates the `updated_at` timestamp on edit.

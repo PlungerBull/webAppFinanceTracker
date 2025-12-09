@@ -71,7 +71,7 @@ export const categoriesApi = {
   },
 
   // Update an existing category (RLS handles user filtering)
-  update: async (id: string, category: { name?: string; color?: string; parent_id?: string | null }) => {
+  update: async (id: string, category: { name?: string; color?: string; parent_id?: string | null; type?: 'income' | 'expense' }) => {
     const supabase = createClient();
 
     const { data, error } = await supabase
