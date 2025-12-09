@@ -33,7 +33,7 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<{ name: string; color: string; parent_id?: string | null }> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<{ name: string; color: string; parent_id?: string | null; type?: 'income' | 'expense' }> }) =>
       categoriesApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
