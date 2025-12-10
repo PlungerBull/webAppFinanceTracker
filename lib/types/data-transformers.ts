@@ -96,6 +96,29 @@ export function dbAccountBalancesToDomain(
 }
 
 /**
+ * Transforms a database transaction_inbox row to domain InboxItem type
+ */
+export function dbInboxItemToDomain(
+  dbInboxItem: Database['public']['Tables']['transaction_inbox']['Row']
+) {
+  return {
+    id: dbInboxItem.id,
+    userId: dbInboxItem.user_id,
+    amount: dbInboxItem.amount,
+    currency: dbInboxItem.currency,
+    description: dbInboxItem.description,
+    date: dbInboxItem.date,
+    sourceText: dbInboxItem.source_text,
+    accountId: dbInboxItem.account_id,
+    categoryId: dbInboxItem.category_id,
+    exchangeRate: dbInboxItem.exchange_rate,
+    status: dbInboxItem.status,
+    createdAt: dbInboxItem.created_at,
+    updatedAt: dbInboxItem.updated_at,
+  } as const;
+}
+
+/**
  * Transforms a database transaction row to domain Transaction type
  * NOTE: Actual schema has amount_original, amount_home, currency_original, exchange_rate, date (not transaction_date)
  */
@@ -169,6 +192,35 @@ export function domainCategoryToDbInsert(data: {
     type: data.type,
     parent_id: data.parentId,
     user_id: data.userId,
+  };
+}
+
+/**
+ * Transforms domain inbox item data to database insert format
+ */
+export function domainInboxItemToDbInsert(data: {
+  userId: string;
+  amount: number;
+  currency?: string;
+  description: string;
+  date?: string | null;
+  sourceText?: string | null;
+  accountId?: string | null;
+  categoryId?: string | null;
+  exchangeRate?: number | null;
+  status?: 'pending' | 'processed' | 'ignored';
+}): Database['public']['Tables']['transaction_inbox']['Insert'] {
+  return {
+    user_id: data.userId,
+    amount: data.amount,
+    currency: data.currency,
+    description: data.description,
+    date: data.date,
+    source_text: data.sourceText,
+    account_id: data.accountId,
+    category_id: data.categoryId,
+    exchange_rate: data.exchangeRate,
+    status: data.status,
   };
 }
 
@@ -337,6 +389,15 @@ export function dbCurrenciesToDomain(
   dbCurrencies: Database['public']['Tables']['global_currencies']['Row'][]
 ) {
   return dbCurrencies.map(dbCurrencyToDomain);
+}
+
+/**
+ * Transforms an array of database transaction_inbox items to domain inbox items
+ */
+export function dbInboxItemsToDomain(
+  dbInboxItems: Database['public']['Tables']['transaction_inbox']['Row'][]
+) {
+  return dbInboxItems.map(dbInboxItemToDomain);
 }
 
 /**

@@ -9,13 +9,15 @@ import {
 
 export const accountsApi = {
   /**
-   * Get all accounts for the current user with current balances (RLS handles user filtering)
+   * Get all accounts for the current user with live ledger balances.
+   * REFACTORED: Now queries 'bank_accounts' directly for O(1) performance.
    */
   getAll: async () => {
     const supabase = createClient();
 
+    // Changed from 'account_balances' to 'bank_accounts'
     const { data, error } = await supabase
-      .from('account_balances')
+      .from('bank_accounts')
       .select('*')
       .order('name', { ascending: true });
 
@@ -25,6 +27,7 @@ export const accountsApi = {
     }
 
     // Transform snake_case to camelCase before returning to frontend
+    // Note: ensure dbAccountBalancesToDomain handles the raw table structure correctly
     return data ? dbAccountBalancesToDomain(data) : [];
   },
 

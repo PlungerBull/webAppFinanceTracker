@@ -18,6 +18,7 @@ export type Database = {
                 Row: {
                     color: string
                     created_at: string
+                    current_balance: number
                     currency_code: string
                     group_id: string
                     id: string
@@ -30,6 +31,7 @@ export type Database = {
                 Insert: {
                     color?: string
                     created_at?: string
+                    current_balance?: number
                     currency_code: string
                     group_id?: string
                     id?: string
@@ -42,6 +44,7 @@ export type Database = {
                 Update: {
                     color?: string
                     created_at?: string
+                    current_balance?: number
                     currency_code?: string
                     group_id?: string
                     id?: string
@@ -112,6 +115,54 @@ export type Database = {
                     flag?: string | null
                     name?: string
                     symbol?: string
+                }
+                Relationships: []
+            }
+            transaction_inbox: {
+                Row: {
+                    id: string
+                    user_id: string
+                    amount: number
+                    currency: string
+                    description: string
+                    date: string | null
+                    source_text: string | null
+                    account_id: string | null
+                    category_id: string | null
+                    exchange_rate: number | null
+                    status: 'pending' | 'processed' | 'ignored'
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    amount: number
+                    currency?: string
+                    description: string
+                    date?: string | null
+                    source_text?: string | null
+                    account_id?: string | null
+                    category_id?: string | null
+                    exchange_rate?: number | null
+                    status?: 'pending' | 'processed' | 'ignored'
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    amount?: number
+                    currency?: string
+                    description?: string
+                    date?: string | null
+                    source_text?: string | null
+                    account_id?: string | null
+                    category_id?: string | null
+                    exchange_rate?: number | null
+                    status?: 'pending' | 'processed' | 'ignored'
+                    created_at?: string
+                    updated_at?: string
                 }
                 Relationships: []
             }
@@ -393,6 +444,25 @@ export type Database = {
                     p_old_currency_code: string
                 }
                 Returns: undefined
+            }
+            promote_inbox_item: {
+                Args: {
+                    p_inbox_id: string
+                    p_account_id: string
+                    p_category_id: string
+                    p_final_description?: string
+                    p_final_date?: string
+                    p_final_amount?: number
+                }
+                Returns: Json
+            }
+            reconcile_account_balance: {
+                Args: {
+                    p_account_id: string
+                    p_new_balance: number
+                    p_date?: string
+                }
+                Returns: string
             }
         }
         Enums: {
