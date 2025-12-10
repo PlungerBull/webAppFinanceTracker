@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useAddTransaction } from '../hooks/use-transactions';
 import { useCreateTransfer } from '../hooks/use-transfers';
+import { useCreateInboxItem } from '@/features/inbox';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { TransactionTypeTabs } from './transaction-type-tabs';
@@ -15,6 +16,7 @@ import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 interface AddTransactionModalProps {
   open: boolean;
@@ -61,19 +63,20 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   // Mutations
   const addTransactionMutation = useAddTransaction();
   const createTransferMutation = useCreateTransfer();
+  const createInboxItemMutation = useCreateInboxItem();
 
-  const isSubmitting = addTransactionMutation.isPending || createTransferMutation.isPending;
+  const isSubmitting = addTransactionMutation.isPending || createTransferMutation.isPending || createInboxItemMutation.isPending;
 
-  // Validation
+  // Validation - RELAXED for inbox routing
   const isValid = useMemo(() => {
     if (mode === 'transaction') {
       const amountVal = parseFloat(transactionData.amount);
       const hasAmount = !isNaN(amountVal) && amountVal !== 0;
-      const hasAccount = transactionData.fromGroupId && transactionData.fromCurrency;
-      const hasType = transactionData.type !== null;
-      // Category is required for income/expense, but not for opening_balance
-      const hasCategory = transactionData.type === 'opening_balance' || transactionData.categoryId;
-      return hasAmount && hasAccount && hasType && hasCategory;
+      const hasPayee = transactionData.payee && transactionData.payee.trim().length > 0;
+
+      // SMART ROUTING: Only amount + description required for quick-add to inbox
+      // Full data (account + category) goes to ledger
+      return hasAmount && hasPayee;
     } else {
       const hasAmount = parseFloat(transferData.sentAmount) > 0;
       const hasFromAccount = transferData.fromAccountId && transferData.fromCurrency;
@@ -125,25 +128,42 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
     try {
       if (mode === 'transaction') {
-        // Transaction mode
-        if (!transactionData.fromAccountId || !transactionData.fromCurrency || !transactionData.type) return;
-        // For opening_balance, category is null; for income/expense, category is required
-        if (transactionData.type !== 'opening_balance' && !transactionData.categoryId) return;
-
+        // SMART ROUTING LOGIC
+        const hasAccount = transactionData.fromAccountId && transactionData.fromCurrency;
+        const hasCategory = transactionData.categoryId;
         const finalAmount = parseFloat(transactionData.amount);
-        const rate = transactionData.exchangeRate ? parseFloat(transactionData.exchangeRate) : 1;
 
-        await addTransactionMutation.mutateAsync({
-          description: transactionData.payee || 'Transaction',
-          amount_original: finalAmount,
-          currency_original: transactionData.fromCurrency,
-          account_id: transactionData.fromAccountId,
-          category_id: transactionData.type === 'opening_balance' ? null : transactionData.categoryId,
-          type: transactionData.type,
-          date: format(transactionData.date, 'yyyy-MM-dd'),
-          notes: transactionData.notes || undefined,
-          exchange_rate: rate,
-        });
+        // Check if this is "Ledger Ready" (has all required fields)
+        const isLedgerReady = hasAccount && hasCategory && transactionData.type;
+
+        if (isLedgerReady) {
+          // PATH A: Fast Track to Ledger (Complete Data)
+          const rate = transactionData.exchangeRate ? parseFloat(transactionData.exchangeRate) : 1;
+
+          await addTransactionMutation.mutateAsync({
+            description: transactionData.payee || 'Transaction',
+            amount_original: finalAmount,
+            currency_original: transactionData.fromCurrency!,
+            account_id: transactionData.fromAccountId!,
+            category_id: transactionData.type === 'opening_balance' ? null : transactionData.categoryId,
+            type: transactionData.type,
+            date: format(transactionData.date, 'yyyy-MM-dd'),
+            notes: transactionData.notes || undefined,
+            exchange_rate: rate,
+          });
+
+          toast.success('Transaction added!');
+        } else {
+          // PATH B: Route to Inbox (Incomplete Data)
+          await createInboxItemMutation.mutateAsync({
+            amount: finalAmount,
+            description: transactionData.payee || 'Quick Entry',
+            date: format(transactionData.date, 'yyyy-MM-dd'),
+            currency: transactionData.fromCurrency || undefined,
+          });
+
+          toast.success('Saved to Inbox for review');
+        }
       } else {
         // Transfer mode
         if (!transferData.fromAccountId || !transferData.fromCurrency || !transferData.toAccountId || !transferData.toCurrency) return;
@@ -238,10 +258,15 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {mode === 'transfer' ? 'Transferring...' : 'Adding...'}
+                    {mode === 'transfer' ? 'Transferring...' : 'Saving...'}
                   </>
+                ) : mode === 'transfer' ? (
+                  'Transfer Funds'
                 ) : (
-                  mode === 'transfer' ? 'Transfer Funds' : 'Add Transaction'
+                  // DYNAMIC BUTTON TEXT: Shows routing destination
+                  (transactionData.fromAccountId && transactionData.categoryId && transactionData.type)
+                    ? 'Add Transaction'  // Goes to Ledger
+                    : 'Save to Inbox'      // Goes to Inbox
                 )}
               </Button>
             </div>

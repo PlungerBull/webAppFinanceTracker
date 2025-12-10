@@ -19,6 +19,7 @@ Generated on: **2025-12-10**
 | **currency_code** | text | NO | `'USD'::text` | Account currency code |
 | **group_id** | uuid | NO | `gen_random_uuid()` | Group identifier for linked accounts |
 | **type** | account_type | NO | `'checking'::account_type` | Type of account |
+| **current_balance** | numeric | NO | `0` | **[NEW]** The live ledger balance. Updated automatically via triggers. |
 
 ---
 
@@ -81,6 +82,26 @@ Generated on: **2025-12-10**
 | **created_at** | timestamptz | NO | `now()` | Record creation timestamp |
 | **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
 | **main_currency** | text | YES | `'USD'::text` | User's main/home currency |
+
+---
+
+### 📄 Table: `transaction_inbox`
+
+> **Architecture Note:** This is the **Staging Area** for data. Rows here are "dirty" (drafts). They are NOT included in financial reports until promoted to the main `transactions` table.
+
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| **id** | uuid | NO | `uuid_generate_v4()` | Primary key |
+| **user_id** | uuid | NO | `-` | Owner |
+| **amount** | numeric | NO | `-` | Draft amount |
+| **description** | text | NO | `-` | Draft description |
+| **status** | text | NO | `'pending'` | Lifecycle: `pending`, `processed`, or `ignored` |
+| **account_id** | uuid | YES | `-` | (Optional) Staged Account assignment |
+| **category_id** | uuid | YES | `-` | (Optional) Staged Category assignment |
+| **exchange_rate** | numeric | YES | `1.0` | (Optional) Staged Exchange Rate |
+| **source_text** | text | YES | `-` | Context (e.g. "Scanned Receipt") |
+| **created_at** | timestamptz | NO | `now()` | Creation timestamp |
+| **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
 
 ---
 
@@ -167,3 +188,6 @@ Generated on: **2025-12-10**
 | `validate_category_hierarchy_func` | `trigger` | - | Trigger function to enforce rules on category hierarchy (e.g., parents cannot be children, type matching) |
 | `check_transaction_category_hierarchy` | `trigger` | - | Trigger function to prevent transactions from being assigned to parent categories (only leaf nodes) |
 | `cleanup_orphaned_categories` | `TABLE(...)` | - | Cleans up categories that were created but have no associated user or transactions |
+| `promote_inbox_item` | `json` | `p_inbox_id`, `p_account_id`, `p_category_id`, ... | **[ARCHITECTURAL]** Atomically moves a draft from Inbox to Main Ledger. Validates data before insertion. |
+| `reconcile_account_balance` | `uuid` | `p_account_id`, `p_new_balance` | Creates a "Delta Transaction" to fix balance discrepancies (Snapshot logic). |
+| `update_account_balance_ledger` | `trigger` | - | Automates the `current_balance` updates on the accounts table (Performance). |

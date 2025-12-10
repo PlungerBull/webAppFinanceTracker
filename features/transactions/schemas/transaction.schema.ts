@@ -23,7 +23,8 @@ export const createTransactionSchema = z.object({
   account_id: z
     .string()
     .uuid(VALIDATION.MESSAGES.INVALID_BANK_ACCOUNT)
-    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.BANK_ACCOUNT_REQUIRED),
+    .nullable()
+    .optional(), // RELAXED: Optional for inbox routing
   currency_original: z
     .string()
     .length(CURRENCY.CODE_LENGTH, VALIDATION.MESSAGES.CURRENCY_VALID_CODE)
@@ -87,6 +88,45 @@ export const updateTransactionSchema = z.object({
     .optional(),
 });
 
+/**
+ * Quick Add Schema - Relaxed validation for inbox items
+ * Only amount and description are required
+ * Missing account/category → routes to inbox instead of ledger
+ */
+export const quickAddTransactionSchema = z.object({
+  description: z
+    .string()
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.DESCRIPTION_REQUIRED)
+    .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, VALIDATION.MESSAGES.DESCRIPTION_MAX(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION)),
+  amount_original: z
+    .number()
+    .refine((val) => val !== 0, VALIDATION.MESSAGES.AMOUNT_ZERO),
+  date: z
+    .string()
+    .optional(), // Optional - defaults to today
+  category_id: z
+    .string()
+    .uuid(VALIDATION.MESSAGES.INVALID_CATEGORY)
+    .nullable()
+    .optional(), // Optional - missing means inbox
+  account_id: z
+    .string()
+    .uuid(VALIDATION.MESSAGES.INVALID_BANK_ACCOUNT)
+    .nullable()
+    .optional(), // Optional - missing means inbox
+  currency_original: z
+    .string()
+    .length(CURRENCY.CODE_LENGTH, VALIDATION.MESSAGES.CURRENCY_VALID_CODE)
+    .regex(VALIDATION.REGEX.CURRENCY_CODE, VALIDATION.MESSAGES.CURRENCY_UPPERCASE)
+    .optional(), // Optional - defaults to user's main currency
+  notes: z
+    .string()
+    .max(UI.MAX_LENGTH.NOTES, VALIDATION.MESSAGES.NOTES_MAX(UI.MAX_LENGTH.NOTES))
+    .nullable()
+    .optional(),
+});
+
 // Export types
 export type CreateTransactionFormData = z.infer<typeof createTransactionSchema>;
 export type UpdateTransactionFormData = z.infer<typeof updateTransactionSchema>;
+export type QuickAddTransactionFormData = z.infer<typeof quickAddTransactionSchema>;

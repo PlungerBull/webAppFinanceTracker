@@ -34,6 +34,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
   /dashboard         -> Overview & financial summary widgets
   /groupings         -> Custom groupings for categories
   /import-export     -> CSV/Data migration services
+  /inbox             -> [NEW] Staging area for draft transactions & processing logic
   /settings          -> User preferences (Theme, Main Currency)
   /transactions      -> Transaction creation, listing, and transfers
 /types               -> Global type definitions
@@ -67,7 +68,8 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * **Do not** call `supabase.from(...)` directly inside React components.
 * **Do not** put business logic inside the API layer; keep it in Services or Hooks if complex.
 * **Prefer RPC for Complex Logic:** Before writing complex transaction logic, check `database.types.ts` for existing Postgres functions.
-    * *Example:* Use `rpc('create_transfer')` instead of manually inserting two transactions and updating balances.
+    * *Example 1:* Use `rpc('create_transfer')` instead of manually inserting two transactions and updating balances.
+    * *Example 2:* Use `rpc('promote_inbox_item')` to atomically validate and move drafts from Inbox to Ledger.
 * **Execution Context:** The files in `features/*/api/*.ts` use the **Supabase Client SDK** (`@/lib/supabase/client`).
     * **DO NOT** create Next.js API Routes (`app/api/...`) or Server Actions unless strictly necessary (e.g., for webhooks).
     * **DO** call these API functions directly from your React Query hooks.
@@ -75,6 +77,14 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 ### D. Styling & UI
 * Use `tailwind-merge` and `clsx` (via the `cn` helper) for dynamic classes.
 * Prioritize Radix UI primitives for interactive elements (Dialogs, Popovers).
+
+### E. Data Entry Strategy (The "Staging" Pattern)
+* **The "Clean Ledger" Rule:** The main `transactions` table must ONLY contain complete, valid data (Amount + Date + Account + Category).
+* **The "Dirty Inbox" Rule:** Any incomplete data (e.g. Quick Adds with only Amount + Description) MUST be saved to `transaction_inbox`.
+* **Smart Routing:** When building forms, check for data completeness.
+    * *Complete Data* -> Write to Ledger (`transactions`).
+    * *Incomplete Data* -> Write to Inbox (`transaction_inbox`).
+* **Promotion:** Data moves from Inbox to Ledger via the `promote_inbox_item` RPC function, never via a direct `INSERT` + `DELETE` sequence.
 
 ## 5. Coding Standards "Do's and Don'ts"
 * **DO** use Zod schemas for all form inputs.

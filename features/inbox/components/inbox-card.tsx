@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { CategorySelector } from '@/features/transactions/components/category-selector';
-import { usePromoteInboxItem, useDismissInboxItem } from '../hooks/use-inbox';
+import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { INBOX } from '@/lib/constants';
 import { toast } from 'sonner';
 import type { InboxItem } from '../types';
@@ -20,15 +20,48 @@ interface InboxCardProps {
 }
 
 export function InboxCard({ item }: InboxCardProps) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  // FIX: Initialize state with existing data (prevents "amnesia" bug)
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(item.accountId || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(item.categoryId || '');
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
   const promoteItem = usePromoteInboxItem();
   const dismissItem = useDismissInboxItem();
+  const updateDraft = useUpdateInboxDraft();
 
   const canApprove = selectedAccountId && selectedCategoryId;
+
+  // FIX: Auto-save account selection (prevents "lost work" bug)
+  const handleAccountChange = async (accountId: string) => {
+    setSelectedAccountId(accountId);
+
+    try {
+      await updateDraft.mutateAsync({
+        id: item.id,
+        updates: { accountId },
+      });
+    } catch (error) {
+      console.error('Failed to save account selection:', error);
+      // Silent fail - user can still proceed, will be saved on promote
+    }
+  };
+
+  // FIX: Auto-save category selection (prevents "lost work" bug)
+  const handleCategoryChange = async (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    setIsCategoryPopoverOpen(false);
+
+    try {
+      await updateDraft.mutateAsync({
+        id: item.id,
+        updates: { categoryId },
+      });
+    } catch (error) {
+      console.error('Failed to save category selection:', error);
+      // Silent fail - user can still proceed, will be saved on promote
+    }
+  };
 
   const handleApprove = async () => {
     if (!canApprove) return;
@@ -89,8 +122,8 @@ export function InboxCard({ item }: InboxCardProps) {
             <label className="text-sm font-medium">{INBOX.UI.LABELS.ACCOUNT}</label>
             <Select
               value={selectedAccountId}
-              onValueChange={setSelectedAccountId}
-              disabled={accountsLoading || promoteItem.isPending}
+              onValueChange={handleAccountChange}
+              disabled={accountsLoading || promoteItem.isPending || updateDraft.isPending}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={INBOX.UI.LABELS.SELECT_ACCOUNT} />
@@ -116,7 +149,7 @@ export function InboxCard({ item }: InboxCardProps) {
                     'w-full justify-between',
                     !selectedCategoryId && 'text-muted-foreground'
                   )}
-                  disabled={promoteItem.isPending}
+                  disabled={promoteItem.isPending || updateDraft.isPending}
                 >
                   {selectedCategoryId ? 'Category Selected' : INBOX.UI.LABELS.SELECT_CATEGORY}
                   <Check className={cn('ml-2 h-4 w-4', !selectedCategoryId && 'opacity-0')} />
@@ -125,11 +158,8 @@ export function InboxCard({ item }: InboxCardProps) {
               <PopoverContent className="w-80 p-0" align="start">
                 <CategorySelector
                   value={selectedCategoryId}
-                  onChange={(categoryId) => {
-                    setSelectedCategoryId(categoryId);
-                    setIsCategoryPopoverOpen(false);
-                  }}
-                  disabled={promoteItem.isPending}
+                  onChange={handleCategoryChange}
+                  disabled={promoteItem.isPending || updateDraft.isPending}
                 />
               </PopoverContent>
             </Popover>
