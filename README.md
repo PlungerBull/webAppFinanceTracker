@@ -48,4 +48,4 @@ Your TransactionDetailPanel is a great step in the right direction (side-by-side
 
 5. The transfer is still broken.
 
-
+3. ITS ALL BROKEN YOU HAVE TO TELL GEMINI, AND KEEP FIXING. 
