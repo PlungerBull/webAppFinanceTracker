@@ -26,9 +26,15 @@ export const accountsApi = {
       throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.FETCH_FAILED);
     }
 
-    // Transform snake_case to camelCase before returning to frontend
-    // Note: ensure dbAccountBalancesToDomain handles the raw table structure correctly
-    return data ? dbAccountBalancesToDomain(data) : [];
+    // Transform bank_accounts to account balance format (with current_balance from table)
+    return data ? data.map(account => ({
+      accountId: account.id,
+      groupId: account.group_id,
+      name: account.name,
+      currencyCode: account.currency_code,
+      type: account.type,
+      currentBalance: account.current_balance,
+    })) : [];
   },
 
   /**
