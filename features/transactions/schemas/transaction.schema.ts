@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { VALIDATION, UI, CURRENCY } from '@/lib/constants';
 
-// Create transaction schema (matching database schema)
+// ============================================================================
+// DRAFT/FORM SCHEMA - Flexible validation for UI
+// ============================================================================
+// This schema supports incomplete data for drafts and inbox items.
+// Use this for form validation where users might not have all fields ready.
 export const createTransactionSchema = z.object({
   description: z
     .string()
@@ -41,6 +45,25 @@ export const createTransactionSchema = z.object({
     .max(UI.MAX_LENGTH.NOTES, VALIDATION.MESSAGES.NOTES_MAX(UI.MAX_LENGTH.NOTES))
     .nullable()
     .optional(),
+});
+
+// ============================================================================
+// LEDGER/PAYLOAD SCHEMA - Strict validation for database operations
+// ============================================================================
+// This schema enforces all database constraints at the type level.
+// Use this for API calls that write to the transactions table (ledger).
+// Extends the base schema but marks critical fields as REQUIRED.
+export const createTransactionLedgerSchema = createTransactionSchema.extend({
+  account_id: z
+    .string()
+    .uuid(VALIDATION.MESSAGES.INVALID_BANK_ACCOUNT), // REQUIRED: Database constraint
+  currency_original: z
+    .string()
+    .length(CURRENCY.CODE_LENGTH, VALIDATION.MESSAGES.CURRENCY_VALID_CODE)
+    .regex(VALIDATION.REGEX.CURRENCY_CODE, VALIDATION.MESSAGES.CURRENCY_UPPERCASE), // REQUIRED: Database constraint
+  date: z
+    .string()
+    .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.TRANSACTION_DATE_REQUIRED), // REQUIRED: Database constraint
 });
 
 // Update transaction schema
@@ -128,5 +151,6 @@ export const quickAddTransactionSchema = z.object({
 
 // Export types
 export type CreateTransactionFormData = z.infer<typeof createTransactionSchema>;
+export type CreateTransactionLedgerData = z.infer<typeof createTransactionLedgerSchema>;
 export type UpdateTransactionFormData = z.infer<typeof updateTransactionSchema>;
 export type QuickAddTransactionFormData = z.infer<typeof quickAddTransactionSchema>;

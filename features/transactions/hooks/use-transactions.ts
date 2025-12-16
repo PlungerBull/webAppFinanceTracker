@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsApi } from '../api/transactions';
-import type { CreateTransactionFormData, UpdateTransactionFormData } from '../schemas/transaction.schema';
+import type {
+  CreateTransactionFormData,
+  CreateTransactionLedgerData,
+  UpdateTransactionFormData
+} from '../schemas/transaction.schema';
 
 export function useTransactions(filters?: {
   categoryId?: string;
@@ -24,11 +28,14 @@ export function useTransaction(id: string) {
   });
 }
 
+// Hook for adding transactions to the LEDGER (requires complete data)
+// This hook enforces strict validation - all required fields must be present
+// For incomplete/draft transactions, use the inbox API instead
 export function useAddTransaction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateTransactionFormData) => transactionsApi.create(data),
+    mutationFn: (data: CreateTransactionLedgerData) => transactionsApi.create(data),
     onSuccess: () => {
       // Invalidate all transaction-related queries (including monthly-spending)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });

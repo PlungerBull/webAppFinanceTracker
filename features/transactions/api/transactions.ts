@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/client';
 import { TRANSACTIONS } from '@/lib/constants';
-import type { CreateTransactionFormData, UpdateTransactionFormData } from '../schemas/transaction.schema';
+import type {
+  CreateTransactionFormData,
+  CreateTransactionLedgerData,
+  UpdateTransactionFormData
+} from '../schemas/transaction.schema';
 import type { TransactionView, Transaction } from '@/types/domain';
 import {
   dbTransactionViewToDomain,
@@ -84,8 +88,11 @@ export const transactionsApi = {
     return dbTransactionViewToDomain(data);
   },
 
-  // Create a new transaction
-  create: async (transactionData: CreateTransactionFormData): Promise<Transaction> => {
+  // Create a new transaction in the ledger
+  // IMPORTANT: This function requires COMPLETE data that matches database constraints.
+  // Use CreateTransactionLedgerData type - TypeScript enforces required fields at compile time.
+  // For incomplete/draft transactions, route to the inbox instead.
+  create: async (transactionData: CreateTransactionLedgerData): Promise<Transaction> => {
     const supabase = createClient();
 
     // Get user for user_id (no DB default exists yet)
@@ -94,6 +101,8 @@ export const transactionsApi = {
       throw new Error(TRANSACTIONS.API.ERRORS.USER_NOT_AUTHENTICATED);
     }
 
+    // TypeScript guarantees these fields are present due to CreateTransactionLedgerData type
+    // No runtime checks needed - compilation will fail if required fields are missing
     const { data, error } = await supabase
       .from('transactions')
       .insert({
@@ -105,8 +114,8 @@ export const transactionsApi = {
         amount_home: 0,
         date: transactionData.date,
         category_id: transactionData.category_id || null,
-        account_id: transactionData.account_id,
-        currency_original: transactionData.currency_original,
+        account_id: transactionData.account_id, // ✅ Guaranteed non-null by type
+        currency_original: transactionData.currency_original, // ✅ Guaranteed non-null by type
         exchange_rate: transactionData.exchange_rate,
         notes: transactionData.notes || null, // ✅ Capture notes
       })
