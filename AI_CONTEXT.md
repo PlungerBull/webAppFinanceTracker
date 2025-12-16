@@ -95,3 +95,36 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * *Good:* `import { TRANSACTIONS } from '@/lib/constants'`
 * **UI Patterns:** Before using raw `Dialog` or `Modal` components, check `@/components/shared`.
     * *Rule:* Always use `FormModal` for data entry and `DeleteDialog` for confirmations.
+
+## 6. Environment & Deployment Workflow (3-Tier Setup)
+
+### A. The Three Environments
+1.  **Local (The Lab):**
+    * **Url:** `http://localhost:3000`
+    * **Database:** Local Supabase Instance (Docker/CLI).
+    * **Purpose:** Rapid prototyping, destroying/resetting DB, testing schema changes.
+    * **Data Rule:** Fake/Seeded data only. Wiped frequently.
+
+2.  **Development (The Staging Ground):**
+    * **Url:** `finance-tracker-dev.vercel.app` (branch: `dev`)
+    * **Database:** Supabase Cloud Project "FinanceTracker-DEV".
+    * **Purpose:** Integration testing, verifying migrations before Prod, "User" testing.
+    * **Data Rule:** Shared test data. Stable but expendable.
+
+3.  **Production (The Real World):**
+    * **Url:** `finance-tracker.vercel.app` (branch: `main`)
+    * **Database:** Supabase Cloud Project "FinanceTracker-PROD".
+    * **Purpose:** Live user usage.
+    * **Data Rule:** SACRED. Real financial data. Backups required.
+
+### B. The Flow of Change
+* **Code Flow:** Local `feat/branch` -> Merge to `dev` -> Promote to `main`.
+* **Schema Flow (Migrations):**
+    * **NEVER** use the Supabase Dashboard Table Editor to change schema in Dev or Prod.
+    * **ALWAYS** create migrations locally: `supabase db diff -f my_new_feature`.
+    * **Apply** migrations automatically via CI/CD (GitHub Actions) when pushing to `dev` and `main`.
+
+### C. Secrets Management
+* **Local:** stored in `.env.local` (Gitignored).
+* **Vercel Dev:** Environment Variables set to "Development" & "Preview" scopes.
+* **Vercel Prod:** Environment Variables set to "Production" scope.
