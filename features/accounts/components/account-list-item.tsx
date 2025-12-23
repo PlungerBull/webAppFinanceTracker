@@ -1,102 +1,128 @@
 'use client';
 
-import { Pencil, Trash2, CreditCard } from 'lucide-react';
-import { ResourceListItem } from '@/components/ui/resource-list-item';
+import { Pencil, Trash2, CreditCard, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
-import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
-import type { GroupedAccount } from '@/hooks/use-grouped-accounts';
-import type { BankAccount } from '@/types/domain';
+import { ACCOUNT } from '@/lib/constants';
+import type { FlatAccount } from '@/hooks/use-flat-accounts';
+import type { Account } from '@/types/domain';
 
 interface AccountListItemProps {
-    account: GroupedAccount;
-    isActive: boolean;
-    onClick: () => void;
-    onEdit: (account: BankAccount) => void;
-    onDelete: (account: BankAccount) => void;
+  account: FlatAccount;
+  isActive: boolean;
+  onClick: () => void;
+  onEdit: (account: Account) => void;
+  onDelete: (account: Account) => void;
 }
 
 export function AccountListItem({
-    account,
-    isActive,
-    onClick,
-    onEdit,
-    onDelete,
+  account,
+  isActive,
+  onClick,
+  onEdit,
+  onDelete,
 }: AccountListItemProps) {
-    // Helper to construct BankAccount from GroupedAccount data
-    // Using the first balance's accountId to represent the group
-    const getBankAccount = (): BankAccount | null => {
-        const firstBalance = account.balances[0];
-        if (!firstBalance?.accountId) return null;
+  const isNegative = (account.currentBalance ?? 0) < 0;
 
-        // TODO: This is a temporary solution. Edit modal needs rewrite for container pattern.
-        // Currently using the first balance's accountId to represent a specific currency account
-        return {
-            id: firstBalance.accountId, // Use specific currency account ID
-            groupId: account.groupId,
-            name: account.name,
-            color: account.color,
-            currencyCode: firstBalance.currency,
-            type: account.type,
-            userId: '', // Not available in GroupedAccount - will be fetched by modal if needed
-            isVisible: true, // Not available in GroupedAccount
-            createdAt: new Date().toISOString(), // Not available
-            updatedAt: new Date().toISOString(), // Not available
-        };
-    };
+  // Convert FlatAccount to Account for edit/delete modals
+  const getBankAccount = (): Account => ({
+    id: account.accountId!,
+    groupId: account.groupId!,
+    name: account.name!,
+    color: account.color!,
+    currencyCode: account.currencyCode!,
+    type: account.type!,
+    userId: '', // Not needed by modals
+    isVisible: account.isVisible ?? true,
+    createdAt: account.createdAt ?? '',
+    updatedAt: account.updatedAt ?? '',
+  });
 
-    const actions = [
-        {
-            label: ACCOUNT_UI.LABELS.EDIT_ACCOUNT,
-            icon: Pencil,
-            onClick: () => {
-                const bankAccount = getBankAccount();
-                if (bankAccount) onEdit(bankAccount);
-            },
-        },
-        {
-            label: ACCOUNT_UI.LABELS.DELETE_ACCOUNT,
-            icon: Trash2,
-            onClick: () => {
-                const bankAccount = getBankAccount();
-                if (bankAccount) onDelete(bankAccount);
-            },
-            className: 'text-red-600',
-        },
-    ];
+  const actions = [
+    {
+      label: 'Edit',
+      icon: Pencil,
+      onClick: () => onEdit(getBankAccount()),
+    },
+    {
+      label: 'Delete',
+      icon: Trash2,
+      onClick: () => onDelete(getBankAccount()),
+      className: 'text-red-600',
+    },
+  ];
 
-    return (
-        <ResourceListItem
-            icon={CreditCard}
-            iconColor={account.color}
-            title={account.name}
-            isActive={isActive}
-            onClick={onClick}
-            actions={actions}
-        >
-            {/* Currency Balances - Indented */}
-            <div className="ml-8 space-y-0.5">
-                {account.balances.map((balance) => (
-                    <div
-                        key={balance.currency}
-                        className="flex items-center justify-between text-xs py-0.5 px-2"
-                    >
-                        <span className="text-gray-500 font-medium">
-                            {balance.currency}
-                        </span>
-                        <span
-                            className={cn(
-                                'font-mono tabular-nums',
-                                balance.amount >= 0
-                                    ? 'text-gray-500'
-                                    : 'text-red-600'
-                            )}
-                        >
-                            {formatCurrency(balance.amount, balance.currency)}
-                        </span>
-                    </div>
-                ))}
-            </div>
-        </ResourceListItem>
-    );
+  return (
+    <div
+      className={cn(
+        'group grid grid-cols-[14px_1fr_18px_auto] gap-x-1.5 px-2 py-1.5 rounded-md cursor-pointer transition-all relative',
+        'text-gray-500 dark:text-gray-400',
+        'hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100',
+        isActive && 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+      )}
+      onClick={onClick}
+    >
+      {/* Column 1: Icon (14px) */}
+      <CreditCard
+        className="w-[14px] h-[14px] opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        style={{ color: account.color ?? ACCOUNT.DEFAULT_COLOR }}
+      />
+
+      {/* Column 2: Account Name (1fr) */}
+      <span className="text-xs font-medium truncate whitespace-nowrap">
+        {account.cleanName}
+      </span>
+
+      {/* Column 3: Currency Symbol (18px) - FROM DATABASE */}
+      <span className="text-[9px] font-bold text-right">
+        {account.currencySymbol ?? account.currencyCode ?? ''}
+      </span>
+
+      {/* Column 4: Balance (auto, min-60px) */}
+      <span
+        className={cn(
+          'text-xs font-mono tabular-nums min-w-[60px] text-right',
+          isNegative && 'text-red-500'
+        )}
+      >
+        {formatCurrency(account.currentBalance ?? 0, account.currencyCode ?? 'USD')}
+      </span>
+
+      {/* Actions Dropdown - ALWAYS RENDERED (every row gets actions) */}
+      <div className="absolute right-2 top-1.5 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded text-xs text-zinc-500 dark:text-zinc-400 border-0 bg-transparent flex items-center justify-center outline-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal className="h-3 w-3" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="z-50">
+            {actions.map((action, index) => {
+              const ActionIcon = action.icon;
+              return (
+                <DropdownMenuItem
+                  key={index}
+                  className={action.className}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    action.onClick();
+                  }}
+                >
+                  <ActionIcon className="mr-2 h-4 w-4" />
+                  {action.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
 }

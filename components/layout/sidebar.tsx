@@ -23,7 +23,7 @@ export function Sidebar({ className }: SidebarProps) {
     <aside
       className={cn(
         'flex flex-col h-screen bg-gray-50/30 border-r border-gray-200 transition-all duration-300 relative',
-        isCollapsed ? 'w-0' : 'w-64',
+        isCollapsed ? 'w-0' : 'w-72',
         className
       )}
     >
@@ -34,7 +34,7 @@ export function Sidebar({ className }: SidebarProps) {
         onClick={toggleSidebar}
         className={cn(
           'absolute top-4 z-50 h-8 w-8 transition-all duration-300',
-          isCollapsed ? 'left-3' : 'left-[218px]'
+          isCollapsed ? 'left-3' : 'left-[250px]'
         )}
       >
         {isCollapsed ? (

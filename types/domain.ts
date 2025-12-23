@@ -93,6 +93,11 @@ export interface AccountBalance {
   currencyCode: string | null;
   type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other' | null;
   currentBalance: number | null;
+  color: string | null;
+  isVisible: boolean | null;
+  currencySymbol: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 /**

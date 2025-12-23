@@ -11,14 +11,18 @@ export const accountsApi = {
   /**
    * Get all accounts for the current user with live ledger balances.
    * REFACTORED: Now queries 'bank_accounts' directly for O(1) performance.
+   * LEFT JOINs global_currencies for symbol lookup (defensive UI).
    */
   getAll: async () => {
     const supabase = createClient();
 
-    // Changed from 'account_balances' to 'bank_accounts'
+    // LEFT JOIN global_currencies for symbol (defensive UI - missing symbols don't break the list)
     const { data, error } = await supabase
       .from('bank_accounts')
-      .select('*')
+      .select(`
+        *,
+        global_currencies(symbol)
+      `)
       .order('name', { ascending: true });
 
     if (error) {
@@ -26,7 +30,7 @@ export const accountsApi = {
       throw new Error(error.message || ACCOUNTS.MESSAGES.ERROR.FETCH_FAILED);
     }
 
-    // Transform bank_accounts to account balance format (with current_balance from table)
+    // Transform bank_accounts to account balance format (with all fields needed for sidebar)
     return data ? data.map(account => ({
       accountId: account.id,
       groupId: account.group_id,
@@ -34,6 +38,11 @@ export const accountsApi = {
       currencyCode: account.currency_code,
       type: account.type,
       currentBalance: account.current_balance,
+      color: account.color,
+      isVisible: account.is_visible,
+      currencySymbol: account.global_currencies?.symbol ?? '',
+      createdAt: account.created_at,
+      updatedAt: account.updated_at,
     })) : [];
   },
 
