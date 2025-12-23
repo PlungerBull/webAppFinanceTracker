@@ -65,7 +65,7 @@ export function Sidebar({ className }: SidebarProps) {
                   <div className="mx-2 h-5 w-5 rounded bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                     <Plus className="h-3.5 w-3.5 text-blue-600" />
                   </div>
-                  <span className="font-medium">New Testing Transaction</span>
+                  <span className="font-medium">New Transaction</span>
                 </Button>
               </div>
             )}
