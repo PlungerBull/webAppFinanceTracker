@@ -1,38 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useFormModal } from '@/hooks/shared/use-form-modal';
 import { useQueryClient } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
 import { accountsApi } from '../api/accounts';
-// TODO: Rewrite for container pattern - see CONTAINER_ACCOUNT_MIGRATION_SUMMARY.md
-// import { accountCurrenciesApi } from '../api/account-currencies';
 import { updateAccountSchema, type UpdateAccountFormData } from '../schemas/account.schema';
-import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
-import type { Database } from '@/types/database.types';
 import { DashboardModal } from '@/components/shared/dashboard-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Pencil, Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
+import { Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
 import { ACCOUNT, QUERY_KEYS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { Account as DomainAccount } from '@/types/domain';
-
-import { CurrencyManager } from './currency-manager';
-import type { CurrencyBalance } from '@/hooks/use-currency-manager';
-
-type BankAccount = Database['public']['Tables']['bank_accounts']['Row'];
-// type AccountCurrency = Database['public']['Tables']['account_currencies']['Row']; // OLD SCHEMA
-
-// Stub type for backward compatibility - TODO: Remove when edit modal is rewritten
-interface AccountCurrency {
-  id: string;
-  account_id: string;
-  currency_code: string;
-  created_at: string;
-  updated_at: string;
-}
 
 interface EditAccountModalProps {
   open: boolean;
@@ -41,50 +21,21 @@ interface EditAccountModalProps {
   onDelete?: (accountId: string) => void;
 }
 
-interface CurrencyReplacement {
-  oldCurrency: AccountCurrency;
-  newCurrencyCode: string;
-  newStartingBalance: number;
-  originalStartingBalance: number;
-}
-
 export function EditAccountModal({ open, onOpenChange, account, onDelete }: EditAccountModalProps) {
   const queryClient = useQueryClient();
 
-  const [currencyReplacements, setCurrencyReplacements] = useState<CurrencyReplacement[]>([]);
   const [isColorPopoverOpen, setIsColorPopoverOpen] = useState(false);
-
-  const { data: allCurrencies = [] } = useCurrencies();
-
-  // TODO: Rewrite for container pattern - fetch grouped accounts by group_id
-  // Fetch account currencies when modal opens
-  const { data: accountCurrencies = [], isLoading: loadingCurrencies } = useQuery({
-    queryKey: ['edit-account-stub', account?.id],
-    queryFn: () => Promise.resolve([]), // Stub - returns empty array
-    enabled: false, // Disabled until rewrite
-  });
 
   const onSubmit = async (data: UpdateAccountFormData) => {
     if (!account) return;
 
-    // Step 1: Update account name and color
+    // Update account name and color
     await accountsApi.update(account.id, data);
-
-    // TODO: Rewrite currency replacement for container pattern
-    // Step 2: Process currency replacements (DISABLED - needs container pattern rewrite)
-    // for (const replacement of currencyReplacements) {
-    //   const oldCode = replacement.oldCurrency.currency_code;
-    //   const newCode = replacement.newCurrencyCode.toUpperCase();
-    //   const isNewCurrency = replacement.oldCurrency.id.startsWith('new-');
-    //   ... (API calls commented out)
-    // }
 
     // Invalidate queries
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
-    // queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNT_CURRENCIES() }); // OLD SCHEMA
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL });
 
-    setCurrencyReplacements([]);
     onOpenChange(false);
   };
 
@@ -97,7 +48,6 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
 
   const handleClose = () => {
     resetForm();
-    setCurrencyReplacements([]);
     setIsColorPopoverOpen(false);
     onOpenChange(false);
   };
@@ -113,68 +63,15 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
   const selectedColor = watch('color');
   const accountName = watch('name');
 
-  // Initialize form and currency replacements
+  // Initialize form
   useEffect(() => {
     if (account) {
       reset({
         name: account.name,
         color: account.color || ACCOUNT.DEFAULT_COLOR,
       });
-
-      // TODO: Rewrite for container pattern - fetch grouped accounts and initialize currency replacements
-      // setCurrencyReplacements(
-      //   accountCurrencies.map((ac) => ({
-      //     oldCurrency: ac,
-      //     newCurrencyCode: ac.currency_code,
-      //     newStartingBalance: 0,
-      //     originalStartingBalance: 0,
-      //   }))
-      // );
     }
   }, [account, reset]);
-
-  // Transform replacements to CurrencyBalance[] for the CurrencyManager
-  const currencyBalances: CurrencyBalance[] = currencyReplacements.map(r => ({
-    currency_code: r.newCurrencyCode,
-    starting_balance: r.newStartingBalance
-  }));
-
-  // Handle changes from CurrencyManager
-  const handleCurrenciesChange = (newBalances: CurrencyBalance[]) => {
-    // 1. Identify removed items
-    const newCodes = new Set(newBalances.map(b => b.currency_code));
-    const keptReplacements = currencyReplacements.filter(r => newCodes.has(r.newCurrencyCode));
-
-    // 2. Identify added items
-    const existingCodes = new Set(currencyReplacements.map(r => r.newCurrencyCode));
-    const addedBalances = newBalances.filter(b => !existingCodes.has(b.currency_code));
-
-    // 3. Update balances for kept items
-    const updatedReplacements = keptReplacements.map(r => {
-      const newBalance = newBalances.find(b => b.currency_code === r.newCurrencyCode);
-      return newBalance ? { ...r, newStartingBalance: newBalance.starting_balance } : r;
-    });
-
-    // 4. Create new replacements for added items
-    const newReplacements = addedBalances.map(b => ({
-      oldCurrency: {
-        id: `new-${Date.now()}-${Math.random()}`,
-        account_id: account?.id || '',
-        currency_code: b.currency_code,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as AccountCurrency,
-      newCurrencyCode: b.currency_code,
-      newStartingBalance: b.starting_balance,
-      originalStartingBalance: 0,
-    }));
-
-    setCurrencyReplacements([...updatedReplacements, ...newReplacements]);
-  };
-
-  const availableCurrencies = allCurrencies.filter(
-    (currency) => !currencyReplacements.some((cr) => cr.newCurrencyCode === currency.code)
-  );
 
   const handleDelete = async () => {
     if (!account || !onDelete) return;
@@ -199,7 +96,7 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
       open={open}
       onOpenChange={handleClose}
       title="Edit Account"
-      description="Edit account name, color, and manage currencies"
+      description="Edit account name and color"
       maxWidth="max-w-lg"
     >
       <DashboardModal.Form onSubmit={handleSubmit}>
@@ -263,34 +160,17 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
         <DashboardModal.Body>
           <DashboardModal.Error error={error} />
 
-          {/* Currencies & Balances */}
-          {loadingCurrencies ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          {/* Account Info Display */}
+          {account && (
+            <div className="space-y-3">
+              <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="text-sm text-gray-500 mb-1">Currency</div>
+                <div className="text-lg font-semibold text-gray-900">{account.currency_code}</div>
+              </div>
+              <div className="text-xs text-gray-500 px-1">
+                To change the currency, create a new account with the desired currency.
+              </div>
             </div>
-          ) : (
-            <CurrencyManager
-              value={currencyBalances}
-              onChange={handleCurrenciesChange}
-              availableCurrencies={availableCurrencies}
-              allCurrencies={allCurrencies}
-              disabled={isSubmitting}
-              renderItemFooter={(item) => {
-                // Find the replacement corresponding to this item
-                const replacement = currencyReplacements.find(r => r.newCurrencyCode === item.currency_code);
-                if (!replacement) return null;
-
-                if (replacement.oldCurrency.currency_code !== replacement.newCurrencyCode &&
-                  !replacement.oldCurrency.id.startsWith('new-')) {
-                  return (
-                    <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg ml-[76px]">
-                      ⚠️ Changing from {replacement.oldCurrency.currency_code} to {replacement.newCurrencyCode} will update all transactions
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
           )}
 
         </DashboardModal.Body>

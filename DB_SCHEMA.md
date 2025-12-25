@@ -1,5 +1,22 @@
 # 🗃️ Database Documentation
-Generated on: **2025-12-10**
+Generated on: **2025-12-25**
+
+---
+
+## 🏗️ Architecture Overview
+
+### Currency Model (Flat Architecture)
+This database uses a **"Flat" currency architecture**:
+- Each `bank_accounts` row has exactly **ONE** `currency_code`
+- Multi-currency support for the same account concept is achieved through the `group_id` pattern
+- **No junction tables** (`account_currencies` and `currencies` tables were removed)
+- Currency cannot be changed after account creation
+
+### Opening Balance Pattern
+Opening balance transactions are identified by:
+- `category_id = NULL`
+- `transfer_id = NULL`
+- `description = 'Opening Balance'`
 
 ---
 
@@ -167,27 +184,65 @@ Generated on: **2025-12-10**
 
 ## ⚡ Functions (PL/pgSQL)
 
+### Core Account & Transaction Functions
+
 | Function Name | Return Type | Arguments | Description |
 |---|---|---|---|
-| `update_account_currencies_updated_at` | `trigger` | - | Trigger function to update the `updated_at` column of `bank_accounts` |
-| `handle_new_user` | `trigger` | - | Trigger function for new user setup (e.g., initial settings, default accounts/categories) |
-| `sync_category_type_hierarchy` | `trigger` | - | Trigger function to ensure consistency of transaction type in category hierarchy |
-| `update_updated_at_column` | `trigger` | - | Generic trigger function to set `updated_at` column to `now()` on update |
-| `delete_transfer` | `void` | `p_user_id uuid`, `p_transfer_id uuid` | Deletes a transfer transaction and its paired counterpart |
-| `get_monthly_spending_by_category` | `TABLE(...)` | `p_user_id uuid`, `p_months_back integer DEFAULT 6` | Retrieves monthly spending aggregated by category for a user |
-| `import_transactions` | `jsonb` | `p_user_id uuid`, `p_transactions jsonb`, `p_default_account_color text`, `p_default_category_color text` | Imports a batch of transactions from a JSON array |
-| `calculate_amount_home` | `trigger` | - | Trigger function to calculate `amount_home` based on `amount_original` and `exchange_rate` |
-| `clear_user_data` | `void` | `p_user_id uuid` | Deletes all transactional and account data for a given user |
-| `create_account_with_currencies` | `jsonb` | `p_account_name text`, `p_account_color text`, `p_currencies jsonb` | Creates a new account with associated currency/balance records |
-| `get_monthly_spending_by_category` | `TABLE(...)` | `p_months_back integer DEFAULT 6`, `p_user_id uuid DEFAULT auth.uid()` | Retrieves monthly spending aggregated by category (alternative signature) |
-| `create_account_group` | `json` | `p_user_id uuid`, `p_name text`, `p_color text`, `p_type account_type`, `p_currencies text[]` | Creates a new account group and associated initial accounts |
+| `create_account` | `jsonb` | `p_account_name text`, `p_account_color text`, `p_currency_code text`, `p_starting_balance numeric DEFAULT 0`, `p_account_type account_type DEFAULT 'checking'` | **[UPDATED 2025-12-25]** Creates a single account with one currency and optional opening balance. Simplified from old multi-currency version. |
+| `create_account_group` | `json` | `p_user_id uuid`, `p_name text`, `p_color text`, `p_type account_type`, `p_currencies text[]` | Creates a new account group with separate account rows for each currency (linked by `group_id`) |
+| `import_transactions` | `jsonb` | `p_user_id uuid`, `p_transactions jsonb`, `p_default_account_color text`, `p_default_category_color text` | **[FIXED 2025-12-25]** Imports a batch of transactions from JSON array. Auto-creates accounts with `currency_code`. Fixed to work with flat architecture. |
+| `clear_user_data` | `void` | `p_user_id uuid` | **[FIXED 2025-12-25]** Deletes all transactional and account data for a given user. Cleaned up to remove references to deleted tables. |
+| `replace_account_currency` | `void` | `p_account_id uuid`, `p_old_currency_code varchar`, `p_new_currency_code varchar` | **[FIXED 2025-12-25]** Updates account's currency_code and all associated transactions. Signature changed - removed `p_new_starting_balance` parameter. |
+
+### Transfer Functions
+
+| Function Name | Return Type | Arguments | Description |
+|---|---|---|---|
 | `create_transfer` | `json` | `p_user_id uuid`, `p_from_account_id uuid`, `p_to_account_id uuid`, `p_amount numeric`, `p_from_currency text`, `p_to_currency text`, `p_amount_received numeric`, `p_exchange_rate numeric`, `p_date timestamptz`, `p_description text`, `p_category_id uuid` | Creates a paired transfer transaction between two accounts |
-| `replace_account_currency` | `void` | `p_account_id uuid`, `p_old_currency_code varchar`, `p_new_currency_code varchar`, `p_new_starting_balance numeric` | Replaces an account's primary currency and sets a new starting balance |
-| `sync_child_category_color` | `trigger` | - | Trigger function to cascade color changes from parent to child categories |
-| `cascade_color_to_children` | `trigger` | - | Trigger function to apply parent category color to its direct children |
-| `validate_category_hierarchy_func` | `trigger` | - | Trigger function to enforce rules on category hierarchy (e.g., parents cannot be children, type matching) |
-| `check_transaction_category_hierarchy` | `trigger` | - | Trigger function to prevent transactions from being assigned to parent categories (only leaf nodes) |
+| `delete_transfer` | `void` | `p_user_id uuid`, `p_transfer_id uuid` | Deletes a transfer transaction and its paired counterpart |
+
+### Inbox & Promotion Functions
+
+| Function Name | Return Type | Arguments | Description |
+|---|---|---|---|
+| `promote_inbox_item` | `json` | `p_inbox_id uuid`, `p_account_id uuid`, `p_category_id uuid`, ... | **[ARCHITECTURAL]** Atomically moves a draft from Inbox to Main Ledger. Validates data before insertion. |
+
+### Analytics Functions
+
+| Function Name | Return Type | Arguments | Description |
+|---|---|---|---|
+| `get_monthly_spending_by_category` | `TABLE(...)` | `p_user_id uuid`, `p_months_back integer DEFAULT 6` | Retrieves monthly spending aggregated by category for a user |
+| `get_monthly_spending_by_category` | `TABLE(...)` | `p_months_back integer DEFAULT 6`, `p_user_id uuid DEFAULT auth.uid()` | Retrieves monthly spending aggregated by category (alternative signature) |
+
+### Maintenance & Cleanup Functions
+
+| Function Name | Return Type | Arguments | Description |
+|---|---|---|---|
 | `cleanup_orphaned_categories` | `TABLE(...)` | - | Cleans up categories that were created but have no associated user or transactions |
-| `promote_inbox_item` | `json` | `p_inbox_id`, `p_account_id`, `p_category_id`, ... | **[ARCHITECTURAL]** Atomically moves a draft from Inbox to Main Ledger. Validates data before insertion. |
-| `reconcile_account_balance` | `uuid` | `p_account_id`, `p_new_balance` | Creates a "Delta Transaction" to fix balance discrepancies (Snapshot logic). |
-| `update_account_balance_ledger` | `trigger` | - | Automates the `current_balance` updates on the accounts table (Performance). |
+| `reconcile_account_balance` | `uuid` | `p_account_id uuid`, `p_new_balance numeric` | Creates a "Delta Transaction" to fix balance discrepancies (Snapshot logic) |
+
+### Trigger Functions
+
+| Function Name | Return Type | Description |
+|---|---|---|
+| `handle_new_user` | `trigger` | Trigger function for new user setup (e.g., initial settings, default accounts/categories) |
+| `sync_category_type_hierarchy` | `trigger` | Trigger function to ensure consistency of transaction type in category hierarchy |
+| `update_updated_at_column` | `trigger` | Generic trigger function to set `updated_at` column to `now()` on update |
+| `calculate_amount_home` | `trigger` | Trigger function to calculate `amount_home` based on `amount_original` and `exchange_rate` |
+| `sync_child_category_color` | `trigger` | Trigger function to cascade color changes from parent to child categories |
+| `cascade_color_to_children` | `trigger` | Trigger function to apply parent category color to its direct children |
+| `validate_category_hierarchy_func` | `trigger` | Trigger function to enforce rules on category hierarchy (e.g., parents cannot be children, type matching) |
+| `check_transaction_category_hierarchy` | `trigger` | Trigger function to prevent transactions from being assigned to parent categories (only leaf nodes) |
+| `update_account_balance_ledger` | `trigger` | **[PERFORMANCE]** Automates the `current_balance` updates on the accounts table |
+
+---
+
+## 📝 Migration History
+
+### 2025-12-25: Currency Functions Fix (`20251225155433_fix_currency_functions.sql`)
+- **Removed**: `update_account_currencies_updated_at` (orphaned trigger function)
+- **Renamed**: `create_account_with_currencies` → `create_account` (simplified to single-currency)
+- **Fixed**: `import_transactions` - Now includes `currency_code` when creating accounts
+- **Fixed**: `clear_user_data` - Removed references to deleted `account_currencies` and `currencies` tables
+- **Fixed**: `replace_account_currency` - Now updates `bank_accounts.currency_code` directly (removed `p_new_starting_balance` parameter)
+- **Architecture**: All functions now work with the flat currency model (one currency per account row)

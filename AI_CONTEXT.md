@@ -48,14 +48,24 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 
 ## 4. Architectural Rules (Strict Enforced)
 
-### A. Data Flow & Transformation (CRITICAL)
+### A. Currency Architecture (Flat Model)
+* **One Currency Per Account:** Each `bank_accounts` row has exactly ONE `currency_code` that cannot be changed after creation.
+* **Multi-Currency Accounts:** To support multiple currencies for the same "account concept," use the `group_id` pattern:
+    * Create separate account rows for each currency (e.g., "Savings (USD)", "Savings (EUR)")
+    * Link them with the same `group_id`
+    * Use `create_account_group` RPC to create grouped accounts
+* **No Junction Tables:** The old `account_currencies` and `currencies` tables were removed. All currency logic is now on the `bank_accounts` table directly.
+* **Opening Balances:** Created as transactions with `category_id = NULL` AND `transfer_id = NULL`, using the description "Opening Balance".
+* **Currency Changes:** To change an account's currency, users must create a new account. The Edit Account modal only allows editing name and color, displaying currency as read-only.
+
+### B. Data Flow & Transformation (CRITICAL)
 * **Never return raw DB rows to components.**
 * **API Layer Responsibility:** Fetch data from Supabase -> Transform snake_case to camelCase -> Return Domain Type.
 * **Transformer Pattern:** Use `dbTransactionToDomain` or similar helpers in `@/lib/types/data-transformers`.
     * *Bad:* `return data` (frontend receives `user_id`)
     * *Good:* `return dbTransactionToDomain(data)` (frontend receives `userId`)
 
-### B. State Management
+### C. State Management
 * **Server State:** Use `useQuery` / `useMutation` hooks located in `features/[feature]/hooks/`.
 * **Invalidation:** Mutations must invalidate relevant query keys upon success.
     * *Example:* Creating a transaction must invalidate `['transactions']` AND `['accounts']` (since balances change).
@@ -63,7 +73,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Server State (Async):** MUST use TanStack Query (e.g., transactions, balances).
     * **Client State (Sync):** Use Zustand (e.g., user session, sidebar state, complex form wizards).
 
-### C. API Layer Pattern
+### D. API Layer Pattern
 * **All Supabase logic** belongs in `features/[feature]/api/[feature].ts`.
 * **Do not** call `supabase.from(...)` directly inside React components.
 * **Do not** put business logic inside the API layer; keep it in Services or Hooks if complex.
@@ -74,11 +84,11 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **DO NOT** create Next.js API Routes (`app/api/...`) or Server Actions unless strictly necessary (e.g., for webhooks).
     * **DO** call these API functions directly from your React Query hooks.
 
-### D. Styling & UI
+### E. Styling & UI
 * Use `tailwind-merge` and `clsx` (via the `cn` helper) for dynamic classes.
 * Prioritize Radix UI primitives for interactive elements (Dialogs, Popovers).
 
-### E. Data Entry Strategy (The "Staging" Pattern)
+### F. Data Entry Strategy (The "Staging" Pattern)
 * **The "Clean Ledger" Rule:** The main `transactions` table must ONLY contain complete, valid data (Amount + Date + Account + Category).
 * **The "Dirty Inbox" Rule:** Any incomplete data (e.g. Quick Adds with only Amount + Description) MUST be saved to `transaction_inbox`.
 * **Smart Routing:** When building forms, check for data completeness.
