@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { CATEGORY } from '@/lib/constants';
 import {
-  dbCategoriesWithCountsToDomain,
   dbCategoryToDomain,
 } from '@/lib/types/data-transformers';
 
@@ -11,8 +10,9 @@ export const categoriesApi = {
   getAll: async () => {
     const supabase = createClient();
 
+    // Fetch from categories table directly since categories_with_counts view is missing color field
     const { data, error } = await supabase
-      .from('categories_with_counts')
+      .from('categories')
       .select('*')
       .order('name', { ascending: true });
 
@@ -21,8 +21,11 @@ export const categoriesApi = {
       throw new Error(error.message || CATEGORY.API.ERRORS.FETCH_ALL_FAILED);
     }
 
-    // Transform snake_case to camelCase before returning to frontend
-    return data ? dbCategoriesWithCountsToDomain(data) : [];
+    // Transform to domain type with transaction count as 0 (counts will be fetched separately if needed)
+    return data ? data.map(cat => ({
+      ...dbCategoryToDomain(cat),
+      transactionCount: 0, // Transaction counts can be fetched separately if needed
+    })) : [];
   },
 
   // Get a single category by ID

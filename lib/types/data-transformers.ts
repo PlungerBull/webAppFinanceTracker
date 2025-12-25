@@ -11,6 +11,7 @@
  */
 
 import type { Database } from '@/types/database.types';
+import type { Category, CategoryWithCount, ParentCategoryWithCount, TransactionView } from '@/types/domain';
 
 // ============================================================================
 // DATABASE TO DOMAIN TRANSFORMERS
@@ -42,17 +43,17 @@ export function dbAccountToDomain(
  */
 export function dbCategoryToDomain(
   dbCategory: Database['public']['Tables']['categories']['Row']
-) {
+): Category {
   return {
     id: dbCategory.id,
     name: dbCategory.name,
     color: dbCategory.color,
-    type: dbCategory.type,
+    type: dbCategory.type as 'income' | 'expense',
     parentId: dbCategory.parent_id,
     userId: dbCategory.user_id,
     createdAt: dbCategory.created_at,
     updatedAt: dbCategory.updated_at,
-  } as const;
+  };
 }
 
 /**
@@ -427,28 +428,30 @@ export function dbTransactionsToDomain(
  */
 export function dbTransactionViewToDomain(
   dbTransactionView: Database['public']['Views']['transactions_view']['Row']
-) {
+): TransactionView {
+  // Note: transactions_view is a simplified view with limited fields
+  // For full transaction data, use the transactions table directly
   return {
-    // Critical fields - enforce non-null with sensible defaults
+    // Critical fields
     id: dbTransactionView.id || '',
-    userId: dbTransactionView.user_id || '',
-    accountId: dbTransactionView.account_id || '',
+    userId: '', // Not included in view
+    accountId: '', // Not included in view
     accountName: dbTransactionView.account_name || 'Unknown Account',
     amountOriginal: dbTransactionView.amount_original ?? 0,
     amountHome: dbTransactionView.amount_home ?? 0,
     currencyOriginal: dbTransactionView.currency_original || 'USD',
-    exchangeRate: dbTransactionView.exchange_rate ?? 1,
+    exchangeRate: 1, // Not included in view
     date: dbTransactionView.date || new Date().toISOString(),
-    createdAt: dbTransactionView.created_at || new Date().toISOString(),
-    updatedAt: dbTransactionView.updated_at || new Date().toISOString(),
+    createdAt: '', // Not included in view
+    updatedAt: '', // Not included in view
 
-    // Optional fields - can be null
-    categoryId: dbTransactionView.category_id,
+    // Optional fields
+    categoryId: null, // Not included in view
     categoryName: dbTransactionView.category_name,
-    categoryColor: dbTransactionView.category_color,
+    categoryColor: null, // Not included in view
     description: dbTransactionView.description,
-    notes: dbTransactionView.notes,
-  } as const;
+    notes: null, // Not included in view
+  };
 }
 
 /**
@@ -461,51 +464,29 @@ export function dbTransactionViewsToDomain(
 }
 
 /**
- * Transforms a database categories_with_counts view row to domain type
- * Enforces non-null for critical category fields
+ * NOTE: categories_with_counts view is incomplete (missing color, userId, createdAt, updatedAt)
+ * Use dbCategoryToDomain with categories table instead
  */
-export function dbCategoryWithCountToDomain(
-  dbCategory: Database['public']['Views']['categories_with_counts']['Row']
-) {
-  return {
-    id: dbCategory.id || '',
-    name: dbCategory.name || 'Unknown Category',
-    color: dbCategory.color || '#808080',
-    type: dbCategory.type || 'expense',
-    parentId: dbCategory.parent_id,
-    transactionCount: dbCategory.transaction_count ?? 0,
-    userId: dbCategory.user_id,
-    createdAt: dbCategory.created_at || new Date().toISOString(),
-    updatedAt: dbCategory.updated_at || new Date().toISOString(),
-  } as const;
-}
-
-/**
- * Transforms an array of categories_with_counts view rows
- */
-export function dbCategoriesWithCountsToDomain(
-  dbCategories: Database['public']['Views']['categories_with_counts']['Row'][]
-) {
-  return dbCategories.map(dbCategoryWithCountToDomain);
-}
+// Removed dbCategoryWithCountToDomain and dbCategoriesWithCountsToDomain
+// since the view is missing critical fields
 
 /**
  * Transforms a database parent_categories_with_counts view row to domain type
  */
 export function dbParentCategoryWithCountToDomain(
   dbCategory: Database['public']['Views']['parent_categories_with_counts']['Row']
-) {
+): ParentCategoryWithCount {
   return {
-    id: dbCategory.id,
-    name: dbCategory.name,
-    color: dbCategory.color,
-    type: dbCategory.type,
+    id: dbCategory.id || '',
+    name: dbCategory.name || 'Unknown Category',
+    color: dbCategory.color || '#808080',
+    type: (dbCategory.type as 'income' | 'expense') || 'expense',
     parentId: dbCategory.parent_id,
-    transactionCount: dbCategory.transaction_count,
+    transactionCount: dbCategory.transaction_count ?? 0,
     userId: dbCategory.user_id,
-    createdAt: dbCategory.created_at,
-    updatedAt: dbCategory.updated_at,
-  } as const;
+    createdAt: dbCategory.created_at || new Date().toISOString(),
+    updatedAt: dbCategory.updated_at || new Date().toISOString(),
+  };
 }
 
 /**

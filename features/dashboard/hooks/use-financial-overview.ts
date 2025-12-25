@@ -77,8 +77,14 @@ export function useFinancialOverview(monthsBack = DATABASE.MONTHS_BACK.DEFAULT) 
 
       // Create a map of categories by ID for quick lookup
       const categoriesMap = new Map<string, CategoryRow>();
-      (categoriesData || []).forEach((cat: CategoryRow) => {
-        categoriesMap.set(cat.id, cat);
+      (categoriesData || []).forEach((cat) => {
+        categoriesMap.set(cat.id, {
+          id: cat.id,
+          name: cat.name,
+          color: cat.color,
+          parent_id: cat.parent_id,
+          type: cat.type as 'income' | 'expense',
+        });
       });
 
       // Transform flat data into grouped format

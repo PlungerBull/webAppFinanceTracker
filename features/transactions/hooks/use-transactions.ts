@@ -57,6 +57,28 @@ export function useUpdateTransaction() {
   });
 }
 
+export function useUpdateTransactionBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, updates }: {
+      id: string;
+      updates: {
+        description?: string;
+        amount?: number;
+        accountId?: string;
+        categoryId?: string;
+        date?: string;
+        notes?: string;
+      };
+    }) => transactionsApi.updateBatch(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+    },
+  });
+}
+
 export function useDeleteTransaction() {
   const queryClient = useQueryClient();
 

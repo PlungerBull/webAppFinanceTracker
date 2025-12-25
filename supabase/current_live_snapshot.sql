@@ -215,27 +215,80 @@ CREATE OR REPLACE FUNCTION "public"."clear_user_data"("p_user_id" "uuid") RETURN
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-begin
+BEGIN
   -- Delete all transactions for the user
-  delete from transactions where user_id = p_user_id;
-  
+  DELETE FROM transactions WHERE user_id = p_user_id;
+
   -- Delete all categories for the user
-  delete from categories where user_id = p_user_id;
-  
-  -- Delete account currencies (child of bank_accounts)
-  delete from account_currencies 
-  where account_id in (select id from bank_accounts where user_id = p_user_id);
+  DELETE FROM categories WHERE user_id = p_user_id;
 
   -- Delete all bank accounts for the user
-  delete from bank_accounts where user_id = p_user_id;
-  
-  -- Delete all currencies for the user
-  delete from currencies where user_id = p_user_id;
-end;
+  -- (No need to delete account_currencies or currencies - tables don't exist)
+  DELETE FROM bank_accounts WHERE user_id = p_user_id;
+END;
 $$;
 
 
 ALTER FUNCTION "public"."clear_user_data"("p_user_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_account"("p_account_name" "text", "p_account_color" "text", "p_currency_code" "text", "p_starting_balance" numeric DEFAULT 0, "p_account_type" "public"."account_type" DEFAULT 'checking'::"public"."account_type") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_account_id uuid;
+  v_user_id uuid;
+BEGIN
+  -- Get current user ID
+  v_user_id := auth.uid();
+
+  -- Create the Bank Account with currency
+  INSERT INTO bank_accounts (user_id, name, color, currency_code, type)
+  VALUES (v_user_id, p_account_name, p_account_color, p_currency_code, p_account_type)
+  RETURNING id INTO v_account_id;
+
+  -- Handle Opening Balance (if non-zero)
+  -- Opening balances have category_id = NULL and transfer_id = NULL
+  IF p_starting_balance <> 0 THEN
+    INSERT INTO transactions (
+      user_id,
+      account_id,
+      category_id,       -- NULL indicates structural event (opening balance)
+      transfer_id,       -- NULL (not a transfer)
+      currency_original,
+      amount_original,
+      amount_home,
+      exchange_rate,
+      date,
+      description
+    ) VALUES (
+      v_user_id,
+      v_account_id,
+      NULL,              -- Opening balance has no category
+      NULL,              -- Opening balance has no transfer
+      p_currency_code,
+      p_starting_balance,
+      p_starting_balance,
+      1.0,
+      CURRENT_DATE,
+      'Opening Balance'
+    );
+  END IF;
+
+  -- Return the new account data
+  RETURN jsonb_build_object(
+    'id', v_account_id,
+    'name', p_account_name,
+    'color', p_account_color,
+    'currency_code', p_currency_code,
+    'type', p_account_type
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_account"("p_account_name" "text", "p_account_color" "text", "p_currency_code" "text", "p_starting_balance" numeric, "p_account_type" "public"."account_type") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) RETURNS json
@@ -261,72 +314,6 @@ $$;
 
 
 ALTER FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_account_with_currencies"("p_account_name" "text", "p_account_color" "text", "p_currencies" "jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
-    AS $$
-DECLARE
-  v_account_id uuid;
-  v_currency jsonb;
-  v_user_id uuid;
-BEGIN
-  -- Get current user ID
-  v_user_id := auth.uid();
-  
-  -- A. Create the Bank Account
-  INSERT INTO bank_accounts (user_id, name, color)
-  VALUES (v_user_id, p_account_name, p_account_color)
-  RETURNING id INTO v_account_id;
-
-  -- B. Loop through currencies
-  FOR v_currency IN SELECT * FROM jsonb_array_elements(p_currencies)
-  LOOP
-    -- 1. Link currency to account (No starting_balance column anymore)
-    INSERT INTO account_currencies (account_id, currency_code)
-    VALUES (v_account_id, v_currency->>'code');
-
-    -- 2. Handle Opening Balance (Event Sourcing: Create a Transaction)
-    IF (v_currency->>'starting_balance')::numeric IS NOT NULL AND (v_currency->>'starting_balance')::numeric <> 0 THEN
-      INSERT INTO transactions (
-        user_id,
-        account_id,
-        category_id,       -- NULL (It's a structural system event)
-        currency_original,
-        amount_original,
-        amount_home,       -- Default 1:1, trigger will adjust if needed
-        exchange_rate,
-        date,
-        description,
-        type               -- The new 'opening_balance' flag
-      )
-      VALUES (
-        v_user_id,
-        v_account_id,
-        NULL,
-        v_currency->>'code',
-        (v_currency->>'starting_balance')::numeric,
-        (v_currency->>'starting_balance')::numeric, 
-        1.0,
-        CURRENT_DATE,
-        'Opening Balance',
-        'opening_balance'
-      );
-    END IF;
-  END LOOP;
-
-  -- Return the new account data
-  RETURN jsonb_build_object(
-    'id', v_account_id,
-    'name', p_account_name,
-    'color', p_account_color
-  );
-END;
-$$;
-
-
-ALTER FUNCTION "public"."create_account_with_currencies"("p_account_name" "text", "p_account_color" "text", "p_currencies" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") RETURNS json
@@ -509,7 +496,7 @@ CREATE OR REPLACE FUNCTION "public"."import_transactions"("p_user_id" "uuid", "p
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
-declare
+DECLARE
   v_transaction jsonb;
   v_date date;
   v_amount numeric;
@@ -519,74 +506,65 @@ declare
   v_currency_code text;
   v_exchange_rate numeric;
   v_notes text;
-  
+
   v_account_id uuid;
   v_category_id uuid;
-  
+
   v_success_count integer := 0;
   v_error_count integer := 0;
   v_errors text[] := array[]::text[];
   v_row_index integer := 0;
-begin
+BEGIN
   -- Iterate through each transaction in the JSON array
-  for v_transaction in select * from jsonb_array_elements(p_transactions)
-  loop
+  FOR v_transaction IN SELECT * FROM jsonb_array_elements(p_transactions)
+  LOOP
     v_row_index := v_row_index + 1;
-    
-    begin
+
+    BEGIN
       -- Extract values
       v_date := (v_transaction->>'Date')::date;
       v_amount := (v_transaction->>'Amount')::numeric;
       v_description := v_transaction->>'Description';
       v_category_name := v_transaction->>'Category';
       v_account_name := v_transaction->>'Account';
-      v_currency_code := upper(v_transaction->>'Currency'); -- No fallback, required
+      v_currency_code := upper(v_transaction->>'Currency');
       v_exchange_rate := coalesce((v_transaction->>'Exchange Rate')::numeric, 1.0);
       v_notes := v_transaction->>'Notes';
 
       -- Validate required fields
-      if v_date is null then raise exception 'Date is required'; end if;
-      if v_amount is null then raise exception 'Amount is required'; end if;
-      if v_account_name is null or v_account_name = '' then raise exception 'Account is required'; end if;
-      if v_description is null or v_description = '' then raise exception 'Description is required'; end if;
-      if v_category_name is null or v_category_name = '' then raise exception 'Category is required'; end if;
-      if v_currency_code is null or v_currency_code = '' then raise exception 'Currency is required'; end if;
+      IF v_date IS NULL THEN RAISE EXCEPTION 'Date is required'; END IF;
+      IF v_amount IS NULL THEN RAISE EXCEPTION 'Amount is required'; END IF;
+      IF v_account_name IS NULL OR v_account_name = '' THEN RAISE EXCEPTION 'Account is required'; END IF;
+      IF v_description IS NULL OR v_description = '' THEN RAISE EXCEPTION 'Description is required'; END IF;
+      IF v_category_name IS NULL OR v_category_name = '' THEN RAISE EXCEPTION 'Category is required'; END IF;
+      IF v_currency_code IS NULL OR v_currency_code = '' THEN RAISE EXCEPTION 'Currency is required'; END IF;
 
-      -- 1. Handle Account
-      select id into v_account_id from bank_accounts 
-      where user_id = p_user_id and lower(name) = lower(v_account_name);
-      
-      if v_account_id is null then
-        insert into bank_accounts (user_id, name, color)
-        values (p_user_id, v_account_name, p_default_account_color)
-        returning id into v_account_id;
-      end if;
+      -- 1. Handle Account - Create with currency_code if doesn't exist
+      SELECT id INTO v_account_id FROM bank_accounts
+      WHERE user_id = p_user_id AND lower(name) = lower(v_account_name);
 
-      -- 1b. Handle Account Currency (Crucial Update)
-      -- Ensure the account has this currency associated with it
-      insert into account_currencies (account_id, currency_code, starting_balance)
-      values (v_account_id, v_currency_code, 0)
-      on conflict (account_id, currency_code) do nothing;
+      IF v_account_id IS NULL THEN
+        -- FIXED: Added currency_code to account creation
+        INSERT INTO bank_accounts (user_id, name, color, currency_code)
+        VALUES (p_user_id, v_account_name, p_default_account_color, v_currency_code)
+        RETURNING id INTO v_account_id;
+      END IF;
+
+      -- REMOVED: Lines that inserted into account_currencies table
+      -- REMOVED: Lines that inserted into currencies table
 
       -- 2. Handle Category
-      select id into v_category_id from categories
-      where user_id = p_user_id and lower(name) = lower(v_category_name);
-      
-      if v_category_id is null then
-        insert into categories (user_id, name, color, is_default)
-        values (p_user_id, v_category_name, p_default_category_color, false)
-        returning id into v_category_id;
-      end if;
+      SELECT id INTO v_category_id FROM categories
+      WHERE user_id = p_user_id AND lower(name) = lower(v_category_name);
 
-      -- 3. Handle Currency (Ensure it exists in currencies table)
-      if not exists (select 1 from currencies where user_id = p_user_id and code = v_currency_code) then
-        insert into currencies (user_id, code, is_main)
-        values (p_user_id, v_currency_code, false)
-        on conflict (user_id, code) do nothing;
-      end if;
+      IF v_category_id IS NULL THEN
+        INSERT INTO categories (user_id, name, color, is_default)
+        VALUES (p_user_id, v_category_name, p_default_category_color, false)
+        RETURNING id INTO v_category_id;
+      END IF;
 
-      -- 4. Insert Transaction
-      insert into transactions (
+      -- 3. Insert Transaction
+      INSERT INTO transactions (
         user_id,
         date,
         amount_original,
@@ -597,11 +575,11 @@ begin
         notes,
         account_id,
         category_id
-      ) values (
+      ) VALUES (
         p_user_id,
         v_date,
         v_amount,
-        v_amount * v_exchange_rate, -- Simplified home amount calc
+        v_amount * v_exchange_rate,
         v_currency_code,
         v_exchange_rate,
         v_description,
@@ -612,18 +590,18 @@ begin
 
       v_success_count := v_success_count + 1;
 
-    exception when others then
+    EXCEPTION WHEN OTHERS THEN
       v_error_count := v_error_count + 1;
       v_errors := array_append(v_errors, 'Row ' || v_row_index || ': ' || SQLERRM);
-    end;
-  end loop;
+    END;
+  END LOOP;
 
-  return jsonb_build_object(
+  RETURN jsonb_build_object(
     'success', v_success_count,
     'failed', v_error_count,
     'errors', v_errors
   );
-end;
+END;
 $$;
 
 
@@ -739,6 +717,38 @@ $$;
 
 
 ALTER FUNCTION "public"."reconcile_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_date" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  -- Verify the user owns this account (RLS will also enforce this)
+  IF NOT EXISTS (
+    SELECT 1 FROM bank_accounts
+    WHERE id = p_account_id
+    AND user_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'Account not found or access denied';
+  END IF;
+
+  -- Update the account's currency_code
+  UPDATE bank_accounts
+  SET currency_code = p_new_currency_code
+  WHERE id = p_account_id
+    AND currency_code = p_old_currency_code;
+
+  -- Update all transactions with matching currency
+  UPDATE transactions
+  SET currency_original = p_new_currency_code
+  WHERE account_id = p_account_id
+    AND currency_original = p_old_currency_code;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) RETURNS "void"
@@ -896,20 +906,6 @@ $$;
 
 
 ALTER FUNCTION "public"."update_account_balance_ledger"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."update_account_currencies_updated_at"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
-    AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."update_account_currencies_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
@@ -1636,15 +1632,15 @@ GRANT ALL ON FUNCTION "public"."clear_user_data"("p_user_id" "uuid") TO "service
 
 
 
+GRANT ALL ON FUNCTION "public"."create_account"("p_account_name" "text", "p_account_color" "text", "p_currency_code" "text", "p_starting_balance" numeric, "p_account_type" "public"."account_type") TO "anon";
+GRANT ALL ON FUNCTION "public"."create_account"("p_account_name" "text", "p_account_color" "text", "p_currency_code" "text", "p_starting_balance" numeric, "p_account_type" "public"."account_type") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_account"("p_account_name" "text", "p_account_color" "text", "p_currency_code" "text", "p_starting_balance" numeric, "p_account_type" "public"."account_type") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) TO "anon";
 GRANT ALL ON FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."create_account_with_currencies"("p_account_name" "text", "p_account_color" "text", "p_currencies" "jsonb") TO "anon";
-GRANT ALL ON FUNCTION "public"."create_account_with_currencies"("p_account_name" "text", "p_account_color" "text", "p_currencies" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_account_with_currencies"("p_account_name" "text", "p_account_color" "text", "p_currencies" "jsonb") TO "service_role";
 
 
 
@@ -1696,6 +1692,12 @@ GRANT ALL ON FUNCTION "public"."reconcile_account_balance"("p_account_id" "uuid"
 
 
 
+GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) TO "anon";
+GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) TO "anon";
 GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) TO "service_role";
@@ -1717,12 +1719,6 @@ GRANT ALL ON FUNCTION "public"."sync_child_category_color"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."update_account_balance_ledger"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_account_balance_ledger"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_account_balance_ledger"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."update_account_currencies_updated_at"() TO "anon";
-GRANT ALL ON FUNCTION "public"."update_account_currencies_updated_at"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_account_currencies_updated_at"() TO "service_role";
 
 
 

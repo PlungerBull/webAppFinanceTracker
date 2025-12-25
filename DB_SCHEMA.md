@@ -229,7 +229,6 @@ Opening balance transactions are identified by:
 | Function Name | Return Type | Arguments | Description |
 |---|---|---|---|
 | `cleanup_orphaned_categories` | `TABLE(...)` | - | Cleans up categories that were created but have no associated user or transactions |
-| `reconcile_account_balance` | `uuid` | `p_account_id uuid`, `p_new_balance numeric` | Creates a "Delta Transaction" to fix balance discrepancies (Snapshot logic) |
 
 ### Trigger Functions
 
@@ -248,6 +247,41 @@ Opening balance transactions are identified by:
 ---
 
 ## 📝 Migration History
+
+### 2025-12-25: Unified Transaction Detail Panel Redesign (Frontend Only)
+- **Architecture Change**: Implemented unified "reconciliation and editing engine" for both Inbox and Transactions views
+- **UI/UX Overhaul**: Complete redesign of right detail panel with premium professional styling
+- **Key Features**:
+  - **Unified Component**: Single shared panel component for both Inbox (mode='inbox') and Transactions (mode='transaction')
+  - **Editable Fields**: Payee/description and amount now editable in both views (previously read-only)
+  - **Batch Save Pattern**: All edits staged locally, saved only on explicit "Keep Changes" / "Promote to Ledger" button click
+  - **Dynamic Styling**: Amount color changes based on context (gray for inbox, green for income, red for expense)
+  - **Missing Info Warning**: Orange banner and field styling in Inbox mode when required fields (account/category) are unassigned
+  - **Unsaved Changes Protection**: Confirmation dialog when closing panel with pending edits
+- **Design System**:
+  - **Panel Width**: Fixed 400px width
+  - **Typography**: `text-xl` payee (borderless input), `text-3xl` monospaced amount, `text-[10px]` labels
+  - **Spacing**: `space-y-8` (32px) between form sections
+  - **Action Buttons**: Blue "Promote to Ledger" (Inbox), Slate "Keep Changes" (Transactions)
+- **Database**: No schema changes - fully backward compatible
+- **Files Created**:
+  - `features/shared/components/transaction-detail-panel/index.tsx` (main panel)
+  - `features/shared/components/transaction-detail-panel/types.ts` (shared types)
+  - `features/shared/components/transaction-detail-panel/identity-header.tsx` (editable header)
+  - `features/shared/components/transaction-detail-panel/form-section.tsx` (form fields)
+  - `features/shared/components/transaction-detail-panel/missing-info-banner.tsx` (inbox warning)
+  - `features/shared/components/transaction-detail-panel/action-footer.tsx` (mode-specific buttons)
+  - `features/inbox/components/inbox-detail-panel.tsx` (inbox wrapper)
+  - `features/inbox/components/inbox-table.tsx` (new three-column layout)
+- **Files Modified**:
+  - `features/transactions/api/transactions.ts` (added `updateBatch()` function)
+  - `features/transactions/hooks/use-transactions.ts` (added `useUpdateTransactionBatch()` hook)
+  - `features/transactions/components/transaction-detail-panel.tsx` (complete rewrite to use shared panel)
+  - `app/inbox/page.tsx` (switched from card grid to list+panel layout)
+- **Impact**:
+  - Inbox view now matches Transactions view layout (sidebar | list | detail panel)
+  - Both views share identical UX for editing and reviewing transactions
+  - Improved data quality through explicit validation and batch save workflow
 
 ### 2025-12-25: "Invisible Grouping" Pattern Refactor (Frontend Only)
 - **Architecture Change**: Implemented "Strict Hierarchy, Flat UI" pattern for categories
@@ -274,3 +308,8 @@ Opening balance transactions are identified by:
 - **Fixed**: `clear_user_data` - Removed references to deleted `account_currencies` and `currencies` tables
 - **Fixed**: `replace_account_currency` - Now updates `bank_accounts.currency_code` directly (removed `p_new_starting_balance` parameter)
 - **Architecture**: All functions now work with the flat currency model (one currency per account row)
+
+### 2025-12-25: Remove Unused Function (`20251225170617_remove_reconcile_account_balance.sql`)
+- **Removed**: `reconcile_account_balance(uuid, numeric)` database function
+- **Reason**: Orphaned function - never integrated into application, no RPC calls exist
+- **Impact**: None - function was not used anywhere in the codebase

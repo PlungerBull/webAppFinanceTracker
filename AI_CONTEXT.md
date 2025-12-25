@@ -34,8 +34,11 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
   /dashboard         -> Overview & financial summary widgets
   /groupings         -> Custom groupings for categories
   /import-export     -> CSV/Data migration services
-  /inbox             -> [NEW] Staging area for draft transactions & processing logic
+  /inbox             -> Staging area for draft transactions & processing logic
   /settings          -> User preferences (Theme, Main Currency)
+  /shared            -> [NEW] Shared UI components used across features
+    /components
+      /transaction-detail-panel -> Unified detail panel for Inbox + Transactions
   /transactions      -> Transaction creation, listing, and transfers
 /types               -> Global type definitions
   database.types.ts  -> Raw Supabase types (Generated)
@@ -120,6 +123,37 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * *Complete Data* -> Write to Ledger (`transactions`).
     * *Incomplete Data* -> Write to Inbox (`transaction_inbox`).
 * **Promotion:** Data moves from Inbox to Ledger via the `promote_inbox_item` RPC function, never via a direct `INSERT` + `DELETE` sequence.
+
+### G. Transaction Detail Panel Architecture (Unified Reconciliation Engine)
+* **Shared Component Pattern:** Both Inbox and Transactions views use the SAME detail panel component located at `features/shared/components/transaction-detail-panel/`.
+* **Mode-Based Behavior:** The panel accepts a `mode` prop ('inbox' | 'transaction') that controls:
+    * **Button Text:** "Promote to Ledger" (inbox) vs "Keep Changes" (transaction)
+    * **Button Color:** Blue (inbox) vs Slate (transaction)
+    * **Warning Banner:** Orange missing info banner shows only in inbox mode
+    * **Amount Color:** Gray (inbox) vs Green/Red based on category type (transaction)
+* **Component Structure:**
+    * **IdentityHeader:** Editable payee (borderless input) + editable amount (monospaced, dynamic color)
+    * **FormSection:** Account, Category, Date, Notes fields with `space-y-8` spacing
+    * **MissingInfoBanner:** Conditional orange warning when required fields are missing (inbox only)
+    * **ActionFooter:** Pinned bottom buttons (mode-specific)
+* **Batch Save Pattern:**
+    * All edits are staged in local state (`EditedFields` object)
+    * NO auto-save on field change (prevents accidental edits)
+    * Explicit save via "Keep Changes" / "Promote to Ledger" button
+    * Confirmation dialog on close if unsaved changes exist
+* **API Functions:**
+    * Transactions: Use `transactionsApi.updateBatch()` to update multiple fields atomically
+    * Inbox: Use `inboxApi.promote()` with final values (description, amount, date, account, category)
+* **Layout Pattern:**
+    * Both Inbox and Transactions use three-column layout: `Sidebar | TransactionList | DetailPanel`
+    * Fixed 400px width for detail panel
+    * Scrollable content area with pinned action footer
+* **Design System:**
+    * Typography: `text-[10px]` labels, `text-xl` payee, `text-3xl` amount
+    * Spacing: `px-6 py-6` panel padding, `space-y-8` form sections
+    * Colors: Orange (#f97316) for warnings, Blue (#2563eb) for inbox actions, Slate (#0f172a) for transaction actions
+    * Form inputs: `bg-gray-50` default, `focus:bg-white`, `rounded-xl`
+* **IMPORTANT:** Never create separate detail panels for Inbox/Transactions. Always use the shared component with appropriate mode prop.
 
 ## 5. Coding Standards "Do's and Don'ts"
 * **DO** use Zod schemas for all form inputs.

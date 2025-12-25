@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { InboxList } from '@/features/inbox/components/inbox-list';
+import { InboxTable } from '@/features/inbox/components/inbox-table';
 
 export default async function InboxPage() {
   const supabase = await createClient();
@@ -14,9 +13,5 @@ export default async function InboxPage() {
     redirect('/login');
   }
 
-  return (
-    <DashboardLayout>
-      <InboxList />
-    </DashboardLayout>
-  );
+  return <InboxTable />;
 }

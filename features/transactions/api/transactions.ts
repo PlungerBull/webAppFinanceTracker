@@ -151,6 +151,59 @@ export const transactionsApi = {
     return dbTransactionToDomain(data);
   },
 
+  // Batch update transaction fields (used by unified detail panel)
+  // Accepts EditedFields from the panel and transforms to database format
+  updateBatch: async (
+    id: string,
+    updates: {
+      description?: string;
+      amount?: number;
+      accountId?: string;
+      categoryId?: string;
+      date?: string;
+      notes?: string;
+    }
+  ): Promise<Transaction> => {
+    const supabase = createClient();
+
+    // Transform camelCase panel fields to snake_case database fields
+    const dbUpdates: Record<string, unknown> = {};
+
+    if (updates.description !== undefined) {
+      dbUpdates.description = updates.description;
+    }
+    if (updates.amount !== undefined) {
+      dbUpdates.amount_original = updates.amount;
+    }
+    if (updates.accountId !== undefined) {
+      dbUpdates.account_id = updates.accountId;
+    }
+    if (updates.categoryId !== undefined) {
+      dbUpdates.category_id = updates.categoryId;
+    }
+    if (updates.date !== undefined) {
+      dbUpdates.date = updates.date;
+    }
+    if (updates.notes !== undefined) {
+      dbUpdates.notes = updates.notes;
+    }
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .update(dbUpdates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error(TRANSACTIONS.API.CONSOLE.UPDATE_TRANSACTION, error);
+      throw new Error(error.message || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
+    }
+
+    // Transform snake_case to camelCase before returning to frontend
+    return dbTransactionToDomain(data);
+  },
+
   // Delete a transaction (RLS handles user filtering)
   delete: async (id: string) => {
     const supabase = createClient();

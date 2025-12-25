@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm install @radix-ui/react-icons)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
