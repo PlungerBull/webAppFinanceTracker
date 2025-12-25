@@ -272,7 +272,7 @@ export function TransactionList({
                       )}
                     </div>
 
-                    {/* Category Pill */}
+                    {/* Category Pill + Date */}
                     <div className="flex items-center gap-2">
                       {/* Category color dot */}
                       {transaction.categoryColor && (
@@ -284,12 +284,11 @@ export function TransactionList({
                       <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md">
                         {transaction.categoryName || 'Uncategorized'}
                       </span>
+                      {/* Date */}
+                      <p className="text-[10px] text-gray-400">
+                        {formatDateDisplay(transaction.date)}
+                      </p>
                     </div>
-
-                    {/* Date */}
-                    <p className="text-[10px] text-gray-400">
-                      {formatDateDisplay(transaction.date)}
-                    </p>
                   </div>
 
                   {/* RIGHT COLUMN: Value */}
