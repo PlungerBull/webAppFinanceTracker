@@ -165,7 +165,7 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
             <div className="space-y-3">
               <div className="bg-gray-50 p-4 rounded-xl">
                 <div className="text-sm text-gray-500 mb-1">Currency</div>
-                <div className="text-lg font-semibold text-gray-900">{account.currency_code}</div>
+                <div className="text-lg font-semibold text-gray-900">{account.currencyCode}</div>
               </div>
               <div className="text-xs text-gray-500 px-1">
                 To change the currency, create a new account with the desired currency.

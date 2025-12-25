@@ -12,11 +12,21 @@ This database uses a **"Flat" currency architecture**:
 - **No junction tables** (`account_currencies` and `currencies` tables were removed)
 - Currency cannot be changed after account creation
 
+### Category Model ("Invisible Grouping" Pattern)
+This database implements a **two-level category hierarchy** with UI presentation that hides parent categories:
+- **Database Structure:** Parent-child hierarchy via `parent_id` foreign key
+- **UI Presentation:** Only leaf categories (children + orphaned parents) are selectable
+- **Type Inheritance:** Database trigger `sync_category_type_hierarchy` ensures children inherit parent's `type` field automatically
+- **Color Inheritance:** Database triggers `cascade_color_to_children` and `sync_child_category_color` ensure children inherit parent's color
+- **Transaction Type Derivation:** Frontend automatically derives transaction type from selected category (no manual type selection)
+- **Validation:** Trigger `check_transaction_category_hierarchy` prevents transactions from being assigned to parent categories
+
 ### Opening Balance Pattern
 Opening balance transactions are identified by:
 - `category_id = NULL`
 - `transfer_id = NULL`
 - `description = 'Opening Balance'`
+- **Note:** As of 2025-12-25 (Invisible Grouping refactor), the "Opening Balance" option has been removed from the Add Transaction Modal UI. Users should set opening balances during account creation.
 
 ---
 
@@ -238,6 +248,24 @@ Opening balance transactions are identified by:
 ---
 
 ## 📝 Migration History
+
+### 2025-12-25: "Invisible Grouping" Pattern Refactor (Frontend Only)
+- **Architecture Change**: Implemented "Strict Hierarchy, Flat UI" pattern for categories
+- **Frontend Changes**:
+  - **Removed**: Manual transaction type selector (Income/Expense/Opening Balance) from Add Transaction Modal
+  - **Added**: Auto-derivation of transaction type from selected category
+  - **Refactored**: Category selector to show only leaf categories (flat list)
+  - **Added**: `useLeafCategories()` hook to filter and sort categories
+  - **Updated**: `TransactionFormData` interface - removed `type` field, added `derivedType` field
+  - **Enhanced**: Amount input now displays green (income) or red (expense) based on derived type
+  - **Visual Design**: Color dots (3x3px) as primary differentiator, no parent context shown
+- **Database**: No schema changes - fully backward compatible
+- **Impact**: Opening Balance option no longer available in transaction form (should be set during account creation)
+- **Files Modified**:
+  - `features/categories/hooks/use-leaf-categories.ts` (NEW)
+  - `features/transactions/components/category-selector.tsx` (complete rewrite)
+  - `features/transactions/components/transaction-form.tsx` (type derivation + UI changes)
+  - `features/transactions/components/add-transaction-modal.tsx` (routing logic updates)
 
 ### 2025-12-25: Currency Functions Fix (`20251225155433_fix_currency_functions.sql`)
 - **Removed**: `update_account_currencies_updated_at` (orphaned trigger function)

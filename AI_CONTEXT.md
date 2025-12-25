@@ -56,7 +56,32 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * Use `create_account_group` RPC to create grouped accounts
 * **No Junction Tables:** The old `account_currencies` and `currencies` tables were removed. All currency logic is now on the `bank_accounts` table directly.
 * **Opening Balances:** Created as transactions with `category_id = NULL` AND `transfer_id = NULL`, using the description "Opening Balance".
+    * **UI Note:** Opening Balance option has been removed from the Add Transaction Modal (as of the Invisible Grouping refactor). Users should set opening balances during account creation.
 * **Currency Changes:** To change an account's currency, users must create a new account. The Edit Account modal only allows editing name and color, displaying currency as read-only.
+
+### A2. Category Architecture ("Invisible Grouping" Pattern)
+* **Strict Hierarchy, Flat UI:** Categories follow a two-level parent-child hierarchy in the database, but the UI presents only leaf nodes.
+* **Groupings are Configuration, Not Destinations:**
+    * Parent categories (groupings) define organizational structure, type (income/expense), and color
+    * Users can ONLY select child categories (leaf nodes)
+    * Parent categories are never displayed as selectable options in the UI
+    * Exception: Orphaned parents (parents with no children) are treated as leaf nodes
+* **Type Inheritance (Database-Enforced):**
+    * Database triggers ensure children automatically inherit the parent's `type` field
+    * Trigger: `sync_category_type_hierarchy` cascades type changes from parent to children
+* **Color Inheritance (Database-Enforced):**
+    * Triggers: `cascade_color_to_children` and `sync_child_category_color` ensure children inherit parent colors
+* **Transaction Type Auto-Derivation:**
+    * Users do NOT manually select transaction type (Income/Expense)
+    * Transaction type is automatically derived from the selected category's type
+    * The `derivedType` field in forms is computed via `useEffect` when `categoryId` changes
+    * Visual feedback: Amount displays in green (income) or red (expense) based on derived type
+* **Category Selector UI:**
+    * Flat single-level list (no section headers like "INCOME" or "EXPENSE")
+    * Color dots (3x3px) are the primary visual differentiator
+    * No parent context shown (clean, minimal design)
+    * Sorted: Income categories first, then Expense, then alphabetically
+    * Hook: `useLeafCategories()` filters and returns only selectable categories
 
 ### B. Data Flow & Transformation (CRITICAL)
 * **Never return raw DB rows to components.**

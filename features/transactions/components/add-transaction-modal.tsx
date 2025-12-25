@@ -31,9 +31,9 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   // Transaction form state
   const [transactionData, setTransactionData] = useState<TransactionFormData>({
     amount: '',
-    type: null,
+    derivedType: null, // Auto-derived from category
     categoryId: null,
-    fromGroupId: null, // NEW: Store group ID
+    fromGroupId: null, // Store group ID
     fromAccountId: null, // Resolved after currency selection
     fromCurrency: null,
     exchangeRate: '',
@@ -96,7 +96,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     setMode('transaction');
     setTransactionData({
       amount: '',
-      type: null,
+      derivedType: null, // Reset derived type
       categoryId: null,
       fromGroupId: null,
       fromAccountId: null,
@@ -134,7 +134,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
         const finalAmount = parseFloat(transactionData.amount);
 
         // Check if this is "Ledger Ready" (has all required fields)
-        const isLedgerReady = hasAccount && hasCategory && transactionData.type;
+        const isLedgerReady = hasAccount && hasCategory && transactionData.derivedType;
 
         if (isLedgerReady) {
           // PATH A: Fast Track to Ledger (Complete Data)
@@ -145,8 +145,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
             amount_original: finalAmount,
             currency_original: transactionData.fromCurrency!,
             account_id: transactionData.fromAccountId!,
-            category_id: transactionData.type === 'opening_balance' ? null : transactionData.categoryId,
-            type: transactionData.type,
+            category_id: transactionData.categoryId,
+            type: transactionData.derivedType,
             date: format(transactionData.date, 'yyyy-MM-dd'),
             notes: transactionData.notes || undefined,
             exchange_rate: rate,
@@ -264,7 +264,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                   'Transfer Funds'
                 ) : (
                   // DYNAMIC BUTTON TEXT: Shows routing destination
-                  (transactionData.fromAccountId && transactionData.categoryId && transactionData.type)
+                  (transactionData.fromAccountId && transactionData.categoryId && transactionData.derivedType)
                     ? 'Add Transaction'  // Goes to Ledger
                     : 'Save to Inbox'      // Goes to Inbox
                 )}

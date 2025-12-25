@@ -45,4 +45,3 @@ Your TransactionDetailPanel is a great step in the right direction (side-by-side
 
 4. WORKING ON THE INBOX FEATURE
 5. we have to fix the sidebar, the 3 buttons are overlaping with the number of the accounts
-6. WHEN WE COME BACK, CHECK, WE ARE TRYING TO PULL THE SUPABASE SQUEMA TO CODE.
