@@ -79,7 +79,7 @@ export function TransactionList({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white overflow-hidden border-r border-gray-200">
+    <div className="flex-1 flex flex-col h-full bg-gray-50/50 overflow-hidden border-r border-gray-200">
       {/* Header - only show in default mode */}
       {!isCompact && (
         <>
@@ -219,8 +219,8 @@ export function TransactionList({
         </>
       )}
 
-      {/* Flat Table List (Scrollable) */}
-      <div className="flex-1 overflow-y-auto px-6">
+      {/* Card List (Scrollable) */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -232,71 +232,83 @@ export function TransactionList({
             </div>
           </div>
         ) : (
-          <div>
+          <div className="space-y-2">
             {transactions.map((transaction) => (
               <div
                 key={transaction.id}
                 onClick={() => onTransactionSelect?.(transaction.id)}
                 className={cn(
-                  'relative py-2.5 cursor-pointer transition-colors border-b border-gray-50',
+                  // Card base styling
+                  'relative bg-white rounded-xl border border-gray-100 px-4 py-3',
+                  'transition-all duration-200 cursor-pointer',
+                  'hover:shadow-sm hover:border-gray-200',
+                  // Selected state
                   selectedTransactionId === transaction.id
-                    ? 'bg-blue-50/60'
-                    : 'hover:bg-gray-50',
-                  !onTransactionSelect && 'cursor-default hover:bg-transparent'
+                    ? 'ring-2 ring-blue-500/20 border-blue-200'
+                    : '',
+                  // Disable interactivity if no handler
+                  !onTransactionSelect && 'cursor-default hover:shadow-none'
                 )}
               >
-                {/* Category color indicator (spine) */}
+                {/* Category color indicator (left border accent) */}
                 {transaction.categoryColor && (
                   <div
-                    className="absolute left-0 top-1 bottom-1 w-1 rounded-r-full"
+                    className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
                     style={{ backgroundColor: transaction.categoryColor }}
                   />
                 )}
 
-                <div className="flex items-center gap-4 pl-4">
-                  {/* Payee (Primary Column) - Flex grow */}
-                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                    <p className={cn(
-                      'text-sm truncate',
-                      selectedTransactionId === transaction.id
-                        ? 'font-semibold text-gray-900'
-                        : 'font-medium text-gray-700'
-                    )}>
-                      {transaction.description}
-                    </p>
-                    {transaction.notes && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
-                    )}
-                  </div>
+                <div className="flex items-start justify-between gap-4">
+                  {/* LEFT COLUMN: Identity */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    {/* Payee Name + Notes Indicator */}
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {transaction.description || 'Untitled Transaction'}
+                      </p>
+                      {/* Notes indicator */}
+                      {transaction.notes && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                      )}
+                    </div>
 
-                  {/* Category Chip (Middle Column) - Hidden on mobile */}
-                  <div className="hidden md:flex items-center bg-gray-100 rounded-full px-2 py-0.5">
-                    <span
-                      className="text-[10px] font-medium"
-                      style={{ color: transaction.categoryColor || '#6B7280' }}
-                    >
-                      {transaction.categoryName || 'Uncategorized'}
-                    </span>
-                  </div>
+                    {/* Category Pill */}
+                    <div className="flex items-center gap-2">
+                      {/* Category color dot */}
+                      {transaction.categoryColor && (
+                        <div
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: transaction.categoryColor }}
+                        />
+                      )}
+                      <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md">
+                        {transaction.categoryName || 'Uncategorized'}
+                      </span>
+                    </div>
 
-                  {/* Date (Right Column) - Fixed width */}
-                  <div className="w-24 text-right">
-                    <p className="text-xs text-gray-400">
+                    {/* Date */}
+                    <p className="text-[10px] text-gray-400">
                       {formatDateDisplay(transaction.date)}
                     </p>
                   </div>
 
-                  {/* Amount (Far Right Column) - Fixed width */}
-                  <div className="w-24 text-right">
+                  {/* RIGHT COLUMN: Value */}
+                  <div className="text-right flex-shrink-0">
+                    {/* Amount */}
                     <p
                       className={cn(
-                        'text-sm font-medium tabular-nums font-mono',
+                        'text-lg font-bold font-mono tabular-nums',
                         transaction.amountOriginal >= 0
                           ? 'text-green-600'
                           : 'text-gray-900'
                       )}
                     >
-                      {formatCurrency(transaction.amountOriginal, transaction.currencyOriginal)}
+                      {formatCurrency(transaction.amountOriginal, transaction.currencyOriginal).replace(/[A-Z]{3}\s?/, '')}
+                    </p>
+
+                    {/* Currency Label */}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {transaction.currencyOriginal}
                     </p>
                   </div>
                 </div>
