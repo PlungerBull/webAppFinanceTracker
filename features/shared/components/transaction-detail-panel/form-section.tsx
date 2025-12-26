@@ -46,6 +46,10 @@ export function FormSection({
   const isAccountMissing = mode === 'inbox' && !selectedAccountId;
   const isCategoryMissing = mode === 'inbox' && !selectedCategoryId;
 
+  // Resolve selected objects early for clean JSX
+  const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
+  const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
+
   // Parse date for calendar
   const parsedDate = selectedDate ? new Date(selectedDate) : undefined;
 
@@ -69,7 +73,22 @@ export function FormSection({
               isAccountMissing && 'border-orange-200 text-orange-600 bg-orange-50/30'
             )}
           >
-            <SelectValue placeholder="Select account..." />
+            <SelectValue placeholder="Select account...">
+              {selectedAccount ? (
+                <div className="flex items-center gap-2">
+                  {selectedAccount.color && (
+                    <div
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: selectedAccount.color }}
+                    />
+                  )}
+                  <span>{selectedAccount.name}</span>
+                  <span className="text-xs text-gray-400">{selectedAccount.currencySymbol}</span>
+                </div>
+              ) : (
+                'Select account...'
+              )}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {accounts.map((account) => (
@@ -108,7 +127,19 @@ export function FormSection({
               isCategoryMissing && 'border-orange-200 text-orange-600 bg-orange-50/30'
             )}
           >
-            <SelectValue placeholder="Select category..." />
+            <SelectValue placeholder="Select category...">
+              {selectedCategory ? (
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: selectedCategory.color }}
+                  />
+                  <span>{selectedCategory.name}</span>
+                </div>
+              ) : (
+                'Select category...'
+              )}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {categories.map((category) => (
