@@ -50,11 +50,33 @@ export function FormSection({
   const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
   const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
 
+  // Debug logging
+  console.log('FormSection Debug:', {
+    selectedAccountId,
+    selectedCategoryId,
+    accountsCount: accounts.length,
+    categoriesCount: categories.length,
+    selectedAccount,
+    selectedCategory,
+    dataAccountId: data.accountId,
+    dataCategoryId: data.categoryId
+  });
+
   // Parse date for calendar
   const parsedDate = selectedDate ? new Date(selectedDate) : undefined;
 
   return (
     <div className="px-6 py-4 space-y-4">
+      {/* TEMPORARY DEBUG - REMOVE AFTER FIXING */}
+      <div className="p-2 bg-red-100 border border-red-300 rounded text-xs">
+        <div>AccountID: {selectedAccountId || 'NULL'}</div>
+        <div>CategoryID: {selectedCategoryId || 'NULL'}</div>
+        <div>SelectedAccount: {selectedAccount?.name || 'NOT FOUND'}</div>
+        <div>SelectedCategory: {selectedCategory?.name || 'NOT FOUND'}</div>
+        <div>Accounts.length: {accounts.length}</div>
+        <div>Categories.length: {categories.length}</div>
+      </div>
+
       {/* Account Selector */}
       <div className="space-y-2">
         <label className="flex items-center gap-2">
