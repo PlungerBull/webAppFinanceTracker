@@ -50,7 +50,7 @@ export function FormSection({
   const parsedDate = selectedDate ? new Date(selectedDate) : undefined;
 
   return (
-    <div className="px-6 py-6 space-y-8">
+    <div className="px-6 py-4 space-y-4">
       {/* Account Selector */}
       <div className="space-y-2">
         <label className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export function FormSection({
           value={notesValue}
           onChange={(e) => onFieldChange('notes', e.target.value)}
           placeholder="Add notes or memo..."
-          className="w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium resize-none focus:bg-white focus:border-gray-200 transition-colors min-h-[100px]"
+          className="w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium resize-none focus:bg-white focus:border-gray-200 transition-colors min-h-[60px]"
         />
       </div>
     </div>

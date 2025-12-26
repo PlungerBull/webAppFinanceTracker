@@ -40,9 +40,9 @@ export function IdentityHeader({
   };
 
   return (
-    <div className="px-6 py-6 border-b border-gray-100">
+    <div className="px-6 pt-6 pb-4 border-b border-gray-100">
       {/* Context Label */}
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
         {mode === 'inbox' ? 'Incoming Transaction' : 'Transaction Details'}
       </p>
 
@@ -51,7 +51,7 @@ export function IdentityHeader({
         type="text"
         value={editedFields.description ?? data.description ?? ''}
         onChange={(e) => onFieldChange('description', e.target.value)}
-        className="w-full text-xl font-bold text-gray-900 bg-transparent border-none outline-none focus:ring-0 p-0 mb-4"
+        className="w-full text-xl font-bold text-gray-900 bg-transparent border-none outline-none focus:ring-0 p-0 mb-3"
         placeholder="Transaction description"
       />
 
@@ -68,7 +68,7 @@ export function IdentityHeader({
           )}
           placeholder="0.00"
         />
-        <span className="text-[10px] font-bold text-gray-400 uppercase">
+        <span className="text-sm font-bold text-gray-400 uppercase">
           {data.currency}
         </span>
       </div>

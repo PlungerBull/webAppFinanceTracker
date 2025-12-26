@@ -22,8 +22,8 @@ export function ActionFooter({
   isLoading,
 }: ActionFooterProps) {
   return (
-    <div className="bg-gray-50/30 border-t border-gray-100 p-4">
-      <div className="flex flex-col gap-3">
+    <div className="bg-gray-50/30 border-t border-gray-100 px-6 py-4">
+      <div className="flex flex-col gap-2">
         {/* Primary Action Button */}
         {mode === 'inbox' ? (
           <Button

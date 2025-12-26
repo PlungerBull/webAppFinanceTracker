@@ -26,20 +26,20 @@ export function MissingInfoBanner({ mode, data, editedFields }: MissingInfoBanne
   // Build message based on what's missing
   let message = '';
   if (missingAccount && missingCategory) {
-    message = 'Assign a bank account and category before promoting this transaction to your ledger.';
+    message = 'Please assign a bank account and category before promoting.';
   } else if (missingAccount) {
-    message = 'Assign a bank account before promoting this transaction to your ledger.';
+    message = 'Please assign a bank account before promoting.';
   } else if (missingCategory) {
-    message = 'Assign a category before promoting this transaction to your ledger.';
+    message = 'Please assign a category before promoting.';
   }
 
   return (
-    <div className="mx-6 mb-4 p-4 bg-orange-50 border border-orange-100 rounded-xl">
+    <div className="mx-6 mb-4 p-4 rounded-xl border" style={{ backgroundColor: '#FFF9F2', borderColor: '#FEE7D2' }}>
       <div className="flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+        <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#FF843D' }} />
         <div>
-          <p className="text-sm font-medium text-orange-700">Missing Information</p>
-          <p className="text-sm text-orange-600 mt-1">{message}</p>
+          <p className="text-[11px] font-bold leading-relaxed" style={{ color: '#7C2D12' }}>Action Required</p>
+          <p className="text-[10px] leading-relaxed" style={{ color: '#9A3412' }}>{message}</p>
         </div>
       </div>
     </div>
