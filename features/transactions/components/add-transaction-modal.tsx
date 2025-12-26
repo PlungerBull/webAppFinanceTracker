@@ -8,6 +8,7 @@ import { useCreateTransfer } from '../hooks/use-transfers';
 import { useCreateInboxItem } from '@/features/inbox';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { TransactionTypeTabs } from './transaction-type-tabs';
 import { TransactionForm, type TransactionFormData } from './transaction-form';
 import { TransferForm, type TransferFormData } from './transfer-form';
@@ -33,9 +34,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     amount: '',
     derivedType: null, // Auto-derived from category
     categoryId: null,
-    fromGroupId: null, // Store group ID
-    fromAccountId: null, // Resolved after currency selection
-    fromCurrency: null,
+    fromAccountId: null, // Single source of truth
     exchangeRate: '',
     date: new Date(),
     payee: '',
@@ -58,7 +57,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   // Hooks
   const { data: categories = [] } = useCategories();
-  const { groupedAccounts, accounts: rawAccounts } = useGroupedAccounts();
+  const { data: flatAccounts = [] } = useAccounts(); // Flat account list for transaction form
+  const { groupedAccounts, accounts: rawAccounts } = useGroupedAccounts(); // Still needed for transfer form
 
   // Mutations
   const addTransactionMutation = useAddTransaction();
@@ -98,9 +98,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       amount: '',
       derivedType: null, // Reset derived type
       categoryId: null,
-      fromGroupId: null,
-      fromAccountId: null,
-      fromCurrency: null,
+      fromAccountId: null, // Single source of truth
       exchangeRate: '',
       date: new Date(),
       payee: '',
@@ -129,7 +127,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     try {
       if (mode === 'transaction') {
         // SMART ROUTING LOGIC
-        const hasAccount = transactionData.fromAccountId && transactionData.fromCurrency;
+        const selectedAccount = flatAccounts.find(a => a.accountId === transactionData.fromAccountId);
+        const hasAccount = transactionData.fromAccountId && selectedAccount;
         const hasCategory = transactionData.categoryId;
         const finalAmount = parseFloat(transactionData.amount);
 
@@ -143,7 +142,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           await addTransactionMutation.mutateAsync({
             description: transactionData.payee || 'Transaction',
             amount_original: finalAmount,
-            currency_original: transactionData.fromCurrency!,
+            currency_original: selectedAccount.currencyCode!,
             account_id: transactionData.fromAccountId!,
             category_id: transactionData.categoryId,
             type: transactionData.derivedType,
@@ -159,7 +158,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
             amount: finalAmount,
             description: transactionData.payee || 'Quick Entry',
             date: format(transactionData.date, 'yyyy-MM-dd'),
-            currency: transactionData.fromCurrency || undefined,
+            currency: selectedAccount?.currencyCode || undefined,
           });
 
           toast.success('Saved to Inbox for review');
@@ -228,8 +227,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                 data={transactionData}
                 onChange={(updates) => setTransactionData((prev) => ({ ...prev, ...updates }))}
                 categories={categories}
-                groupedAccounts={groupedAccounts}
-                rawAccounts={rawAccounts}
+                flatAccounts={flatAccounts}
                 isSubmitting={isSubmitting}
                 hasSubmitted={hasSubmitted}
               />

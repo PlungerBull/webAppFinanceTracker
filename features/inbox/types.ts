@@ -29,6 +29,7 @@ export interface InboxItem {
     id: string;
     name: string;
     currencyCode: string;
+    currencySymbol: string;
   };
   category?: {
     id: string;

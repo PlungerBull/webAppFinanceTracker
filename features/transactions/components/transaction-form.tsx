@@ -11,16 +11,13 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { Category } from '@/types/domain';
-import type { GroupedAccount } from '@/hooks/use-grouped-accounts';
+import type { Category, AccountBalance } from '@/types/domain';
 
 export interface TransactionFormData {
   amount: string;
   derivedType: 'income' | 'expense' | null; // Auto-derived from selected category
   categoryId: string | null;
-  fromGroupId: string | null; // Store the selected group ID
-  fromAccountId: string | null; // Resolved account ID (after currency selection)
-  fromCurrency: string | null;
+  fromAccountId: string | null; // Single source of truth
   exchangeRate: string;
   date: Date;
   payee: string;
@@ -31,46 +28,21 @@ interface TransactionFormProps {
   data: TransactionFormData;
   onChange: (data: Partial<TransactionFormData>) => void;
   categories: Category[];
-  groupedAccounts: GroupedAccount[];
+  flatAccounts: AccountBalance[]; // Flat list of all accounts with currencySymbol
   isSubmitting: boolean;
   hasSubmitted: boolean;
-  rawAccounts: any[]; // NEW: Need raw accounts to resolve groupId + currency -> accountId
 }
 
 export function TransactionForm({
   data,
   onChange,
   categories,
-  groupedAccounts,
+  flatAccounts,
   isSubmitting,
   hasSubmitted,
-  rawAccounts,
 }: TransactionFormProps) {
-  const selectedAccount = groupedAccounts.find((a) => a.groupId === data.fromGroupId);
+  const selectedAccount = flatAccounts.find((a) => a.accountId === data.fromAccountId);
   const selectedCategory = categories.find((c) => c.id === data.categoryId);
-
-  // Check if account is multi-currency
-  const accountCurrencies = selectedAccount?.balances.map((b) => b.currency || 'USD') || [];
-  const isMultiCurrency = accountCurrencies.length > 1;
-
-  // Auto-select currency if only one available
-  useEffect(() => {
-    if (data.fromGroupId && accountCurrencies.length === 1 && !data.fromCurrency) {
-      onChange({ fromCurrency: accountCurrencies[0] });
-    }
-  }, [data.fromGroupId, accountCurrencies.length, data.fromCurrency]);
-
-  // Resolve accountId when both groupId and currency are selected
-  useEffect(() => {
-    if (data.fromGroupId && data.fromCurrency) {
-      const targetAccount = rawAccounts.find(
-        (acc) => acc.groupId === data.fromGroupId && acc.currencyCode === data.fromCurrency
-      );
-      if (targetAccount && targetAccount.accountId !== data.fromAccountId) {
-        onChange({ fromAccountId: targetAccount.accountId });
-      }
-    }
-  }, [data.fromGroupId, data.fromCurrency, rawAccounts, data.fromAccountId, onChange]);
 
   // Auto-derive transaction type from selected category
   useEffect(() => {
@@ -85,8 +57,8 @@ export function TransactionForm({
     }
   }, [data.categoryId, categories, data.derivedType, onChange]);
 
-  const handleAccountChange = (groupId: string) => {
-    onChange({ fromGroupId: groupId, fromCurrency: null, fromAccountId: null });
+  const handleAccountChange = (accountId: string) => {
+    onChange({ fromAccountId: accountId });
   };
 
   return (
@@ -125,15 +97,6 @@ export function TransactionForm({
             />
           </div>
         </div>
-
-        {/* Currency Display - Only for multi-currency accounts */}
-        {data.fromCurrency && isMultiCurrency && (
-          <div className="text-center mt-1">
-            <span className="text-xs font-medium text-gray-400 uppercase">
-              {data.fromCurrency}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* ZONE 3: Form Body */}
@@ -173,49 +136,34 @@ export function TransactionForm({
             <SmartSelector
               icon={CreditCard}
               label="Account"
-              value={selectedAccount?.name}
+              value={selectedAccount ? `${selectedAccount.name} ${selectedAccount.currencySymbol}` : undefined}
               placeholder="Account"
               required
-              error={hasSubmitted && !data.fromGroupId}
+              error={hasSubmitted && !data.fromAccountId}
             >
               <div className="w-72 max-h-96 overflow-y-auto p-2">
-                {groupedAccounts.map((account) => (
+                {flatAccounts.map((account) => (
                     <button
-                      key={account.groupId}
+                      key={account.accountId}
                       type="button"
-                      onClick={() => handleAccountChange(account.groupId)}
+                      onClick={() => handleAccountChange(account.accountId!)}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                        data.fromGroupId === account.groupId
+                        data.fromAccountId === account.accountId
                           ? "bg-gray-100 text-gray-900 font-medium"
                           : "text-gray-700 hover:bg-gray-50"
                       )}
                     >
                       <CreditCard
                         className="w-4 h-4 flex-shrink-0"
-                        style={{ color: account.color }}
+                        style={{ color: account.color || '#000' }}
                       />
                       <span className="flex-1 text-left">{account.name}</span>
+                      <span className="text-gray-400 text-xs">{account.currencySymbol}</span>
                     </button>
                   ))}
               </div>
             </SmartSelector>
-
-            {/* Currency Selector - Only if multi-currency account */}
-            {data.fromGroupId && isMultiCurrency && (
-              <Select value={data.fromCurrency || ''} onValueChange={(value) => onChange({ fromCurrency: value })}>
-                <SelectTrigger className="w-24 h-10 rounded-xl border-gray-300">
-                  <SelectValue placeholder="Currency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accountCurrencies.map((currency) => (
-                    <SelectItem key={currency} value={currency}>
-                      {currency}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
 
             {/* Category */}
             <SmartSelector
@@ -249,12 +197,12 @@ export function TransactionForm({
         </div>
 
         {/* Exchange Rate Input - Only if different currency from home */}
-        {data.fromCurrency && data.fromCurrency !== 'PEN' && (
+        {selectedAccount && selectedAccount.currencyCode !== 'PEN' && (
           <div className="mb-3">
             <Input
               type="number"
               step="0.0001"
-              placeholder={`Exchange rate (${data.fromCurrency} to PEN)`}
+              placeholder={`Exchange rate (${selectedAccount.currencyCode} to PEN)`}
               value={data.exchangeRate}
               onChange={(e) => onChange({ exchangeRate: e.target.value })}
               className="text-sm bg-gray-50 border-gray-200 rounded-lg px-3 py-2"

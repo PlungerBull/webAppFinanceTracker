@@ -82,7 +82,7 @@ export function FormSection({
                     />
                   )}
                   <span>{account.name}</span>
-                  <span className="text-xs text-gray-500">({account.currencyCode})</span>
+                  <span className="text-xs text-gray-400">{account.currencySymbol}</span>
                 </div>
               </SelectItem>
             ))}

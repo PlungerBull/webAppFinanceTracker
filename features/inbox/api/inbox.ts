@@ -21,7 +21,7 @@ export const inboxApi = {
       .from('transaction_inbox')
       .select(`
         *,
-        account:bank_accounts(id, name, currency_code),
+        account:bank_accounts(id, name, currency_code, global_currencies(symbol)),
         category:categories(id, name, color)
       `)
       .eq('status', 'pending')
@@ -52,6 +52,7 @@ export const inboxApi = {
         id: item.account.id,
         name: item.account.name,
         currencyCode: item.account.currency_code,
+        currencySymbol: item.account.global_currencies?.symbol ?? '',
       } : undefined,
       category: item.category ? {
         id: item.category.id,

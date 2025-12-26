@@ -5,13 +5,13 @@ import { TransactionDetailPanel as SharedPanel } from '@/features/shared/compone
 import type { PanelData, SelectableAccount, SelectableCategory } from '@/features/shared/components/transaction-detail-panel';
 import { useUpdateTransactionBatch, useDeleteTransaction } from '../hooks/use-transactions';
 import type { TransactionRow } from '../types';
-import type { CategoryWithCount } from '@/types/domain';
+import type { CategoryWithCount, AccountBalance } from '@/types/domain';
 
 interface TransactionDetailPanelProps {
   transaction: TransactionRow | null;
   accountId: string | null;
   categories: CategoryWithCount[];
-  accounts: { id: string; name: string }[];
+  accounts: AccountBalance[]; // Use AccountBalance which has currencySymbol
 }
 
 export function TransactionDetailPanel({
@@ -43,9 +43,11 @@ export function TransactionDetailPanel({
   const selectableAccounts: SelectableAccount[] = useMemo(
     () =>
       accounts.map((account) => ({
-        id: account.id,
-        name: account.name,
-        currencyCode: '', // Currency code is included in name (e.g., "Savings (USD)")
+        id: account.accountId!,
+        name: account.name!,
+        currencyCode: account.currencyCode!,
+        currencySymbol: account.currencySymbol!,
+        color: account.color || undefined,
       })),
     [accounts]
   );

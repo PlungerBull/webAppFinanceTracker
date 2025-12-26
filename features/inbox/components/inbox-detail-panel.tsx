@@ -5,7 +5,7 @@ import { TransactionDetailPanel as SharedPanel } from '@/features/shared/compone
 import type { PanelData, SelectableAccount, SelectableCategory } from '@/features/shared/components/transaction-detail-panel';
 import { usePromoteInboxItem, useDismissInboxItem } from '../hooks/use-inbox';
 import { useCategories } from '@/features/categories/hooks/use-categories';
-import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import type { InboxItem } from '../types';
 import { toast } from 'sonner';
 import { INBOX } from '@/lib/constants';
@@ -18,7 +18,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   const promoteMutation = usePromoteInboxItem();
   const dismissMutation = useDismissInboxItem();
   const { data: categories = [] } = useCategories();
-  const { data: accountsData = [] } = useGroupedAccounts();
+  const { data: accountsData = [] } = useAccounts();
 
   // Transform InboxItem to PanelData
   const panelData: PanelData | null = useMemo(() => {
@@ -36,17 +36,16 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     };
   }, [item]);
 
-  // Flatten accounts for the detail panel
+  // Transform flat accounts for the detail panel
   const selectableAccounts: SelectableAccount[] = useMemo(
     () =>
-      accountsData.flatMap((group) =>
-        group.balances.map((balance) => ({
-          id: balance.accountId,
-          name: `${group.name} (${balance.currency})`,
-          currencyCode: balance.currency,
-          color: group.color,
-        }))
-      ),
+      accountsData.map((account) => ({
+        id: account.accountId!,
+        name: account.name!,
+        currencyCode: account.currencyCode!,
+        currencySymbol: account.currencySymbol!,
+        color: account.color || '#3b82f6',
+      })),
     [accountsData]
   );
 

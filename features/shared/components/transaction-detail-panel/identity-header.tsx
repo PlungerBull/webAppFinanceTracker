@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { PanelMode, EditedFields, PanelData } from './types';
+import type { PanelMode, EditedFields, PanelData, SelectableAccount } from './types';
 
 interface IdentityHeaderProps {
   mode: PanelMode;
@@ -9,6 +9,7 @@ interface IdentityHeaderProps {
   editedFields: EditedFields;
   onFieldChange: (field: keyof EditedFields, value: string | number) => void;
   categoryType?: 'income' | 'expense' | null;
+  accounts: SelectableAccount[];
 }
 
 export function IdentityHeader({
@@ -17,6 +18,7 @@ export function IdentityHeader({
   editedFields,
   onFieldChange,
   categoryType,
+  accounts,
 }: IdentityHeaderProps) {
   // Determine amount color based on mode and category type
   const getAmountColor = () => {
@@ -38,6 +40,11 @@ export function IdentityHeader({
       }
     }
   };
+
+  // Derive currency from selected account (currency follows account selection)
+  const selectedAccountId = editedFields.accountId ?? data.accountId;
+  const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
+  const displayCurrency = selectedAccount?.currencyCode || data.currency || 'USD';
 
   return (
     <div className="px-6 pt-6 pb-4 border-b border-gray-100">
@@ -69,7 +76,7 @@ export function IdentityHeader({
           placeholder="0.00"
         />
         <span className="text-sm font-bold text-gray-400 uppercase">
-          {data.currency}
+          {displayCurrency}
         </span>
       </div>
     </div>

@@ -39,6 +39,7 @@ export interface SelectableAccount {
   id: string;
   name: string;
   currencyCode: string;
+  currencySymbol: string;
   color?: string;
 }
 

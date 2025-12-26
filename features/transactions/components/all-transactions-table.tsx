@@ -10,6 +10,7 @@ import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
 import { useTransactions } from '../hooks/use-transactions';
 import { useCategories } from '@/features/categories/hooks/use-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import type { TransactionRow } from '../types';
 
 function TransactionsContent() {
@@ -56,26 +57,16 @@ function TransactionsContent() {
   });
 
   const { data: categories = [] } = useCategories();
-  const { data: accountsData = [] } = useGroupedAccounts();
+  const { data: accountsData = [] } = useGroupedAccounts(); // Still needed for sidebar
+  const { data: flatAccounts = [] } = useAccounts(); // Flat accounts with currencySymbol for detail panel
 
   const isLoading = isLoadingTransactions;
 
   // Use grouped accounts directly (each group represents an account)
   const accounts = accountsData;
 
-  // Flatten accounts for the detail panel (flatten all balances)
-  const flatAccounts = useMemo(() =>
-    accountsData.flatMap(group =>
-      group.balances.map(balance => ({
-        id: balance.accountId,
-        name: `${group.name} (${balance.currency})`,
-      }))
-    ),
-    [accountsData]
-  );
-
   // Determine display names
-  const accountName = accountId ? flatAccounts.find(a => a.id === accountId)?.name : null;
+  const accountName = accountId ? flatAccounts.find(a => a.accountId === accountId)?.name : null;
   const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
   const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
 

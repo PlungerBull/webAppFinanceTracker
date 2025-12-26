@@ -86,6 +86,7 @@ export function TransactionDetailPanel({
           editedFields={editedFields}
           onFieldChange={handleFieldChange}
           categoryType={categoryType}
+          accounts={accounts}
         />
 
         {/* Form Section */}

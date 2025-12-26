@@ -61,6 +61,12 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * **Opening Balances:** Created as transactions with `category_id = NULL` AND `transfer_id = NULL`, using the description "Opening Balance".
     * **UI Note:** Opening Balance option has been removed from the Add Transaction Modal (as of the Invisible Grouping refactor). Users should set opening balances during account creation.
 * **Currency Changes:** To change an account's currency, users must create a new account. The Edit Account modal only allows editing name and color, displaying currency as read-only.
+* **Currency Inheritance in Transactions:**
+    * **CRITICAL:** Currency is NOT an editable field in transaction forms or detail panels
+    * Currency is **derived** from the selected bank account (one currency per account)
+    * When user changes the account selection, the currency automatically updates to match the new account's currency
+    * UI should display currency as read-only text, never as an input or selector
+    * This applies to: Transaction forms, Inbox detail panel, Transaction detail panel, and all editing interfaces
 
 ### A2. Category Architecture ("Invisible Grouping" Pattern)
 * **Strict Hierarchy, Flat UI:** Categories follow a two-level parent-child hierarchy in the database, but the UI presents only leaf nodes.

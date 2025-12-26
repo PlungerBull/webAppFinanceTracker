@@ -11,6 +11,10 @@ This database uses a **"Flat" currency architecture**:
 - Multi-currency support for the same account concept is achieved through the `group_id` pattern
 - **No junction tables** (`account_currencies` and `currencies` tables were removed)
 - Currency cannot be changed after account creation
+- **Currency Inheritance:** Transaction currency is **derived** from the selected bank account, not stored separately or editable
+  - When creating/editing transactions, users select an account and the currency automatically inherits from that account
+  - The transaction detail panel displays currency as read-only text that updates when account selection changes
+  - This ensures data consistency: one account = one currency = all transactions in that currency
 
 ### Category Model ("Invisible Grouping" Pattern)
 This database implements a **two-level category hierarchy** with UI presentation that hides parent categories:
