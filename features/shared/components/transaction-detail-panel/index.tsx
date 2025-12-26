@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { IdentityHeader } from './identity-header';
 import { FormSection } from './form-section';
 import { MissingInfoBanner } from './missing-info-banner';
@@ -55,16 +53,6 @@ export function TransactionDetailPanel({
     await onDelete();
   };
 
-  // Handle close with unsaved changes warning
-  const handleClose = () => {
-    if (hasUnsavedChanges) {
-      if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
-        return;
-      }
-    }
-    onClose();
-  };
-
   // Warn on page unload if there are unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -89,21 +77,6 @@ export function TransactionDetailPanel({
 
   return (
     <div className="h-full w-[400px] bg-white border-l border-gray-200 flex flex-col">
-      {/* Header with close button */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-900">
-          {mode === 'inbox' ? 'Review Transaction' : 'Edit Transaction'}
-        </h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleClose}
-          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         {/* Identity Header */}

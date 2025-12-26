@@ -74,6 +74,6 @@ export interface TransactionDetailPanelProps {
   categories: SelectableCategory[];
   onSave: (updates: EditedFields) => Promise<void>;
   onDelete: () => Promise<void>;
-  onClose: () => void;
+  onClose?: () => void;
   isLoading?: boolean;
 }

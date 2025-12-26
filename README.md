@@ -43,5 +43,4 @@ Things 3 uses the "Magic Plus Button" which allows dragging to a specific spot i
 Your TransactionDetailPanel is a great step in the right direction (side-by-side editing), but your creation flow is still modal-heavy. We should discuss moving towards Inline Creation or Popovers for lighter interactions.
 
 
-4. WORKING ON THE INBOX FEATURE
 5. we have to fix the sidebar, the 3 buttons are overlaping with the number of the accounts
