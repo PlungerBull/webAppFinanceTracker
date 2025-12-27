@@ -98,6 +98,8 @@ export function dbAccountBalancesToDomain(
 
 /**
  * Transforms a database transaction_inbox row to domain InboxItem type
+ * CENTRALIZED NORMALIZATION: Converts null to undefined for optional fields
+ * This ensures components only see string | undefined, not string | null
  */
 export function dbInboxItemToDomain(
   dbInboxItem: Database['public']['Tables']['transaction_inbox']['Row']
@@ -105,14 +107,14 @@ export function dbInboxItemToDomain(
   return {
     id: dbInboxItem.id,
     userId: dbInboxItem.user_id,
-    amount: dbInboxItem.amount,
+    amount: dbInboxItem.amount ?? undefined,              // null → undefined
     currency: dbInboxItem.currency,
-    description: dbInboxItem.description,
-    date: dbInboxItem.date,
-    sourceText: dbInboxItem.source_text,
-    accountId: dbInboxItem.account_id,
-    categoryId: dbInboxItem.category_id,
-    exchangeRate: dbInboxItem.exchange_rate,
+    description: dbInboxItem.description ?? undefined,    // null → undefined
+    date: dbInboxItem.date ?? undefined,                  // null → undefined
+    sourceText: dbInboxItem.source_text ?? undefined,     // null → undefined
+    accountId: dbInboxItem.account_id ?? undefined,       // null → undefined
+    categoryId: dbInboxItem.category_id ?? undefined,     // null → undefined
+    exchangeRate: dbInboxItem.exchange_rate ?? undefined, // null → undefined
     status: dbInboxItem.status,
     createdAt: dbInboxItem.created_at,
     updatedAt: dbInboxItem.updated_at,
@@ -198,30 +200,31 @@ export function domainCategoryToDbInsert(data: {
 
 /**
  * Transforms domain inbox item data to database insert format
- * SCRATCHPAD MODE: amount and description are now optional/nullable
+ * SCRATCHPAD MODE: amount and description are now optional
+ * Converts undefined → null for database storage
  */
 export function domainInboxItemToDbInsert(data: {
   userId: string;
-  amount?: number | null;              // Now optional for scratchpad mode
+  amount?: number;              // Optional for scratchpad mode
   currency?: string;
-  description?: string | null;         // Now optional for scratchpad mode
-  date?: string | null;
-  sourceText?: string | null;
-  accountId?: string | null;
-  categoryId?: string | null;
-  exchangeRate?: number | null;
+  description?: string;         // Optional for scratchpad mode
+  date?: string;
+  sourceText?: string;
+  accountId?: string;
+  categoryId?: string;
+  exchangeRate?: number;
   status?: 'pending' | 'processed' | 'ignored';
 }): Database['public']['Tables']['transaction_inbox']['Insert'] {
   return {
     user_id: data.userId,
-    amount: data.amount ?? null,
+    amount: data.amount ?? null,              // undefined → null for database
     currency: data.currency,
-    description: data.description ?? null,
-    date: data.date,
-    source_text: data.sourceText,
-    account_id: data.accountId ?? null,
-    category_id: data.categoryId ?? null,
-    exchange_rate: data.exchangeRate,
+    description: data.description ?? null,    // undefined → null for database
+    date: data.date ?? null,                  // undefined → null for database
+    source_text: data.sourceText ?? null,     // undefined → null for database
+    account_id: data.accountId ?? null,       // undefined → null for database
+    category_id: data.categoryId ?? null,     // undefined → null for database
+    exchange_rate: data.exchangeRate ?? null, // undefined → null for database
     status: data.status,
   };
 }

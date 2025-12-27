@@ -8,16 +8,17 @@ export type PanelMode = 'inbox' | 'transaction';
 /**
  * Normalized data structure for the panel
  * Works with both InboxItem and TransactionRow
+ * Uses optional properties (undefined) for consistency with domain types
  */
 export interface PanelData {
   id: string;
-  description: string | null;
-  amount: number;
+  description?: string;
+  amount?: number;
   currency: string;
-  accountId: string | null;
-  categoryId: string | null;
-  date: string | null;
-  notes: string | null;
+  accountId?: string;
+  categoryId?: string;
+  date?: string;
+  notes?: string;
 }
 
 /**
@@ -30,6 +31,7 @@ export interface EditedFields {
   categoryId?: string;
   date?: string;
   notes?: string;
+  exchangeRate?: number;  // For cross-currency transactions
 }
 
 /**

@@ -59,7 +59,7 @@ export function IdentityHeader({
         value={editedFields.description ?? data.description ?? ''}
         onChange={(e) => onFieldChange('description', e.target.value)}
         className="w-full text-xl font-bold text-gray-900 bg-transparent border-none outline-none focus:ring-0 p-0 mb-3"
-        placeholder="Transaction description"
+        placeholder="No description"
       />
 
       {/* Editable Amount + Currency */}

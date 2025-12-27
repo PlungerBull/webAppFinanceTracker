@@ -33,7 +33,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
       accountId: item.accountId,
       categoryId: item.categoryId,
       date: item.date,
-      notes: null, // Inbox doesn't have notes yet
+      notes: undefined, // Inbox doesn't have notes yet
     };
   }, [item]);
 
@@ -98,7 +98,6 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     const isComplete =
       accountId &&
       categoryId &&
-      finalAmount !== null &&
       finalAmount !== undefined &&
       finalDescription?.trim() &&
       (!requiresExchangeRate || finalExchangeRate); // Exchange rate required if currencies differ

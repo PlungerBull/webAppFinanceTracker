@@ -32,18 +32,18 @@ export const inboxApi = {
       throw new Error(error.message || INBOX.API.ERRORS.FETCH_FAILED);
     }
 
-    // Transform with joined data - manual transformation needed for complex structure
+    // Transform with centralized transformer for null → undefined normalization
     return (data || []).map((item: any) => ({
       id: item.id,
       userId: item.user_id,
-      amount: item.amount,
+      amount: item.amount ?? undefined,              // Centralized normalization
       currency: item.currency,
-      description: item.description,
-      date: item.date,
-      sourceText: item.source_text,
-      accountId: item.account_id,
-      categoryId: item.category_id,
-      exchangeRate: item.exchange_rate,
+      description: item.description ?? undefined,    // Centralized normalization
+      date: item.date ?? undefined,                  // Centralized normalization
+      sourceText: item.source_text ?? undefined,     // Centralized normalization
+      accountId: item.account_id ?? undefined,       // Centralized normalization
+      categoryId: item.category_id ?? undefined,     // Centralized normalization
+      exchangeRate: item.exchange_rate ?? undefined, // Centralized normalization
       status: item.status,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
@@ -148,12 +148,12 @@ export const inboxApi = {
       finalDate = params.finalDate;
       finalAmount = params.finalAmount;
     } else {
-      // InboxItem format
+      // InboxItem format - normalized by transformer (null already converted to undefined)
       inboxId = params.id;
       accountId = params.accountId || '';
       categoryId = params.categoryId || '';
       finalDescription = params.description;
-      finalDate = params.date || undefined;
+      finalDate = params.date;
       finalAmount = params.amount;
     }
 
@@ -216,13 +216,13 @@ export const inboxApi = {
 
     const insertData = domainInboxItemToDbInsert({
       userId: user.id,
-      amount: params.amount ?? null,              // Explicitly null if missing
-      description: params.description ?? null,    // Explicitly null if missing
+      amount: params.amount,              // Transformer converts undefined → null
+      description: params.description,    // Transformer converts undefined → null
       currency: params.currency,
       date: params.date,
       sourceText: params.sourceText,
-      accountId: params.accountId ?? null,        // FIX: Pass through accountId
-      categoryId: params.categoryId ?? null,      // FIX: Pass through categoryId
+      accountId: params.accountId,        // Transformer converts undefined → null
+      categoryId: params.categoryId,      // Transformer converts undefined → null
       status: 'pending', // Always create as pending
     });
 

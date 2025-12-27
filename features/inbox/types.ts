@@ -8,18 +8,21 @@
 /**
  * InboxItem - Domain representation of a transaction_inbox row
  * Represents "dirty" data that needs user review before entering the ledger
+ *
+ * SCRATCHPAD MODE: Optional properties use undefined (not null)
+ * The data transformer converts database null → undefined for consistency
  */
 export interface InboxItem {
   id: string;
   userId: string;
-  amount: number | null;              // Now nullable for scratchpad mode
+  amount?: number;              // Optional for scratchpad mode
   currency: string;
-  description: string | null;         // Now nullable for scratchpad mode
-  date: string | null;
-  sourceText: string | null;
-  accountId: string | null;
-  categoryId: string | null;
-  exchangeRate: number | null;
+  description?: string;         // Optional for scratchpad mode
+  date?: string;
+  sourceText?: string;
+  accountId?: string;
+  categoryId?: string;
+  exchangeRate?: number;
   status: 'pending' | 'processed' | 'ignored';
   createdAt: string;
   updatedAt: string;
@@ -55,6 +58,9 @@ export interface PromoteInboxItemParams {
  * UpdateInboxItemParams - Parameters for updating a draft inbox item
  * Used to save account/category assignments without promoting to ledger
  * Supports bulk assignment workflows
+ *
+ * Note: Uses explicit null unions because updates need to differentiate between
+ * "not provided" (undefined) and "clear the value" (null)
  */
 export interface UpdateInboxItemParams {
   accountId?: string | null;
@@ -71,11 +77,11 @@ export interface UpdateInboxItemParams {
  * Allows saving partial data (e.g., just a category, just an amount, etc.)
  */
 export interface CreateInboxItemParams {
-  amount?: number | null;
-  description?: string | null;
+  amount?: number;
+  description?: string;
   currency?: string;
-  date?: string | null;
-  sourceText?: string | null;
-  accountId?: string | null;         // NEW: Persist account selection
-  categoryId?: string | null;        // NEW: Persist category selection
+  date?: string;
+  sourceText?: string;
+  accountId?: string;         // NEW: Persist account selection
+  categoryId?: string;        // NEW: Persist category selection
 }

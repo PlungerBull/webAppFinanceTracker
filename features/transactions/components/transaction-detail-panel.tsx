@@ -24,18 +24,19 @@ export function TransactionDetailPanel({
   const deleteMutation = useDeleteTransaction();
 
   // Transform TransactionRow to PanelData
+  // Converts null → undefined for consistency with PanelData interface
   const panelData: PanelData | null = useMemo(() => {
     if (!transaction) return null;
 
     return {
       id: transaction.id,
-      description: transaction.description,
+      description: transaction.description ?? undefined,
       amount: transaction.amountOriginal,
       currency: transaction.currencyOriginal,
       accountId: transaction.accountId,
-      categoryId: transaction.categoryId,
+      categoryId: transaction.categoryId ?? undefined,
       date: transaction.date,
-      notes: transaction.notes,
+      notes: transaction.notes ?? undefined,
     };
   }, [transaction]);
 

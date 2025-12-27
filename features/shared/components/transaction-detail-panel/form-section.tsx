@@ -1,11 +1,12 @@
 'use client';
 
-import { Building2, Hash, Calendar as CalendarIcon, FileText } from 'lucide-react';
+import { Building2, Hash, Calendar as CalendarIcon, FileText, ArrowRightLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -24,7 +25,7 @@ interface FormSectionProps {
   mode: PanelMode;
   data: PanelData;
   editedFields: EditedFields;
-  onFieldChange: (field: keyof EditedFields, value: string) => void;
+  onFieldChange: (field: keyof EditedFields, value: string | number) => void;
   accounts: SelectableAccount[];
   categories: SelectableCategory[];
 }
@@ -52,6 +53,11 @@ export function FormSection({
 
   // Parse date for calendar
   const parsedDate = selectedDate ? new Date(selectedDate) : undefined;
+
+  // MULTI-CURRENCY GATEKEEPER: Detect currency mismatch
+  // Show exchange rate field only when selected account currency differs from transaction currency
+  const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== data.currency;
+  const exchangeRateValue = editedFields.exchangeRate ?? undefined;
 
   return (
     <div className="px-6 py-4 space-y-4">
@@ -194,6 +200,43 @@ export function FormSection({
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* Exchange Rate Field - REACTIVE: Only shows when currencies differ */}
+      {requiresExchangeRate && (
+        <div className="space-y-2">
+          <label className="flex items-center gap-2">
+            <ArrowRightLeft className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
+              Exchange Rate
+            </span>
+            <span className="text-[9px] text-orange-600 font-semibold uppercase tracking-wider">
+              Required
+            </span>
+          </label>
+          <div className="space-y-1">
+            <Input
+              type="number"
+              step="0.0001"
+              min="0"
+              value={exchangeRateValue ?? ''}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value) && value > 0) {
+                  onFieldChange('exchangeRate', value);
+                }
+              }}
+              placeholder="e.g., 1.18"
+              className={cn(
+                'w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
+                !exchangeRateValue && 'border-orange-200 bg-orange-50/30'
+              )}
+            />
+            <p className="text-xs text-gray-500 px-1">
+              1 {data.currency} = ? {selectedAccount?.currencyCode}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Notes Textarea */}
       <div className="space-y-2">

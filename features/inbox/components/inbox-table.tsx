@@ -14,23 +14,24 @@ function InboxContent() {
 
   // Transform InboxItem to match TransactionRow shape expected by TransactionList
   // NULL-SAFE: Handle partial drafts with missing amount/description
+  // Note: Converts undefined → null for TransactionView compatibility
   const transactions = inboxItems.map((item) => ({
     id: item.id,
     userId: item.userId,
     accountId: item.accountId || '',
     accountName: item.account?.name || 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
-    amountOriginal: item.amount ?? 0,                    // Default to 0 for display if null
-    amountHome: item.amount ?? 0,                        // Default to 0 for display if null
+    amountOriginal: item.amount ?? 0,                    // Default to 0 for display
+    amountHome: item.amount ?? 0,                        // Default to 0 for display
     currencyOriginal: item.currency,
-    exchangeRate: item.exchangeRate || 1.0,
+    exchangeRate: item.exchangeRate ?? 1.0,
     date: item.date || new Date().toISOString(),
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    categoryId: item.categoryId,
-    categoryName: item.category?.name || null,
-    categoryColor: item.category?.color || null,
-    description: item.description || '—',              // Show dash if null
+    categoryId: item.categoryId ?? null,                 // undefined → null
+    categoryName: item.category?.name ?? null,
+    categoryColor: item.category?.color ?? null,
+    description: item.description ?? '—',               // Show dash if undefined
     notes: null,
   }));
 
