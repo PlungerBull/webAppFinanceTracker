@@ -198,12 +198,13 @@ export function domainCategoryToDbInsert(data: {
 
 /**
  * Transforms domain inbox item data to database insert format
+ * SCRATCHPAD MODE: amount and description are now optional/nullable
  */
 export function domainInboxItemToDbInsert(data: {
   userId: string;
-  amount: number;
+  amount?: number | null;              // Now optional for scratchpad mode
   currency?: string;
-  description: string;
+  description?: string | null;         // Now optional for scratchpad mode
   date?: string | null;
   sourceText?: string | null;
   accountId?: string | null;
@@ -213,13 +214,13 @@ export function domainInboxItemToDbInsert(data: {
 }): Database['public']['Tables']['transaction_inbox']['Insert'] {
   return {
     user_id: data.userId,
-    amount: data.amount,
+    amount: data.amount ?? null,
     currency: data.currency,
-    description: data.description,
+    description: data.description ?? null,
     date: data.date,
     source_text: data.sourceText,
-    account_id: data.accountId,
-    category_id: data.categoryId,
+    account_id: data.accountId ?? null,
+    category_id: data.categoryId ?? null,
     exchange_rate: data.exchangeRate,
     status: data.status,
   };

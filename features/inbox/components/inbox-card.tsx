@@ -91,10 +91,12 @@ export function InboxCard({ item }: InboxCardProps) {
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="pt-6">
         <div className="space-y-4">
-          {/* Transaction Details */}
+          {/* Transaction Details - NULL-SAFE RENDERING */}
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="font-medium text-lg">{item.description}</p>
+              <p className="font-medium text-lg">
+                {item.description || <span className="text-muted-foreground">—</span>}
+              </p>
               {item.date && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <Calendar className="h-3 w-3" />
@@ -104,8 +106,14 @@ export function InboxCard({ item }: InboxCardProps) {
             </div>
             <div className="text-right">
               <p className="font-semibold text-lg">
-                {item.amount > 0 ? '+' : ''}
-                {item.amount.toFixed(2)} {item.currency}
+                {item.amount !== null && item.amount !== undefined ? (
+                  <>
+                    {item.amount > 0 ? '+' : ''}
+                    {item.amount.toFixed(2)} {item.currency}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
               </p>
             </div>
           </div>

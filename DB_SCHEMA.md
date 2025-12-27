@@ -42,7 +42,7 @@ Opening balance transactions are identified by:
 |---|---|---|---|---|
 | **id** | uuid | NO | `uuid_generate_v4()` | Primary key |
 | **user_id** | uuid | NO | `-` | Foreign key to the user |
-| **name** | text | NO | `-` | Account name |
+| **name** | text | NO | `-` | Account name (clean, without currency suffix - see migration 2025-12-27) |
 | **created_at** | timestamptz | NO | `now()` | Record creation timestamp |
 | **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
 | **color** | text | NO | `'#3b82f6'::text` | Hex color code for visual identification (e.g., `#3b82f6`) |
@@ -51,6 +51,11 @@ Opening balance transactions are identified by:
 | **group_id** | uuid | NO | `gen_random_uuid()` | Group identifier for linked accounts |
 | **type** | account_type | NO | `'checking'::account_type` | Type of account |
 | **current_balance** | numeric | NO | `0` | **[NEW]** The live ledger balance. Updated automatically via triggers. |
+
+**Constraints:**
+- `UNIQUE (user_id, name, currency_code)` - Prevents duplicate accounts (added 2025-12-27)
+  - Allows same account name in different currencies (e.g., "Savings" in USD and EUR)
+  - Prevents duplicate accounts with same user + name + currency
 
 ---
 
@@ -245,7 +250,7 @@ LEFT JOIN categories c ON t.category_id = c.id;
 |---|---|---|---|
 | `create_account` | `jsonb` | `p_account_name text`, `p_account_color text`, `p_currency_code text`, `p_starting_balance numeric DEFAULT 0`, `p_account_type account_type DEFAULT 'checking'` | **[UPDATED 2025-12-25]** Creates a single account with one currency and optional opening balance. Simplified from old multi-currency version. |
 | `create_account_group` | `json` | `p_user_id uuid`, `p_name text`, `p_color text`, `p_type account_type`, `p_currencies text[]` | Creates a new account group with separate account rows for each currency (linked by `group_id`) |
-| `import_transactions` | `jsonb` | `p_user_id uuid`, `p_transactions jsonb`, `p_default_account_color text`, `p_default_category_color text` | **[FIXED 2025-12-25]** Imports a batch of transactions from JSON array. Auto-creates accounts with `currency_code`. Fixed to work with flat architecture. |
+| `import_transactions` | `jsonb` | `p_user_id uuid`, `p_transactions jsonb`, `p_default_account_color text`, `p_default_category_color text` | **[FIXED 2025-12-27]** Imports a batch of transactions from JSON array. Auto-creates accounts with `currency_code`. **CRITICAL:** Now identifies accounts by **name + currency** (not just name) to support multi-currency accounts with same name. |
 | `clear_user_data` | `void` | `p_user_id uuid` | **[FIXED 2025-12-25]** Deletes all transactional and account data for a given user. Cleaned up to remove references to deleted tables. |
 | `replace_account_currency` | `void` | `p_account_id uuid`, `p_old_currency_code varchar`, `p_new_currency_code varchar` | **[FIXED 2025-12-25]** Updates account's currency_code and all associated transactions. Signature changed - removed `p_new_starting_balance` parameter. |
 
@@ -373,3 +378,52 @@ LEFT JOIN categories c ON t.category_id = c.id;
   - Updated transaction list UI: Category tags now show color as background/text/border (removed vertical bar and dot)
 - **Impact**: Transaction detail panel now correctly displays selected account and category when editing transactions
 - **Migration**: Requires database migration via Supabase CLI, then TypeScript type regeneration
+
+### 2025-12-27: Account Name Normalization (`20251227140411_fix_import_account_lookup.sql` + `20251227140449_clean_account_names.sql`)
+- **Problem**: Account names contained redundant currency codes in parentheses (e.g., `"BCP Credito (PEN)"`)
+- **UI Impact**: Account selectors displayed `"BCP Credito (PEN) S/"` showing BOTH currency code AND symbol
+- **Solution**: Two-phase database migration approach:
+
+#### Phase 1: Fix Import Logic (`20251227140411_fix_import_account_lookup.sql`)
+- **Purpose**: Prevent import failures when account names are cleaned
+- **Change**: Modified `import_transactions` function to identify accounts by **name + currency** (not just name)
+- **Before**: `WHERE user_id = p_user_id AND lower(name) = lower(v_account_name)`
+- **After**: `WHERE user_id = p_user_id AND lower(name) = lower(v_account_name) AND currency_code = v_currency_code`
+- **Why Critical**: After name cleaning, "Savings (USD)" and "Savings (PEN)" both become "Savings"
+  - Without currency filter → query returns BOTH rows → "multiple rows returned" error
+  - With currency filter → correctly picks the USD or PEN version
+
+#### Phase 2: Clean Names + Add Constraint (`20251227140449_clean_account_names.sql`)
+- **Data Cleaning**: Removed currency code suffixes using SQL regex pattern
+  - Pattern: `\s\([A-Z]{3,4}\)$` (space + parentheses + 3-4 uppercase letters at end)
+  - Examples:
+    - `"BCP Credito (PEN)"` → `"BCP Credito"`
+    - `"Savings (Joint) (USD)"` → `"Savings (Joint)"` (preserves middle parentheses)
+    - `"Chase (EUR)"` → `"Chase"`
+- **Uniqueness Constraint**: Added `UNIQUE (user_id, name, currency_code)` to `bank_accounts` table
+  - Allows: Same account name in different currencies (e.g., "Savings" in USD and EUR)
+  - Prevents: Duplicate accounts with same user + name + currency
+
+#### Frontend Cleanup (Phase 4)
+- **Removed Dead Code**: All name-cleaning logic deleted from frontend hooks
+- **Files Modified**:
+  - `hooks/use-flat-accounts.ts` - Removed `cleanName` field generation and regex cleaning
+    - Type `FlatAccount` simplified from `AccountBalance & { cleanName: string }` to just `AccountBalance`
+    - Sorting now uses `account.name` directly instead of `account.cleanName`
+  - `hooks/use-grouped-accounts.ts` - Removed `split(' (')[0]` string manipulation
+    - Uses database name directly: `const name = first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT`
+  - `features/accounts/components/account-list-item.tsx` - Changed `{account.cleanName}` to `{account.name}`
+- **Result**: Database is single source of truth, no frontend transformations needed
+
+#### Architectural Benefits
+- **Single Source of Truth**: Currency code stored once in `currency_code` column (not redundantly in name)
+- **Performance**: Eliminated unnecessary string processing on every render
+- **Maintainability**: Simpler codebase with fewer transformations
+- **Data Integrity**: Uniqueness constraint prevents duplicate accounts
+- **UI Correctness**: Account selectors now display `"BCP Credito S/"` (clean) instead of `"BCP Credito (PEN) S/"` (redundant)
+
+#### Migration Order (CRITICAL)
+1. ✅ Phase 1: Fix import logic (MUST run first)
+2. ✅ Phase 2: Clean names + add constraint
+3. ✅ Phase 4: Remove frontend cleaning code
+- **DO NOT** run Phase 2 before Phase 1 (will break imports!)

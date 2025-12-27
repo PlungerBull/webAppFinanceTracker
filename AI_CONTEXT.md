@@ -77,6 +77,20 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
         * Account List Item (account-list-item.tsx) - Dashboard sidebar
     * **Example:** "BCP Credito S/" ✅ NOT "BCP Credito (PEN)" ❌
     * **Type Safety:** `SelectableAccount` interfaces must include `currencySymbol: string` as a required field
+* **Account Name Normalization (2025-12-27):**
+    * **Database Migration:** Account names have been normalized to remove redundant currency code suffixes
+    * **Before:** Database stored `"BCP Credito (PEN)"` + `currency_code = "PEN"` (redundant!)
+    * **After:** Database stores `"BCP Credito"` + `currency_code = "PEN"` (single source of truth)
+    * **Frontend Impact:** All name-cleaning logic has been REMOVED from hooks:
+        * `use-flat-accounts.ts` - No longer generates `cleanName` field
+        * `use-grouped-accounts.ts` - No longer uses `split(' (')[0]` pattern
+        * Type `FlatAccount` is now simply `AccountBalance` (no extension needed)
+    * **Migration Files:**
+        * `20251227140411_fix_import_account_lookup.sql` - Fixed import logic to match by name + currency
+        * `20251227140449_clean_account_names.sql` - Stripped currency suffixes from existing data
+    * **Uniqueness Constraint:** Added `UNIQUE (user_id, name, currency_code)` to prevent duplicate accounts
+    * **DO NOT:** Add frontend code that strips currency codes from names - database is clean!
+    * **DO:** Use `account.name` directly from database without transformation
 
 ### A2. Category Architecture ("Invisible Grouping" Pattern)
 * **Strict Hierarchy, Flat UI:** Categories follow a two-level parent-child hierarchy in the database, but the UI presents only leaf nodes.

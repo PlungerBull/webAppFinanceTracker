@@ -12,9 +12,9 @@
 export interface InboxItem {
   id: string;
   userId: string;
-  amount: number;
+  amount: number | null;              // Now nullable for scratchpad mode
   currency: string;
-  description: string;
+  description: string | null;         // Now nullable for scratchpad mode
   date: string | null;
   sourceText: string | null;
   accountId: string | null;
@@ -57,22 +57,25 @@ export interface PromoteInboxItemParams {
  * Supports bulk assignment workflows
  */
 export interface UpdateInboxItemParams {
-  accountId?: string;
-  categoryId?: string;
-  description?: string;
-  amount?: number;
-  date?: string;
-  exchangeRate?: number;
+  accountId?: string | null;
+  categoryId?: string | null;
+  description?: string | null;
+  amount?: number | null;
+  date?: string | null;
+  exchangeRate?: number | null;
 }
 
 /**
  * CreateInboxItemParams - Parameters for creating a new inbox item
- * Used for quick-add functionality (minimal data required)
+ * NOW SUPPORTS SCRATCHPAD MODE: All fields are optional
+ * Allows saving partial data (e.g., just a category, just an amount, etc.)
  */
 export interface CreateInboxItemParams {
-  amount: number;
-  description: string;
+  amount?: number | null;
+  description?: string | null;
   currency?: string;
   date?: string | null;
   sourceText?: string | null;
+  accountId?: string | null;         // NEW: Persist account selection
+  categoryId?: string | null;        // NEW: Persist category selection
 }

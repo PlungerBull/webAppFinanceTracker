@@ -13,14 +13,15 @@ function InboxContent() {
   const { data: inboxItems = [], isLoading } = useInboxItems();
 
   // Transform InboxItem to match TransactionRow shape expected by TransactionList
+  // NULL-SAFE: Handle partial drafts with missing amount/description
   const transactions = inboxItems.map((item) => ({
     id: item.id,
     userId: item.userId,
     accountId: item.accountId || '',
     accountName: item.account?.name || 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
-    amountOriginal: item.amount,
-    amountHome: item.amount,
+    amountOriginal: item.amount ?? 0,                    // Default to 0 for display if null
+    amountHome: item.amount ?? 0,                        // Default to 0 for display if null
     currencyOriginal: item.currency,
     exchangeRate: item.exchangeRate || 1.0,
     date: item.date || new Date().toISOString(),
@@ -29,7 +30,7 @@ function InboxContent() {
     categoryId: item.categoryId,
     categoryName: item.category?.name || null,
     categoryColor: item.category?.color || null,
-    description: item.description,
+    description: item.description || '—',              // Show dash if null
     notes: null,
   }));
 

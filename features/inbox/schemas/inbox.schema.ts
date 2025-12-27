@@ -16,14 +16,18 @@ export const promoteInboxItemSchema = z.object({
 export type PromoteInboxItemFormData = z.infer<typeof promoteInboxItemSchema>;
 
 /**
- * Schema for creating a new inbox item (quick-add)
+ * Schema for creating a new inbox item (SCRATCHPAD MODE)
+ * ALL FIELDS ARE OPTIONAL - supports partial data entry
+ * UI layer enforces "at least one field exists" validation
  */
 export const createInboxItemSchema = z.object({
-  amount: z.number().positive('Amount must be positive'),
-  description: z.string().min(1, 'Description is required'),
+  amount: z.number().positive('Amount must be positive').nullable().optional(),
+  description: z.string().nullable().optional(),
   currency: z.string().length(3, 'Currency must be a 3-letter code').optional(),
   date: z.string().optional().nullable(),
   sourceText: z.string().optional().nullable(),
+  accountId: z.string().uuid('Invalid account ID').nullable().optional(),
+  categoryId: z.string().uuid('Invalid category ID').nullable().optional(),
 });
 
 export type CreateInboxItemFormData = z.infer<typeof createInboxItemSchema>;

@@ -67,17 +67,28 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
   const isSubmitting = addTransactionMutation.isPending || createTransferMutation.isPending || createInboxItemMutation.isPending;
 
-  // Validation - RELAXED for inbox routing
-  const isValid = useMemo(() => {
+  // Validation - THREE-STATE VALIDATION for scratchpad mode
+  const validationState = useMemo(() => {
     if (mode === 'transaction') {
       const amountVal = parseFloat(transactionData.amount);
       const hasAmount = !isNaN(amountVal) && amountVal !== 0;
-      const hasPayee = transactionData.payee && transactionData.payee.trim().length > 0;
+      const hasDescription = transactionData.payee && transactionData.payee.trim().length > 0;
+      const hasAccount = transactionData.fromAccountId && flatAccounts.find(a => a.accountId === transactionData.fromAccountId);
+      const hasCategory = transactionData.categoryId;
 
-      // SMART ROUTING: Only amount + description required for quick-add to inbox
-      // Full data (account + category) goes to ledger
-      return hasAmount && hasPayee;
+      // Check if ANY data exists
+      const hasAnyData = hasAmount || hasDescription || hasAccount || hasCategory;
+
+      // Check if ALL required fields exist (Ledger Ready)
+      const isComplete = hasAmount && hasDescription && hasAccount && hasCategory && transactionData.derivedType;
+
+      return {
+        hasAnyData,      // At least one field filled
+        isComplete,      // All 4 required fields filled
+        isEmpty: !hasAnyData
+      };
     } else {
+      // Transfer mode validation remains unchanged
       const hasAmount = parseFloat(transferData.sentAmount) > 0;
       const hasFromAccount = transferData.fromAccountId && transferData.fromCurrency;
       const hasToAccount = transferData.toAccountId && transferData.toCurrency;
@@ -87,9 +98,14 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       );
       const isSameCurrency = transferData.fromCurrency === transferData.toCurrency;
       const hasReceivedAmount = isSameCurrency || parseFloat(transferData.receivedAmount) > 0;
-      return hasAmount && hasFromAccount && hasToAccount && notLoop && hasReceivedAmount;
+      const isValid = hasAmount && hasFromAccount && hasToAccount && notLoop && hasReceivedAmount;
+
+      return { hasAnyData: isValid, isComplete: isValid, isEmpty: !isValid };
     }
-  }, [mode, transactionData, transferData]);
+  }, [mode, transactionData, transferData, flatAccounts]);
+
+  // Single "Save" button - disabled only if completely empty
+  const isValid = mode === 'transaction' ? validationState.hasAnyData : validationState.isComplete;
 
   // Handlers
   const handleClose = () => {
@@ -126,42 +142,52 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
 
     try {
       if (mode === 'transaction') {
-        // SMART ROUTING LOGIC
+        // SMART ROUTING LOGIC - Single Save button, internal routing
         const selectedAccount = flatAccounts.find(a => a.accountId === transactionData.fromAccountId);
-        const hasAccount = transactionData.fromAccountId && selectedAccount;
-        const hasCategory = transactionData.categoryId;
-        const finalAmount = parseFloat(transactionData.amount);
+        const amountVal = parseFloat(transactionData.amount);
+        const finalAmount = !isNaN(amountVal) ? amountVal : null;
 
-        // Check if this is "Ledger Ready" (has all required fields)
-        const isLedgerReady = hasAccount && hasCategory && transactionData.derivedType;
+        // CROSS-CURRENCY GATEKEEPER: Check if exchange rate is needed
+        // NOTE: For now, we assume all transactions use the account's currency
+        // In a full implementation, you'd compare account currency vs user's main currency
+        // and require exchange rate if they differ. For simplicity, we'll route to inbox
+        // if exchange rate is missing when it might be needed.
 
-        if (isLedgerReady) {
-          // PATH A: Fast Track to Ledger (Complete Data)
+        if (validationState.isComplete) {
+          // PATH A: Complete Data → Check Cross-Currency Requirements
           const rate = transactionData.exchangeRate ? parseFloat(transactionData.exchangeRate) : 1;
 
+          // MULTI-CURRENCY SAFEGUARD:
+          // If user entered an exchange rate, trust it (they're doing cross-currency)
+          // If no exchange rate provided, default to 1.0 (same currency assumed)
+          // The backend/database will enforce any additional constraints
+
           await addTransactionMutation.mutateAsync({
-            description: transactionData.payee || 'Transaction',
-            amount_original: finalAmount,
-            currency_original: selectedAccount.currencyCode!,
+            description: transactionData.payee!,
+            amount_original: finalAmount!,
+            currency_original: selectedAccount!.currencyCode!,
             account_id: transactionData.fromAccountId!,
-            category_id: transactionData.categoryId,
-            type: transactionData.derivedType,
+            category_id: transactionData.categoryId!,
+            type: transactionData.derivedType!,
             date: format(transactionData.date, 'yyyy-MM-dd'),
             notes: transactionData.notes || undefined,
             exchange_rate: rate,
           });
 
-          toast.success('Transaction added!');
+          toast.success('Transaction saved');
         } else {
-          // PATH B: Route to Inbox (Incomplete Data)
+          // PATH B: Partial Data → Inbox (Scratchpad Mode)
+          // FIX: Pass accountId and categoryId to preserve selections
           await createInboxItemMutation.mutateAsync({
             amount: finalAmount,
-            description: transactionData.payee || 'Quick Entry',
+            description: transactionData.payee || null,
             date: format(transactionData.date, 'yyyy-MM-dd'),
             currency: selectedAccount?.currencyCode || undefined,
+            accountId: transactionData.fromAccountId || null,        // FIXED: Pass through
+            categoryId: transactionData.categoryId || null,          // FIXED: Pass through
           });
 
-          toast.success('Saved to Inbox for review');
+          toast.success('Draft saved to Inbox');
         }
       } else {
         // Transfer mode

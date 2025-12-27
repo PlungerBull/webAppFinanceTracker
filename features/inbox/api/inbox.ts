@@ -203,9 +203,10 @@ export const inboxApi = {
   },
 
   /**
-   * Create Inbox Item - Quick-add functionality
-   * Minimal data required: amount + description
-   * Used for rapid transaction capture without full details
+   * Create Inbox Item - SCRATCHPAD MODE
+   * ALL FIELDS ARE OPTIONAL - supports partial data entry
+   * Used for rapid transaction capture with any level of completeness
+   * FIX: Now accepts and persists accountId/categoryId (fixes data loss bug)
    */
   create: async (params: CreateInboxItemParams) => {
     const supabase = createClient();
@@ -215,11 +216,13 @@ export const inboxApi = {
 
     const insertData = domainInboxItemToDbInsert({
       userId: user.id,
-      amount: params.amount,
-      description: params.description,
+      amount: params.amount ?? null,              // Explicitly null if missing
+      description: params.description ?? null,    // Explicitly null if missing
       currency: params.currency,
       date: params.date,
       sourceText: params.sourceText,
+      accountId: params.accountId ?? null,        // FIX: Pass through accountId
+      categoryId: params.categoryId ?? null,      // FIX: Pass through categoryId
       status: 'pending', // Always create as pending
     });
 

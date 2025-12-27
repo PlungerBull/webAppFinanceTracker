@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -168,12 +163,12 @@ export type Database = {
       transaction_inbox: {
         Row: {
           account_id: string | null
-          amount: number
+          amount: number | null
           category_id: string | null
           created_at: string
           currency: string
           date: string | null
-          description: string
+          description: string | null
           exchange_rate: number | null
           id: string
           source_text: string | null
@@ -183,12 +178,12 @@ export type Database = {
         }
         Insert: {
           account_id?: string | null
-          amount: number
+          amount?: number | null
           category_id?: string | null
           created_at?: string
           currency?: string
           date?: string | null
-          description: string
+          description?: string | null
           exchange_rate?: number | null
           id?: string
           source_text?: string | null
@@ -198,12 +193,12 @@ export type Database = {
         }
         Update: {
           account_id?: string | null
-          amount?: number
+          amount?: number | null
           category_id?: string | null
           created_at?: string
           currency?: string
           date?: string | null
-          description?: string
+          description?: string | null
           exchange_rate?: number | null
           id?: string
           source_text?: string | null
@@ -643,6 +638,7 @@ export type Database = {
             Args: {
               p_account_id: string
               p_new_currency_code: string
+              p_new_starting_balance: number
               p_old_currency_code: string
             }
             Returns: undefined
@@ -651,7 +647,6 @@ export type Database = {
             Args: {
               p_account_id: string
               p_new_currency_code: string
-              p_new_starting_balance: number
               p_old_currency_code: string
             }
             Returns: undefined
@@ -830,3 +825,4 @@ export const Constants = {
     },
   },
 } as const
+

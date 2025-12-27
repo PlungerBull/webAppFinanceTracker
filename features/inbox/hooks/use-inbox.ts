@@ -41,6 +41,11 @@ export function useUpdateInboxDraft() {
  * - Updates transactions list to show new transaction
  * - Updates account balance to reflect new spending
  *
+ * OPTIMISTIC UPDATES - "Vanishing Effect":
+ * - Immediately removes item from inbox UI before server response
+ * - Creates buttery smooth user experience
+ * - Rolls back on error
+ *
  * Accepts either PromoteInboxItemParams or InboxItem
  */
 export function usePromoteInboxItem() {
@@ -48,14 +53,33 @@ export function usePromoteInboxItem() {
 
   return useMutation({
     mutationFn: (params: PromoteInboxItemParams | InboxItem) => inboxApi.promote(params),
+    onMutate: async (params) => {
+      // Extract inbox ID from params
+      const inboxId = 'inboxId' in params ? params.inboxId : params.id;
+
+      // Cancel outgoing refetches to avoid race conditions
+      await queryClient.cancelQueries({ queryKey: INBOX.QUERY_KEYS.PENDING });
+
+      // Snapshot previous value for rollback
+      const previousInbox = queryClient.getQueryData<InboxItem[]>(INBOX.QUERY_KEYS.PENDING);
+
+      // Optimistically remove item from inbox list (VANISHING EFFECT)
+      queryClient.setQueryData<InboxItem[]>(INBOX.QUERY_KEYS.PENDING, (old) => {
+        return old?.filter(item => item.id !== inboxId) || [];
+      });
+
+      return { previousInbox };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error - restore previous inbox state
+      if (context?.previousInbox) {
+        queryClient.setQueryData(INBOX.QUERY_KEYS.PENDING, context.previousInbox);
+      }
+    },
     onSuccess: () => {
-      // Invalidate inbox queries - item should vanish from list
+      // Invalidate queries to ensure data is fresh
       queryClient.invalidateQueries({ queryKey: INBOX.QUERY_KEYS.ALL });
-
-      // Invalidate transactions queries - new transaction should appear
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
-
-      // Invalidate accounts queries - balance must update
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
   });
