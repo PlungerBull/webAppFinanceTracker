@@ -181,18 +181,59 @@ Opening balance transactions are identified by:
 
 ### 👁️ View: `transactions_view`
 
+**Updated:** 2025-12-26 - Expanded to include IDs and colors for editing support
+
 | Column | Type | Description |
 |---|---|---|
 | **id** | uuid | Transaction ID |
-| **date** | timestamptz | Transaction date |
+| **user_id** | uuid | User ID (for RLS/ownership checks) |
+| **account_id** | uuid | Account ID (required for editing) |
+| **category_id** | uuid | Category ID (required for editing) |
 | **description** | text | Transaction description |
 | **amount_original** | numeric | Amount in original currency |
 | **amount_home** | numeric | Amount in home currency |
 | **currency_original** | text | Original currency code |
-| **category_name** | text | Name of the associated category |
-| **category_type** | transaction_type | Type of the associated category |
+| **exchange_rate** | numeric | Exchange rate (required for editing) |
+| **date** | timestamptz | Transaction date |
+| **notes** | text | Transaction notes (required for editing) |
+| **transfer_id** | uuid | Transfer identifier (if part of a transfer) |
+| **created_at** | timestamptz | Creation timestamp |
+| **updated_at** | timestamptz | Last update timestamp |
 | **account_name** | text | Name of the associated account |
 | **account_currency** | text | Currency of the associated account |
+| **account_color** | text | Hex color of the associated account (for UI) |
+| **category_name** | text | Name of the associated category |
+| **category_color** | text | Hex color of the associated category (for UI) |
+| **category_type** | transaction_type | Type of the associated category |
+
+**SQL Definition:**
+```sql
+CREATE VIEW transactions_view AS
+SELECT
+  t.id,
+  t.user_id,
+  t.account_id,
+  t.category_id,
+  t.description,
+  t.amount_original,
+  t.amount_home,
+  t.currency_original,
+  t.exchange_rate,
+  t.date,
+  t.notes,
+  t.transfer_id,
+  t.created_at,
+  t.updated_at,
+  a.name AS account_name,
+  a.currency_code AS account_currency,
+  a.color AS account_color,
+  c.name AS category_name,
+  c.color AS category_color,
+  c.type AS category_type
+FROM transactions t
+LEFT JOIN bank_accounts a ON t.account_id = a.id
+LEFT JOIN categories c ON t.category_id = c.id;
+```
 
 ---
 
@@ -317,3 +358,18 @@ Opening balance transactions are identified by:
 - **Removed**: `reconcile_account_balance(uuid, numeric)` database function
 - **Reason**: Orphaned function - never integrated into application, no RPC calls exist
 - **Impact**: None - function was not used anywhere in the codebase
+
+### 2025-12-26: Fix transactions_view for Transaction Detail Panel (`20251226230345_fix_transactions_view_add_missing_fields.sql`)
+- **Problem**: Transaction detail panel showed "Select account..." and "Select category..." placeholders instead of displaying current values
+- **Root Cause**: The `transactions_view` only included display names (`account_name`, `category_name`) but NOT the IDs (`account_id`, `category_id`) needed for editing
+- **Solution**: Dropped and recreated `transactions_view` with complete field set:
+  - **Added IDs**: `user_id`, `account_id`, `category_id` (required for editing)
+  - **Added Metadata**: `exchange_rate`, `notes`, `transfer_id`, `created_at`, `updated_at`
+  - **Added Colors**: `account_color`, `category_color` (for UI indicators)
+- **Frontend Changes**:
+  - Updated `dbTransactionViewToDomain()` transformer to map new fields
+  - Added `accountColor` field to `TransactionView` domain type
+  - Fixed inbox table transformation to include `accountColor: null`
+  - Updated transaction list UI: Category tags now show color as background/text/border (removed vertical bar and dot)
+- **Impact**: Transaction detail panel now correctly displays selected account and category when editing transactions
+- **Migration**: Requires database migration via Supabase CLI, then TypeScript type regeneration

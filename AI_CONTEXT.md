@@ -139,9 +139,21 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Amount Color:** Gray (inbox) vs Green/Red based on category type (transaction)
 * **Component Structure:**
     * **IdentityHeader:** Editable payee (borderless input) + editable amount (monospaced, dynamic color)
-    * **FormSection:** Account, Category, Date, Notes fields with `space-y-8` spacing
+    * **FormSection:** Account, Category, Date, Notes fields with `space-y-4` spacing
+        * **Account Selector:** Shows selected account name + currency symbol (e.g., "BCP Credito S/")
+        * **Category Selector:** Shows selected category name with color dot
+        * **Date Picker:** Calendar popover with formatted date display
+        * **Notes Field:** Multiline textarea for transaction notes
     * **MissingInfoBanner:** Conditional orange warning when required fields are missing (inbox only)
     * **ActionFooter:** Pinned bottom buttons (mode-specific)
+* **Data Requirements (CRITICAL):**
+    * **transactions_view Database View:** Must include both IDs and display names:
+        * IDs: `account_id`, `category_id` (required for editing)
+        * Names: `account_name`, `category_name` (for display)
+        * Colors: `account_color`, `category_color` (for UI indicators)
+        * Metadata: `user_id`, `exchange_rate`, `notes`, `created_at`, `updated_at`
+    * **Data Transformer:** `dbTransactionViewToDomain()` maps all fields from view to domain types
+    * **Fix Applied (Dec 2025):** Updated view to include missing fields, preventing "NULL" accountId/categoryId bug
 * **Batch Save Pattern:**
     * All edits are staged in local state (`EditedFields` object)
     * NO auto-save on field change (prevents accidental edits)
@@ -156,10 +168,32 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * Scrollable content area with pinned action footer
 * **Design System:**
     * Typography: `text-[10px]` labels, `text-xl` payee, `text-3xl` amount
-    * Spacing: `px-6 py-6` panel padding, `space-y-8` form sections
+    * Spacing: `px-6 py-4` panel padding, `space-y-4` form sections
     * Colors: Orange (#f97316) for warnings, Blue (#2563eb) for inbox actions, Slate (#0f172a) for transaction actions
     * Form inputs: `bg-gray-50` default, `focus:bg-white`, `rounded-xl`
+    * SelectValue Pattern: Must include children content to display selected value (not just placeholder)
 * **IMPORTANT:** Never create separate detail panels for Inbox/Transactions. Always use the shared component with appropriate mode prop.
+
+### H. Transaction List UI Design (Card-Based Layout)
+* **Card Layout:** Each transaction is a white rounded card with subtle shadow on hover
+* **Transaction Card Structure:**
+    * **Left Column (Identity):**
+        * Transaction description (semibold, 14px, truncated)
+        * Category tag (10px uppercase, colored)
+        * Date (10px, gray)
+    * **Right Column (Amount):**
+        * Amount value (18px, monospaced, green for income / black for expense)
+        * Currency code (10px, gray)
+* **Category Tag Styling (CURRENT DESIGN):**
+    * **Background:** Category color at 12.5% opacity (`${categoryColor}20`)
+    * **Text:** Full category color, bold/semibold for visibility
+    * **Border:** Category color at 25% opacity (`${categoryColor}40`)
+    * **NO vertical bar** on card edge
+    * **NO color dot** next to category name
+    * Visual example: Blue category = light blue background + **BLUE** bold text + blue-tinted border
+* **Selection State:** Blue ring and border when selected (`ring-2 ring-blue-500/20 border-blue-200`)
+* **Spacing:** `space-y-2` between cards, `px-4 py-3` card padding
+* **Notes Indicator:** REMOVED (previously showed as small dot, now hidden)
 
 ## 5. Coding Standards "Do's and Don'ts"
 * **DO** use Zod schemas for all form inputs.
