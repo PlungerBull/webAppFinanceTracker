@@ -34,12 +34,11 @@ export function useGroupedAccounts() {
 
     return Array.from(grouped.entries()).map(([groupId, balances]) => {
       const first = balances[0];
-      // Clean name by removing currency suffix like " (USD)"
-      const cleanName = (first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT).split(' (')[0];
+      const name = first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT;
 
       return {
         groupId,
-        name: cleanName,
+        name: name,
         // TODO: color field not available in account_balances view - using default
         // View needs migration to add: SELECT ba.color
         color: ACCOUNT.DEFAULT_COLOR,

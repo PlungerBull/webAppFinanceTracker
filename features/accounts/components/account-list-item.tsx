@@ -76,7 +76,7 @@ export function AccountListItem({
 
       {/* Column 2: Account Name (1fr) */}
       <span className="text-xs font-medium truncate whitespace-nowrap">
-        {account.cleanName}
+        {account.name}
       </span>
 
       {/* Column 3: Currency Symbol (18px) - FROM DATABASE */}

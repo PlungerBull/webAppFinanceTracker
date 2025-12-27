@@ -14,13 +14,6 @@ export function useFlatAccounts() {
 
     return accounts
       .filter(acc => acc.isVisible === true)
-      .map(acc => ({
-        ...acc,
-        // ✅ REGEX ANCHORING: Only strip currency suffix at end of string
-        // Matches " (USD)", " (PEN)", etc. but NOT " (Joint) " in middle
-        // Preserves user-defined parentheses like "Savings (Joint) (USD)"
-        cleanName: (acc.name ?? '').replace(/\s\([A-Z]{3,4}\)$/, ''),
-      }))
       .sort((a, b) => {
         // Sort by type, then name, then currency
         const typeOrder = ['checking', 'savings', 'credit_card', 'investment', 'loan', 'cash', 'other'];
@@ -28,7 +21,7 @@ export function useFlatAccounts() {
         const typeB = typeOrder.indexOf(b.type ?? 'other');
 
         if (typeA !== typeB) return typeA - typeB;
-        if (a.cleanName !== b.cleanName) return a.cleanName.localeCompare(b.cleanName);
+        if (a.name !== b.name) return (a.name ?? '').localeCompare(b.name ?? '');
         return (a.currencyCode ?? '').localeCompare(b.currencyCode ?? '');
       });
   }, [accounts]);
@@ -36,4 +29,4 @@ export function useFlatAccounts() {
   return { flatAccounts, isLoading };
 }
 
-export type FlatAccount = AccountBalance & { cleanName: string };
+export type FlatAccount = AccountBalance;
