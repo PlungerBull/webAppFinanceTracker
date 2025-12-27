@@ -86,6 +86,11 @@ export interface Transaction {
  * - Each row represents ONE account with ONE currency
  * - Multiple accounts share the same groupId (e.g., "Chase Visa USD" and "Chase Visa PEN")
  * - Group accounts by groupId for display
+ *
+ * UI DISPLAY CONVENTION (Flat Currency Architecture):
+ * - ALWAYS use currencySymbol in UI (e.g., "$", "€", "S/")
+ * - NEVER use currencyCode in UI (e.g., "USD", "EUR", "PEN")
+ * - Display format: "${name} ${currencySymbol}" (e.g., "BCP Credito S/")
  */
 export interface AccountBalance {
   accountId: string | null;
@@ -96,7 +101,7 @@ export interface AccountBalance {
   currentBalance: number | null;
   color: string | null;
   isVisible: boolean | null;
-  currencySymbol: string | null;
+  currencySymbol: string | null; // CRITICAL: Always present in practice, use in UI instead of currencyCode
   createdAt: string | null;
   updatedAt: string | null;
 }

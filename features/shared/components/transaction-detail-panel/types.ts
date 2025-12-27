@@ -34,12 +34,14 @@ export interface EditedFields {
 
 /**
  * Account data for selectors
+ * CRITICAL: currencySymbol is REQUIRED per Flat Currency Architecture
+ * Always display as: ${name} ${currencySymbol} (e.g., "BCP Credito S/")
  */
 export interface SelectableAccount {
   id: string;
   name: string;
   currencyCode: string;
-  currencySymbol: string;
+  currencySymbol: string; // REQUIRED - never use currencyCode in UI
   color?: string;
 }
 

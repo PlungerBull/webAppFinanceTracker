@@ -67,6 +67,16 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * When user changes the account selection, the currency automatically updates to match the new account's currency
     * UI should display currency as read-only text, never as an input or selector
     * This applies to: Transaction forms, Inbox detail panel, Transaction detail panel, and all editing interfaces
+* **Account Display Convention (UI Naming Pattern):**
+    * **CRITICAL:** All account selectors MUST follow the format: `${Name} ${Symbol}`
+    * **ALWAYS use `currencySymbol`** (e.g., "$", "€", "S/") - NEVER use `currencyCode` (e.g., "USD", "EUR", "PEN")
+    * **Rationale:** Symbol is the visual differentiator users recognize. Code is redundant and clutters the UI.
+    * **Enforcement Scope:** This applies to ALL account selection interfaces:
+        * Add Transaction Modal (transaction-form.tsx) - SmartSelector component
+        * Transaction Detail Panel (form-section.tsx) - Radix Select component
+        * Account List Item (account-list-item.tsx) - Dashboard sidebar
+    * **Example:** "BCP Credito S/" ✅ NOT "BCP Credito (PEN)" ❌
+    * **Type Safety:** `SelectableAccount` interfaces must include `currencySymbol: string` as a required field
 
 ### A2. Category Architecture ("Invisible Grouping" Pattern)
 * **Strict Hierarchy, Flat UI:** Categories follow a two-level parent-child hierarchy in the database, but the UI presents only leaf nodes.

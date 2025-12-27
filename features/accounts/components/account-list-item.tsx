@@ -80,6 +80,7 @@ export function AccountListItem({
       </span>
 
       {/* Column 3: Currency Symbol (18px) - FROM DATABASE */}
+      {/* CRITICAL: Always use currencySymbol (not currencyCode) per Flat Currency Architecture */}
       <span className="text-[9px] font-bold text-right">
         {account.currencySymbol ?? account.currencyCode ?? ''}
       </span>

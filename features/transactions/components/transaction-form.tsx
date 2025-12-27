@@ -133,6 +133,7 @@ export function TransactionForm({
         <div className="flex items-center justify-center gap-3 mb-3">
           <div className="flex items-center justify-center gap-2 flex-wrap">
             {/* Account */}
+            {/* CRITICAL: Always use currencySymbol (not currencyCode) per Flat Currency Architecture */}
             <SmartSelector
               icon={CreditCard}
               label="Account"

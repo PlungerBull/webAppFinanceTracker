@@ -83,6 +83,7 @@ export function FormSection({
                     />
                   )}
                   <span>{selectedAccount.name}</span>
+                  {/* CRITICAL: Always use currencySymbol (not currencyCode) per Flat Currency Architecture */}
                   <span className="text-xs text-gray-400">{selectedAccount.currencySymbol}</span>
                 </div>
               ) : (
@@ -101,6 +102,7 @@ export function FormSection({
                     />
                   )}
                   <span>{account.name}</span>
+                  {/* CRITICAL: Always use currencySymbol (not currencyCode) per Flat Currency Architecture */}
                   <span className="text-xs text-gray-400">{account.currencySymbol}</span>
                 </div>
               </SelectItem>
