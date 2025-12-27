@@ -115,6 +115,12 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * No parent context shown (clean, minimal design)
     * Sorted: Income categories first, then Expense, then alphabetically
     * Hook: `useLeafCategories()` filters and returns only selectable categories
+* **Implementation (Dec 2025):**
+    * **Add Transaction Modal:** Uses `CategorySelector` component with built-in `useLeafCategories()` filtering (line 22 in category-selector.tsx)
+    * **Transaction Detail Panel:** Parent component (`all-transactions-table.tsx`) fetches leaf categories via `useLeafCategories()` and passes to detail panel
+    * **Inbox Detail Panel:** Component (`inbox-detail-panel.tsx`) fetches leaf categories directly via `useLeafCategories()` hook
+    * **CRITICAL:** All category selectors MUST use `useLeafCategories()` - NEVER `useCategories()` directly for user selection
+    * **Pattern:** Filter at the data source (hook level), not in the UI component (transformation level)
 
 ### B. Data Flow & Transformation (CRITICAL)
 * **Never return raw DB rows to components.**
@@ -146,15 +152,49 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * Use `tailwind-merge` and `clsx` (via the `cn` helper) for dynamic classes.
 * Prioritize Radix UI primitives for interactive elements (Dialogs, Popovers).
 
-### F. Data Entry Strategy (The "Staging" Pattern)
+### F. Data Entry Strategy (The "Scratchpad" Pattern - Updated 2025-12-27)
 * **The "Clean Ledger" Rule:** The main `transactions` table must ONLY contain complete, valid data (Amount + Date + Account + Category).
-* **The "Dirty Inbox" Rule:** Any incomplete data (e.g. Quick Adds with only Amount + Description) MUST be saved to `transaction_inbox`.
-* **Smart Routing:** When building forms, check for data completeness.
-    * *Complete Data* -> Write to Ledger (`transactions`).
-    * *Incomplete Data* -> Write to Inbox (`transaction_inbox`).
-* **Promotion:** Data moves from Inbox to Ledger via the `promote_inbox_item` RPC function, never via a direct `INSERT` + `DELETE` sequence.
+* **The "Scratchpad Inbox" Rule (NEW):** The `transaction_inbox` table now accepts PARTIAL data with relaxed constraints:
+    * **Database Schema:** `amount` and `description` columns are now NULLABLE (migration: `20251227160805_make_inbox_permissive.sql`)
+    * **Purpose:** Enable frictionless data entry - users can save ANY amount of information instantly
+    * **Examples:** Just an amount, just a category, just a description - all valid inbox states
+* **Smart Routing:** When building forms, check for data completeness:
+    * **Complete Data (4 fields):** Amount + Description + Account + Category -> Write to Ledger (`transactions`)
+    * **Partial Data (1-3 fields):** Any subset of fields -> Write to Inbox (`transaction_inbox`)
+    * **Implementation:** Three-state validation (Empty → Partial → Complete) with single "Save" button
+* **Promotion with Hard-Gate Validation (CRITICAL):**
+    * Data moves from Inbox to Ledger via the `promote_inbox_item` RPC function
+    * **Server-Side Hard-Gate:** RPC function explicitly validates ALL required fields before promotion:
+        * `account_id IS NULL` → RAISE EXCEPTION 'Account ID is required'
+        * `category_id IS NULL` → RAISE EXCEPTION 'Category ID is required'
+        * `amount IS NULL` → RAISE EXCEPTION 'Amount is required'
+        * `description IS NULL OR trim(description) = ''` → RAISE EXCEPTION 'Description is required'
+        * `date IS NULL` → RAISE EXCEPTION 'Date is required'
+    * **Audit Trail:** Promotion now marks items as `status='processed'` instead of deleting (migration: `20251227215819_add_promote_inbox_hardgate_validation.sql`)
+    * **Frontend Cannot Bypass:** Database-level validation ensures ledger integrity regardless of frontend state
+* **Auto-Promotion:** When editing inbox items in the detail panel, if all 4 required fields are complete, the item is automatically promoted to the ledger (with "vanishing effect")
+* **Optimistic UI:** Promoted items disappear instantly from inbox list (onMutate), with robust rollback on error (onError restores snapshot)
 
-### G. Transaction Detail Panel Architecture (Unified Reconciliation Engine)
+### G. Data Normalization Pattern (Centralized Transformer - Added 2025-12-27)
+* **The Problem:** Database uses `null` for missing values, but TypeScript optional properties use `undefined`. Mixing both creates type confusion.
+* **The Solution:** Centralized bidirectional conversion in the data transformer layer:
+    * **Database → Domain:** `dbInboxItemToDomain()` converts `null → undefined` for all optional fields
+    * **Domain → Database:** `domainInboxItemToDbInsert()` converts `undefined → null` for database storage
+* **Domain Types Use Optional Properties:**
+    * **Good:** `interface InboxItem { amount?: number }` (single type: `number | undefined`)
+    * **Bad:** `interface InboxItem { amount: number | null }` (dual types: confusing!)
+    * **Exception:** Update params use explicit null unions (`amount?: number | null`) to differentiate "not provided" (undefined) vs "clear value" (null)
+* **Benefits:**
+    * Components only see `undefined`, never `null`
+    * Single source of truth for conversion logic
+    * Type safety without dual null/undefined checks
+    * Follows project architecture standards
+* **Implementation:**
+    * Transformer: `lib/types/data-transformers.ts`
+    * Domain Types: `features/inbox/types.ts`, `features/shared/components/transaction-detail-panel/types.ts`
+    * API Layer: `features/inbox/api/inbox.ts` uses transformer for all database operations
+
+### H. Transaction Detail Panel Architecture (Unified Reconciliation Engine)
 * **Shared Component Pattern:** Both Inbox and Transactions views use the SAME detail panel component located at `features/shared/components/transaction-detail-panel/`.
 * **Mode-Based Behavior:** The panel accepts a `mode` prop ('inbox' | 'transaction') that controls:
     * **Button Text:** "Promote to Ledger" (inbox) vs "Keep Changes" (transaction)
@@ -162,11 +202,16 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Warning Banner:** Orange missing info banner shows only in inbox mode
     * **Amount Color:** Gray (inbox) vs Green/Red based on category type (transaction)
 * **Component Structure:**
-    * **IdentityHeader:** Editable payee (borderless input) + editable amount (monospaced, dynamic color)
-    * **FormSection:** Account, Category, Date, Notes fields with `space-y-4` spacing
+    * **IdentityHeader:** Editable payee (borderless input with "No description" placeholder) + editable amount (monospaced, dynamic color)
+    * **FormSection:** Account, Category, Date, Exchange Rate (conditional), Notes fields with `space-y-4` spacing
         * **Account Selector:** Shows selected account name + currency symbol (e.g., "BCP Credito S/")
         * **Category Selector:** Shows selected category name with color dot
         * **Date Picker:** Calendar popover with formatted date display
+        * **Exchange Rate Field (NEW - Reactive):** Only appears when selected account currency differs from transaction currency
+            * Shows "REQUIRED" badge in orange when visible
+            * Orange border when empty to draw attention
+            * Displays conversion helper: "1 USD = ? EUR"
+            * 4 decimal precision for accurate rates
         * **Notes Field:** Multiline textarea for transaction notes
     * **MissingInfoBanner:** Conditional orange warning when required fields are missing (inbox only)
     * **ActionFooter:** Pinned bottom buttons (mode-specific)
@@ -198,7 +243,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * SelectValue Pattern: Must include children content to display selected value (not just placeholder)
 * **IMPORTANT:** Never create separate detail panels for Inbox/Transactions. Always use the shared component with appropriate mode prop.
 
-### H. Transaction List UI Design (Card-Based Layout)
+### I. Transaction List UI Design (Card-Based Layout)
 * **Card Layout:** Each transaction is a white rounded card with subtle shadow on hover
 * **Transaction Card Structure:**
     * **Left Column (Identity):**

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { TransactionDetailPanel as SharedPanel } from '@/features/shared/components/transaction-detail-panel';
 import type { PanelData, SelectableAccount, SelectableCategory } from '@/features/shared/components/transaction-detail-panel';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
-import { useCategories } from '@/features/categories/hooks/use-categories';
+import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import type { InboxItem } from '../types';
 import { toast } from 'sonner';
@@ -18,7 +18,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   const promoteMutation = usePromoteInboxItem();
   const dismissMutation = useDismissInboxItem();
   const updateDraftMutation = useUpdateInboxDraft();
-  const { data: categories = [] } = useCategories();
+  const leafCategories = useLeafCategories();
   const { data: accountsData = [] } = useAccounts();
 
   // Transform InboxItem to PanelData
@@ -50,18 +50,16 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     [accountsData]
   );
 
-  // Transform categories to SelectableCategory format
+  // Transform leaf categories to SelectableCategory format
   const selectableCategories: SelectableCategory[] = useMemo(
     () =>
-      categories
-        .filter((cat) => cat.id !== null)
-        .map((cat) => ({
-          id: cat.id!,
-          name: cat.name || 'Unnamed Category',
-          color: cat.color || '#3b82f6',
-          type: (cat.type as 'income' | 'expense') || 'expense',
-        })),
-    [categories]
+      leafCategories.map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        color: cat.color,
+        type: cat.type,
+      })),
+    [leafCategories]
   );
 
   // Handle partial save - Update draft without promoting

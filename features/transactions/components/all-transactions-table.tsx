@@ -8,7 +8,7 @@ import { TransactionList } from '@/features/transactions/components/transaction-
 import { TransactionDetailPanel } from '@/features/transactions/components/transaction-detail-panel';
 import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
 import { useTransactions } from '../hooks/use-transactions';
-import { useCategories } from '@/features/categories/hooks/use-categories';
+import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import type { TransactionRow } from '../types';
@@ -56,7 +56,7 @@ function TransactionsContent() {
     date: selectedDate,
   });
 
-  const { data: categories = [] } = useCategories();
+  const categories = useLeafCategories();
   const { data: accountsData = [] } = useGroupedAccounts(); // Still needed for sidebar
   const { data: flatAccounts = [] } = useAccounts(); // Flat accounts with currencySymbol for detail panel
 
