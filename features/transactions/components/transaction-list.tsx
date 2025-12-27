@@ -253,16 +253,10 @@ export function TransactionList({
                 <div className="flex items-start justify-between gap-4">
                   {/* LEFT COLUMN: Identity */}
                   <div className="flex-1 min-w-0 space-y-1.5">
-                    {/* Payee Name + Notes Indicator */}
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {transaction.description || 'Untitled Transaction'}
-                      </p>
-                      {/* Notes indicator */}
-                      {transaction.notes && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-                      )}
-                    </div>
+                    {/* Payee Name */}
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {transaction.description || 'Untitled Transaction'}
+                    </p>
 
                     {/* Category Pill + Date */}
                     <div className="flex items-center gap-2">
