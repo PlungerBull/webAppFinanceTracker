@@ -19,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useCurrency } from '@/contexts/currency-context';
 import type { PanelMode, EditedFields, PanelData, SelectableAccount, SelectableCategory } from './types';
 
 interface FormSectionProps {
@@ -38,6 +39,9 @@ export function FormSection({
   accounts,
   categories,
 }: FormSectionProps) {
+  // Access user's main currency
+  const { mainCurrency } = useCurrency();
+
   const selectedAccountId = editedFields.accountId ?? data.accountId;
   const selectedCategoryId = editedFields.categoryId ?? data.categoryId;
   const selectedDate = editedFields.date ?? data.date;
@@ -55,8 +59,9 @@ export function FormSection({
   const parsedDate = selectedDate ? new Date(selectedDate) : undefined;
 
   // MULTI-CURRENCY GATEKEEPER: Detect currency mismatch
-  // Show exchange rate field only when selected account currency differs from transaction currency
-  const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== data.currency;
+  // Show exchange rate field only when selected account currency differs from user's main currency
+  // CRITICAL: Compare to mainCurrency (NOT data.currency which is temporary import metadata)
+  const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== mainCurrency;
   const exchangeRateValue = editedFields.exchangeRate ?? undefined;
 
   return (
@@ -232,7 +237,7 @@ export function FormSection({
               )}
             />
             <p className="text-xs text-gray-500 px-1">
-              1 {data.currency} = ? {selectedAccount?.currencyCode}
+              1 {mainCurrency} = ? {selectedAccount?.currencyCode}
             </p>
           </div>
         </div>

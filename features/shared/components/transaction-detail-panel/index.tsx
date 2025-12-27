@@ -6,6 +6,8 @@ import { FormSection } from './form-section';
 import { MissingInfoBanner } from './missing-info-banner';
 import { ActionFooter } from './action-footer';
 import { calculateLedgerReadiness } from './utils/readiness';
+import { useCurrency } from '@/contexts/currency-context';
+import { useUserSettings } from '@/features/settings/hooks/use-user-settings';
 import type { TransactionDetailPanelProps, EditedFields } from './types';
 
 export function TransactionDetailPanel({
@@ -24,6 +26,14 @@ export function TransactionDetailPanel({
   const [editedFields, setEditedFields] = useState<EditedFields>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Access main currency and check if settings are still loading
+  const { mainCurrency } = useCurrency();  // May be default USD during load
+  const { isLoading: isSettingsLoading } = useUserSettings();  // Check if still loading
+
+  // CRITICAL: Treat as loading if settings not yet resolved
+  // Prevents user from saving with wrong currency assumption
+  const isSettingsReady = !isSettingsLoading;
+
   // Track unsaved changes
   useEffect(() => {
     const hasChanges = Object.keys(editedFields).length > 0;
@@ -41,10 +51,16 @@ export function TransactionDetailPanel({
   // Calculate ledger readiness (for BOTH modes)
   // Inbox: uses for routing between draft/promote
   // Transaction: uses for validation enforcement
-  const ledgerReadiness = calculateLedgerReadiness(data, editedFields, accounts);
+  // CRITICAL: Only calculate when settings loaded to avoid wrong currency comparison
+  const ledgerReadiness = isSettingsReady
+    ? calculateLedgerReadiness(data, editedFields, accounts, mainCurrency)
+    : { isReady: false, canSaveDraft: false, missingFields: [] };
 
   // Handle save with Smart Save routing
   const handleSave = async () => {
+    // Safety check: Don't save if settings still loading
+    if (!isSettingsReady) return;
+
     if (mode === 'inbox' && onPartialSave && onPromote) {
       // SMART SAVE ROUTING
       if (ledgerReadiness.isReady) {
@@ -132,7 +148,7 @@ export function TransactionDetailPanel({
         hasUnsavedChanges={hasUnsavedChanges}
         canPromote={canPromote}  // Legacy fallback
         ledgerReadiness={ledgerReadiness}  // NEW: Rich readiness state
-        isLoading={isLoading}
+        isLoading={isLoading || !isSettingsReady}  // Disable button during settings load
       />
     </div>
   );

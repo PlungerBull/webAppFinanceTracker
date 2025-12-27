@@ -19,6 +19,7 @@ export interface PanelData {
   categoryId?: string;
   date?: string;
   notes?: string;
+  exchangeRate?: number;  // For cross-currency transactions
 }
 
 /**

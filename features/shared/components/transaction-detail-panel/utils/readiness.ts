@@ -36,21 +36,24 @@ interface SelectableAccount {
  * - Account: Must be selected
  * - Category: Must be selected
  * - Date: Must be present
- * - Exchange Rate: Required ONLY if account currency differs from transaction currency
+ * - Exchange Rate: Required ONLY if account currency differs from user's main currency
  *
  * CRITICAL: Uses currencyCode for logic (NOT currencySymbol)
  * - currencySymbol is for UI display ONLY
  * - currencyCode is the source of truth for validation
+ * - Compare to mainCurrency (NOT data.currency which is temporary import metadata)
  *
  * @param data - Current panel data
  * @param editedFields - User edits (takes precedence over data)
  * @param accounts - Available accounts (for currency check)
+ * @param mainCurrency - User's main currency from settings (for cross-currency detection)
  * @returns Readiness state with detailed missing fields
  */
 export function calculateLedgerReadiness(
   data: PanelData,
   editedFields: EditedFields,
-  _accounts: SelectableAccount[] // Not used for inbox - transactions inherit account currency
+  accounts: SelectableAccount[],
+  mainCurrency: string
 ): LedgerReadinessState {
   const missing: ReadinessField[] = [];
 
@@ -82,10 +85,20 @@ export function calculateLedgerReadiness(
     missing.push('date');
   }
 
-  // Multi-currency check: Exchange rate NOT required for inbox items
-  // Inbox transactions inherit currency from the selected account
-  // No exchange rate validation needed since there's no "original currency"
-  // The transaction will adopt the account's currency when promoted
+  // Multi-currency validation: Exchange rate required when account differs from main currency
+  // CRITICAL: Compare account currency to mainCurrency (NOT data.currency)
+  // - data.currency is temporary import metadata
+  // - Transactions inherit currency from their account
+  // - Exchange rate needed when account currency ≠ user's main currency
+  const finalExchangeRate = editedFields.exchangeRate ?? data.exchangeRate;
+  const selectedAccount = accounts.find(a => a.id === finalAccountId);
+
+  if (selectedAccount && selectedAccount.currencyCode !== mainCurrency) {
+    // Cross-currency transaction: account currency differs from user's main currency
+    if (!finalExchangeRate || finalExchangeRate === 0) {
+      missing.push('exchangeRate');
+    }
+  }
 
   // Calculate readiness state
   const isReady = missing.length === 0;
