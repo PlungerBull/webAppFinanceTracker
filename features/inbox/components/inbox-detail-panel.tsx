@@ -64,8 +64,9 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     [categories]
   );
 
-  // Handle save with AUTO-PROMOTION and MULTI-CURRENCY GATEKEEPER
-  const handleSave = async (updates: {
+  // Handle partial save - Update draft without promoting
+  // Used when item is incomplete (missing required fields)
+  const handlePartialSave = async (updates: {
     description?: string;
     amount?: number;
     accountId?: string;
@@ -76,17 +77,63 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   }) => {
     if (!item) return;
 
-    // Extract final values with fallbacks to item data
+    // Extract final values with fallbacks
     const finalAmount = updates.amount ?? item.amount;
     const finalDescription = updates.description ?? item.description;
-    const accountId = updates.accountId || item.accountId;
-    const categoryId = updates.categoryId || item.categoryId;
-    const finalDate = updates.date || item.date || new Date().toISOString();
+    const accountId = updates.accountId ?? item.accountId;
+    const categoryId = updates.categoryId ?? item.categoryId;
+    const finalDate = updates.date ?? item.date ?? new Date().toISOString();
     const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate;
+
+    try {
+      await updateDraftMutation.mutateAsync({
+        id: item.id,
+        updates: {
+          amount: finalAmount ?? null,
+          description: finalDescription ?? null,
+          accountId: accountId ?? null,
+          categoryId: categoryId ?? null,
+          date: finalDate ?? null,
+          exchangeRate: finalExchangeRate ?? null,
+        }
+      });
+      toast.success('Draft saved');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save draft');
+    }
+  };
+
+  // Handle promotion - Move to ledger (all fields required)
+  // This handler is ONLY called when item is ledger-ready
+  const handlePromote = async (updates: {
+    description?: string;
+    amount?: number;
+    accountId?: string;
+    categoryId?: string;
+    date?: string;
+    notes?: string;
+    exchangeRate?: number;
+  }) => {
+    if (!item) return;
+
+    // Extract final values with fallbacks
+    const finalAmount = updates.amount ?? item.amount;
+    const finalDescription = updates.description ?? item.description;
+    const accountId = updates.accountId ?? item.accountId;
+    const categoryId = updates.categoryId ?? item.categoryId;
+    const finalDate = updates.date ?? item.date ?? new Date().toISOString();
+
+    // SAFETY CHECK: These should never be null/undefined here
+    // because readiness calculator ensures they're present
+    if (!accountId || !categoryId) {
+      toast.error('Account and category are required');
+      return;
+    }
 
     // Get selected account for currency check
     const selectedAccount = accountsData.find(a => a.accountId === accountId);
     const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== item.currency;
+    const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate;
 
     // MULTI-CURRENCY GATEKEEPER: Block if exchange rate is missing when required
     if (requiresExchangeRate && (!finalExchangeRate || finalExchangeRate === 0)) {
@@ -94,41 +141,20 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
       return;
     }
 
-    // Check if all required fields are now present (completeness check)
-    const isComplete =
-      accountId &&
-      categoryId &&
-      finalAmount !== undefined &&
-      finalDescription?.trim() &&
-      (!requiresExchangeRate || finalExchangeRate); // Exchange rate required if currencies differ
-
     try {
-      if (isComplete) {
-        // AUTO-PROMOTE: All fields present → move to ledger with "vanishing effect"
-        await promoteMutation.mutateAsync({
-          inboxId: item.id,
-          accountId: accountId!,
-          categoryId: categoryId!,
-          finalDescription: finalDescription!,
-          finalAmount: finalAmount!,
-          finalDate,
-        });
-        toast.success('Moved to transaction ledger');
-      } else {
-        // PARTIAL UPDATE: Some fields missing → update inbox item
-        await updateDraftMutation.mutateAsync({
-          id: item.id,
-          updates: {
-            amount: finalAmount ?? null,
-            description: finalDescription ?? null,
-            accountId: accountId ?? null,
-            categoryId: categoryId ?? null,
-            date: finalDate ?? null,
-            exchangeRate: finalExchangeRate ?? null,
-          }
-        });
-        toast.success('Draft updated');
-      }
+      // ⚠️ ATOMIC PROMOTION REQUIREMENT (CTO Critical)
+      // MUST use promote_inbox_item RPC - atomic database operation
+      // Ensures inbox → ledger move happens in single transaction
+      // NEVER replace with manual INSERT + DELETE pattern
+      await promoteMutation.mutateAsync({
+        inboxId: item.id,
+        accountId: accountId,
+        categoryId: categoryId,
+        finalDescription: finalDescription ?? '',
+        finalAmount: finalAmount ?? 0,
+        finalDate,
+      });
+      toast.success('Moved to transaction ledger');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : INBOX.API.ERRORS.PROMOTE_FAILED);
     }
@@ -165,10 +191,11 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
       data={panelData}
       accounts={selectableAccounts}
       categories={selectableCategories}
-      onSave={handleSave}
+      onPartialSave={handlePartialSave}
+      onPromote={handlePromote}
       onDelete={handleDelete}
       onClose={handleClose}
-      isLoading={promoteMutation.isPending || dismissMutation.isPending}
+      isLoading={promoteMutation.isPending || dismissMutation.isPending || updateDraftMutation.isPending}
     />
   );
 }

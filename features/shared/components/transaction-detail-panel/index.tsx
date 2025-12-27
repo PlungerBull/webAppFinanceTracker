@@ -5,6 +5,7 @@ import { IdentityHeader } from './identity-header';
 import { FormSection } from './form-section';
 import { MissingInfoBanner } from './missing-info-banner';
 import { ActionFooter } from './action-footer';
+import { calculateLedgerReadiness } from './utils/readiness';
 import type { TransactionDetailPanelProps, EditedFields } from './types';
 
 export function TransactionDetailPanel({
@@ -13,6 +14,8 @@ export function TransactionDetailPanel({
   accounts,
   categories,
   onSave,
+  onPartialSave,
+  onPromote,
   onDelete,
   onClose,
   isLoading = false,
@@ -35,9 +38,27 @@ export function TransactionDetailPanel({
     }));
   };
 
-  // Handle save
+  // Calculate ledger readiness (for BOTH modes)
+  // Inbox: uses for routing between draft/promote
+  // Transaction: uses for validation enforcement
+  const ledgerReadiness = calculateLedgerReadiness(data, editedFields, accounts);
+
+  // Handle save with Smart Save routing
   const handleSave = async () => {
-    await onSave(editedFields);
+    if (mode === 'inbox' && onPartialSave && onPromote) {
+      // SMART SAVE ROUTING
+      if (ledgerReadiness.isReady) {
+        // All fields complete → Promote to ledger
+        await onPromote(editedFields);
+      } else if (ledgerReadiness.canSaveDraft) {
+        // Partial data → Save as draft
+        await onPartialSave(editedFields);
+      }
+      // If nothing edited, do nothing (button should be disabled)
+    } else if (onSave) {
+      // TRANSACTION MODE: Use legacy save
+      await onSave(editedFields);
+    }
     // Clear edited fields after successful save
     setEditedFields({});
   };
@@ -99,8 +120,8 @@ export function TransactionDetailPanel({
           categories={categories}
         />
 
-        {/* Missing Info Banner (Inbox only) */}
-        <MissingInfoBanner mode={mode} data={data} editedFields={editedFields} />
+        {/* Missing Info Banner (shows in both modes when incomplete) */}
+        <MissingInfoBanner mode={mode} ledgerReadiness={ledgerReadiness} />
       </div>
 
       {/* Action Footer (Pinned) */}
@@ -109,7 +130,8 @@ export function TransactionDetailPanel({
         onSave={handleSave}
         onDelete={handleDelete}
         hasUnsavedChanges={hasUnsavedChanges}
-        canPromote={canPromote}
+        canPromote={canPromote}  // Legacy fallback
+        ledgerReadiness={ledgerReadiness}  // NEW: Rich readiness state
         isLoading={isLoading}
       />
     </div>

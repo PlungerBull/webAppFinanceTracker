@@ -70,14 +70,28 @@ export interface ValidationErrors {
 }
 
 /**
+ * Readiness state for ledger validation
+ * Exported from readiness utility, re-exported here for convenience
+ */
+export type { LedgerReadinessState, ReadinessField } from './utils/readiness';
+
+/**
  * Props for the main TransactionDetailPanel component
+ * Supports both legacy single callback (transaction mode) and dual callbacks (inbox mode)
  */
 export interface TransactionDetailPanelProps {
   mode: PanelMode;
   data: PanelData;
   accounts: SelectableAccount[];
   categories: SelectableCategory[];
-  onSave: (updates: EditedFields) => Promise<void>;
+
+  // Legacy single callback (used by transaction mode)
+  onSave?: (updates: EditedFields) => Promise<void>;
+
+  // Inbox dual callbacks (Smart Save pattern)
+  onPartialSave?: (updates: EditedFields) => Promise<void>;  // Draft save
+  onPromote?: (updates: EditedFields) => Promise<void>;      // Ledger promotion
+
   onDelete: () => Promise<void>;
   onClose?: () => void;
   isLoading?: boolean;
