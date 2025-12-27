@@ -18,6 +18,7 @@ function InboxContent() {
     userId: item.userId,
     accountId: item.accountId || '',
     accountName: item.account?.name || 'Unassigned',
+    accountColor: null, // Inbox items don't have account color joined yet
     amountOriginal: item.amount,
     amountHome: item.amount,
     currencyOriginal: item.currency,

@@ -36,6 +36,7 @@ export interface TransactionView {
   userId: string;
   accountId: string;
   accountName: string;
+  accountColor: string | null;   // Added: For UI color indicators
   amountOriginal: number;
   amountHome: number;
   currencyOriginal: string;

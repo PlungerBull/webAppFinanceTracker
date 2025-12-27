@@ -429,28 +429,34 @@ export function dbTransactionsToDomain(
 export function dbTransactionViewToDomain(
   dbTransactionView: Database['public']['Views']['transactions_view']['Row']
 ): TransactionView {
-  // Note: transactions_view is a simplified view with limited fields
-  // For full transaction data, use the transactions table directly
+  // Note: transactions_view now includes all necessary fields for both display and editing
   return {
-    // Critical fields
+    // IDs (now available from view)
     id: dbTransactionView.id || '',
-    userId: '', // Not included in view
-    accountId: '', // Not included in view
-    accountName: dbTransactionView.account_name || 'Unknown Account',
+    userId: dbTransactionView.user_id || '',
+    accountId: dbTransactionView.account_id || '', // FIXED: Now uses actual field
+    categoryId: dbTransactionView.category_id,      // FIXED: Now uses actual field
+
+    // Amounts and currency
     amountOriginal: dbTransactionView.amount_original ?? 0,
     amountHome: dbTransactionView.amount_home ?? 0,
     currencyOriginal: dbTransactionView.currency_original || 'USD',
-    exchangeRate: 1, // Not included in view
+    exchangeRate: dbTransactionView.exchange_rate ?? 1, // FIXED: Now uses actual field
+
+    // Dates
     date: dbTransactionView.date || new Date().toISOString(),
-    createdAt: '', // Not included in view
-    updatedAt: '', // Not included in view
+    createdAt: dbTransactionView.created_at || '',  // FIXED: Now uses actual field
+    updatedAt: dbTransactionView.updated_at || '',  // FIXED: Now uses actual field
+
+    // Joined display data
+    accountName: dbTransactionView.account_name || 'Unknown Account',
+    accountColor: dbTransactionView.account_color,  // FIXED: Now uses actual field
+    categoryName: dbTransactionView.category_name,
+    categoryColor: dbTransactionView.category_color, // FIXED: Now uses actual field
 
     // Optional fields
-    categoryId: null, // Not included in view
-    categoryName: dbTransactionView.category_name,
-    categoryColor: null, // Not included in view
     description: dbTransactionView.description,
-    notes: null, // Not included in view
+    notes: dbTransactionView.notes,                 // FIXED: Now uses actual field
   };
 }
 

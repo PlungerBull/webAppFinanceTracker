@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npm install @radix-ui/react-icons)",
       "Bash(npm run dev:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx supabase gen types:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

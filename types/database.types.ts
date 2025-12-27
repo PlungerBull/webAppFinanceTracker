@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -464,16 +469,26 @@ export type Database = {
       }
       transactions_view: {
         Row: {
+          account_color: string | null
           account_currency: string | null
+          account_id: string | null
           account_name: string | null
           amount_home: number | null
           amount_original: number | null
+          category_color: string | null
+          category_id: string | null
           category_name: string | null
           category_type: Database["public"]["Enums"]["transaction_type"] | null
+          created_at: string | null
           currency_original: string | null
           date: string | null
           description: string | null
+          exchange_rate: number | null
           id: string | null
+          notes: string | null
+          transfer_id: string | null
+          updated_at: string | null
+          user_id: string | null
         }
         Relationships: [
           {
@@ -489,6 +504,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories_with_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "parent_categories_with_counts"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -593,7 +643,6 @@ export type Database = {
             Args: {
               p_account_id: string
               p_new_currency_code: string
-              p_new_starting_balance: number
               p_old_currency_code: string
             }
             Returns: undefined
@@ -602,6 +651,7 @@ export type Database = {
             Args: {
               p_account_id: string
               p_new_currency_code: string
+              p_new_starting_balance: number
               p_old_currency_code: string
             }
             Returns: undefined
@@ -780,4 +830,3 @@ export const Constants = {
     },
   },
 } as const
-
