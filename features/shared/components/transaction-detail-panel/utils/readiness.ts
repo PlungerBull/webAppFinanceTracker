@@ -50,7 +50,7 @@ interface SelectableAccount {
 export function calculateLedgerReadiness(
   data: PanelData,
   editedFields: EditedFields,
-  accounts: SelectableAccount[]
+  _accounts: SelectableAccount[] // Not used for inbox - transactions inherit account currency
 ): LedgerReadinessState {
   const missing: ReadinessField[] = [];
 
@@ -60,7 +60,6 @@ export function calculateLedgerReadiness(
   const finalAccountId = editedFields.accountId ?? data.accountId;
   const finalCategoryId = editedFields.categoryId ?? data.categoryId;
   const finalDate = editedFields.date ?? data.date;
-  const finalExchangeRate = editedFields.exchangeRate;
 
   // Check each required field
   if (!finalAmount || finalAmount === 0) {
@@ -83,14 +82,10 @@ export function calculateLedgerReadiness(
     missing.push('date');
   }
 
-  // Multi-currency check: Exchange rate required if currencies differ
-  // CRITICAL: Use currencyCode for validation logic
-  const selectedAccount = accounts.find(acc => acc.id === finalAccountId);
-  const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== data.currency;
-
-  if (requiresExchangeRate && (!finalExchangeRate || finalExchangeRate === 0)) {
-    missing.push('exchangeRate');
-  }
+  // Multi-currency check: Exchange rate NOT required for inbox items
+  // Inbox transactions inherit currency from the selected account
+  // No exchange rate validation needed since there's no "original currency"
+  // The transaction will adopt the account's currency when promoted
 
   // Calculate readiness state
   const isReady = missing.length === 0;
