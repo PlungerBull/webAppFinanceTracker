@@ -250,14 +250,6 @@ export function TransactionList({
                   !onTransactionSelect && 'cursor-default hover:shadow-none'
                 )}
               >
-                {/* Category color indicator (left border accent) */}
-                {transaction.categoryColor && (
-                  <div
-                    className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-                    style={{ backgroundColor: transaction.categoryColor }}
-                  />
-                )}
-
                 <div className="flex items-start justify-between gap-4">
                   {/* LEFT COLUMN: Identity */}
                   <div className="flex-1 min-w-0 space-y-1.5">
@@ -274,14 +266,20 @@ export function TransactionList({
 
                     {/* Category Pill + Date */}
                     <div className="flex items-center gap-2">
-                      {/* Category color dot */}
-                      {transaction.categoryColor && (
-                        <div
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: transaction.categoryColor }}
-                        />
-                      )}
-                      <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wide bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-md">
+                      <span
+                        className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md"
+                        style={{
+                          backgroundColor: transaction.categoryColor
+                            ? `${transaction.categoryColor}20` // 20 = 12.5% opacity in hex
+                            : '#f9fafb',
+                          color: transaction.categoryColor || '#6b7280',
+                          borderWidth: '1px',
+                          borderStyle: 'solid',
+                          borderColor: transaction.categoryColor
+                            ? `${transaction.categoryColor}40` // 40 = 25% opacity in hex
+                            : '#e5e7eb'
+                        }}
+                      >
                         {transaction.categoryName || 'Uncategorized'}
                       </span>
                       {/* Date */}
