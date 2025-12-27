@@ -194,12 +194,32 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * Domain Types: `features/inbox/types.ts`, `features/shared/components/transaction-detail-panel/types.ts`
     * API Layer: `features/inbox/api/inbox.ts` uses transformer for all database operations
 
-### H. Transaction Detail Panel Architecture (Unified Reconciliation Engine)
+### H. Transaction Detail Panel Architecture (Unified Reconciliation Engine with Smart Save)
 * **Shared Component Pattern:** Both Inbox and Transactions views use the SAME detail panel component located at `features/shared/components/transaction-detail-panel/`.
+* **Smart Save System (NEW - Dec 2025):** Intelligent button routing based on data completeness:
+    * **Inbox Mode - Dual Callbacks:**
+        * `onPartialSave`: Saves incomplete data as draft in inbox
+        * `onPromote`: Validates completeness & promotes to ledger (atomic via `promote_inbox_item` RPC)
+    * **Transaction Mode - Single Callback:**
+        * `onSave`: Updates existing transaction (requires complete data - Sacred Ledger Rule)
+    * **Readiness Calculation (Shared):**
+        * Pure function `calculateLedgerReadiness()` validates: amount, description, account, category, date, exchange rate (cross-currency)
+        * Returns `{ isReady, canSaveDraft, missingFields }` object
+        * **CRITICAL:** Exchange rate required when `selectedAccount.currencyCode !== mainCurrency` (NOT `data.currency`)
+    * **Button States:**
+        * **Inbox Complete:** "Save to Ledger" (Blue) - promotes to ledger
+        * **Inbox Incomplete:** "Save Draft" (Slate) - saves partial data
+        * **Inbox Cross-Currency (no rate):** "Save Draft (Rate Required)" - warns about missing rate
+        * **Transaction Complete + Changes:** "Keep Changes" (Slate-900) - saves updates
+        * **Transaction Incomplete:** Button DISABLED - prevents corruption (Sacred Ledger Rule)
+    * **Race Condition Protection:**
+        * Uses `useUserSettings()` to detect if main currency still loading
+        * Button disabled until `isSettingsReady = true`
+        * Prevents saves with wrong currency assumption (default USD vs actual main currency)
 * **Mode-Based Behavior:** The panel accepts a `mode` prop ('inbox' | 'transaction') that controls:
-    * **Button Text:** "Promote to Ledger" (inbox) vs "Keep Changes" (transaction)
-    * **Button Color:** Blue (inbox) vs Slate (transaction)
-    * **Warning Banner:** Orange missing info banner shows only in inbox mode
+    * **Button Text:** Dynamic based on readiness (see Smart Save states above)
+    * **Button Color:** Blue (ledger promotion), Slate (draft save), Slate-900 (transaction updates)
+    * **Warning Banner:** Orange (inbox - draft-friendly) vs Red (transaction - data integrity enforcement)
     * **Amount Color:** Gray (inbox) vs Green/Red based on category type (transaction)
 * **Component Structure:**
     * **IdentityHeader:** Editable payee (borderless input with "No description" placeholder) + editable amount (monospaced, dynamic color)
@@ -207,14 +227,20 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
         * **Account Selector:** Shows selected account name + currency symbol (e.g., "BCP Credito S/")
         * **Category Selector:** Shows selected category name with color dot
         * **Date Picker:** Calendar popover with formatted date display
-        * **Exchange Rate Field (NEW - Reactive):** Only appears when selected account currency differs from transaction currency
+        * **Exchange Rate Field (Reactive - FIXED Dec 2025):** Only appears when selected account currency differs from user's main currency
+            * **CRITICAL:** Comparison logic: `selectedAccount.currencyCode !== mainCurrency` (from user settings)
+            * **NOT:** `data.currency` (which is temporary import metadata)
             * Shows "REQUIRED" badge in orange when visible
             * Orange border when empty to draw attention
-            * Displays conversion helper: "1 USD = ? EUR"
+            * Displays conversion helper: "1 {mainCurrency} = ? {accountCurrency}"
             * 4 decimal precision for accurate rates
+            * Validation: Required for ledger promotion if currencies differ, optional for draft save
         * **Notes Field:** Multiline textarea for transaction notes
-    * **MissingInfoBanner:** Conditional orange warning when required fields are missing (inbox only)
-    * **ActionFooter:** Pinned bottom buttons (mode-specific)
+    * **MissingInfoBanner (Dual-Mode):**
+        * **Inbox Mode:** Orange warning (draft-friendly) - "Save as Draft" with helpful completion guidance
+        * **Transaction Mode:** Red error (Sacred Ledger enforcement) - "Cannot Save Incomplete Transaction" with specific missing fields
+        * Uses `getReadinessMessage()` helper for user-friendly field descriptions
+    * **ActionFooter:** Pinned bottom buttons with Smart Save logic (see Button States above)
 * **Data Requirements (CRITICAL):**
     * **transactions_view Database View:** Must include both IDs and display names:
         * IDs: `account_id`, `category_id` (required for editing)

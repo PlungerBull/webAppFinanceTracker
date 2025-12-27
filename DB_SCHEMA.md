@@ -123,21 +123,29 @@ Opening balance transactions are identified by:
 
 ### 📄 Table: `transaction_inbox`
 
-> **Architecture Note:** This is the **Staging Area** for data. Rows here are "dirty" (drafts). They are NOT included in financial reports until promoted to the main `transactions` table.
+> **Architecture Note (Updated 2025-12-27):** This is the **Staging Area** for partial/incomplete data. The "Scratchpad Inbox" allows users to save ANY amount of information (even just an amount or description). Data validation happens at promotion time via the `promote_inbox_item` RPC function.
 
 | Column | Type | Nullable | Default | Description |
 |---|---|---|---|---|
 | **id** | uuid | NO | `uuid_generate_v4()` | Primary key |
 | **user_id** | uuid | NO | `-` | Owner |
-| **amount** | numeric | NO | `-` | Draft amount |
-| **description** | text | NO | `-` | Draft description |
+| **amount** | numeric | **YES** | `-` | **[NULLABLE]** Draft amount (relaxed constraint for flexible entry) |
+| **description** | text | **YES** | `-` | **[NULLABLE]** Draft description (relaxed constraint for flexible entry) |
+| **currency** | text | NO | `'USD'::text` | **[NEW]** Temporary import metadata (not used for validation - see mainCurrency comparison) |
+| **date** | timestamptz | YES | `-` | **[NULLABLE]** Draft transaction date |
 | **status** | text | NO | `'pending'` | Lifecycle: `pending`, `processed`, or `ignored` |
 | **account_id** | uuid | YES | `-` | (Optional) Staged Account assignment |
 | **category_id** | uuid | YES | `-` | (Optional) Staged Category assignment |
-| **exchange_rate** | numeric | YES | `1.0` | (Optional) Staged Exchange Rate |
+| **exchange_rate** | numeric | YES | `1.0` | (Optional) Staged Exchange Rate - required when account currency differs from main currency |
 | **source_text** | text | YES | `-` | Context (e.g. "Scanned Receipt") |
 | **created_at** | timestamptz | NO | `now()` | Creation timestamp |
 | **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
+
+**Smart Save Integration (Dec 2025):**
+- **Draft Save:** Can save with ANY subset of fields (amount-only, description-only, etc.)
+- **Ledger Promotion:** Requires ALL fields (amount, description, account, category, date) + exchange rate if cross-currency
+- **Validation:** `promote_inbox_item` RPC performs server-side hard-gate validation before promotion
+- **Exchange Rate Logic:** Required when `selectedAccount.currencyCode !== user.main_currency` (NOT `inbox.currency`)
 
 ---
 
