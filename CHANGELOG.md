@@ -14,6 +14,136 @@
 
 ---
 
+## 2025-12-28: Full Mirror Architecture - Inbox-Ledger Schema Alignment
+
+### Problem: Architectural Drift and Data Loss
+
+Three critical issues identified in the inbox-ledger data flow:
+
+**Issue 1: Missing Notes Functionality**
+- `transaction_inbox` table lacked a `notes` column
+- Users couldn't capture supplemental details in "Scratchpad Mode"
+- Frontend UI hardcoded `notes: undefined` for inbox items
+- Promotion function discarded any notes during transfer to ledger
+- **Impact**: Data loss - users' annotations were impossible to preserve
+
+**Issue 2: Lack of Traceability (No "Birth Certificates")**
+- No link between promoted transactions and their inbox origins
+- Once promoted, audit trail was broken - couldn't verify original source data
+- No way to trace a transaction back to its inbox item ID
+- **Impact**: Compliance risk - no permanent audit trail for data provenance
+
+**Issue 3: Naming Inconsistency**
+- Inbox used `amount` and `currency`
+- Ledger used `amount_original` and `currency_original`
+- Data transformers forced to perform manual property renaming for every API call
+- **Impact**: Technical debt - increased code complexity and bug potential
+
+### Solution: Full Mirror Architecture
+
+Implemented 1:1 schema parity between staging (`transaction_inbox`) and production (`transactions`) tables.
+
+**The Four Pillars:**
+
+1. **Notes Functionality** - Added `notes text` column to `transaction_inbox`
+2. **Context Mirroring** - Added `source_text text` column to `transactions` (raw OCR/import data)
+3. **Birth Certificates** - Added `inbox_id uuid` foreign key to `transactions` (links to inbox origin)
+4. **Naming Standardization** - Renamed inbox columns: `amount` → `amount_original`, `currency` → `currency_original`
+
+### Migration Details
+
+**Database Changes:**
+- `20251228170000_align_inbox_with_ledger.sql`:
+  - Added `notes` column to `transaction_inbox`
+  - Added `source_text` and `inbox_id` columns to `transactions`
+  - Created foreign key constraint `fk_transactions_inbox` with `ON DELETE SET NULL`
+  - Created partial index `idx_transactions_inbox_id` for efficient lookups
+  - Renamed inbox columns for consistency
+  - **CRITICAL**: Updated `transactions_view` to include new columns for frontend visibility
+
+- `20251228170001_update_promote_inbox_with_notes_traceability.sql`:
+  - Updated `promote_inbox_item` RPC to transfer `notes` and `source_text` directly
+  - Added `inbox_id` to INSERT statement for traceability
+  - Fixed variable references to use renamed columns (`amount_original`, `currency_original`)
+  - Preserved Sacred Ledger architecture (currency auto-derived from account)
+
+**TypeScript/Frontend Changes:**
+- Updated all domain types to use standardized naming
+- Simplified data transformers (eliminated manual field mapping)
+- Updated API layer to handle `notes` field in drafts and promotion
+- Enabled notes textarea in inbox detail panel
+- Added `sourceText` to shared `PanelData` interface for "Source Badge" rendering
+
+### Old vs. New Behavior
+
+**OLD: Notes Lost During Promotion**
+```typescript
+// Inbox
+notes: undefined  // Hardcoded - users couldn't enter notes
+
+// After promotion
+transaction.notes = null  // Always null, data lost
+```
+
+**NEW: Notes Preserved**
+```typescript
+// Inbox
+notes: "Customer reimbursement"  // User can annotate
+
+// After promotion
+transaction.notes = "Customer reimbursement"  // Transferred
+transaction.source_text = "Bank Import: ACH 12345"  // Separate field
+transaction.inbox_id = "abc-123..."  // Birth certificate
+```
+
+**OLD: No Traceability**
+```sql
+-- Impossible to answer: "Which inbox item created this transaction?"
+SELECT * FROM transactions WHERE id = 'xyz';
+-- Result: No link to inbox origin
+```
+
+**NEW: Full Audit Trail**
+```sql
+-- Can trace back to original inbox item
+SELECT t.*, i.source_text, i.created_at as inbox_created
+FROM transactions t
+LEFT JOIN transaction_inbox i ON t.inbox_id = i.id
+WHERE t.id = 'xyz';
+```
+
+**OLD: Manual Field Mapping**
+```typescript
+// Data transformers
+amountOriginal: item.amount  // Manual rename
+currencyOriginal: item.currency  // Manual rename
+```
+
+**NEW: Direct Mapping**
+```typescript
+// Data transformers
+amountOriginal: item.amount_original  // Identical names
+currencyOriginal: item.currency_original  // Identical names
+```
+
+### Benefits
+
+✅ **Data Preservation**: Notes survive promotion (no data loss)
+✅ **Full Context**: Source text stored separately from user notes
+✅ **Audit Trail**: Every promoted transaction links to its inbox origin
+✅ **Reduced Complexity**: Eliminated manual field name mapping in transformers
+✅ **Type Safety**: Cleaner type inheritance between inbox and ledger
+✅ **Compliance**: Permanent traceability for regulatory audit requirements
+
+### Backward Compatibility
+
+- Existing inbox items (without notes) promote successfully
+- Existing transactions (without `inbox_id` or `source_text`) display normally
+- All nullable fields prevent breaking changes
+- Migration is idempotent (can be run multiple times safely)
+
+---
+
 ## 2025-12-28: Security Hardening - View RLS and Backup Table
 
 ### Problem: Security Vulnerabilities Identified

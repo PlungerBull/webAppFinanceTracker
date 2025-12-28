@@ -68,8 +68,10 @@ export interface Transaction {
   exchangeRate: number;
   description: string | null;
   notes: string | null;
+  sourceText?: string;           // NEW: Raw source context (OCR, bank import data)
   date: string;
   transferId: string | null;
+  inboxId?: string;              // NEW: Birth certificate - links to inbox origin
   createdAt: string;
   updatedAt: string;
 }

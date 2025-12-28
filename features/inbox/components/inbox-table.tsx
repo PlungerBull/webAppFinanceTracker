@@ -21,9 +21,9 @@ function InboxContent() {
     accountId: item.accountId || '',                     // Empty string for missing account
     accountName: item.account?.name || 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
-    amountOriginal: item.amount ?? null,                 // Preserve null for draft state
-    amountHome: item.amount ?? null,                     // Preserve null for draft state
-    currencyOriginal: item.currency || '',               // Empty string when no currency
+    amountOriginal: item.amountOriginal ?? null,         // Preserve null for draft state (RENAMED)
+    amountHome: item.amountOriginal ?? null,             // Preserve null for draft state (RENAMED)
+    currencyOriginal: item.currencyOriginal || '',       // Empty string when no currency (RENAMED)
     exchangeRate: item.exchangeRate ?? 1.0,
     date: item.date || new Date().toISOString(),
     createdAt: item.createdAt,

@@ -36,14 +36,15 @@ export const inboxApi = {
     return (data || []).map((item: any) => ({
       id: item.id,
       userId: item.user_id,
-      amount: item.amount ?? undefined,              // Centralized normalization
-      currency: item.currency,
-      description: item.description ?? undefined,    // Centralized normalization
-      date: item.date ?? undefined,                  // Centralized normalization
-      sourceText: item.source_text ?? undefined,     // Centralized normalization
-      accountId: item.account_id ?? undefined,       // Centralized normalization
-      categoryId: item.category_id ?? undefined,     // Centralized normalization
-      exchangeRate: item.exchange_rate ?? undefined, // Centralized normalization
+      amountOriginal: item.amount_original ?? undefined,      // RENAMED field
+      currencyOriginal: item.currency_original,               // RENAMED field
+      description: item.description ?? undefined,             // Centralized normalization
+      date: item.date ?? undefined,                           // Centralized normalization
+      sourceText: item.source_text ?? undefined,              // Centralized normalization
+      accountId: item.account_id ?? undefined,                // Centralized normalization
+      categoryId: item.category_id ?? undefined,              // Centralized normalization
+      exchangeRate: item.exchange_rate ?? undefined,          // Centralized normalization
+      notes: item.notes ?? undefined,                         // NEW: User annotations
       status: item.status,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
@@ -98,9 +99,10 @@ export const inboxApi = {
     if (updates.accountId !== undefined) dbUpdates.account_id = updates.accountId;
     if (updates.categoryId !== undefined) dbUpdates.category_id = updates.categoryId;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+    if (updates.amountOriginal !== undefined) dbUpdates.amount_original = updates.amountOriginal;  // RENAMED
     if (updates.date !== undefined) dbUpdates.date = updates.date;
     if (updates.exchangeRate !== undefined) dbUpdates.exchange_rate = updates.exchangeRate;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;  // NEW
 
     const { data, error } = await supabase
       .from('transaction_inbox')
@@ -154,7 +156,7 @@ export const inboxApi = {
       categoryId = params.categoryId || '';
       finalDescription = params.description;
       finalDate = params.date;
-      finalAmount = params.amount;
+      finalAmount = params.amountOriginal;  // RENAMED field
     }
 
     // STRICT VALIDATION: Ensure we have the critical data points
@@ -216,13 +218,14 @@ export const inboxApi = {
 
     const insertData = domainInboxItemToDbInsert({
       userId: user.id,
-      amount: params.amount,              // Transformer converts undefined → null
-      description: params.description,    // Transformer converts undefined → null
-      currency: params.currency,
+      amountOriginal: params.amountOriginal,       // RENAMED - Transformer converts undefined → null
+      description: params.description,             // Transformer converts undefined → null
+      currencyOriginal: params.currencyOriginal,   // RENAMED
       date: params.date,
       sourceText: params.sourceText,
-      accountId: params.accountId,        // Transformer converts undefined → null
-      categoryId: params.categoryId,      // Transformer converts undefined → null
+      accountId: params.accountId,                 // Transformer converts undefined → null
+      categoryId: params.categoryId,               // Transformer converts undefined → null
+      notes: params.notes,                         // NEW - Transformer converts undefined → null
       status: 'pending', // Always create as pending
     });
 

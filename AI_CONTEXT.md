@@ -168,12 +168,18 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * Use `tailwind-merge` and `clsx` (via the `cn` helper) for dynamic classes.
 * Prioritize Radix UI primitives for interactive elements (Dialogs, Popovers).
 
-### F. Data Entry Strategy (The "Scratchpad" Pattern)
+### F. Data Entry Strategy (The "Scratchpad" Pattern + Full Mirror Architecture)
 * **The "Clean Ledger" Rule:** The main `transactions` table must ONLY contain complete, valid data (Amount + Date + Account + Category).
 * **The "Scratchpad Inbox" Rule:** The `transaction_inbox` table accepts PARTIAL data with relaxed constraints:
-    * **Database Schema:** `amount` and `description` columns are NULLABLE
+    * **Database Schema:** `amount_original`, `description`, and `notes` columns are NULLABLE
     * **Purpose:** Enable frictionless data entry - users can save ANY amount of information instantly
-    * **Examples:** Just an amount, just a category, just a description - all valid inbox states
+    * **Examples:** Just an amount, just a category, just a description, just notes - all valid inbox states
+* **Full Mirror Architecture (2025-12-28):** Inbox and Ledger achieve 1:1 schema parity:
+    * **Naming Standardization:** Both tables use `amount_original` and `currency_original` (no manual mapping friction)
+    * **Notes Functionality:** Inbox supports `notes` field for user annotations - transferred directly to ledger on promotion
+    * **Context Mirroring:** Ledger includes `source_text` column (raw OCR/import data) - transferred separately from notes
+    * **Birth Certificates:** Ledger includes `inbox_id` foreign key for permanent audit trail back to inbox origins
+    * **Field Transfer:** `promote_inbox_item` RPC transfers `notes` and `source_text` directly (no appending)
 * **Smart Routing:** When building forms, check for data completeness:
     * **Complete Data (4 fields):** Amount + Description + Account + Category -> Write to Ledger (`transactions`)
     * **Partial Data (1-3 fields):** Any subset of fields -> Write to Inbox (`transaction_inbox`)
@@ -183,10 +189,10 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Server-Side Hard-Gate:** RPC function explicitly validates ALL required fields before promotion:
         * `account_id IS NULL` → RAISE EXCEPTION 'Account ID is required'
         * `category_id IS NULL` → RAISE EXCEPTION 'Category ID is required'
-        * `amount IS NULL` → RAISE EXCEPTION 'Amount is required'
+        * `amount_original IS NULL` → RAISE EXCEPTION 'Amount is required'
         * `description IS NULL OR trim(description) = ''` → RAISE EXCEPTION 'Description is required'
         * `date IS NULL` → RAISE EXCEPTION 'Date is required'
-    * **Audit Trail:** Promotion marks items as `status='processed'` instead of deleting them
+    * **Audit Trail:** Promotion marks items as `status='processed'` instead of deleting them, plus stores `inbox_id` in ledger
     * **Frontend Cannot Bypass:** Database-level validation ensures ledger integrity regardless of frontend state
 * **Auto-Promotion:** When editing inbox items in the detail panel, if all 4 required fields are complete, the item is automatically promoted to the ledger (with "vanishing effect")
 * **Optimistic UI:** Promoted items disappear instantly from inbox list (onMutate), with robust rollback on error (onError restores snapshot)

@@ -15,14 +15,15 @@
 export interface InboxItem {
   id: string;
   userId: string;
-  amount?: number;              // Optional for scratchpad mode
-  currency: string;
+  amountOriginal?: number;      // Optional for scratchpad mode (RENAMED)
+  currencyOriginal: string;     // RENAMED
   description?: string;         // Optional for scratchpad mode
   date?: string;
   sourceText?: string;
   accountId?: string;
   categoryId?: string;
   exchangeRate?: number;
+  notes?: string;               // NEW: User annotations during scratchpad phase
   status: 'pending' | 'processed' | 'ignored';
   createdAt: string;
   updatedAt: string;
@@ -66,9 +67,10 @@ export interface UpdateInboxItemParams {
   accountId?: string | null;
   categoryId?: string | null;
   description?: string | null;
-  amount?: number | null;
+  amountOriginal?: number | null;  // RENAMED
   date?: string | null;
   exchangeRate?: number | null;
+  notes?: string | null;           // NEW
 }
 
 /**
@@ -77,11 +79,12 @@ export interface UpdateInboxItemParams {
  * Allows saving partial data (e.g., just a category, just an amount, etc.)
  */
 export interface CreateInboxItemParams {
-  amount?: number;
+  amountOriginal?: number;       // RENAMED
   description?: string;
-  currency?: string;
+  currencyOriginal?: string;     // RENAMED
   date?: string;
   sourceText?: string;
-  accountId?: string;         // NEW: Persist account selection
-  categoryId?: string;        // NEW: Persist category selection
+  accountId?: string;            // Persist account selection
+  categoryId?: string;           // Persist category selection
+  notes?: string;                // NEW: User annotations
 }

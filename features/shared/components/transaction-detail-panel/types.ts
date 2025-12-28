@@ -19,6 +19,7 @@ export interface PanelData {
   categoryId?: string;
   date?: string;
   notes?: string;
+  sourceText?: string;    // NEW: Raw source context (OCR, bank import, etc.)
   exchangeRate?: number;  // For cross-currency transactions
 }
 

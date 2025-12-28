@@ -107,14 +107,15 @@ export function dbInboxItemToDomain(
   return {
     id: dbInboxItem.id,
     userId: dbInboxItem.user_id,
-    amount: dbInboxItem.amount ?? undefined,              // null → undefined
-    currency: dbInboxItem.currency,
-    description: dbInboxItem.description ?? undefined,    // null → undefined
-    date: dbInboxItem.date ?? undefined,                  // null → undefined
-    sourceText: dbInboxItem.source_text ?? undefined,     // null → undefined
-    accountId: dbInboxItem.account_id ?? undefined,       // null → undefined
-    categoryId: dbInboxItem.category_id ?? undefined,     // null → undefined
-    exchangeRate: dbInboxItem.exchange_rate ?? undefined, // null → undefined
+    amountOriginal: dbInboxItem.amount_original ?? undefined,  // null → undefined (RENAMED)
+    currencyOriginal: dbInboxItem.currency_original,           // RENAMED
+    description: dbInboxItem.description ?? undefined,         // null → undefined
+    date: dbInboxItem.date ?? undefined,                       // null → undefined
+    sourceText: dbInboxItem.source_text ?? undefined,          // null → undefined
+    accountId: dbInboxItem.account_id ?? undefined,            // null → undefined
+    categoryId: dbInboxItem.category_id ?? undefined,          // null → undefined
+    exchangeRate: dbInboxItem.exchange_rate ?? undefined,      // null → undefined
+    notes: dbInboxItem.notes ?? undefined,                     // NEW: null → undefined
     status: dbInboxItem.status,
     createdAt: dbInboxItem.created_at,
     updatedAt: dbInboxItem.updated_at,
@@ -139,8 +140,10 @@ export function dbTransactionToDomain(
     exchangeRate: dbTransaction.exchange_rate,
     description: dbTransaction.description,
     notes: dbTransaction.notes,
+    sourceText: dbTransaction.source_text ?? undefined,  // NEW: null → undefined
     date: dbTransaction.date,
     transferId: dbTransaction.transfer_id,
+    inboxId: dbTransaction.inbox_id ?? undefined,        // NEW: null → undefined
     createdAt: dbTransaction.created_at,
     updatedAt: dbTransaction.updated_at,
   } as const;
@@ -205,26 +208,28 @@ export function domainCategoryToDbInsert(data: {
  */
 export function domainInboxItemToDbInsert(data: {
   userId: string;
-  amount?: number;              // Optional for scratchpad mode
-  currency?: string;
-  description?: string;         // Optional for scratchpad mode
+  amountOriginal?: number;         // Optional for scratchpad mode (RENAMED)
+  currencyOriginal?: string;       // RENAMED
+  description?: string;            // Optional for scratchpad mode
   date?: string;
   sourceText?: string;
   accountId?: string;
   categoryId?: string;
   exchangeRate?: number;
+  notes?: string;                  // NEW
   status?: 'pending' | 'processed' | 'ignored';
 }): Database['public']['Tables']['transaction_inbox']['Insert'] {
   return {
     user_id: data.userId,
-    amount: data.amount ?? null,              // undefined → null for database
-    currency: data.currency,
-    description: data.description ?? null,    // undefined → null for database
-    date: data.date ?? null,                  // undefined → null for database
-    source_text: data.sourceText ?? null,     // undefined → null for database
-    account_id: data.accountId ?? null,       // undefined → null for database
-    category_id: data.categoryId ?? null,     // undefined → null for database
-    exchange_rate: data.exchangeRate ?? null, // undefined → null for database
+    amount_original: data.amountOriginal ?? null,    // undefined → null for database (RENAMED)
+    currency_original: data.currencyOriginal,        // RENAMED
+    description: data.description ?? null,           // undefined → null for database
+    date: data.date ?? null,                         // undefined → null for database
+    source_text: data.sourceText ?? null,            // undefined → null for database
+    account_id: data.accountId ?? null,              // undefined → null for database
+    category_id: data.categoryId ?? null,            // undefined → null for database
+    exchange_rate: data.exchangeRate ?? null,        // undefined → null for database
+    notes: data.notes ?? null,                       // NEW: undefined → null for database
     status: data.status,
   };
 }
@@ -258,8 +263,10 @@ export function domainTransactionToDbInsert(data: {
   exchangeRate: number;
   description: string | null;
   notes: string | null;
+  sourceText?: string | null;  // NEW
   date: string;
   transferId?: string | null;
+  inboxId?: string | null;     // NEW
 }): Database['public']['Tables']['transactions']['Insert'] {
   return {
     user_id: data.userId,
@@ -271,8 +278,10 @@ export function domainTransactionToDbInsert(data: {
     exchange_rate: data.exchangeRate,
     description: data.description,
     notes: data.notes,
+    source_text: data.sourceText,  // NEW
     date: data.date,
     transfer_id: data.transferId,
+    inbox_id: data.inboxId,        // NEW
   };
 }
 

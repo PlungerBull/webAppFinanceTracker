@@ -28,12 +28,13 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     return {
       id: item.id,
       description: item.description,
-      amount: item.amount,
-      currency: item.currency,
+      amount: item.amountOriginal,       // RENAMED field
+      currency: item.currencyOriginal,   // RENAMED field
       accountId: item.accountId,
       categoryId: item.categoryId,
       date: item.date,
-      notes: undefined, // Inbox doesn't have notes yet
+      notes: item.notes,                 // CHANGED: Use actual notes from inbox
+      sourceText: item.sourceText,       // NEW: Include source context
     };
   }, [item]);
 
@@ -75,23 +76,25 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     if (!item) return;
 
     // Extract final values with fallbacks
-    const finalAmount = updates.amount ?? item.amount;
+    const finalAmount = updates.amount ?? item.amountOriginal;       // RENAMED
     const finalDescription = updates.description ?? item.description;
     const accountId = updates.accountId ?? item.accountId;
     const categoryId = updates.categoryId ?? item.categoryId;
     const finalDate = updates.date ?? item.date ?? new Date().toISOString();
     const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate;
+    const finalNotes = updates.notes ?? item.notes;                  // NEW
 
     try {
       await updateDraftMutation.mutateAsync({
         id: item.id,
         updates: {
-          amount: finalAmount ?? null,
+          amountOriginal: finalAmount ?? null,                       // RENAMED
           description: finalDescription ?? null,
           accountId: accountId ?? null,
           categoryId: categoryId ?? null,
           date: finalDate ?? null,
           exchangeRate: finalExchangeRate ?? null,
+          notes: finalNotes ?? null,                                 // NEW
         }
       });
       toast.success('Draft saved');
@@ -114,7 +117,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     if (!item) return;
 
     // Extract final values with fallbacks
-    const finalAmount = updates.amount ?? item.amount;
+    const finalAmount = updates.amount ?? item.amountOriginal;              // RENAMED
     const finalDescription = updates.description ?? item.description;
     const accountId = updates.accountId ?? item.accountId;
     const categoryId = updates.categoryId ?? item.categoryId;
@@ -129,7 +132,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
 
     // Get selected account for currency check
     const selectedAccount = accountsData.find(a => a.accountId === accountId);
-    const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== item.currency;
+    const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== item.currencyOriginal;  // RENAMED
     const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate;
 
     // MULTI-CURRENCY GATEKEEPER: Block if exchange rate is missing when required

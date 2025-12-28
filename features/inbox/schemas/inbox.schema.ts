@@ -21,13 +21,14 @@ export type PromoteInboxItemFormData = z.infer<typeof promoteInboxItemSchema>;
  * UI layer enforces "at least one field exists" validation
  */
 export const createInboxItemSchema = z.object({
-  amount: z.number().positive('Amount must be positive').nullable().optional(),
+  amountOriginal: z.number().positive('Amount must be positive').nullable().optional(),  // RENAMED
   description: z.string().nullable().optional(),
-  currency: z.string().length(3, 'Currency must be a 3-letter code').optional(),
+  currencyOriginal: z.string().length(3, 'Currency must be a 3-letter code').optional(), // RENAMED
   date: z.string().optional().nullable(),
   sourceText: z.string().optional().nullable(),
   accountId: z.string().uuid('Invalid account ID').nullable().optional(),
   categoryId: z.string().uuid('Invalid category ID').nullable().optional(),
+  notes: z.string().nullable().optional(),  // NEW
 });
 
 export type CreateInboxItemFormData = z.infer<typeof createInboxItemSchema>;

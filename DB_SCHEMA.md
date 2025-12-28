@@ -101,6 +101,8 @@ Opening balance transactions are identified by:
 ### 📄 Table: `transactions`
 
 > **Note:** The transaction type is determined implicitly: **transfer** (`transfer_id` NOT NULL), **opening balance** (`category_id` NULL AND `transfer_id` NULL), or **standard** (`category_id` NOT NULL, type derived from category).
+>
+> **Full Mirror Architecture (2025-12-28):** The ledger now includes `source_text` (raw context like OCR/import data) and `inbox_id` (birth certificate linking to inbox origin) to achieve 1:1 schema parity with the staging area.
 
 | Column | Type | Nullable | Default | Description |
 |---|---|---|---|---|
@@ -117,7 +119,9 @@ Opening balance transactions are identified by:
 | **transfer_id** | uuid | YES | `-` | Link to the paired transaction for transfers (NULL otherwise) |
 | **created_at** | timestamptz | NO | `now()` | Record creation timestamp |
 | **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
-| **notes** | text | YES | `-` | Optional notes or memo for the transaction |
+| **notes** | text | YES | `-` | User notes or memo for the transaction (separate from source_text) |
+| **source_text** | text | YES | `-` | **[NEW]** Raw source context (OCR, bank import data, etc.) - transferred from inbox |
+| **inbox_id** | uuid | YES | `-` | **[NEW]** Birth certificate - links to original inbox item for audit trail (NULL for manually created transactions) |
 
 ---
 
@@ -136,29 +140,33 @@ Opening balance transactions are identified by:
 
 ### 📄 Table: `transaction_inbox`
 
-> **Architecture Note (Updated 2025-12-27):** This is the **Staging Area** for partial/incomplete data. The "Scratchpad Inbox" allows users to save ANY amount of information (even just an amount or description). Data validation happens at promotion time via the `promote_inbox_item` RPC function.
+> **Architecture Note (Updated 2025-12-28):** This is the **Staging Area** for partial/incomplete data. The "Scratchpad Inbox" allows users to save ANY amount of information (even just an amount or description). Data validation happens at promotion time via the `promote_inbox_item` RPC function.
+>
+> **Schema Parity (2025-12-28):** The inbox table has been aligned with the `transactions` table using standardized naming conventions (`amount_original`, `currency_original`) and now includes `notes` field for user annotations during scratchpad phase.
 
 | Column | Type | Nullable | Default | Description |
 |---|---|---|---|---|
 | **id** | uuid | NO | `uuid_generate_v4()` | Primary key |
 | **user_id** | uuid | NO | `-` | Owner |
-| **amount** | numeric | **YES** | `-` | **[NULLABLE]** Draft amount (relaxed constraint for flexible entry) |
+| **amount_original** | numeric | **YES** | `-` | **[NULLABLE]** Draft amount (relaxed constraint for flexible entry) - RENAMED from `amount` |
 | **description** | text | **YES** | `-` | **[NULLABLE]** Draft description (relaxed constraint for flexible entry) |
-| **currency** | text | NO | `'USD'::text` | **[NEW]** Temporary import metadata (not used for validation - see mainCurrency comparison) |
+| **currency_original** | text | NO | `'USD'::text` | Currency metadata (standardized naming) - RENAMED from `currency` |
 | **date** | timestamptz | YES | `-` | **[NULLABLE]** Draft transaction date |
 | **status** | text | NO | `'pending'` | Lifecycle: `pending`, `processed`, or `ignored` |
 | **account_id** | uuid | YES | `-` | (Optional) Staged Account assignment |
 | **category_id** | uuid | YES | `-` | (Optional) Staged Category assignment |
 | **exchange_rate** | numeric | YES | `1.0` | (Optional) Staged Exchange Rate - required when account currency differs from main currency |
-| **source_text** | text | YES | `-` | Context (e.g. "Scanned Receipt") |
+| **source_text** | text | YES | `-` | Raw context (e.g. "Scanned Receipt", bank import data) |
+| **notes** | text | YES | `-` | **[NEW]** User annotations during scratchpad phase - transferred to ledger on promotion |
 | **created_at** | timestamptz | NO | `now()` | Creation timestamp |
 | **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
 
 **Smart Save Integration (Dec 2025):**
-- **Draft Save:** Can save with ANY subset of fields (amount-only, description-only, etc.)
+- **Draft Save:** Can save with ANY subset of fields (amount-only, description-only, notes-only, etc.)
 - **Ledger Promotion:** Requires ALL fields (amount, description, account, category, date) + exchange rate if cross-currency
 - **Validation:** `promote_inbox_item` RPC performs server-side hard-gate validation before promotion
-- **Exchange Rate Logic:** Required when `selectedAccount.currencyCode !== user.main_currency` (NOT `inbox.currency`)
+- **Field Transfer:** Notes and source_text are transferred directly to ledger (Full Mirror architecture)
+- **Exchange Rate Logic:** Required when `selectedAccount.currencyCode !== user.main_currency`
 
 ---
 
@@ -207,8 +215,8 @@ Opening balance transactions are identified by:
 
 ### 👁️ View: `transactions_view`
 
-**Updated:** 2025-12-28 - Security hardening: Enforced `security_invoker = true`
-**Previous Update:** 2025-12-26 - Expanded to include IDs and colors for editing support
+**Updated:** 2025-12-28 - Added `source_text` and `inbox_id` for Full Mirror architecture
+**Previous Update:** 2025-12-28 - Security hardening: Enforced `security_invoker = true`
 
 **Security Configuration**: `security_invoker = true` (enforces RLS policies)
 - View executes with the querying user's permissions
@@ -227,7 +235,9 @@ Opening balance transactions are identified by:
 | **currency_original** | text | Original currency code |
 | **exchange_rate** | numeric | Exchange rate (required for editing) |
 | **date** | timestamptz | Transaction date |
-| **notes** | text | Transaction notes (required for editing) |
+| **notes** | text | User notes or memo (required for editing) |
+| **source_text** | text | **[NEW]** Raw source context (OCR, bank import data, etc.) |
+| **inbox_id** | uuid | **[NEW]** Birth certificate - links to original inbox item for audit trail |
 | **transfer_id** | uuid | Transfer identifier (if part of a transfer) |
 | **created_at** | timestamptz | Creation timestamp |
 | **updated_at** | timestamptz | Last update timestamp |
@@ -240,8 +250,7 @@ Opening balance transactions are identified by:
 
 **SQL Definition:**
 ```sql
-CREATE VIEW transactions_view
-WITH (security_invoker = true) AS
+CREATE VIEW transactions_view AS
 SELECT
   t.id,
   t.user_id,
@@ -254,6 +263,8 @@ SELECT
   t.exchange_rate,
   t.date,
   t.notes,
+  t.source_text,        -- NEW: Raw source context
+  t.inbox_id,           -- NEW: Birth certificate
   t.transfer_id,
   t.created_at,
   t.updated_at,
@@ -293,7 +304,7 @@ LEFT JOIN categories c ON t.category_id = c.id;
 
 | Function Name | Return Type | Arguments | Description |
 |---|---|---|---|
-| `promote_inbox_item` | `json` | `p_inbox_id uuid`, `p_account_id uuid`, `p_category_id uuid`, ... | **[ARCHITECTURAL]** Atomically moves a draft from Inbox to Main Ledger. Validates data before insertion. |
+| `promote_inbox_item` | `json` | `p_inbox_id uuid`, `p_account_id uuid`, `p_category_id uuid`, `p_final_description text`, `p_final_date timestamptz`, `p_final_amount numeric` | **[FULL MIRROR 2025-12-28]** Atomically moves draft from Inbox to Ledger with hard-gate validation. Transfers `notes` and `source_text` directly. Stores `inbox_id` for traceability. |
 
 ### Analytics Functions
 

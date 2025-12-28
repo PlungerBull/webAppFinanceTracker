@@ -106,10 +106,10 @@ export function InboxCard({ item }: InboxCardProps) {
             </div>
             <div className="text-right">
               <p className="font-semibold text-lg">
-                {item.amount !== undefined ? (
+                {item.amountOriginal !== undefined ? (
                   <>
-                    {item.amount > 0 ? '+' : ''}
-                    {item.amount.toFixed(2)} {item.currency}
+                    {item.amountOriginal > 0 ? '+' : ''}
+                    {item.amountOriginal.toFixed(2)} {item.currencyOriginal}
                   </>
                 ) : (
                   <span className="text-muted-foreground">—</span>
