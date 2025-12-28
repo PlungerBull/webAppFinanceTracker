@@ -14,15 +14,15 @@ function InboxContent() {
 
   // Transform InboxItem to match TransactionRow shape expected by TransactionList
   // NULL-SAFE: Handle partial drafts with missing amount/description
-  // Note: Converts undefined → null for TransactionView compatibility
+  // Preserve null state for amounts (don't convert to 0) to show "--" placeholder in list
   const transactions = inboxItems.map((item) => ({
     id: item.id,
     userId: item.userId,
     accountId: item.accountId || '',
     accountName: item.account?.name || 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
-    amountOriginal: item.amount ?? 0,                    // Default to 0 for display
-    amountHome: item.amount ?? 0,                        // Default to 0 for display
+    amountOriginal: item.amount ?? null,                 // Preserve null for draft state
+    amountHome: item.amount ?? null,                     // Preserve null for draft state
     currencyOriginal: item.currency,
     exchangeRate: item.exchangeRate ?? 1.0,
     date: item.date || new Date().toISOString(),

@@ -17,8 +17,15 @@ import {
 } from '@/components/ui/popover';
 import type { TransactionRow } from '../types';
 
+// Nullable amount type for inbox items (draft state)
+// Regular transactions have required amounts, but inbox items can have null amounts
+type TransactionListRow = Omit<TransactionRow, 'amountOriginal' | 'amountHome'> & {
+  amountOriginal: number | null;
+  amountHome: number | null;
+};
+
 interface TransactionListProps {
-  transactions: TransactionRow[];
+  transactions: (TransactionRow | TransactionListRow)[];
   isLoading: boolean;
   selectedTransactionId: string | null;
   onTransactionSelect?: (id: string) => void;
@@ -289,18 +296,25 @@ export function TransactionList({
                     <p
                       className={cn(
                         'text-lg font-bold font-mono tabular-nums',
-                        transaction.amountOriginal >= 0
+                        transaction.amountOriginal === null
+                          ? 'text-gray-400'  // Muted for draft state
+                          : transaction.amountOriginal >= 0
                           ? 'text-green-600'
                           : 'text-gray-900'
                       )}
                     >
-                      {formatCurrency(transaction.amountOriginal, transaction.currencyOriginal).replace(/[A-Z]{3}\s?/, '')}
+                      {transaction.amountOriginal === null
+                        ? '--'
+                        : formatCurrency(transaction.amountOriginal, transaction.currencyOriginal).replace(/[A-Z]{3}\s?/, '')
+                      }
                     </p>
 
-                    {/* Currency Label */}
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {transaction.currencyOriginal}
-                    </p>
+                    {/* Currency Label - hide when amount is null */}
+                    {transaction.amountOriginal !== null && (
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {transaction.currencyOriginal}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
