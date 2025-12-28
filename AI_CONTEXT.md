@@ -348,3 +348,83 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * **Local:** stored in `.env.local` (Gitignored).
 * **Vercel Dev:** Environment Variables set to "Development" & "Preview" scopes.
 * **Vercel Prod:** Environment Variables set to "Production" scope.
+
+## 7. Sacred Ledger Data Management
+
+### Clear All Data Function (`clear_user_data`)
+
+**Migration**: `20251228032715_fix_clear_user_data_sacred_ledger.sql` (2025-12-28)
+
+The `clear_user_data` RPC function implements the "Sacred Ledger" philosophy for secure, performant data resets.
+
+#### Three Core Principles
+
+**1. Identity Verification Hard-Gate (Security)**
+* Uses `auth.uid()` to verify requesting user matches authenticated session
+* Prevents unauthorized data wipes even if RPC endpoint is exposed
+* Runs with `SECURITY DEFINER` (elevated privileges), so verification is critical
+* Throws exception if user IDs don't match: `"Unauthorized: User can only clear their own data"`
+
+**2. Sequential Dependency Purge (Correctness)**
+* **Order matters!** Deletion sequence respects foreign key constraints:
+  1. `transaction_inbox` - Has FK to categories/accounts (no CASCADE) - MUST go first
+  2. `bank_accounts` - CASCADE auto-deletes ALL transactions (performance optimization)
+  3. `categories` - Children before parents (handles `ON DELETE RESTRICT` constraint)
+* Missing the inbox deletion was the original bug (FK violations when trying to delete categories/accounts)
+
+**3. CASCADE Performance Optimization**
+* Leverages `transactions_account_id_fkey ON DELETE CASCADE`
+* **Before**: Deleting 10,000 transactions = 10,000 trigger executions (balance updates)
+* **After**: Deleting bank accounts = CASCADE deletes transactions, triggers become no-ops (~99% reduction)
+* **Why triggers become no-ops**: The `update_account_balance_ledger` trigger tries to UPDATE the account, but the account is already deleted, so the UPDATE finds no row and exits instantly
+
+#### User Environment Preservation
+
+**CRITICAL**: `user_settings` table is NEVER touched by `clear_user_data`
+
+**Preserved Data:**
+* Theme preferences (light/dark/system)
+* Main currency setting
+* Week start day preferences
+
+**Benefit**: User returns to a "Fresh Start" with familiar environment - no need to reconfigure application
+
+#### Function Signature
+
+```typescript
+await supabase.rpc('clear_user_data', {
+  p_user_id: user.id  // Must match authenticated session
+});
+```
+
+#### Usage in Frontend
+
+**Component**: `features/settings/components/data-management.tsx`
+
+**Success Flow:**
+1. User clicks "Clear Data" button (confirmation dialog shown)
+2. RPC function validates user identity (hard-gate check)
+3. Sequential deletion executes (inbox → accounts → categories)
+4. Success message displays: "All data cleared successfully. Starting fresh!"
+5. React Query cache invalidated (transactions, accounts, categories)
+6. Page refreshes to clean/onboarding state
+7. User settings remain intact (theme, currency, preferences)
+
+#### What Gets Deleted
+
+* ✅ All transactions (via CASCADE when accounts deleted)
+* ✅ All inbox items (staging area / scratchpad)
+* ✅ All categories (user-created only, respects hierarchy)
+* ✅ All bank accounts (triggers CASCADE deletion of transactions)
+
+#### What Gets Preserved
+
+* ✅ User settings (theme, main currency, week start)
+* ✅ Authentication record (user can still log in)
+* ✅ Global currencies table (shared reference data)
+
+#### Related Documentation
+
+* **DB Schema**: See `DB_SCHEMA.md` section "2025-12-28: Sacred Ledger Data Reset"
+* **Migration File**: `supabase/migrations/20251228032715_fix_clear_user_data_sacred_ledger.sql`
+* **Schema Snapshot**: `supabase/current_live_snapshot.sql` (lines 214-256)

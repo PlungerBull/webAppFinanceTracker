@@ -215,16 +215,43 @@ CREATE OR REPLACE FUNCTION "public"."clear_user_data"("p_user_id" "uuid") RETURN
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+DECLARE
+  v_authenticated_user_id uuid;
 BEGIN
-  -- Delete all transactions for the user
-  DELETE FROM transactions WHERE user_id = p_user_id;
+  -- === HARD-GATE: Identity Verification ===
+  -- Get the currently authenticated user from session
+  v_authenticated_user_id := auth.uid();
 
-  -- Delete all categories for the user
-  DELETE FROM categories WHERE user_id = p_user_id;
+  -- Security check: Verify requesting user matches authenticated session
+  -- This prevents unauthorized data wipes even if endpoint is exposed
+  IF v_authenticated_user_id IS NULL OR v_authenticated_user_id != p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized: User can only clear their own data';
+  END IF;
 
-  -- Delete all bank accounts for the user
-  -- (No need to delete account_currencies or currencies - tables don't exist)
+  -- === SEQUENTIAL DEPENDENCY PURGE ===
+  -- Order is critical to avoid FK constraint violations and maximize performance
+
+  -- 1. The Scratchpad (Inbox): Delete all pending transaction inbox items
+  --    Must go first: has FK refs to categories and accounts (no CASCADE)
+  DELETE FROM transaction_inbox WHERE user_id = p_user_id;
+
+  -- 2. The Foundation (Bank Accounts): CASCADE Performance Optimization
+  --    Deleting accounts auto-deletes ALL transactions via CASCADE
+  --    Balance update triggers become no-ops (account already gone)
+  --    This is the "Sacred Ledger" optimization - one delete, thousands free
   DELETE FROM bank_accounts WHERE user_id = p_user_id;
+
+  -- 3. Hierarchical Structure Cleanup: Untie the category knot
+  --    categories_parent_id_fkey uses ON DELETE RESTRICT
+  --    Must delete children before parents to avoid constraint violation
+  DELETE FROM categories WHERE user_id = p_user_id AND parent_id IS NOT NULL;
+  DELETE FROM categories WHERE user_id = p_user_id AND parent_id IS NULL;
+
+  -- === PRESERVATION OF USER ENVIRONMENT ===
+  -- user_settings table is NEVER touched here
+  -- Theme, main_currency, start_of_week remain intact
+  -- User returns to "Fresh Start" with their familiar environment
+
 END;
 $$;
 
