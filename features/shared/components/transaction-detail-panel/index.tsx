@@ -40,6 +40,11 @@ export function TransactionDetailPanel({
     setHasUnsavedChanges(hasChanges);
   }, [editedFields]);
 
+  // Reset edited fields when switching to a different transaction/item
+  useEffect(() => {
+    setEditedFields({});
+  }, [data?.id]);
+
   // Update a single field
   const handleFieldChange = (field: keyof EditedFields, value: string | number) => {
     setEditedFields((prev) => ({
