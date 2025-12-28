@@ -61,9 +61,21 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * **Opening Balances:** Created as transactions with `category_id = NULL` AND `transfer_id = NULL`, using the description "Opening Balance".
     * **UI Note:** Opening Balance option has been removed from the Add Transaction Modal (as of the Invisible Grouping refactor). Users should set opening balances during account creation.
 * **Currency Changes:** To change an account's currency, users must create a new account. The Edit Account modal only allows editing name and color, displaying currency as read-only.
-* **Currency Inheritance in Transactions:**
+* **Currency Inheritance in Transactions (Sacred Ledger Architecture - 2025-12-27):**
     * **CRITICAL:** Currency is NOT an editable field in transaction forms or detail panels
     * Currency is **derived** from the selected bank account (one currency per account)
+    * **Database-Enforced:** The `enforce_sacred_ledger_currency` trigger automatically sets `currency_original` from `account.currency_code`
+    * **Frontend Contract:** Code MUST NOT send `currency_original` - it's a system-managed field
+    * **Implementation:**
+        * Database: `currency_original` has DEFAULT 'PENDING', trigger overwrites it before INSERT completes
+        * TypeScript: Field is optional in Insert type (generated from DEFAULT)
+        * API Layer: Field is omitted from INSERT statements entirely
+        * Trigger runs BEFORE INSERT, ensures `transactions.currency_original === bank_accounts.currency_code`
+    * **Benefits:**
+        * Impossible to create transactions with wrong currency (enforced at DB level)
+        * No visual mismatches between list and detail panel views
+        * Database is single source of truth
+        * Zero technical debt (no type bypasses, no placeholder values)
     * When user changes the account selection, the currency automatically updates to match the new account's currency
     * UI should display currency as read-only text, never as an input or selector
     * This applies to: Transaction forms, Inbox detail panel, Transaction detail panel, and all editing interfaces
