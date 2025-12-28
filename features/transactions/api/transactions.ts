@@ -162,6 +162,7 @@ export const transactionsApi = {
       categoryId?: string;
       date?: string;
       notes?: string;
+      exchangeRate?: number;
     }
   ): Promise<Transaction> => {
     const supabase = createClient();
@@ -186,6 +187,9 @@ export const transactionsApi = {
     }
     if (updates.notes !== undefined) {
       dbUpdates.notes = updates.notes;
+    }
+    if (updates.exchangeRate !== undefined) {
+      dbUpdates.exchange_rate = updates.exchangeRate;
     }
 
     const { data, error } = await supabase
