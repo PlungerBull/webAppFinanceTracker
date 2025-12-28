@@ -62,7 +62,7 @@ export function FormSection({
   // Show exchange rate field only when selected account currency differs from user's main currency
   // CRITICAL: Compare to mainCurrency (NOT data.currency which is temporary import metadata)
   const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== mainCurrency;
-  const exchangeRateValue = editedFields.exchangeRate ?? undefined;
+  const exchangeRateValue = editedFields.exchangeRate ?? data.exchangeRate ?? undefined;
 
   return (
     <div className="px-6 py-4 space-y-4">

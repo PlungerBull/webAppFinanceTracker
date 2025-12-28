@@ -37,6 +37,7 @@ export function TransactionDetailPanel({
       categoryId: transaction.categoryId ?? undefined,
       date: transaction.date,
       notes: transaction.notes ?? undefined,
+      exchangeRate: transaction.exchangeRate ?? undefined,
     };
   }, [transaction]);
 
