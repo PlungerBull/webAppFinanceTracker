@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -338,6 +343,48 @@ export type Database = {
           },
         ]
       }
+      transactions_currency_cleanup_backup: {
+        Row: {
+          account_id: string | null
+          account_name: string | null
+          amount_home: number | null
+          amount_original: number | null
+          cleaned_at: string | null
+          date: string | null
+          description: string | null
+          exchange_rate: number | null
+          new_currency: string | null
+          old_currency: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          account_name?: string | null
+          amount_home?: number | null
+          amount_original?: number | null
+          cleaned_at?: string | null
+          date?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          new_currency?: string | null
+          old_currency?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          account_name?: string | null
+          amount_home?: number | null
+          amount_original?: number | null
+          cleaned_at?: string | null
+          date?: string | null
+          description?: string | null
+          exchange_rate?: number | null
+          new_currency?: string | null
+          old_currency?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           created_at: string
@@ -568,22 +615,37 @@ export type Database = {
         }
         Returns: Json
       }
-      create_transfer: {
-        Args: {
-          p_amount: number
-          p_amount_received: number
-          p_category_id: string
-          p_date: string
-          p_description: string
-          p_exchange_rate: number
-          p_from_account_id: string
-          p_from_currency: string
-          p_to_account_id: string
-          p_to_currency: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
+      create_transfer:
+        | {
+            Args: {
+              p_amount: number
+              p_amount_received: number
+              p_category_id: string
+              p_date: string
+              p_description: string
+              p_exchange_rate: number
+              p_from_account_id: string
+              p_to_account_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_amount_received: number
+              p_category_id: string
+              p_date: string
+              p_description: string
+              p_exchange_rate: number
+              p_from_account_id: string
+              p_from_currency: string
+              p_to_account_id: string
+              p_to_currency: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       delete_transfer: {
         Args: { p_transfer_id: string; p_user_id: string }
         Returns: undefined
@@ -638,7 +700,6 @@ export type Database = {
             Args: {
               p_account_id: string
               p_new_currency_code: string
-              p_new_starting_balance: number
               p_old_currency_code: string
             }
             Returns: undefined
@@ -647,6 +708,7 @@ export type Database = {
             Args: {
               p_account_id: string
               p_new_currency_code: string
+              p_new_starting_balance: number
               p_old_currency_code: string
             }
             Returns: undefined
@@ -825,4 +887,3 @@ export const Constants = {
     },
   },
 } as const
-
