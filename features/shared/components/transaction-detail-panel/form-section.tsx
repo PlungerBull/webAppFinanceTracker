@@ -87,12 +87,6 @@ export function FormSection({
             <SelectValue placeholder="Select account...">
               {selectedAccount ? (
                 <div className="flex items-center gap-2">
-                  {selectedAccount.color && (
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: selectedAccount.color }}
-                    />
-                  )}
                   <span>{selectedAccount.name}</span>
                   {/* CRITICAL: Always use currencyCode (not currencySymbol) for unambiguous display */}
                   <span className="text-xs text-gray-400">{selectedAccount.currencyCode}</span>
@@ -106,12 +100,6 @@ export function FormSection({
             {accounts.map((account) => (
               <SelectItem key={account.id} value={account.id}>
                 <div className="flex items-center gap-2">
-                  {account.color && (
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: account.color }}
-                    />
-                  )}
                   <span>{account.name}</span>
                   {/* CRITICAL: Always use currencyCode (not currencySymbol) for unambiguous display */}
                   <span className="text-xs text-gray-400">{account.currencyCode}</span>
@@ -142,13 +130,7 @@ export function FormSection({
           >
             <SelectValue placeholder="Select category...">
               {selectedCategory ? (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: selectedCategory.color }}
-                  />
-                  <span>{selectedCategory.name}</span>
-                </div>
+                <span>{selectedCategory.name}</span>
               ) : (
                 'Select category...'
               )}
@@ -157,13 +139,7 @@ export function FormSection({
           <SelectContent>
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <span>{category.name}</span>
-                </div>
+                <span>{category.name}</span>
               </SelectItem>
             ))}
           </SelectContent>

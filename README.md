@@ -44,3 +44,5 @@ Your TransactionDetailPanel is a great step in the right direction (side-by-side
 
 
 5. we have to fix the sidebar, the 3 buttons are overlaping with the number of the accounts
+
+6. gotta review the ai documents
