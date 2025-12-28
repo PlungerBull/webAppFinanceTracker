@@ -53,17 +53,19 @@ export const createTransactionSchema = z.object({
 // This schema enforces all database constraints at the type level.
 // Use this for API calls that write to the transactions table (ledger).
 // Extends the base schema but marks critical fields as REQUIRED.
+//
+// SACRED LEDGER: currency_original is NOT included here because it's automatically
+// derived from account_id by the database trigger. The frontend should never send it.
 export const createTransactionLedgerSchema = createTransactionSchema.extend({
   account_id: z
     .string()
     .uuid(VALIDATION.MESSAGES.INVALID_BANK_ACCOUNT), // REQUIRED: Database constraint
-  currency_original: z
-    .string()
-    .length(CURRENCY.CODE_LENGTH, VALIDATION.MESSAGES.CURRENCY_VALID_CODE)
-    .regex(VALIDATION.REGEX.CURRENCY_CODE, VALIDATION.MESSAGES.CURRENCY_UPPERCASE), // REQUIRED: Database constraint
+  // currency_original REMOVED - Sacred Ledger trigger derives from account_id
   date: z
     .string()
     .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.TRANSACTION_DATE_REQUIRED), // REQUIRED: Database constraint
+}).omit({
+  currency_original: true, // Explicitly omit currency_original from ledger operations
 });
 
 // Update transaction schema

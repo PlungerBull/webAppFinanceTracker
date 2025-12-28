@@ -115,7 +115,8 @@ export const transactionsApi = {
         date: transactionData.date,
         category_id: transactionData.category_id || null,
         account_id: transactionData.account_id, // ✅ Guaranteed non-null by type
-        currency_original: transactionData.currency_original, // ✅ Guaranteed non-null by type
+        // ✅ SACRED LEDGER: currency_original is automatically derived from account_id by trigger
+        // DO NOT send currency_original - the enforce_sacred_ledger_currency trigger handles it
         exchange_rate: transactionData.exchange_rate,
         notes: transactionData.notes || null, // ✅ Capture notes
       })

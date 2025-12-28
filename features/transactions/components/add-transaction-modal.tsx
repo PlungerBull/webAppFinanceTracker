@@ -162,10 +162,12 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           // If no exchange rate provided, default to 1.0 (same currency assumed)
           // The backend/database will enforce any additional constraints
 
+          // SACRED LEDGER: currency_original is automatically derived from account_id by database trigger
+          // DO NOT pass currency_original - it will be set correctly by the database
           await addTransactionMutation.mutateAsync({
             description: transactionData.payee!,
             amount_original: finalAmount!,
-            currency_original: selectedAccount!.currencyCode!,
+            // currency_original REMOVED - Sacred Ledger trigger derives from account_id
             account_id: transactionData.fromAccountId!,
             category_id: transactionData.categoryId!,
             type: transactionData.derivedType!,
