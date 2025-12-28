@@ -663,17 +663,30 @@ export type Database = {
         }
         Returns: Json
       }
-      promote_inbox_item: {
-        Args: {
-          p_account_id: string
-          p_category_id: string
-          p_final_amount?: number
-          p_final_date?: string
-          p_final_description?: string
-          p_inbox_id: string
-        }
-        Returns: Json
-      }
+      promote_inbox_item:
+        | {
+            Args: {
+              p_account_id: string
+              p_category_id: string
+              p_final_amount?: number
+              p_final_date?: string
+              p_final_description?: string
+              p_inbox_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_account_id: string
+              p_category_id: string
+              p_exchange_rate?: number
+              p_final_amount?: number
+              p_final_date?: string
+              p_final_description?: string
+              p_inbox_id: string
+            }
+            Returns: Json
+          }
       reconcile_account_balance: {
         Args: { p_account_id: string; p_date?: string; p_new_balance: number }
         Returns: string

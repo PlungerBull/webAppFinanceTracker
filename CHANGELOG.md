@@ -14,6 +14,89 @@
 
 ---
 
+## 2025-12-28: Currency Normalization - Remove Redundant currency_original Column
+
+### Problem: Redundant Storage Violating Third Normal Form (3NF)
+
+The `transactions` table stored currency in a redundant column that was always synchronized with the parent account's currency:
+
+**The Redundancy Issue:**
+- `transactions.currency_original` column stored currency code
+- `bank_accounts.currency_code` column also stored the same currency code
+- Database trigger `enforce_sacred_ledger_currency` ensured `transactions.currency_original === bank_accounts.currency_code`
+- Result: Same data stored in two places (violation of 3NF normalization)
+
+**Why This Was Problematic:**
+1. **Phantom Desync Risk**: Column created the possibility of currency mismatch (even though trigger prevented it)
+2. **Schema Bloat**: Redundant column in the largest table (transactions)
+3. **Cognitive Overhead**: Developers questioned "which currency is correct?"
+4. **Maintenance Burden**: Required trigger to maintain synchronization
+5. **Architectural Debt**: Enforced consistency (trigger) instead of structural consistency (schema design)
+
+### Solution: Zero Redundancy Normalization
+
+**Migration:** `20251228172651_remove_currency_original_normalization.sql` (Atomic transaction with 10 steps)
+
+**Key Changes:**
+
+1. **Removed Column** - Dropped `transactions.currency_original` from table schema
+2. **Updated View** - `transactions_view` now aliases `bank_accounts.currency_code AS currency_original`
+3. **Removed Trigger** - Deleted `enforce_sacred_ledger_currency` (no longer needed)
+4. **Updated RPCs** - Fixed `create_account` and `replace_account_currency` functions
+5. **Zero Frontend Changes** - Smart aliasing eliminated ALL frontend code changes
+
+**The Smart Aliasing Strategy:**
+
+```sql
+-- OLD (before normalization):
+SELECT t.currency_original FROM transactions t;  -- Column in transactions table
+
+-- NEW (after normalization):
+SELECT a.currency_code AS currency_original FROM transactions t
+LEFT JOIN bank_accounts a ON t.account_id = a.id;  -- Aliased from account
+```
+
+Frontend code sees `currency_original` in both cases - NO CHANGES REQUIRED!
+
+**Benefits:**
+
+1. **Structural Guarantee** - Currency desync is now **structurally impossible** (no redundant column)
+2. **Reduced Storage** - One less column in the largest table
+3. **Simpler Schema** - No synchronization trigger needed
+4. **Better Domain Model** - Currency is clearly an account property
+5. **Simplified Updates** - Changing account currency auto-updates all transactions (via JOIN)
+6. **Zero Frontend Impact** - Domain abstraction layer shields UI from schema changes
+
+**Old Way vs. New Way:**
+
+| Aspect | OLD (Enforced) | NEW (Normalized) |
+|--------|---------------|------------------|
+| **Storage** | `transactions.currency_original` column | No column (derived via JOIN) |
+| **Synchronization** | Database trigger | Structural (foreign key) |
+| **Desync Risk** | Possible (but prevented by trigger) | Impossible (no redundant storage) |
+| **Frontend** | `currency_original` from column | `currency_original` from view alias |
+| **Code Changes** | None | None (thanks to aliasing) |
+
+**Migration Complexity:**
+
+- **Risk Level**: Low (trigger already proved currency is derivable from account)
+- **Atomic Deployment**: All 10 steps wrapped in BEGIN/COMMIT transaction
+- **Rollback Difficulty**: Easy before column drop, complex after (requires data restore)
+- **Type Safety**: TypeScript types regenerated via `npx supabase gen types`
+
+**Files Modified:**
+
+- Migration: `supabase/migrations/20251228172651_remove_currency_original_normalization.sql`
+- Types: `types/database.types.ts` (regenerated)
+- Domain: `types/domain.ts` (added JSDoc comment)
+- Docs: `DB_SCHEMA.md`, `AI_CONTEXT.md`, `CHANGELOG.md`
+
+**Architecture Evolution:**
+
+This migration completes the transition from "enforced consistency" (trigger) to "structural consistency" (normalized schema design). The Sacred Ledger philosophy now relies on database normalization rather than active enforcement.
+
+---
+
 ## 2025-12-28: Full Mirror Architecture - Inbox-Ledger Schema Alignment
 
 ### Problem: Architectural Drift and Data Loss

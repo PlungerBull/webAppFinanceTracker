@@ -113,7 +113,6 @@ Opening balance transactions are identified by:
 | **date** | timestamptz | NO | `now()` | Transaction date and time |
 | **description** | text | YES | `-` | Brief description of the transaction |
 | **amount_original** | numeric | NO | `-` | Amount in the original currency |
-| **currency_original** | text | NO | `'PENDING'` | **[SYSTEM-MANAGED]** Currency of the original amount (auto-set by `enforce_sacred_ledger_currency` trigger from account's currency_code) |
 | **exchange_rate** | numeric | NO | `1.0` | Exchange rate used to convert to home currency |
 | **amount_home** | numeric | NO | `0` | **[SYSTEM-MANAGED]** Amount converted to the user's home currency (auto-calculated by `calculate_amount_home` trigger) |
 | **transfer_id** | uuid | YES | `-` | Link to the paired transaction for transfers (NULL otherwise) |
@@ -122,6 +121,12 @@ Opening balance transactions are identified by:
 | **notes** | text | YES | `-` | User notes or memo for the transaction (separate from source_text) |
 | **source_text** | text | YES | `-` | **[NEW]** Raw source context (OCR, bank import data, etc.) - transferred from inbox |
 | **inbox_id** | uuid | YES | `-` | **[NEW]** Birth certificate - links to original inbox item for audit trail (NULL for manually created transactions) |
+
+**Currency Architecture (Normalized - 2025-12-28):**
+- Currency is **NOT stored** in the transactions table (removed `currency_original` column)
+- Currency is **ALWAYS derived** from the parent account via JOIN: `bank_accounts.currency_code`
+- Query `transactions_view` to access currency (exposed as `currency_original` alias)
+- This eliminates redundancy and makes currency desync structurally impossible
 
 ---
 
@@ -232,7 +237,8 @@ Opening balance transactions are identified by:
 | **description** | text | Transaction description |
 | **amount_original** | numeric | Amount in original currency |
 | **amount_home** | numeric | Amount in home currency |
-| **currency_original** | text | Original currency code |
+| **currency_original** | text | **[DERIVED]** Currency code - aliased from `bank_accounts.currency_code` (NOT stored in transactions table) |
+| **account_currency** | text | **[DERIVED]** Currency code - same as currency_original (exposed for clarity) |
 | **exchange_rate** | numeric | Exchange rate (required for editing) |
 | **date** | timestamptz | Transaction date |
 | **notes** | text | User notes or memo (required for editing) |
@@ -252,6 +258,7 @@ Opening balance transactions are identified by:
 ```sql
 CREATE VIEW transactions_view AS
 SELECT
+  -- Core transaction fields
   t.id,
   t.user_id,
   t.account_id,
@@ -259,18 +266,22 @@ SELECT
   t.description,
   t.amount_original,
   t.amount_home,
-  t.currency_original,
   t.exchange_rate,
   t.date,
   t.notes,
-  t.source_text,        -- NEW: Raw source context
-  t.inbox_id,           -- NEW: Birth certificate
+  t.source_text,
+  t.inbox_id,
   t.transfer_id,
   t.created_at,
   t.updated_at,
+
+  -- Account fields (currency aliased from account)
   a.name AS account_name,
-  a.currency_code AS account_currency,
+  a.currency_code AS currency_original,  -- ALIASED for frontend compatibility
+  a.currency_code AS account_currency,   -- Also exposed for clarity
   a.color AS account_color,
+
+  -- Category fields
   c.name AS category_name,
   c.color AS category_color,
   c.type AS category_type
@@ -278,6 +289,8 @@ FROM transactions t
 LEFT JOIN bank_accounts a ON t.account_id = a.id
 LEFT JOIN categories c ON t.category_id = c.id;
 ```
+
+**Note:** `currency_original` is an alias for `account_currency` (both source from `bank_accounts.currency_code`). This aliasing strategy eliminates frontend code changes after normalization.
 
 ---
 
@@ -326,8 +339,7 @@ LEFT JOIN categories c ON t.category_id = c.id;
 | `handle_new_user` | `trigger` | Trigger function for new user setup (e.g., initial settings, default accounts/categories) |
 | `sync_category_type_hierarchy` | `trigger` | Trigger function to ensure consistency of transaction type in category hierarchy |
 | `update_updated_at_column` | `trigger` | Generic trigger function to set `updated_at` column to `now()` on update |
-| `calculate_amount_home` | `trigger` | Trigger function to calculate `amount_home` based on `amount_original` and `exchange_rate` |
-| `enforce_transaction_currency_matches_account` | `trigger` | **[SACRED LEDGER]** Forces `currency_original` to match account's `currency_code` on INSERT/UPDATE. Runs BEFORE other triggers. |
+| `calculate_amount_home` | `trigger` | Trigger function to calculate `amount_home` based on `amount_original` and `exchange_rate`. Currency is implicitly determined by account_id (via JOIN to bank_accounts.currency_code). |
 | `sync_child_category_color` | `trigger` | Trigger function to cascade color changes from parent to child categories |
 | `cascade_color_to_children` | `trigger` | Trigger function to apply parent category color to its direct children |
 | `validate_category_hierarchy_func` | `trigger` | Trigger function to enforce rules on category hierarchy (e.g., parents cannot be children, type matching) |

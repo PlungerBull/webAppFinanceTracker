@@ -39,7 +39,20 @@ export interface TransactionView {
   accountColor: string | null;   // Added: For UI color indicators
   amountOriginal: number;
   amountHome: number;
+
+  /**
+   * Currency code for the transaction (e.g., "USD", "PEN").
+   *
+   * **Architecture Note:** This field is NOT stored in the transactions table.
+   * It is derived from the parent account's currency via JOIN with bank_accounts.
+   *
+   * Database source: `bank_accounts.currency_code` (via account_id foreign key)
+   * View alias: `currency_original` (aliased in transactions_view)
+   *
+   * See: Normalized Currency Architecture in AI_CONTEXT.md
+   */
   currencyOriginal: string;
+
   exchangeRate: number;
   date: string;
   createdAt: string;
