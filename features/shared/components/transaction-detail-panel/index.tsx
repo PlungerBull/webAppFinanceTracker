@@ -46,7 +46,7 @@ export function TransactionDetailPanel({
   }, [data?.id]);
 
   // Update a single field
-  const handleFieldChange = (field: keyof EditedFields, value: string | number) => {
+  const handleFieldChange = (field: keyof EditedFields, value: string | number | undefined) => {
     setEditedFields((prev) => ({
       ...prev,
       [field]: value,

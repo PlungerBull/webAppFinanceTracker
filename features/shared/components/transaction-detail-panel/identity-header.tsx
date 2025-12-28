@@ -7,7 +7,7 @@ interface IdentityHeaderProps {
   mode: PanelMode;
   data: PanelData;
   editedFields: EditedFields;
-  onFieldChange: (field: keyof EditedFields, value: string | number) => void;
+  onFieldChange: (field: keyof EditedFields, value: string | number | undefined) => void;
   categoryType?: 'income' | 'expense' | null;
   accounts: SelectableAccount[];
 }
@@ -29,14 +29,20 @@ export function IdentityHeader({
   };
 
   const handleAmountChange = (value: string) => {
+    // Allow empty string to clear back to undefined (draft state)
+    if (value === '') {
+      onFieldChange('amount', undefined); // Not 0!
+      return;
+    }
+
     // Allow decimal numbers with optional negative sign
     if (/^-?\d*\.?\d*$/.test(value)) {
       const numValue = parseFloat(value);
       if (!isNaN(numValue)) {
         onFieldChange('amount', numValue);
-      } else if (value === '' || value === '-') {
-        // Allow empty or just minus sign while typing
-        onFieldChange('amount', 0);
+      } else if (value === '-') {
+        // Allow typing just minus sign
+        onFieldChange('amount', undefined);
       }
     }
   };
@@ -44,7 +50,7 @@ export function IdentityHeader({
   // Derive currency from selected account (currency follows account selection)
   const selectedAccountId = editedFields.accountId ?? data.accountId;
   const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
-  const displayCurrency = selectedAccount?.currencyCode || data.currency || 'USD';
+  const displayCurrency = selectedAccount?.currencyCode;
 
   return (
     <div className="px-6 pt-6 pb-4 border-b border-gray-100">
@@ -67,16 +73,22 @@ export function IdentityHeader({
         <input
           type="text"
           inputMode="decimal"
-          value={editedFields.amount ?? data.amount}
+          value={
+            editedFields.amount !== undefined
+              ? String(editedFields.amount)
+              : data.amount !== undefined
+              ? String(data.amount)
+              : ''  // Empty string for controlled input (not undefined!)
+          }
           onChange={(e) => handleAmountChange(e.target.value)}
           className={cn(
             'text-3xl font-mono font-bold tracking-tighter bg-transparent border-none outline-none focus:ring-0 p-0 transition-colors',
             getAmountColor()
           )}
-          placeholder="0.00"
+          placeholder="--"
         />
         <span className="text-sm font-bold text-gray-400 uppercase">
-          {displayCurrency}
+          {displayCurrency || 'SELECT ACCOUNT'}
         </span>
       </div>
     </div>
