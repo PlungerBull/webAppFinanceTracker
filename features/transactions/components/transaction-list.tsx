@@ -309,10 +309,10 @@ export function TransactionList({
                       }
                     </p>
 
-                    {/* Currency Label - hide when amount is null */}
+                    {/* Currency Label - show SELECT ACCOUNT when no account, hide when amount is null */}
                     {transaction.amountOriginal !== null && (
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        {transaction.currencyOriginal}
+                        {transaction.accountId ? transaction.currencyOriginal : 'SELECT ACCOUNT'}
                       </p>
                     )}
                   </div>

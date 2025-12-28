@@ -18,12 +18,12 @@ function InboxContent() {
   const transactions = inboxItems.map((item) => ({
     id: item.id,
     userId: item.userId,
-    accountId: item.accountId || '',
+    accountId: item.accountId || '',                     // Empty string for missing account
     accountName: item.account?.name || 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
     amountOriginal: item.amount ?? null,                 // Preserve null for draft state
     amountHome: item.amount ?? null,                     // Preserve null for draft state
-    currencyOriginal: item.currency,
+    currencyOriginal: item.currency || '',               // Empty string when no currency
     exchangeRate: item.exchangeRate ?? 1.0,
     date: item.date || new Date().toISOString(),
     createdAt: item.createdAt,
