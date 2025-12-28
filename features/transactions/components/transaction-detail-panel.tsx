@@ -47,7 +47,6 @@ export function TransactionDetailPanel({
         id: account.accountId!,
         name: account.name!,
         currencyCode: account.currencyCode!,
-        currencySymbol: account.currencySymbol!,
         color: account.color || undefined,
       })),
     [accounts]

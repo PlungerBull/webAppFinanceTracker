@@ -88,9 +88,9 @@ export interface Transaction {
  * - Group accounts by groupId for display
  *
  * UI DISPLAY CONVENTION (Flat Currency Architecture):
- * - ALWAYS use currencySymbol in UI (e.g., "$", "€", "S/")
- * - NEVER use currencyCode in UI (e.g., "USD", "EUR", "PEN")
- * - Display format: "${name} ${currencySymbol}" (e.g., "BCP Credito S/")
+ * - ALWAYS use currencyCode in UI (e.g., "USD", "EUR", "PEN")
+ * - NEVER use currencySymbol in UI (e.g., "$", "€", "S/") - symbols are ambiguous
+ * - Display format: "${name} ${currencyCode}" (e.g., "BCP Credito PEN")
  */
 export interface AccountBalance {
   accountId: string | null;
@@ -101,7 +101,7 @@ export interface AccountBalance {
   currentBalance: number | null;
   color: string | null;
   isVisible: boolean | null;
-  currencySymbol: string | null; // CRITICAL: Always present in practice, use in UI instead of currencyCode
+  currencySymbol: string | null; // Deprecated: Use currencyCode in UI for unambiguous display
   createdAt: string | null;
   updatedAt: string | null;
 }

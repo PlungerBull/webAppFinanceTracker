@@ -79,10 +79,10 @@ export function AccountListItem({
         {account.name}
       </span>
 
-      {/* Column 3: Currency Symbol (18px) - FROM DATABASE */}
-      {/* CRITICAL: Always use currencySymbol (not currencyCode) per Flat Currency Architecture */}
+      {/* Column 3: Currency Code (18px) - FROM DATABASE */}
+      {/* CRITICAL: Always use currencyCode (not currencySymbol) for unambiguous display */}
       <span className="text-[9px] font-bold text-right">
-        {account.currencySymbol ?? account.currencyCode ?? ''}
+        {account.currencyCode ?? ''}
       </span>
 
       {/* Column 4: Balance (auto, min-60px) */}

@@ -403,7 +403,7 @@ LEFT JOIN categories c ON t.category_id = c.id;
 
 ### 2025-12-27: Account Name Normalization (`20251227140411_fix_import_account_lookup.sql` + `20251227140449_clean_account_names.sql`)
 - **Problem**: Account names contained redundant currency codes in parentheses (e.g., `"BCP Credito (PEN)"`)
-- **UI Impact**: Account selectors displayed `"BCP Credito (PEN) S/"` showing BOTH currency code AND symbol
+- **UI Impact**: Account selectors displayed `"BCP Credito (PEN) PEN"` showing currency code twice
 - **Solution**: Two-phase database migration approach:
 
 #### Phase 1: Fix Import Logic (`20251227140411_fix_import_account_lookup.sql`)
@@ -442,13 +442,47 @@ LEFT JOIN categories c ON t.category_id = c.id;
 - **Performance**: Eliminated unnecessary string processing on every render
 - **Maintainability**: Simpler codebase with fewer transformations
 - **Data Integrity**: Uniqueness constraint prevents duplicate accounts
-- **UI Correctness**: Account selectors now display `"BCP Credito S/"` (clean) instead of `"BCP Credito (PEN) S/"` (redundant)
+- **UI Correctness**: Account selectors now display `"BCP Credito PEN"` (clean) instead of `"BCP Credito (PEN) PEN"` (redundant)
 
 #### Migration Order (CRITICAL)
 1. ✅ Phase 1: Fix import logic (MUST run first)
 2. ✅ Phase 2: Clean names + add constraint
 3. ✅ Phase 4: Remove frontend cleaning code
 - **DO NOT** run Phase 2 before Phase 1 (will break imports!)
+
+---
+
+### 2025-12-27: Currency Display - Symbol to Code Switch (Frontend Only)
+- **Problem**: Multiple currencies share the same symbol ($ = USD, CAD, AUD, etc.), causing ambiguity
+- **Solution**: Switch all UI displays from currency symbols to currency codes
+- **Impact Areas**:
+  - Sidebar account list ([account-list-item.tsx](features/accounts/components/account-list-item.tsx))
+  - Add transaction modal ([transaction-form.tsx](features/transactions/components/transaction-form.tsx))
+  - Transaction detail panel ([form-section.tsx](features/shared/components/transaction-detail-panel/form-section.tsx))
+  - Inbox detail panel ([inbox-detail-panel.tsx](features/inbox/components/inbox-detail-panel.tsx))
+- **Type Changes**:
+  - `SelectableAccount` interface: Removed `currencySymbol` field, kept only `currencyCode`
+  - `AccountBalance` type: Updated comments to prefer currencyCode over currencySymbol
+- **Display Format Change**:
+  - **Before**: `"BCP Credito S/"` (symbol ambiguous)
+  - **After**: `"BCP Credito PEN"` (code unambiguous)
+- **Architecture Reversal**: Updated "Flat Currency Architecture" convention
+  - **Old Rule**: "ALWAYS use currencySymbol in UI"
+  - **New Rule**: "ALWAYS use currencyCode in UI (symbols are ambiguous)"
+- **Benefits**:
+  - Eliminates confusion between USD, CAD, AUD (all use "$")
+  - Clear identification of currency in all account selectors
+  - No database changes required (both fields already exist)
+- **Files Modified**:
+  - `types/domain.ts` - Updated AccountBalance comments
+  - `features/shared/components/transaction-detail-panel/types.ts` - Updated SelectableAccount interface
+  - `features/accounts/components/account-list-item.tsx` - Display currencyCode
+  - `features/transactions/components/transaction-form.tsx` - Display currencyCode
+  - `features/shared/components/transaction-detail-panel/form-section.tsx` - Display currencyCode
+  - `features/transactions/components/transaction-detail-panel.tsx` - Removed currencySymbol from transformation
+  - `features/inbox/components/inbox-detail-panel.tsx` - Removed currencySymbol from transformation
+  - `AI_CONTEXT.md` - Updated documentation
+
 ---
 
 ## 🆕 Recent Schema Changes (2025-12-27): Scratchpad Transformation

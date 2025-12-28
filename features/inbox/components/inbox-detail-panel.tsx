@@ -44,7 +44,6 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
         id: account.accountId!,
         name: account.name!,
         currencyCode: account.currencyCode!,
-        currencySymbol: account.currencySymbol!,
         color: account.color || '#3b82f6',
       })),
     [accountsData]

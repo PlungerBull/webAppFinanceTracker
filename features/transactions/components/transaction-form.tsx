@@ -133,11 +133,11 @@ export function TransactionForm({
         <div className="flex items-center justify-center gap-3 mb-3">
           <div className="flex items-center justify-center gap-2 flex-wrap">
             {/* Account */}
-            {/* CRITICAL: Always use currencySymbol (not currencyCode) per Flat Currency Architecture */}
+            {/* CRITICAL: Always use currencyCode (not currencySymbol) for unambiguous display */}
             <SmartSelector
               icon={CreditCard}
               label="Account"
-              value={selectedAccount ? `${selectedAccount.name} ${selectedAccount.currencySymbol}` : undefined}
+              value={selectedAccount ? `${selectedAccount.name} ${selectedAccount.currencyCode}` : undefined}
               placeholder="Account"
               required
               error={hasSubmitted && !data.fromAccountId}
@@ -160,7 +160,7 @@ export function TransactionForm({
                         style={{ color: account.color || '#000' }}
                       />
                       <span className="flex-1 text-left">{account.name}</span>
-                      <span className="text-gray-400 text-xs">{account.currencySymbol}</span>
+                      <span className="text-gray-400 text-xs">{account.currencyCode}</span>
                     </button>
                   ))}
               </div>

@@ -68,15 +68,15 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * UI should display currency as read-only text, never as an input or selector
     * This applies to: Transaction forms, Inbox detail panel, Transaction detail panel, and all editing interfaces
 * **Account Display Convention (UI Naming Pattern):**
-    * **CRITICAL:** All account selectors MUST follow the format: `${Name} ${Symbol}`
-    * **ALWAYS use `currencySymbol`** (e.g., "$", "€", "S/") - NEVER use `currencyCode` (e.g., "USD", "EUR", "PEN")
-    * **Rationale:** Symbol is the visual differentiator users recognize. Code is redundant and clutters the UI.
+    * **CRITICAL:** All account selectors MUST follow the format: `${Name} ${Code}`
+    * **ALWAYS use `currencyCode`** (e.g., "USD", "EUR", "PEN") - NEVER use `currencySymbol` (e.g., "$", "€", "S/")
+    * **Rationale:** Currency symbols are ambiguous ($ = USD, CAD, AUD, etc.). Codes provide unambiguous identification.
     * **Enforcement Scope:** This applies to ALL account selection interfaces:
         * Add Transaction Modal (transaction-form.tsx) - SmartSelector component
         * Transaction Detail Panel (form-section.tsx) - Radix Select component
         * Account List Item (account-list-item.tsx) - Dashboard sidebar
-    * **Example:** "BCP Credito S/" ✅ NOT "BCP Credito (PEN)" ❌
-    * **Type Safety:** `SelectableAccount` interfaces must include `currencySymbol: string` as a required field
+    * **Example:** "BCP Credito PEN" ✅ NOT "BCP Credito S/" ❌
+    * **Type Safety:** `SelectableAccount` interfaces must include `currencyCode: string` as a required field
 * **Account Name Normalization (2025-12-27):**
     * **Database Migration:** Account names have been normalized to remove redundant currency code suffixes
     * **Before:** Database stored `"BCP Credito (PEN)"` + `currency_code = "PEN"` (redundant!)
