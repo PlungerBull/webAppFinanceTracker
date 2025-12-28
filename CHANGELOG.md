@@ -14,6 +14,98 @@
 
 ---
 
+## 2025-12-28: Inbox Currency Normalization (Part 2 of Unified Normalization)
+
+### Problem: Extended Redundant Storage from Transactions to Inbox
+
+Following the successful normalization of the `transactions` table, the `transaction_inbox` table still suffered from the same redundancy issue:
+
+**The Redundancy Issue:**
+- `transaction_inbox.currency_original` column stored currency code
+- `bank_accounts.currency_code` column also stored the same currency code
+- When `account_id` was assigned, currency was redundant (same data in two places)
+- Result: Same violation of 3NF normalization, but in the scratchpad layer
+
+**Why This Needed to Be Fixed:**
+1. **Architectural Inconsistency**: Ledger was normalized, but scratchpad was not
+2. **Currency Drift Risk**: Inbox currency could drift from account currency during editing
+3. **Confusing Mental Model**: Which currency is authoritative when promoting to ledger?
+4. **Incomplete Migration**: Part 1 (transactions) was done, but inbox was left behind
+
+### Solution: Unified Structural Normalization (Ledger + Scratchpad)
+
+**Migration:** `20251228175831_normalize_inbox_currency.sql` (Atomic transaction)
+
+**Key Changes:**
+
+1. **Removed Column** - Dropped `transaction_inbox.currency_original` from table schema
+2. **Created View** - `transaction_inbox_view` aliases `bank_accounts.currency_code AS currency_original` (LEFT JOIN)
+3. **Handles NULL** - When `account_id` is NULL (draft), `currency_original` is NULL (expected behavior)
+4. **Zero Frontend Changes** - Smart aliasing eliminated ALL frontend code changes
+
+**The Smart Aliasing Strategy (Inbox-Specific):**
+
+```sql
+-- Before: Column stored redundantly
+CREATE TABLE transaction_inbox (
+  currency_original text DEFAULT 'USD',  -- ❌ Redundant
+  account_id uuid
+);
+
+-- After: Currency derived from account
+CREATE TABLE transaction_inbox (
+  -- NO currency column
+  account_id uuid
+);
+
+CREATE VIEW transaction_inbox_view AS
+SELECT
+  i.*,
+  a.currency_code AS currency_original  -- ✅ Aliased (NULL if no account)
+FROM transaction_inbox i
+LEFT JOIN bank_accounts a ON i.account_id = a.id;
+```
+
+**Key Insight - LEFT JOIN for Scratchpad:**
+
+Unlike transactions (which ALWAYS have an account), inbox items can exist without an account during draft mode. The LEFT JOIN handles this:
+
+- **When `account_id` is set:** Currency is derived from account (same as transactions)
+- **When `account_id` is NULL:** Currency is NULL (incomplete draft - expected)
+- **Hard-Gate Validation:** `promote_inbox_item` RPC requires `account_id` before promotion
+
+### Old Way vs. New Way
+
+| Aspect | Old Way (Redundant) | New Way (Normalized) |
+|--------|---------------------|----------------------|
+| **Inbox schema** | Has `currency_original` column | NO currency column |
+| **Currency source** | Stored redundantly in inbox | Derived from account via LEFT JOIN |
+| **When account changes** | Must UPDATE inbox row | Auto-updates via JOIN |
+| **NULL account handling** | Stores 'USD' default | NULL (expected for draft) |
+| **Sync guarantee** | None (could drift) | Structural (impossible to drift) |
+| **View exposure** | Reads from column | Aliases from account |
+| **Frontend changes** | N/A | Zero (view aliasing) |
+
+### Benefits - Unified Architecture
+
+- ✅ **Zero Redundancy**: Currency never stored in transactions OR inbox
+- ✅ **Unified Pattern**: Same normalization strategy across ledger and scratchpad
+- ✅ **Structural Guarantee**: Impossible for currency to drift from account (both tables)
+- ✅ **Simpler Schema**: One less column in inbox table (mirrors transactions cleanup)
+- ✅ **Better UX**: Currency auto-updates when user changes account selection
+- ✅ **Clearer Mental Model**: Currency is ALWAYS a property of the account, never the transaction/inbox item
+
+### Migration Complexity
+
+- **Risk Level:** Low (same proven pattern as transactions normalization)
+- **Frontend Impact:** Zero transformer changes (view aliasing maintains compatibility)
+- **Breaking Change:** Database schema only (API contracts unchanged)
+- **Rollback Difficulty:** Easy before column drop, complex after (requires data restore)
+
+**This completes the "Unified Structural Normalization" initiative across both ledger (transactions) and scratchpad (inbox).**
+
+---
+
 ## 2025-12-28: Currency Normalization - Remove Redundant currency_original Column
 
 ### Problem: Redundant Storage Violating Third Normal Form (3NF)

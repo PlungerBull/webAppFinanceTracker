@@ -147,7 +147,7 @@ Opening balance transactions are identified by:
 
 > **Architecture Note (Updated 2025-12-28):** This is the **Staging Area** for partial/incomplete data. The "Scratchpad Inbox" allows users to save ANY amount of information (even just an amount or description). Data validation happens at promotion time via the `promote_inbox_item` RPC function.
 >
-> **Schema Parity (2025-12-28):** The inbox table has been aligned with the `transactions` table using standardized naming conventions (`amount_original`, `currency_original`) and now includes `notes` field for user annotations during scratchpad phase.
+> **Schema Parity (2025-12-28):** The inbox table has been aligned with the `transactions` table using standardized naming conventions (`amount_original`) and now includes `notes` field for user annotations during scratchpad phase.
 
 | Column | Type | Nullable | Default | Description |
 |---|---|---|---|---|
@@ -155,7 +155,6 @@ Opening balance transactions are identified by:
 | **user_id** | uuid | NO | `-` | Owner |
 | **amount_original** | numeric | **YES** | `-` | **[NULLABLE]** Draft amount (relaxed constraint for flexible entry) - RENAMED from `amount` |
 | **description** | text | **YES** | `-` | **[NULLABLE]** Draft description (relaxed constraint for flexible entry) |
-| **currency_original** | text | NO | `'USD'::text` | Currency metadata (standardized naming) - RENAMED from `currency` |
 | **date** | timestamptz | YES | `-` | **[NULLABLE]** Draft transaction date |
 | **status** | text | NO | `'pending'` | Lifecycle: `pending`, `processed`, or `ignored` |
 | **account_id** | uuid | YES | `-` | (Optional) Staged Account assignment |
@@ -165,6 +164,13 @@ Opening balance transactions are identified by:
 | **notes** | text | YES | `-` | **[NEW]** User annotations during scratchpad phase - transferred to ledger on promotion |
 | **created_at** | timestamptz | NO | `now()` | Creation timestamp |
 | **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
+
+**Currency Architecture (Normalized - 2025-12-28):**
+- Currency is **NOT stored** in the transaction_inbox table (removed `currency_original` column)
+- Currency is **ALWAYS derived** from the parent account via LEFT JOIN: `bank_accounts.currency_code`
+- When `account_id` is NULL (draft without account), currency is NULL (expected for incomplete drafts)
+- Query `transaction_inbox_view` to access currency (exposed as `currency_original` alias)
+- This eliminates redundancy and makes currency desync structurally impossible
 
 **Smart Save Integration (Dec 2025):**
 - **Draft Save:** Can save with ANY subset of fields (amount-only, description-only, notes-only, etc.)
@@ -291,6 +297,76 @@ LEFT JOIN categories c ON t.category_id = c.id;
 ```
 
 **Note:** `currency_original` is an alias for `account_currency` (both source from `bank_accounts.currency_code`). This aliasing strategy eliminates frontend code changes after normalization.
+
+---
+
+### 👁️ View: `transaction_inbox_view`
+
+**Created:** 2025-12-28 - Currency normalization extension (Part 2 of Unified Structural Normalization)
+
+**Security Configuration**: `security_invoker = true` (enforces RLS policies)
+- View executes with the querying user's permissions
+- Row-Level Security policies on underlying `transaction_inbox` table are fully respected
+- Users can only see their own inbox items
+
+| Column | Type | Description |
+|---|---|---|
+| **id** | uuid | Inbox item ID |
+| **user_id** | uuid | User ID (for RLS/ownership checks) |
+| **amount_original** | numeric | Draft amount (nullable for scratchpad mode) |
+| **description** | text | Draft description (nullable for scratchpad mode) |
+| **date** | timestamptz | Draft transaction date |
+| **source_text** | text | Raw context (OCR, bank import data) |
+| **status** | text | Lifecycle status: pending, processed, ignored |
+| **account_id** | uuid | Staged account assignment (nullable) |
+| **category_id** | uuid | Staged category assignment (nullable) |
+| **exchange_rate** | numeric | Staged exchange rate |
+| **notes** | text | User annotations during scratchpad phase |
+| **created_at** | timestamptz | Creation timestamp |
+| **updated_at** | timestamptz | Last update timestamp |
+| **account_name** | text | **[DERIVED]** Name of the assigned account (NULL if no account) |
+| **currency_original** | text | **[DERIVED]** Currency code - aliased from `bank_accounts.currency_code` (NULL if no account assigned) |
+| **account_color** | text | **[DERIVED]** Hex color of the assigned account (NULL if no account) |
+| **category_name** | text | **[DERIVED]** Name of the assigned category (NULL if no category) |
+| **category_color** | text | **[DERIVED]** Hex color of the assigned category (NULL if no category) |
+| **category_type** | transaction_type | **[DERIVED]** Type of the assigned category (NULL if no category) |
+
+**SQL Definition:**
+```sql
+CREATE VIEW transaction_inbox_view
+WITH (security_invoker = true)
+AS
+SELECT
+  -- Core inbox fields
+  i.id,
+  i.user_id,
+  i.amount_original,
+  i.description,
+  i.date,
+  i.source_text,
+  i.status,
+  i.account_id,
+  i.category_id,
+  i.exchange_rate,
+  i.notes,
+  i.created_at,
+  i.updated_at,
+
+  -- Account fields (LEFT JOIN to support NULL account_id for drafts)
+  a.name AS account_name,
+  a.currency_code AS currency_original,  -- ALIASED (NULL if no account)
+  a.color AS account_color,
+
+  -- Category fields (LEFT JOIN to support NULL category_id for drafts)
+  c.name AS category_name,
+  c.color AS category_color,
+  c.type AS category_type
+FROM transaction_inbox i
+LEFT JOIN bank_accounts a ON i.account_id = a.id
+LEFT JOIN categories c ON i.category_id = c.id;
+```
+
+**Note:** `currency_original` is aliased from `bank_accounts.currency_code` via LEFT JOIN. When `account_id` is NULL (draft without account), `currency_original` is NULL. This is expected behavior for incomplete drafts in scratchpad mode.
 
 ---
 

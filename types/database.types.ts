@@ -171,7 +171,6 @@ export type Database = {
           amount_original: number | null
           category_id: string | null
           created_at: string
-          currency_original: string
           date: string | null
           description: string | null
           exchange_rate: number | null
@@ -187,7 +186,6 @@ export type Database = {
           amount_original?: number | null
           category_id?: string | null
           created_at?: string
-          currency_original?: string
           date?: string | null
           description?: string | null
           exchange_rate?: number | null
@@ -203,7 +201,6 @@ export type Database = {
           amount_original?: number | null
           category_id?: string | null
           created_at?: string
-          currency_original?: string
           date?: string | null
           description?: string | null
           exchange_rate?: number | null
@@ -259,7 +256,6 @@ export type Database = {
           amount_original: number
           category_id: string | null
           created_at: string
-          currency_original: string
           date: string
           description: string | null
           exchange_rate: number
@@ -277,7 +273,6 @@ export type Database = {
           amount_original: number
           category_id?: string | null
           created_at?: string
-          currency_original?: string
           date?: string
           description?: string | null
           exchange_rate?: number
@@ -295,7 +290,6 @@ export type Database = {
           amount_original?: number
           category_id?: string | null
           created_at?: string
-          currency_original?: string
           date?: string
           description?: string | null
           exchange_rate?: number
@@ -309,17 +303,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_transactions_currency"
-            columns: ["currency_original"]
+            foreignKeyName: "fk_transactions_inbox"
+            columns: ["inbox_id"]
             isOneToOne: false
-            referencedRelation: "global_currencies"
-            referencedColumns: ["code"]
+            referencedRelation: "transaction_inbox"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "fk_transactions_inbox"
             columns: ["inbox_id"]
             isOneToOne: false
-            referencedRelation: "transaction_inbox"
+            referencedRelation: "transaction_inbox_view"
             referencedColumns: ["id"]
           },
           {
@@ -483,6 +477,73 @@ export type Database = {
           },
         ]
       }
+      transaction_inbox_view: {
+        Row: {
+          account_color: string | null
+          account_id: string | null
+          account_name: string | null
+          amount_original: number | null
+          category_color: string | null
+          category_id: string | null
+          category_name: string | null
+          category_type: Database["public"]["Enums"]["transaction_type"] | null
+          created_at: string | null
+          currency_original: string | null
+          date: string | null
+          description: string | null
+          exchange_rate: number | null
+          id: string | null
+          notes: string | null
+          source_text: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_currency_code_fkey"
+            columns: ["currency_original"]
+            isOneToOne: false
+            referencedRelation: "global_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "transaction_inbox_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "transaction_inbox_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_inbox_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_inbox_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories_with_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_inbox_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "parent_categories_with_counts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions_view: {
         Row: {
           account_color: string | null
@@ -517,7 +578,7 @@ export type Database = {
             referencedColumns: ["code"]
           },
           {
-            foreignKeyName: "fk_transactions_currency"
+            foreignKeyName: "bank_accounts_currency_code_fkey"
             columns: ["currency_original"]
             isOneToOne: false
             referencedRelation: "global_currencies"
@@ -528,6 +589,13 @@ export type Database = {
             columns: ["inbox_id"]
             isOneToOne: false
             referencedRelation: "transaction_inbox"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_transactions_inbox"
+            columns: ["inbox_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_inbox_view"
             referencedColumns: ["id"]
           },
           {
@@ -691,24 +759,14 @@ export type Database = {
         Args: { p_account_id: string; p_date?: string; p_new_balance: number }
         Returns: string
       }
-      replace_account_currency:
-        | {
-            Args: {
-              p_account_id: string
-              p_new_currency_code: string
-              p_old_currency_code: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_account_id: string
-              p_new_currency_code: string
-              p_new_starting_balance: number
-              p_old_currency_code: string
-            }
-            Returns: undefined
-          }
+      replace_account_currency: {
+        Args: {
+          p_account_id: string
+          p_new_currency_code: string
+          p_old_currency_code: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type:

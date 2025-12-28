@@ -16,7 +16,22 @@ export interface InboxItem {
   id: string;
   userId: string;
   amountOriginal?: number;      // Optional for scratchpad mode (RENAMED)
-  currencyOriginal: string;     // RENAMED
+
+  /**
+   * Currency code for the inbox item (e.g., "USD", "PEN").
+   *
+   * **Architecture Note:** This field is NOT stored in the transaction_inbox table.
+   * It is derived from the parent account's currency via LEFT JOIN with bank_accounts.
+   *
+   * Database source: `bank_accounts.currency_code` (via account_id foreign key)
+   * View alias: `currency_original` (aliased in transaction_inbox_view)
+   *
+   * When account_id is NULL (draft without account), this field is NULL.
+   *
+   * See: Normalized Currency Architecture in AI_CONTEXT.md
+   */
+  currencyOriginal: string;
+
   description?: string;         // Optional for scratchpad mode
   date?: string;
   sourceText?: string;
