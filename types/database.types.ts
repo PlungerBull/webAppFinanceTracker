@@ -268,11 +268,11 @@ export type Database = {
         }
         Insert: {
           account_id: string
-          amount_home: number
+          amount_home?: number
           amount_original: number
           category_id?: string | null
           created_at?: string
-          currency_original: string
+          currency_original?: string
           date?: string
           description?: string | null
           exchange_rate?: number

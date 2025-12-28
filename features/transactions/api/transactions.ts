@@ -109,16 +109,13 @@ export const transactionsApi = {
         user_id: user.id,
         description: transactionData.description || null,
         amount_original: transactionData.amount_original,
-        // ✅ amount_home is automatically calculated by database trigger
-        // Passing 0 as placeholder - trigger will override with correct value
-        amount_home: 0,
+        // ✅ SACRED LEDGER: amount_home is system-managed (DEFAULT 0, trigger overwrites)
+        // Field is OMITTED - calculate_amount_home trigger sets correct value before INSERT completes
         date: transactionData.date,
         category_id: transactionData.category_id || null,
         account_id: transactionData.account_id, // ✅ Guaranteed non-null by type
-        // ✅ SACRED LEDGER: currency_original is automatically derived from account_id by trigger
-        // DO NOT send currency_original - the enforce_sacred_ledger_currency trigger handles it
-        // TypeScript type assertion: currency_original will be set by trigger, so we cast to Partial
-        currency_original: '' as any, // Placeholder - trigger will override
+        // ✅ SACRED LEDGER: currency_original is system-managed (DEFAULT 'PENDING', trigger overwrites)
+        // Field is OMITTED - enforce_sacred_ledger_currency trigger sets correct value before INSERT completes
         exchange_rate: transactionData.exchange_rate,
         notes: transactionData.notes || null, // ✅ Capture notes
       })
