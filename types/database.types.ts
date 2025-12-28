@@ -168,14 +168,15 @@ export type Database = {
       transaction_inbox: {
         Row: {
           account_id: string | null
-          amount: number | null
+          amount_original: number | null
           category_id: string | null
           created_at: string
-          currency: string
+          currency_original: string
           date: string | null
           description: string | null
           exchange_rate: number | null
           id: string
+          notes: string | null
           source_text: string | null
           status: string
           updated_at: string
@@ -183,14 +184,15 @@ export type Database = {
         }
         Insert: {
           account_id?: string | null
-          amount?: number | null
+          amount_original?: number | null
           category_id?: string | null
           created_at?: string
-          currency?: string
+          currency_original?: string
           date?: string | null
           description?: string | null
           exchange_rate?: number | null
           id?: string
+          notes?: string | null
           source_text?: string | null
           status?: string
           updated_at?: string
@@ -198,14 +200,15 @@ export type Database = {
         }
         Update: {
           account_id?: string | null
-          amount?: number | null
+          amount_original?: number | null
           category_id?: string | null
           created_at?: string
-          currency?: string
+          currency_original?: string
           date?: string | null
           description?: string | null
           exchange_rate?: number | null
           id?: string
+          notes?: string | null
           source_text?: string | null
           status?: string
           updated_at?: string
@@ -261,7 +264,9 @@ export type Database = {
           description: string | null
           exchange_rate: number
           id: string
+          inbox_id: string | null
           notes: string | null
+          source_text: string | null
           transfer_id: string | null
           updated_at: string
           user_id: string
@@ -277,7 +282,9 @@ export type Database = {
           description?: string | null
           exchange_rate?: number
           id?: string
+          inbox_id?: string | null
           notes?: string | null
+          source_text?: string | null
           transfer_id?: string | null
           updated_at?: string
           user_id: string
@@ -293,7 +300,9 @@ export type Database = {
           description?: string | null
           exchange_rate?: number
           id?: string
+          inbox_id?: string | null
           notes?: string | null
+          source_text?: string | null
           transfer_id?: string | null
           updated_at?: string
           user_id?: string
@@ -305,6 +314,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "fk_transactions_inbox"
+            columns: ["inbox_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_inbox"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "transactions_account_id_fkey"
@@ -342,48 +358,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      transactions_currency_cleanup_backup: {
-        Row: {
-          account_id: string | null
-          account_name: string | null
-          amount_home: number | null
-          amount_original: number | null
-          cleaned_at: string | null
-          date: string | null
-          description: string | null
-          exchange_rate: number | null
-          new_currency: string | null
-          old_currency: string | null
-          transaction_id: string | null
-        }
-        Insert: {
-          account_id?: string | null
-          account_name?: string | null
-          amount_home?: number | null
-          amount_original?: number | null
-          cleaned_at?: string | null
-          date?: string | null
-          description?: string | null
-          exchange_rate?: number | null
-          new_currency?: string | null
-          old_currency?: string | null
-          transaction_id?: string | null
-        }
-        Update: {
-          account_id?: string | null
-          account_name?: string | null
-          amount_home?: number | null
-          amount_original?: number | null
-          cleaned_at?: string | null
-          date?: string | null
-          description?: string | null
-          exchange_rate?: number | null
-          new_currency?: string | null
-          old_currency?: string | null
-          transaction_id?: string | null
-        }
-        Relationships: []
       }
       user_settings: {
         Row: {
@@ -527,7 +501,9 @@ export type Database = {
           description: string | null
           exchange_rate: number | null
           id: string | null
+          inbox_id: string | null
           notes: string | null
+          source_text: string | null
           transfer_id: string | null
           updated_at: string | null
           user_id: string | null
@@ -546,6 +522,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "fk_transactions_inbox"
+            columns: ["inbox_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_inbox"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "transactions_account_id_fkey"

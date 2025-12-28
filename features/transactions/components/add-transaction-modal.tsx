@@ -181,10 +181,10 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           // PATH B: Partial Data → Inbox (Scratchpad Mode)
           // FIX: Pass accountId and categoryId to preserve selections
           await createInboxItemMutation.mutateAsync({
-            amount: finalAmount ?? undefined,
+            amountOriginal: finalAmount ?? undefined,                     // RENAMED
             description: transactionData.payee || undefined,
             date: format(transactionData.date, 'yyyy-MM-dd'),
-            currency: selectedAccount?.currencyCode || undefined,
+            currencyOriginal: selectedAccount?.currencyCode || undefined, // RENAMED
             accountId: transactionData.fromAccountId || undefined,        // FIXED: Pass through
             categoryId: transactionData.categoryId || undefined,          // FIXED: Pass through
           });
