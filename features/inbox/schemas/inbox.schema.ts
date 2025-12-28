@@ -11,6 +11,7 @@ export const promoteInboxItemSchema = z.object({
   finalDescription: z.string().optional(),
   finalDate: z.string().optional(),
   finalAmount: z.number().positive('Amount must be positive').optional(),
+  exchangeRate: z.number().positive('Exchange rate must be positive').optional(),
 });
 
 export type PromoteInboxItemFormData = z.infer<typeof promoteInboxItemSchema>;

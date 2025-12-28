@@ -53,6 +53,7 @@ export interface PromoteInboxItemParams {
   finalDescription?: string;
   finalDate?: string;
   finalAmount?: number;
+  exchangeRate?: number;  // Exchange rate from UI state (Explicit State Commitment)
 }
 
 /**

@@ -153,6 +153,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
         finalDescription: finalDescription ?? '',
         finalAmount: finalAmount ?? 0,
         finalDate,
+        exchangeRate: finalExchangeRate,
       });
       toast.success('Moved to transaction ledger');
     } catch (error) {

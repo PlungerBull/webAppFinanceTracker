@@ -140,6 +140,7 @@ export const inboxApi = {
     let finalDescription: string | undefined;
     let finalDate: string | undefined;
     let finalAmount: number | undefined;
+    let exchangeRate: number | undefined;
 
     if ('inboxId' in params) {
       // PromoteInboxItemParams format
@@ -149,6 +150,7 @@ export const inboxApi = {
       finalDescription = params.finalDescription;
       finalDate = params.finalDate;
       finalAmount = params.finalAmount;
+      exchangeRate = params.exchangeRate;
     } else {
       // InboxItem format - normalized by transformer (null already converted to undefined)
       inboxId = params.id;
@@ -157,6 +159,7 @@ export const inboxApi = {
       finalDescription = params.description;
       finalDate = params.date;
       finalAmount = params.amountOriginal;  // RENAMED field
+      exchangeRate = params.exchangeRate;
     }
 
     // STRICT VALIDATION: Ensure we have the critical data points
@@ -175,6 +178,7 @@ export const inboxApi = {
       p_final_description: finalDescription,
       p_final_date: finalDate || new Date().toISOString(),
       p_final_amount: finalAmount,
+      p_exchange_rate: exchangeRate,
     });
 
     if (error) {
