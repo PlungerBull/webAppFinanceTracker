@@ -179,7 +179,8 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Notes Functionality:** Inbox supports `notes` field for user annotations - transferred directly to ledger on promotion
     * **Context Mirroring:** Ledger includes `source_text` column (raw OCR/import data) - transferred separately from notes
     * **Birth Certificates:** Ledger includes `inbox_id` foreign key for permanent audit trail back to inbox origins
-    * **Field Transfer:** `promote_inbox_item` RPC transfers `notes` and `source_text` directly (no appending)
+    * **Field Transfer:** `promote_inbox_item` RPC transfers `notes`, `source_text`, and `exchange_rate` directly from UI state (no appending)
+    * **Explicit State Commitment:** UI is source of truth - `exchange_rate` parameter passed directly to RPC (priority: UI > inbox > 1.0)
 * **Smart Routing:** When building forms, check for data completeness:
     * **Complete Data (4 fields):** Amount + Description + Account + Category -> Write to Ledger (`transactions`)
     * **Partial Data (1-3 fields):** Any subset of fields -> Write to Inbox (`transaction_inbox`)
@@ -279,7 +280,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * Confirmation dialog on close if unsaved changes exist
 * **API Functions:**
     * Transactions: Use `transactionsApi.updateBatch()` to update multiple fields atomically
-    * Inbox: Use `inboxApi.promote()` with final values (description, amount, date, account, category)
+    * Inbox: Use `inboxApi.promote()` with final values (description, amount, date, account, category, exchangeRate)
 * **Layout Pattern:**
     * Both Inbox and Transactions use three-column layout: `Sidebar | TransactionList | DetailPanel`
     * Fixed 400px width for detail panel

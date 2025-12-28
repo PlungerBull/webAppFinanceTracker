@@ -304,7 +304,7 @@ LEFT JOIN categories c ON t.category_id = c.id;
 
 | Function Name | Return Type | Arguments | Description |
 |---|---|---|---|
-| `promote_inbox_item` | `json` | `p_inbox_id uuid`, `p_account_id uuid`, `p_category_id uuid`, `p_final_description text`, `p_final_date timestamptz`, `p_final_amount numeric` | **[FULL MIRROR 2025-12-28]** Atomically moves draft from Inbox to Ledger with hard-gate validation. Transfers `notes` and `source_text` directly. Stores `inbox_id` for traceability. |
+| `promote_inbox_item` | `json` | `p_inbox_id uuid`, `p_account_id uuid`, `p_category_id uuid`, `p_final_description text`, `p_final_date timestamptz`, `p_final_amount numeric`, `p_exchange_rate numeric` | **[EXPLICIT STATE COMMITMENT 2025-12-28]** Atomically moves draft from Inbox to Ledger with hard-gate validation. Transfers `notes`, `source_text`, and `exchange_rate` directly from UI state. Exchange rate priority: UI parameter > inbox record > 1.0. Stores `inbox_id` for traceability. |
 
 ### Analytics Functions
 
