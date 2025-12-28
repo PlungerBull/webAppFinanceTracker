@@ -14,6 +14,71 @@
 
 ---
 
+## 2025-12-28: Security Hardening - View RLS and Backup Table
+
+### Problem: Security Vulnerabilities Identified
+
+A security audit revealed two critical vulnerabilities in the production database:
+
+**Vulnerability 1: RLS Bypass via SECURITY DEFINER View**
+- `transactions_view` was missing `security_invoker` parameter
+- Views without explicit `security_invoker` default to `SECURITY DEFINER` mode
+- This executes queries with the view creator's privileges, bypassing Row-Level Security (RLS) policies
+- Could potentially expose other users' transactions if exploited
+
+**Vulnerability 2: Exposed Backup Table**
+- `transactions_currency_cleanup_backup` existed in the `public` schema
+- No RLS policies applied to this table
+- Accessible via Supabase API without authorization checks
+- Contains historical transaction data from Sacred Ledger migration (Dec 27, 2025)
+
+### Solution: Database-Level Security Hardening
+
+**Migration**: `20251228161858_fix_security_view_and_backup.sql`
+
+**Changes**:
+
+1. **View Security**: Enforced `security_invoker = true` on `transactions_view`
+   ```sql
+   ALTER VIEW public.transactions_view
+   SET (security_invoker = true);
+   ```
+   - View now executes with the querying user's permissions (not view creator's)
+   - RLS policies on underlying `transactions` table are fully respected
+   - Users can only see their own transactions through the view
+
+2. **Backup Isolation**: Moved backup table to `internal` schema
+   ```sql
+   CREATE SCHEMA IF NOT EXISTS internal;
+   ALTER TABLE public.transactions_currency_cleanup_backup
+   SET SCHEMA internal;
+   ```
+   - Table no longer exposed via public Supabase API
+   - Preserves audit trail while removing security risk
+   - Can be safely dropped in future cleanup if no longer needed
+
+### Impact
+
+- **Zero Downtime**: ALTER VIEW is instant, ALTER TABLE is metadata-only (no data movement)
+- **Backward Compatible**: View interface unchanged, application code unaffected
+- **Enhanced Security Posture**: RLS policies now enforced at all query layers
+
+### Verification
+
+- ✅ Security Advisor warnings cleared (confirmed in Supabase Dashboard)
+- ✅ API queries respect RLS policies (tested with multi-user scenarios)
+- ✅ Backup table removed from public schema (verified in Table Editor)
+
+### Migration Files
+
+- **Migration**: `supabase/migrations/20251228161858_fix_security_view_and_backup.sql`
+
+### Deployment Status
+
+- ✅ Applied to Production (wbshlbhqmodfgcfmjotb)
+
+---
+
 ## 2025-12-28: Sacred Ledger Data Reset (Clear All Data Fix)
 
 ### Problem: Clear Data Functionality Failing

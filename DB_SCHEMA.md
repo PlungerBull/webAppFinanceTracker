@@ -207,7 +207,13 @@ Opening balance transactions are identified by:
 
 ### 👁️ View: `transactions_view`
 
-**Updated:** 2025-12-26 - Expanded to include IDs and colors for editing support
+**Updated:** 2025-12-28 - Security hardening: Enforced `security_invoker = true`
+**Previous Update:** 2025-12-26 - Expanded to include IDs and colors for editing support
+
+**Security Configuration**: `security_invoker = true` (enforces RLS policies)
+- View executes with the querying user's permissions
+- Row-Level Security policies on underlying `transactions` table are fully respected
+- Users can only see their own transactions
 
 | Column | Type | Description |
 |---|---|---|
@@ -234,7 +240,8 @@ Opening balance transactions are identified by:
 
 **SQL Definition:**
 ```sql
-CREATE VIEW transactions_view AS
+CREATE VIEW transactions_view
+WITH (security_invoker = true) AS
 SELECT
   t.id,
   t.user_id,
