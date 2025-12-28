@@ -1,5 +1,17 @@
 # AI ARCHITECTURE CONTEXT
 
+## 📜 Document Governance
+
+**Purpose**: The "Mental Model" for the codebase. High-level architecture, directory structure, and coding standards.
+
+**Include**: Tech stack, folder organization, abstract architectural patterns (e.g., Sacred Ledger), and "Do/Don't" rules.
+
+**Do NOT Include**: SQL definitions, table schemas, migration logs, or specific file line numbers.
+
+**Maintenance**: Update only when a global architectural pattern or a major tech-stack component changes.
+
+---
+
 ## 1. Project Overview
 **Name:** Finance Tracker Web
 **Description:** A personal finance application for tracking income, expenses, and budgeting.
@@ -89,20 +101,12 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
         * Account List Item (account-list-item.tsx) - Dashboard sidebar
     * **Example:** "BCP Credito PEN" ✅ NOT "BCP Credito S/" ❌
     * **Type Safety:** `SelectableAccount` interfaces must include `currencyCode: string` as a required field
-* **Account Name Normalization (2025-12-27):**
-    * **Database Migration:** Account names have been normalized to remove redundant currency code suffixes
-    * **Before:** Database stored `"BCP Credito (PEN)"` + `currency_code = "PEN"` (redundant!)
-    * **After:** Database stores `"BCP Credito"` + `currency_code = "PEN"` (single source of truth)
-    * **Frontend Impact:** All name-cleaning logic has been REMOVED from hooks:
-        * `use-flat-accounts.ts` - No longer generates `cleanName` field
-        * `use-grouped-accounts.ts` - No longer uses `split(' (')[0]` pattern
-        * Type `FlatAccount` is now simply `AccountBalance` (no extension needed)
-    * **Migration Files:**
-        * `20251227140411_fix_import_account_lookup.sql` - Fixed import logic to match by name + currency
-        * `20251227140449_clean_account_names.sql` - Stripped currency suffixes from existing data
-    * **Uniqueness Constraint:** Added `UNIQUE (user_id, name, currency_code)` to prevent duplicate accounts
-    * **DO NOT:** Add frontend code that strips currency codes from names - database is clean!
-    * **DO:** Use `account.name` directly from database without transformation
+* **Account Name Normalization:**
+    * **Rule:** Account names are stored clean in the database (no currency code suffixes)
+    * **Database State:** Names like `"BCP Credito"` with `currency_code = "PEN"` (single source of truth)
+    * **Uniqueness:** Database enforces `UNIQUE (user_id, name, currency_code)` to prevent duplicates
+    * **DO NOT:** Add frontend code that strips currency codes from names - database is already clean!
+    * **DO:** Use `account.name` directly from database without any transformation
 
 ### A2. Category Architecture ("Invisible Grouping" Pattern)
 * **Strict Hierarchy, Flat UI:** Categories follow a two-level parent-child hierarchy in the database, but the UI presents only leaf nodes.
@@ -127,10 +131,10 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * No parent context shown (clean, minimal design)
     * Sorted: Income categories first, then Expense, then alphabetically
     * Hook: `useLeafCategories()` filters and returns only selectable categories
-* **Implementation (Dec 2025):**
-    * **Add Transaction Modal:** Uses `CategorySelector` component with built-in `useLeafCategories()` filtering (line 22 in category-selector.tsx)
-    * **Transaction Detail Panel:** Parent component (`all-transactions-table.tsx`) fetches leaf categories via `useLeafCategories()` and passes to detail panel
-    * **Inbox Detail Panel:** Component (`inbox-detail-panel.tsx`) fetches leaf categories directly via `useLeafCategories()` hook
+* **Implementation:**
+    * **Add Transaction Modal:** Uses `CategorySelector` component with built-in `useLeafCategories()` filtering
+    * **Transaction Detail Panel:** Parent component fetches leaf categories via `useLeafCategories()` and passes to detail panel
+    * **Inbox Detail Panel:** Component fetches leaf categories directly via `useLeafCategories()` hook
     * **CRITICAL:** All category selectors MUST use `useLeafCategories()` - NEVER `useCategories()` directly for user selection
     * **Pattern:** Filter at the data source (hook level), not in the UI component (transformation level)
 
@@ -164,10 +168,10 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * Use `tailwind-merge` and `clsx` (via the `cn` helper) for dynamic classes.
 * Prioritize Radix UI primitives for interactive elements (Dialogs, Popovers).
 
-### F. Data Entry Strategy (The "Scratchpad" Pattern - Updated 2025-12-27)
+### F. Data Entry Strategy (The "Scratchpad" Pattern)
 * **The "Clean Ledger" Rule:** The main `transactions` table must ONLY contain complete, valid data (Amount + Date + Account + Category).
-* **The "Scratchpad Inbox" Rule (NEW):** The `transaction_inbox` table now accepts PARTIAL data with relaxed constraints:
-    * **Database Schema:** `amount` and `description` columns are now NULLABLE (migration: `20251227160805_make_inbox_permissive.sql`)
+* **The "Scratchpad Inbox" Rule:** The `transaction_inbox` table accepts PARTIAL data with relaxed constraints:
+    * **Database Schema:** `amount` and `description` columns are NULLABLE
     * **Purpose:** Enable frictionless data entry - users can save ANY amount of information instantly
     * **Examples:** Just an amount, just a category, just a description - all valid inbox states
 * **Smart Routing:** When building forms, check for data completeness:
@@ -182,12 +186,12 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
         * `amount IS NULL` → RAISE EXCEPTION 'Amount is required'
         * `description IS NULL OR trim(description) = ''` → RAISE EXCEPTION 'Description is required'
         * `date IS NULL` → RAISE EXCEPTION 'Date is required'
-    * **Audit Trail:** Promotion now marks items as `status='processed'` instead of deleting (migration: `20251227215819_add_promote_inbox_hardgate_validation.sql`)
+    * **Audit Trail:** Promotion marks items as `status='processed'` instead of deleting them
     * **Frontend Cannot Bypass:** Database-level validation ensures ledger integrity regardless of frontend state
 * **Auto-Promotion:** When editing inbox items in the detail panel, if all 4 required fields are complete, the item is automatically promoted to the ledger (with "vanishing effect")
 * **Optimistic UI:** Promoted items disappear instantly from inbox list (onMutate), with robust rollback on error (onError restores snapshot)
 
-### G. Data Normalization Pattern (Centralized Transformer - Added 2025-12-27)
+### G. Data Normalization Pattern (Centralized Transformer)
 * **The Problem:** Database uses `null` for missing values, but TypeScript optional properties use `undefined`. Mixing both creates type confusion.
 * **The Solution:** Centralized bidirectional conversion in the data transformer layer:
     * **Database → Domain:** `dbInboxItemToDomain()` converts `null → undefined` for all optional fields
@@ -208,7 +212,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 
 ### H. Transaction Detail Panel Architecture (Unified Reconciliation Engine with Smart Save)
 * **Shared Component Pattern:** Both Inbox and Transactions views use the SAME detail panel component located at `features/shared/components/transaction-detail-panel/`.
-* **Smart Save System (NEW - Dec 2025):** Intelligent button routing based on data completeness:
+* **Smart Save System:** Intelligent button routing based on data completeness:
     * **Inbox Mode - Dual Callbacks:**
         * `onPartialSave`: Saves incomplete data as draft in inbox
         * `onPromote`: Validates completeness & promotes to ledger (atomic via `promote_inbox_item` RPC)
@@ -239,7 +243,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
         * **Account Selector:** Shows selected account name + currency symbol (e.g., "BCP Credito S/")
         * **Category Selector:** Shows selected category name with color dot
         * **Date Picker:** Calendar popover with formatted date display
-        * **Exchange Rate Field (Reactive - FIXED Dec 2025):** Only appears when selected account currency differs from user's main currency
+        * **Exchange Rate Field (Reactive):** Only appears when selected account currency differs from user's main currency
             * **CRITICAL:** Comparison logic: `selectedAccount.currencyCode !== mainCurrency` (from user settings)
             * **NOT:** `data.currency` (which is temporary import metadata)
             * Shows "REQUIRED" badge in orange when visible
@@ -247,10 +251,8 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
             * Displays conversion helper: "1 {mainCurrency} = ? {accountCurrency}"
             * 4 decimal precision for accurate rates
             * Validation: Required for ledger promotion if currencies differ, optional for draft save
-            * **Data Population Fix (2025-12-27):** Field now correctly populates from database
-                * Value pattern: `editedFields.exchangeRate ?? data.exchangeRate ?? undefined`
-                * Transaction panel transformation includes `exchangeRate` field (was missing)
-                * Follows same pattern as other fields (account, category, notes)
+            * **Data Population:** Field populates from database via pattern: `editedFields.exchangeRate ?? data.exchangeRate ?? undefined`
+            * Follows same pattern as other fields (account, category, notes)
         * **Notes Field:** Multiline textarea for transaction notes
     * **MissingInfoBanner (Dual-Mode):**
         * **Inbox Mode:** Orange warning (draft-friendly) - "Save as Draft" with helpful completion guidance
@@ -264,7 +266,6 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
         * Colors: `account_color`, `category_color` (for UI indicators)
         * Metadata: `user_id`, `exchange_rate`, `notes`, `created_at`, `updated_at`
     * **Data Transformer:** `dbTransactionViewToDomain()` maps all fields from view to domain types
-    * **Fix Applied (Dec 2025):** Updated view to include missing fields, preventing "NULL" accountId/categoryId bug
 * **Batch Save Pattern:**
     * All edits are staged in local state (`EditedFields` object)
     * NO auto-save on field change (prevents accidental edits)
@@ -353,53 +354,30 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 
 ### Clear All Data Function (`clear_user_data`)
 
-**Migration**: `20251228032715_fix_clear_user_data_sacred_ledger.sql` (2025-12-28)
-
 The `clear_user_data` RPC function implements the "Sacred Ledger" philosophy for secure, performant data resets.
 
-#### Three Core Principles
+#### Core Principles
 
-**1. Identity Verification Hard-Gate (Security)**
-* Uses `auth.uid()` to verify requesting user matches authenticated session
+**1. Identity Verification (Security)**
+* Function verifies requesting user matches authenticated session
 * Prevents unauthorized data wipes even if RPC endpoint is exposed
-* Runs with `SECURITY DEFINER` (elevated privileges), so verification is critical
 * Throws exception if user IDs don't match: `"Unauthorized: User can only clear their own data"`
 
-**2. Sequential Dependency Purge (Correctness)**
-* **Order matters!** Deletion sequence respects foreign key constraints:
-  1. `transaction_inbox` - Has FK to categories/accounts (no CASCADE) - MUST go first
-  2. `bank_accounts` - CASCADE auto-deletes ALL transactions (performance optimization)
-  3. `categories` - Children before parents (handles `ON DELETE RESTRICT` constraint)
-* Missing the inbox deletion was the original bug (FK violations when trying to delete categories/accounts)
+**2. User Environment Preservation**
+* **CRITICAL**: `user_settings` table is NEVER touched
+* Theme preferences, main currency, week start day remain intact
+* User returns to "Fresh Start" with familiar environment (no reconfiguration needed)
 
-**3. CASCADE Performance Optimization**
-* Leverages `transactions_account_id_fkey ON DELETE CASCADE`
-* **Before**: Deleting 10,000 transactions = 10,000 trigger executions (balance updates)
-* **After**: Deleting bank accounts = CASCADE deletes transactions, triggers become no-ops (~99% reduction)
-* **Why triggers become no-ops**: The `update_account_balance_ledger` trigger tries to UPDATE the account, but the account is already deleted, so the UPDATE finds no row and exits instantly
+#### Frontend Usage
 
-#### User Environment Preservation
+**Component**: `features/settings/components/data-management.tsx`
 
-**CRITICAL**: `user_settings` table is NEVER touched by `clear_user_data`
-
-**Preserved Data:**
-* Theme preferences (light/dark/system)
-* Main currency setting
-* Week start day preferences
-
-**Benefit**: User returns to a "Fresh Start" with familiar environment - no need to reconfigure application
-
-#### Function Signature
-
+**Function Signature:**
 ```typescript
 await supabase.rpc('clear_user_data', {
   p_user_id: user.id  // Must match authenticated session
 });
 ```
-
-#### Usage in Frontend
-
-**Component**: `features/settings/components/data-management.tsx`
 
 **Success Flow:**
 1. User clicks "Clear Data" button (confirmation dialog shown)
@@ -425,6 +403,5 @@ await supabase.rpc('clear_user_data', {
 
 #### Related Documentation
 
-* **DB Schema**: See `DB_SCHEMA.md` section "2025-12-28: Sacred Ledger Data Reset"
-* **Migration File**: `supabase/migrations/20251228032715_fix_clear_user_data_sacred_ledger.sql`
-* **Schema Snapshot**: `supabase/current_live_snapshot.sql` (lines 214-256)
+* **DB Schema**: See `DB_SCHEMA.md` for function signature and technical details
+* **Migration History**: See `CHANGELOG.md` for implementation details and problem/solution narrative
