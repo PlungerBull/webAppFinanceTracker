@@ -485,6 +485,25 @@ LEFT JOIN categories c ON t.category_id = c.id;
 
 ---
 
+### 2025-12-27: Exchange Rate Field Population Fix (Frontend Only)
+- **Problem**: Exchange rate field showed empty when editing existing cross-currency transactions, even though the rate was stored in the database
+- **Root Cause**: Transaction panel data transformation was missing the `exchangeRate` field
+- **Solution**:
+  - Added `exchangeRate: transaction.exchangeRate ?? undefined` to PanelData transformation in [transaction-detail-panel.tsx:40](features/transactions/components/transaction-detail-panel.tsx#L40)
+  - Updated form field value to fallback to database: `editedFields.exchangeRate ?? data.exchangeRate ?? undefined` in [form-section.tsx:65](features/shared/components/transaction-detail-panel/form-section.tsx#L65)
+- **Pattern Alignment**: Exchange rate now follows same pattern as other fields (account, category, notes)
+  - Falls back to database value when not edited
+  - Shows stored value when detail panel opens
+  - Only creates edited value when user changes it
+- **Impact**:
+  - **Before**: Exchange rate field always empty, requiring re-entry
+  - **After**: Exchange rate field shows stored database value
+- **Files Modified**:
+  - `features/transactions/components/transaction-detail-panel.tsx` - Added exchangeRate to data transformation
+  - `features/shared/components/transaction-detail-panel/form-section.tsx` - Added data.exchangeRate fallback
+
+---
+
 ## 🆕 Recent Schema Changes (2025-12-27): Scratchpad Transformation
 
 ### Overview

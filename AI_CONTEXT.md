@@ -235,6 +235,10 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
             * Displays conversion helper: "1 {mainCurrency} = ? {accountCurrency}"
             * 4 decimal precision for accurate rates
             * Validation: Required for ledger promotion if currencies differ, optional for draft save
+            * **Data Population Fix (2025-12-27):** Field now correctly populates from database
+                * Value pattern: `editedFields.exchangeRate ?? data.exchangeRate ?? undefined`
+                * Transaction panel transformation includes `exchangeRate` field (was missing)
+                * Follows same pattern as other fields (account, category, notes)
         * **Notes Field:** Multiline textarea for transaction notes
     * **MissingInfoBanner (Dual-Mode):**
         * **Inbox Mode:** Orange warning (draft-friendly) - "Save as Draft" with helpful completion guidance
