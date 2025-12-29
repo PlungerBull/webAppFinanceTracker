@@ -93,14 +93,15 @@ export interface UpdateInboxItemParams {
  * CreateInboxItemParams - Parameters for creating a new inbox item
  * NOW SUPPORTS SCRATCHPAD MODE: All fields are optional
  * Allows saving partial data (e.g., just a category, just an amount, etc.)
+ * NOTE: currencyOriginal removed - now derived from account_id via transaction_inbox_view
  */
 export interface CreateInboxItemParams {
   amountOriginal?: number;       // RENAMED
   description?: string;
-  currencyOriginal?: string;     // RENAMED
+  // currencyOriginal: REMOVED - now derived from account_id via transaction_inbox_view
   date?: string;
   sourceText?: string;
-  accountId?: string;            // Persist account selection
+  accountId?: string;            // Persist account selection (currency auto-derived from this)
   categoryId?: string;           // Persist category selection
   notes?: string;                // NEW: User annotations
 }

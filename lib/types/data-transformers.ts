@@ -108,7 +108,9 @@ export function dbInboxItemToDomain(
     id: dbInboxItem.id,
     userId: dbInboxItem.user_id,
     amountOriginal: dbInboxItem.amount_original ?? undefined,  // null → undefined (RENAMED)
-    currencyOriginal: dbInboxItem.currency_original,           // RENAMED
+    // NOTE: currency_original removed from table - now derived from account via transaction_inbox_view
+    // This transformer is for raw table rows only. Use transaction_inbox_view for currency access.
+    currencyOriginal: undefined,                               // REMOVED from table schema
     description: dbInboxItem.description ?? undefined,         // null → undefined
     date: dbInboxItem.date ?? undefined,                       // null → undefined
     sourceText: dbInboxItem.source_text ?? undefined,          // null → undefined
@@ -124,7 +126,8 @@ export function dbInboxItemToDomain(
 
 /**
  * Transforms a database transaction row to domain Transaction type
- * NOTE: Actual schema has amount_original, amount_home, currency_original, exchange_rate, date (not transaction_date)
+ * NOTE: currency_original removed from table - now derived from account via transactions_view
+ * This transformer is for raw table rows only. Use transactions_view for currency access.
  */
 export function dbTransactionToDomain(
   dbTransaction: Database['public']['Tables']['transactions']['Row']
@@ -136,7 +139,8 @@ export function dbTransactionToDomain(
     categoryId: dbTransaction.category_id,
     amountOriginal: dbTransaction.amount_original,
     amountHome: dbTransaction.amount_home,
-    currencyOriginal: dbTransaction.currency_original,
+    // NOTE: currency_original removed from table - now derived from account via transactions_view
+    currencyOriginal: undefined as any,  // REMOVED from table schema - use transactions_view instead
     exchangeRate: dbTransaction.exchange_rate,
     description: dbTransaction.description,
     notes: dbTransaction.notes,
@@ -205,11 +209,12 @@ export function domainCategoryToDbInsert(data: {
  * Transforms domain inbox item data to database insert format
  * SCRATCHPAD MODE: amount and description are now optional
  * Converts undefined → null for database storage
+ * NOTE: currency_original removed from table - now derived from account via transaction_inbox_view
  */
 export function domainInboxItemToDbInsert(data: {
   userId: string;
   amountOriginal?: number;         // Optional for scratchpad mode (RENAMED)
-  currencyOriginal?: string;       // RENAMED
+  // currencyOriginal removed - derived from account via view
   description?: string;            // Optional for scratchpad mode
   date?: string;
   sourceText?: string;
@@ -222,7 +227,7 @@ export function domainInboxItemToDbInsert(data: {
   return {
     user_id: data.userId,
     amount_original: data.amountOriginal ?? null,    // undefined → null for database (RENAMED)
-    currency_original: data.currencyOriginal,        // RENAMED
+    // currency_original: REMOVED - now derived from account_id via JOIN in transaction_inbox_view
     description: data.description ?? null,           // undefined → null for database
     date: data.date ?? null,                         // undefined → null for database
     source_text: data.sourceText ?? null,            // undefined → null for database
@@ -251,7 +256,8 @@ export function domainInboxItemToDbInsert(data: {
 
 /**
  * Transforms domain transaction data to database insert format
- * NOTE: No 'type' or 'subcategory_id' fields. Uses amount_original, amount_home, currency_original, exchange_rate
+ * NOTE: currency_original removed from table - now derived from account via transactions_view
+ * Do NOT use this for direct inserts - use RPC functions instead (create_transfer, promote_inbox_item, import_transactions)
  */
 export function domainTransactionToDbInsert(data: {
   userId: string;
@@ -259,7 +265,7 @@ export function domainTransactionToDbInsert(data: {
   categoryId: string | null;
   amountOriginal: number;
   amountHome: number;
-  currencyOriginal: string;
+  // currencyOriginal removed - derived from account via view
   exchangeRate: number;
   description: string | null;
   notes: string | null;
@@ -274,7 +280,7 @@ export function domainTransactionToDbInsert(data: {
     category_id: data.categoryId,
     amount_original: data.amountOriginal,
     amount_home: data.amountHome,
-    currency_original: data.currencyOriginal,
+    // currency_original: REMOVED - now derived from account_id via JOIN in transactions_view
     exchange_rate: data.exchangeRate,
     description: data.description,
     notes: data.notes,
@@ -345,13 +351,14 @@ export function domainCategoryToDbUpdate(data: {
 
 /**
  * Transforms domain transaction data to database update format
+ * NOTE: currency_original removed from table - now derived from account via transactions_view
  */
 export function domainTransactionToDbUpdate(data: {
   accountId?: string;
   categoryId?: string | null;
   amountOriginal?: number;
   amountHome?: number;
-  currencyOriginal?: string;
+  // currencyOriginal removed - derived from account via view
   exchangeRate?: number;
   description?: string | null;
   notes?: string | null;
@@ -364,7 +371,7 @@ export function domainTransactionToDbUpdate(data: {
   if (data.categoryId !== undefined) update.category_id = data.categoryId;
   if (data.amountOriginal !== undefined) update.amount_original = data.amountOriginal;
   if (data.amountHome !== undefined) update.amount_home = data.amountHome;
-  if (data.currencyOriginal !== undefined) update.currency_original = data.currencyOriginal;
+  // currency_original: REMOVED - now derived from account_id via JOIN in transactions_view
   if (data.exchangeRate !== undefined) update.exchange_rate = data.exchangeRate;
   if (data.description !== undefined) update.description = data.description;
   if (data.notes !== undefined) update.notes = data.notes;

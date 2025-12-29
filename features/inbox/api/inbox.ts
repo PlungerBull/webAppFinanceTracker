@@ -224,7 +224,7 @@ export const inboxApi = {
       userId: user.id,
       amountOriginal: params.amountOriginal,       // RENAMED - Transformer converts undefined → null
       description: params.description,             // Transformer converts undefined → null
-      currencyOriginal: params.currencyOriginal,   // RENAMED
+      // currencyOriginal: REMOVED - now derived from account_id via transaction_inbox_view
       date: params.date,
       sourceText: params.sourceText,
       accountId: params.accountId,                 // Transformer converts undefined → null

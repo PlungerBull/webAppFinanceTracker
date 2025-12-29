@@ -184,8 +184,8 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
             amountOriginal: finalAmount ?? undefined,                     // RENAMED
             description: transactionData.payee || undefined,
             date: format(transactionData.date, 'yyyy-MM-dd'),
-            currencyOriginal: selectedAccount?.currencyCode || undefined, // RENAMED
-            accountId: transactionData.fromAccountId || undefined,        // FIXED: Pass through
+            // currencyOriginal: REMOVED - now derived from accountId via transaction_inbox_view
+            accountId: transactionData.fromAccountId || undefined,        // FIXED: Pass through (currency auto-derived)
             categoryId: transactionData.categoryId || undefined,          // FIXED: Pass through
           });
 
