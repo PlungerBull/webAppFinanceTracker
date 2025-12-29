@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Loader2, ChevronDown, ChevronRight, ArrowRightLeft } from 'lucide-react';
 import { useFinancialOverview, type CategoryMonthlyData } from '../hooks/use-financial-overview';
 import { formatCurrencyShort } from '@/hooks/use-formatted-balance';
 import { UI } from '@/lib/constants';
@@ -18,57 +18,95 @@ interface CategoryGroup {
 export function FinancialOverview() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Generate months array
+  // Fetch data with main currency
+  const { data: overviewData, isLoading } = useFinancialOverview(UI.MONTHS_DISPLAY.SPENDING_TABLE);
+
+  // CRITICAL: Generate 6-month skeleton FIRST (prevents grid collapse with sparse data)
   const months = useMemo(() => {
     const result = [];
     const today = new Date();
-    for (let i = 0; i < UI.MONTHS_DISPLAY.SPENDING_TABLE; i++) {
+    for (let i = UI.MONTHS_DISPLAY.SPENDING_TABLE - 1; i >= 0; i--) {
       result.push(startOfMonth(subMonths(today, i)));
     }
-    return result.reverse(); // Oldest to newest
+    return result; // Oldest to newest
   }, []);
 
-  // Fetch data
-  const { data: overviewData, isLoading } = useFinancialOverview(UI.MONTHS_DISPLAY.SPENDING_TABLE);
+  // Grouping logic (parent-child hierarchy)
+  const groupCategories = useMemo(() => {
+    return (categories: CategoryMonthlyData[]): CategoryGroup[] => {
+      const parents = categories.filter(cat => !cat.parentId);
+      const children = categories.filter(cat => cat.parentId);
 
-  // Grouping logic
-  const groupCategories = (categories: CategoryMonthlyData[]): CategoryGroup[] => {
-    const parents = categories.filter(cat => !cat.parentId);
-    const children = categories.filter(cat => cat.parentId);
+      return parents.map(parent => {
+        const groupChildren = children.filter(child => child.parentId === parent.categoryId);
 
-    return parents.map(parent => {
-      const groupChildren = children.filter(child => child.parentId === parent.categoryId);
+        // Calculate totals for the parent row (Sum of children)
+        const totals: Record<string, number> = {};
+        months.forEach(month => {
+          const monthKey = month.toISOString().slice(0, 7);
+          const childrenSum = groupChildren.reduce((sum, child) => {
+            return sum + (child.monthlyAmounts[monthKey] || 0);
+          }, 0);
+          totals[monthKey] = childrenSum;
+        });
 
-      // Calculate totals for the parent row (Sum of children)
-      const totals: Record<string, number> = {};
-      months.forEach(month => {
-        const monthKey = month.toISOString().slice(0, 7);
-        const childrenSum = groupChildren.reduce((sum, child) => {
-          return sum + (child.monthlyAmounts[monthKey] || 0);
-        }, 0);
-        totals[monthKey] = childrenSum;
+        return {
+          parent,
+          children: groupChildren,
+          totals
+        };
       });
-
-      return {
-        parent,
-        children: groupChildren,
-        totals
-      };
-    });
-  };
+    };
+  }, [months]);
 
   const incomeGroups = useMemo(() =>
     overviewData ? groupCategories(overviewData.incomeCategories) : [],
-    [overviewData, months]
+    [overviewData, groupCategories]
   );
 
   const expenseGroups = useMemo(() =>
     overviewData ? groupCategories(overviewData.expenseCategories) : [],
-    [overviewData, months]
+    [overviewData, groupCategories]
   );
 
-  // Initialize expanded state once data is loaded
-  useEffect(() => {
+  // CTO Refinement #2: Memoized frontend aggregation for summary rows
+  const incomeTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    months.forEach(month => {
+      const monthKey = month.toISOString().slice(0, 7);
+      const monthTotal = incomeGroups.reduce((sum, group) => {
+        return sum + (group.totals[monthKey] || 0);
+      }, 0);
+      totals[monthKey] = monthTotal;
+    });
+    return totals;
+  }, [incomeGroups, months]);
+
+  const expenseTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    months.forEach(month => {
+      const monthKey = month.toISOString().slice(0, 7);
+      const monthTotal = expenseGroups.reduce((sum, group) => {
+        return sum + (group.totals[monthKey] || 0);
+      }, 0);
+      totals[monthKey] = monthTotal;
+    });
+    return totals;
+  }, [expenseGroups, months]);
+
+  const netCashFlow = useMemo(() => {
+    const flow: Record<string, number> = {};
+    months.forEach(month => {
+      const monthKey = month.toISOString().slice(0, 7);
+      const income = incomeTotals[monthKey] || 0;
+      const expense = expenseTotals[monthKey] || 0;
+      flow[monthKey] = income - expense;
+    });
+    return flow;
+  }, [incomeTotals, expenseTotals, months]);
+
+  // Initialize expanded state once data is loaded (all groups expanded by default)
+  React.useEffect(() => {
     if (overviewData && expandedGroups.size === 0) {
       const allIds = new Set<string>();
       [...overviewData.incomeCategories, ...overviewData.expenseCategories]
@@ -76,7 +114,7 @@ export function FinancialOverview() {
         .forEach(c => allIds.add(c.categoryId));
       setExpandedGroups(allIds);
     }
-  }, [overviewData]);
+  }, [overviewData, expandedGroups.size]);
 
   const toggleGroup = (categoryId: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -88,6 +126,9 @@ export function FinancialOverview() {
     setExpandedGroups(newExpanded);
   };
 
+  // CTO Refinement #4: Currency integrity - use mainCurrency from hook, fallback to prevent crash
+  const mainCurrency = overviewData?.mainCurrency || 'USD';
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -96,6 +137,7 @@ export function FinancialOverview() {
     );
   }
 
+  // Empty state handling (CTO requirement)
   if (incomeGroups.length === 0 && expenseGroups.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500 text-sm">
@@ -104,121 +146,181 @@ export function FinancialOverview() {
     );
   }
 
+  // Render individual month cells with CTO Refinement #3: Tabular numbers
   const renderMonthCells = (amounts: Record<string, number>, type: 'income' | 'expense', isParent = false) => {
     return months.map((month) => {
       const monthKey = month.toISOString().slice(0, 7);
-      const amount = amounts[monthKey] || amounts[monthKey] === 0 ? amounts[monthKey] : 0;
+      const amount = amounts[monthKey] ?? 0; // COALESCE to 0
 
       return (
-        <td key={month.toISOString()} className={cn(
-          "py-3 text-right text-sm",
+        <div key={month.toISOString()} className={cn(
+          "text-center text-[12px] font-mono tabular-nums",
           isParent ? "font-bold text-gray-900" : "text-gray-600"
         )}>
           {amount > 0 ? (
-            <span className={type === 'income' ? 'text-green-600' : ''}>
-              {formatCurrencyShort(amount, 'USD')}
+            <span className={type === 'income' ? 'text-emerald-600' : ''}>
+              {formatCurrencyShort(amount, mainCurrency)}
             </span>
           ) : (
-            <span className="text-gray-300">-</span>
+            <span className="text-gray-300">—</span>
           )}
-        </td>
+        </div>
       );
     });
   };
 
+  // Render category group (parent + children)
   const renderGroup = (group: CategoryGroup, type: 'income' | 'expense') => {
     const isExpanded = expandedGroups.has(group.parent.categoryId);
 
     return (
       <React.Fragment key={group.parent.categoryId}>
         {/* Parent Row */}
-        <tr
-          className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer group"
+        <div
+          className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 hover:bg-gray-50/80 cursor-pointer transition-colors group border-b border-gray-100"
+          style={{ gridColumn: '1 / -1' }}
           onClick={() => toggleGroup(group.parent.categoryId)}
         >
-          <td className="py-3 pl-0 pr-3">
-            <div className="flex items-center gap-3">
-              {/* Colored Spine */}
-              <div
-                className="w-1 h-5 rounded-r-md transition-all group-hover:h-6"
-                style={{ backgroundColor: group.parent.categoryColor }}
-              />
+          <div className="py-3 flex items-center gap-3">
+            {/* Colored Spine */}
+            <div
+              className="w-1 h-5 rounded-r-md transition-all"
+              style={{ backgroundColor: group.parent.categoryColor }}
+            />
 
-              {/* Expand Icon */}
-              <div className="text-gray-400">
-                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </div>
-
-              <span className="font-bold text-gray-800 text-sm">
-                {group.parent.categoryName}
-              </span>
+            {/* Expand Icon */}
+            <div className="text-gray-400">
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </div>
-          </td>
+
+            <span className="font-semibold text-gray-700 text-[13px]">
+              {group.parent.categoryName}
+            </span>
+          </div>
           {renderMonthCells(group.totals, type, true)}
-        </tr>
+        </div>
 
         {/* Child Rows */}
         {isExpanded && group.children.map(child => (
-          <tr key={child.categoryId} className="border-b border-gray-50 hover:bg-gray-50/50">
-            <td className="py-2.5 pl-12 pr-3">
-              <span className="text-sm text-gray-500 font-medium">
+          <div
+            key={child.categoryId}
+            className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 hover:bg-gray-50/50 transition-colors border-b border-gray-50"
+            style={{ gridColumn: '1 / -1' }}
+          >
+            <div className="py-2.5 pl-12 border-l border-gray-100/60">
+              <span className="text-[12px] text-gray-500 font-medium">
                 {child.categoryName}
               </span>
-            </td>
+            </div>
             {renderMonthCells(child.monthlyAmounts, type, false)}
-          </tr>
+          </div>
         ))}
       </React.Fragment>
     );
   };
 
   return (
-    <div className="bg-white">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead className="sticky top-0 bg-white z-10 border-b border-gray-100">
-            <tr>
-              <th className="py-4 pl-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">
-                Category
-              </th>
-              {months.map((month) => (
-                <th
-                  key={month.toISOString()}
-                  className="py-4 px-3 text-right text-xs font-bold text-gray-400 uppercase tracking-wider min-w-[100px]"
-                >
-                  {month.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Income Section */}
-            {incomeGroups.length > 0 && (
-              <>
-                <tr><td colSpan={months.length + 1} className="h-6"></td></tr>
-                <tr>
-                  <td colSpan={months.length + 1} className="pb-2 pl-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Income
-                  </td>
-                </tr>
-                {incomeGroups.map(group => renderGroup(group, 'income'))}
-              </>
-            )}
+    <div className="max-w-4xl mx-auto py-12 px-8 overflow-y-auto scrollbar-hide">
+      {/* CSS Grid Container */}
+      <div className="bg-white rounded-xl">
+        {/* Grid Layout: 1fr (flexible) + 6 fixed 85px columns */}
+        <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2">
 
-            {/* Expenses Section */}
-            {expenseGroups.length > 0 && (
-              <>
-                <tr><td colSpan={months.length + 1} className="h-8"></td></tr>
-                <tr>
-                  <td colSpan={months.length + 1} className="pb-2 pl-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Expenses
-                  </td>
-                </tr>
-                {expenseGroups.map(group => renderGroup(group, 'expense'))}
-              </>
-            )}
-          </tbody>
-        </table>
+          {/* Sticky Header Row */}
+          <div className="sticky top-0 bg-white/80 backdrop-blur-sm z-10 grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 border-b border-gray-200" style={{ gridColumn: '1 / -1' }}>
+            <div className="py-4 px-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+              Categorization
+            </div>
+            {months.map((month) => (
+              <div
+                key={month.toISOString()}
+                className="py-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]"
+              >
+                {month.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+              </div>
+            ))}
+          </div>
+
+          {/* Income Section */}
+          {incomeGroups.length > 0 && (
+            <>
+              <div className="h-6" style={{ gridColumn: '1 / -1' }} />
+              <div className="pb-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider" style={{ gridColumn: '1 / -1' }}>
+                Income
+              </div>
+              {incomeGroups.map(group => renderGroup(group, 'income'))}
+
+              {/* TOTAL INCOME Row */}
+              <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 bg-emerald-50/20" style={{ gridColumn: '1 / -1' }}>
+                <div className="py-3 px-4 text-[12px] font-bold text-emerald-700">
+                  TOTAL INCOME
+                </div>
+                {months.map((month) => {
+                  const monthKey = month.toISOString().slice(0, 7);
+                  const amount = incomeTotals[monthKey] ?? 0;
+                  return (
+                    <div key={month.toISOString()} className="py-3 text-center text-[12px] font-mono font-bold text-emerald-700 tabular-nums">
+                      {amount > 0 ? formatCurrencyShort(amount, mainCurrency) : '—'}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Expenses Section */}
+          {expenseGroups.length > 0 && (
+            <>
+              <div className="h-8" style={{ gridColumn: '1 / -1' }} />
+              <div className="pb-2 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider" style={{ gridColumn: '1 / -1' }}>
+                Expenses
+              </div>
+              {expenseGroups.map(group => renderGroup(group, 'expense'))}
+
+              {/* TOTAL EXPENSES Row */}
+              <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 bg-rose-50/20" style={{ gridColumn: '1 / -1' }}>
+                <div className="py-3 px-4 text-[12px] font-bold text-rose-700">
+                  TOTAL EXPENSES
+                </div>
+                {months.map((month) => {
+                  const monthKey = month.toISOString().slice(0, 7);
+                  const amount = expenseTotals[monthKey] ?? 0;
+                  return (
+                    <div key={month.toISOString()} className="py-3 text-center text-[12px] font-mono font-bold text-rose-700 tabular-nums">
+                      {amount > 0 ? formatCurrencyShort(amount, mainCurrency) : '—'}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* NET CASH FLOW Row */}
+          <div className="h-6" style={{ gridColumn: '1 / -1' }} />
+          <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 bg-gray-50/30 rounded-xl border-y-2 border-gray-900/5 py-4" style={{ gridColumn: '1 / -1' }}>
+            <div className="px-4 flex items-center gap-2 text-[13px] font-bold text-gray-900">
+              <ArrowRightLeft className="h-4 w-4" />
+              NET CASH FLOW
+            </div>
+            {months.map((month) => {
+              const monthKey = month.toISOString().slice(0, 7);
+              const flow = netCashFlow[monthKey] ?? 0;
+              const isPositive = flow >= 0;
+              return (
+                <div
+                  key={month.toISOString()}
+                  className={cn(
+                    "text-center text-[13px] font-mono font-bold tabular-nums",
+                    isPositive ? "text-emerald-600" : "text-rose-500"
+                  )}
+                >
+                  {flow !== 0 ? formatCurrencyShort(flow, mainCurrency) : '—'}
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
       </div>
     </div>
   );

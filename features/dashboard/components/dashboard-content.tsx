@@ -10,7 +10,7 @@ export function DashboardContent() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Financial Overview" sidebarCollapsed={isCollapsed} />
+      <PageHeader title="Financial Trends" sidebarCollapsed={isCollapsed} />
       <div className={cn(
         'flex-1 overflow-y-auto py-12 transition-all duration-300',
         isCollapsed ? 'px-32' : 'px-12'
