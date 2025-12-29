@@ -5,7 +5,9 @@
       "Bash(npm run dev:*)",
       "Bash(find:*)",
       "Bash(npx supabase gen types:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx supabase db push)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

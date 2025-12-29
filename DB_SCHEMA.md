@@ -12,7 +12,7 @@
 
 ---
 
-Generated on: **2025-12-28**
+Generated on: **2025-12-29**
 
 ---
 
@@ -420,7 +420,7 @@ LEFT JOIN categories c ON i.category_id = c.id;
 | `cascade_color_to_children` | `trigger` | Trigger function to apply parent category color to its direct children |
 | `validate_category_hierarchy_func` | `trigger` | Trigger function to enforce rules on category hierarchy (e.g., parents cannot be children, type matching) |
 | `check_transaction_category_hierarchy` | `trigger` | Trigger function to prevent transactions from being assigned to parent categories (only leaf nodes) |
-| `update_account_balance_ledger` | `trigger` | **[PERFORMANCE]** Automates the `current_balance` updates on the accounts table |
+| `update_account_balance_ledger` | `trigger` | **[PERFORMANCE]** Automates the `current_balance` updates on the accounts table. Uses `amount_original` (account's native currency) to maintain accurate balances per "One Account = One Currency" architecture. |
 
 ---
 
@@ -428,5 +428,5 @@ LEFT JOIN categories c ON i.category_id = c.id;
 
 For detailed migration history, problem/solution narratives, and architectural evolution, see [CHANGELOG.md](CHANGELOG.md).
 
-**Last Updated:** 2025-12-28
+**Last Updated:** 2025-12-29
 **Documentation Status:** ✅ Complete
