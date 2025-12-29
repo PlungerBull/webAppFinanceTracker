@@ -12,6 +12,7 @@
 
 import type { Database } from '@/types/database.types';
 import type { Category, CategoryWithCount, ParentCategoryWithCount, TransactionView } from '@/types/domain';
+import type { InboxItem } from '@/features/inbox/types';
 
 // ============================================================================
 // DATABASE TO DOMAIN TRANSFORMERS
@@ -100,6 +101,10 @@ export function dbAccountBalancesToDomain(
  * Transforms a database transaction_inbox row to domain InboxItem type
  * CENTRALIZED NORMALIZATION: Converts null to undefined for optional fields
  * This ensures components only see string | undefined, not string | null
+ *
+ * WARNING: This transformer is for RAW TABLE rows only.
+ * It sets currencyOriginal = undefined because the table doesn't have currency.
+ * For display with currency, use dbInboxItemViewToDomain() with transaction_inbox_view.
  */
 export function dbInboxItemToDomain(
   dbInboxItem: Database['public']['Tables']['transaction_inbox']['Row']
@@ -122,6 +127,54 @@ export function dbInboxItemToDomain(
     createdAt: dbInboxItem.created_at,
     updatedAt: dbInboxItem.updated_at,
   } as const;
+}
+
+/**
+ * Transforms a database transaction_inbox_view row to domain InboxItem type
+ * VIEW TRANSFORMER: Includes currency from account JOIN and display fields
+ * Use this for UI display - it has complete data including currency_original from account
+ */
+export function dbInboxItemViewToDomain(
+  dbInboxItemView: Database['public']['Views']['transaction_inbox_view']['Row']
+): InboxItem {
+  return {
+    id: dbInboxItemView.id || '',
+    userId: dbInboxItemView.user_id || '',
+    amountOriginal: dbInboxItemView.amount_original ?? undefined,
+    currencyOriginal: dbInboxItemView.currency_original || '',  // From view alias (bank_accounts.currency_code)
+    description: dbInboxItemView.description ?? undefined,
+    date: dbInboxItemView.date ?? undefined,
+    sourceText: dbInboxItemView.source_text ?? undefined,
+    accountId: dbInboxItemView.account_id ?? undefined,
+    categoryId: dbInboxItemView.category_id ?? undefined,
+    exchangeRate: dbInboxItemView.exchange_rate ?? undefined,
+    notes: dbInboxItemView.notes ?? undefined,
+    status: (dbInboxItemView.status || 'pending') as 'pending' | 'processed' | 'ignored',
+    createdAt: dbInboxItemView.created_at || '',
+    updatedAt: dbInboxItemView.updated_at || '',
+
+    // Joined display data (from view columns)
+    account: dbInboxItemView.account_id ? {
+      id: dbInboxItemView.account_id,
+      name: dbInboxItemView.account_name || '',
+      currencyCode: dbInboxItemView.currency_original || '',
+      currencySymbol: '', // View doesn't include global_currencies join
+    } : undefined,
+    category: dbInboxItemView.category_id ? {
+      id: dbInboxItemView.category_id,
+      name: dbInboxItemView.category_name || '',
+      color: dbInboxItemView.category_color || '',
+    } : undefined,
+  };
+}
+
+/**
+ * Transforms an array of transaction_inbox_view rows
+ */
+export function dbInboxItemViewsToDomain(
+  dbInboxItemViews: Database['public']['Views']['transaction_inbox_view']['Row'][]
+): InboxItem[] {
+  return dbInboxItemViews.map(dbInboxItemViewToDomain);
 }
 
 /**

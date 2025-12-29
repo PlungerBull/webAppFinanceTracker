@@ -4,6 +4,7 @@ import type { Database } from '@/types/database.types';
 import type { PromoteInboxItemParams, CreateInboxItemParams, UpdateInboxItemParams, InboxItem } from '../types';
 import {
   dbInboxItemsToDomain,
+  dbInboxItemViewsToDomain,
   domainInboxItemToDbInsert,
 } from '@/lib/types/data-transformers';
 
@@ -12,18 +13,14 @@ export const inboxApi = {
    * Fetch Pending Items - Get all pending items with joined account/category data
    * Strict filtering: Only status='pending' items
    * Sort: Oldest first (FIFO) so users handle backlog chronologically
-   * Includes joined data for display without additional lookups
+   * Uses transaction_inbox_view for currency derivation from account
    */
   getPending: async (): Promise<InboxItem[]> => {
     const supabase = createClient();
 
     const { data, error } = await supabase
-      .from('transaction_inbox')
-      .select(`
-        *,
-        account:bank_accounts(id, name, currency_code, global_currencies(symbol)),
-        category:categories(id, name, color)
-      `)
+      .from('transaction_inbox_view')
+      .select('*')
       .eq('status', 'pending')
       .order('date', { ascending: true }); // FIFO: Oldest first
 
@@ -32,35 +29,8 @@ export const inboxApi = {
       throw new Error(error.message || INBOX.API.ERRORS.FETCH_FAILED);
     }
 
-    // Transform with centralized transformer for null → undefined normalization
-    return (data || []).map((item: any) => ({
-      id: item.id,
-      userId: item.user_id,
-      amountOriginal: item.amount_original ?? undefined,      // RENAMED field
-      currencyOriginal: item.currency_original,               // RENAMED field
-      description: item.description ?? undefined,             // Centralized normalization
-      date: item.date ?? undefined,                           // Centralized normalization
-      sourceText: item.source_text ?? undefined,              // Centralized normalization
-      accountId: item.account_id ?? undefined,                // Centralized normalization
-      categoryId: item.category_id ?? undefined,              // Centralized normalization
-      exchangeRate: item.exchange_rate ?? undefined,          // Centralized normalization
-      notes: item.notes ?? undefined,                         // NEW: User annotations
-      status: item.status,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-      // Joined data
-      account: item.account ? {
-        id: item.account.id,
-        name: item.account.name,
-        currencyCode: item.account.currency_code,
-        currencySymbol: item.account.global_currencies?.symbol ?? '',
-      } : undefined,
-      category: item.category ? {
-        id: item.category.id,
-        name: item.category.name,
-        color: item.category.color,
-      } : undefined,
-    }));
+    // Transform view rows to domain InboxItem with centralized transformer
+    return dbInboxItemViewsToDomain(data || []);
   },
 
   /**

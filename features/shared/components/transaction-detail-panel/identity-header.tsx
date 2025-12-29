@@ -47,10 +47,16 @@ export function IdentityHeader({
     }
   };
 
-  // Derive currency from selected account (currency follows account selection)
+  // Dual-source currency resolution (handles race conditions and loading states):
+  // 1. REACTIVE: Derive from selected account (supports real-time account changes)
+  // 2. FALLBACK: Use transaction's own currency (survives loading states)
+  // 3. DEFAULT: Clear prompt if both fail
   const selectedAccountId = editedFields.accountId ?? data.accountId;
   const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
-  const displayCurrency = selectedAccount?.currencyCode;
+  const displayCurrency =
+    selectedAccount?.currencyCode ??  // Reactive lookup from accounts array
+    data.currency ??                   // Fallback to transaction's currency
+    'SELECT ACCOUNT';                  // Default prompt if both undefined
 
   return (
     <div className="px-6 pt-6 pb-4 border-b border-gray-100">

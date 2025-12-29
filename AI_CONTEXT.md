@@ -163,6 +163,44 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * **Transformer Pattern:** Use `dbTransactionToDomain` or similar helpers in `@/lib/types/data-transformers`.
     * *Bad:* `return data` (frontend receives `user_id`)
     * *Good:* `return dbTransactionToDomain(data)` (frontend receives `userId`)
+* **Table vs View Transformers (Post-Normalization Pattern - 2025-12-28):**
+    * **Table Transformers:** For raw table rows (e.g., `dbTransactionToDomain`, `dbInboxItemToDomain`)
+        * Sets `currencyOriginal: undefined` because currency column doesn't exist in tables
+        * Use ONLY for internal operations, never for UI display
+        * Example: `dbTransactionToDomain()` - marks currency as undefined
+    * **View Transformers:** For database views (e.g., `dbTransactionViewToDomain`, `dbInboxItemViewToDomain`)
+        * Includes `currencyOriginal` from view's aliased JOIN (`bank_accounts.currency_code AS currency_original`)
+        * Includes joined display fields (account name, category name, colors)
+        * Use for ALL UI operations and frontend display
+        * Example: `dbTransactionViewToDomain()` - has complete data with currency
+    * **Critical Rule:** Mutations must never trust raw table data - always re-fetch from views
+
+### B2. Write-then-Read Pattern (Mutation Architecture - 2025-12-28)
+* **Problem:** After currency normalization, mutations that use `.select()` on raw tables return incomplete data (no `currencyOriginal`), poisoning React Query cache.
+* **Solution:** Implement "Write-then-Read" pattern for all mutations:
+    1. **Write:** Perform INSERT/UPDATE on raw table (e.g., `transactions`)
+    2. **Read:** Immediately re-fetch from view (e.g., `transactions_view`) using `getById()`
+    3. **Return:** Complete view data with currency to React Query cache
+* **Implementation Pattern:**
+    ```typescript
+    // ❌ OLD: Returns incomplete data
+    const { data } = await supabase.from('transactions').insert({...}).select().single();
+    return dbTransactionToDomain(data); // currencyOriginal: undefined
+
+    // ✅ NEW: Write-then-Read
+    const { data } = await supabase.from('transactions').insert({...}).select().single();
+    return transactionsApi.getById(data.id); // currencyOriginal: from account
+    ```
+* **Applied To:**
+    * `transactionsApi.create()` - Returns `Promise<TransactionView>`
+    * `transactionsApi.update()` - Returns `Promise<TransactionView>`
+    * `transactionsApi.updateBatch()` - Returns `Promise<TransactionView>`
+* **Benefits:**
+    * React Query cache always has complete data with currency
+    * No "vanishing currency" bug after mutations
+    * Consistent with read operations (all use views)
+    * Single source of truth (views)
+* **Performance:** Adds one additional query per mutation (~50-150ms), acceptable for correctness
 
 ### C. State Management
 * **Server State:** Use `useQuery` / `useMutation` hooks located in `features/[feature]/hooks/`.
@@ -265,8 +303,15 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Amount Color:** Gray (inbox) vs Green/Red based on category type (transaction)
 * **Component Structure:**
     * **IdentityHeader:** Editable payee (borderless input with "No description" placeholder) + editable amount (monospaced, dynamic color)
+        * **Dual-Source Currency Resolution (Race Condition Protection - 2025-12-28):**
+            * Currency display uses three-tier fallback chain to handle loading states
+            * **Tier 1 (REACTIVE):** Lookup from `accounts` array via `selectedAccount?.currencyCode`
+            * **Tier 2 (FALLBACK):** Use transaction's own `data.currency` property (survives loading race)
+            * **Tier 3 (DEFAULT):** Show "SELECT ACCOUNT" prompt if both undefined
+            * **Rationale:** Prevents "vanishing currency" when transaction loads from cache before `useAccounts` hook finishes hydrating
+            * **Implementation:** `const displayCurrency = selectedAccount?.currencyCode ?? data.currency ?? 'SELECT ACCOUNT'`
     * **FormSection:** Account, Category, Date, Exchange Rate (conditional), Notes fields with `space-y-4` spacing
-        * **Account Selector:** Shows selected account name + currency symbol (e.g., "BCP Credito S/")
+        * **Account Selector:** Shows selected account name + currency code (e.g., "BCP Credito PEN")
         * **Category Selector:** Shows selected category name with color dot
         * **Date Picker:** Calendar popover with formatted date display
         * **Exchange Rate Field (Reactive):** Only appears when selected account currency differs from user's main currency

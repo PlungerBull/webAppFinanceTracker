@@ -92,7 +92,7 @@ export const transactionsApi = {
   // IMPORTANT: This function requires COMPLETE data that matches database constraints.
   // Use CreateTransactionLedgerData type - TypeScript enforces required fields at compile time.
   // For incomplete/draft transactions, route to the inbox instead.
-  create: async (transactionData: CreateTransactionLedgerData): Promise<Transaction> => {
+  create: async (transactionData: CreateTransactionLedgerData): Promise<TransactionView> => {
     const supabase = createClient();
 
     // Get user for user_id (no DB default exists yet)
@@ -127,28 +127,28 @@ export const transactionsApi = {
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.CREATE_FAILED);
     }
 
-    // Transform snake_case to camelCase before returning to frontend
-    return dbTransactionToDomain(data);
+    // Write-then-Read: Fetch from view to get complete data with currency
+    // Raw table row lacks currency_original - must query transactions_view for complete object
+    return transactionsApi.getById(data.id);
   },
 
   // Update an existing transaction (RLS handles user filtering)
-  update: async (id: string, transactionData: UpdateTransactionFormData): Promise<Transaction> => {
+  update: async (id: string, transactionData: UpdateTransactionFormData): Promise<TransactionView> => {
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('transactions')
       .update(transactionData) // amount_home will be recalculated by trigger if needed
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
     if (error) {
       console.error(TRANSACTIONS.API.CONSOLE.UPDATE_TRANSACTION, error);
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
     }
 
-    // Transform snake_case to camelCase before returning to frontend
-    return dbTransactionToDomain(data);
+    // Write-then-Read: Fetch from view to get complete data with currency
+    // Raw table row lacks currency_original - must query transactions_view for complete object
+    return transactionsApi.getById(id);
   },
 
   // Batch update transaction fields (used by unified detail panel)
@@ -164,7 +164,7 @@ export const transactionsApi = {
       notes?: string;
       exchangeRate?: number;
     }
-  ): Promise<Transaction> => {
+  ): Promise<TransactionView> => {
     const supabase = createClient();
 
     // Transform camelCase panel fields to snake_case database fields
@@ -192,20 +192,19 @@ export const transactionsApi = {
       dbUpdates.exchange_rate = updates.exchangeRate;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('transactions')
       .update(dbUpdates)
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
 
     if (error) {
       console.error(TRANSACTIONS.API.CONSOLE.UPDATE_TRANSACTION, error);
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
     }
 
-    // Transform snake_case to camelCase before returning to frontend
-    return dbTransactionToDomain(data);
+    // Write-then-Read: Fetch from view to get complete data with currency
+    // Raw table row lacks currency_original - must query transactions_view for complete object
+    return transactionsApi.getById(id);
   },
 
   // Delete a transaction (RLS handles user filtering)
