@@ -13,47 +13,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
+CREATE SCHEMA IF NOT EXISTS "public";
 
 
-ALTER SCHEMA "public" OWNER TO "postgres";
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
 
 
 COMMENT ON SCHEMA "public" IS 'standard public schema';
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pg_graphql" WITH SCHEMA "graphql";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
-
-
-
 
 
 
@@ -111,6 +77,10 @@ $$;
 
 
 ALTER FUNCTION "public"."calculate_amount_home"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."calculate_amount_home"() IS 'Calculates amount_home as amount_original * exchange_rate. Currency is implicitly determined by account_id (via JOIN to bank_accounts.currency_code).';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."cascade_color_to_children"() RETURNS "trigger"
@@ -267,43 +237,41 @@ DECLARE
   v_account_id uuid;
   v_user_id uuid;
 BEGIN
-  -- Get current user ID
+  -- Get authenticated user
   v_user_id := auth.uid();
 
-  -- Create the Bank Account with currency
+  -- Create bank account with specified currency
   INSERT INTO bank_accounts (user_id, name, color, currency_code, type)
   VALUES (v_user_id, p_account_name, p_account_color, p_currency_code, p_account_type)
   RETURNING id INTO v_account_id;
 
-  -- Handle Opening Balance (if non-zero)
-  -- Opening balances have category_id = NULL and transfer_id = NULL
+  -- Create opening balance transaction (if non-zero)
   IF p_starting_balance <> 0 THEN
     INSERT INTO transactions (
       user_id,
       account_id,
-      category_id,       -- NULL indicates structural event (opening balance)
-      transfer_id,       -- NULL (not a transfer)
-      currency_original,
+      category_id,     -- NULL (structural marker for opening balance)
+      transfer_id,     -- NULL (not a transfer)
+      -- REMOVED: currency_original - now derived from account_id via JOIN
       amount_original,
-      amount_home,
+      amount_home,     -- Trigger will recalculate (amount_original * exchange_rate)
       exchange_rate,
       date,
       description
     ) VALUES (
       v_user_id,
       v_account_id,
-      NULL,              -- Opening balance has no category
-      NULL,              -- Opening balance has no transfer
-      p_currency_code,
+      NULL,            -- Opening balance has no category
+      NULL,            -- Opening balance has no transfer
       p_starting_balance,
-      p_starting_balance,
-      1.0,
+      p_starting_balance,  -- Placeholder value, trigger will update
+      1.0,             -- Opening balances use 1:1 rate (same currency as account)
       CURRENT_DATE,
       'Opening Balance'
     );
   END IF;
 
-  -- Return the new account data
+  -- Return account metadata
   RETURN jsonb_build_object(
     'id', v_account_id,
     'name', p_account_name,
@@ -316,6 +284,10 @@ $$;
 
 
 ALTER FUNCTION "public"."create_account"("p_account_name" "text", "p_account_color" "text", "p_currency_code" "text", "p_starting_balance" numeric, "p_account_type" "public"."account_type") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."create_account"("p_account_name" "text", "p_account_color" "text", "p_currency_code" "text", "p_starting_balance" numeric, "p_account_type" "public"."account_type") IS 'Creates account with optional opening balance. Currency is set on the account; opening balance transaction inherits currency via account_id.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) RETURNS json
@@ -341,6 +313,88 @@ $$;
 
 
 ALTER FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_transfer_id uuid;
+  v_transaction_from_id uuid;
+  v_transaction_to_id uuid;
+BEGIN
+  -- Generate a transfer ID to link the transactions
+  v_transfer_id := gen_random_uuid();
+
+  -- Create Outbound Transaction (Source)
+  -- SACRED LEDGER FIX: Remove currency_original from INSERT
+  -- The enforce_sacred_ledger_currency trigger will derive it from p_from_account_id
+  INSERT INTO transactions (
+    user_id,
+    account_id,
+    category_id,
+    amount_original,
+    -- currency_original REMOVED - trigger enforces from account
+    description,
+    notes,
+    date,
+    transfer_id,
+    exchange_rate
+  ) VALUES (
+    p_user_id,
+    p_from_account_id,
+    p_category_id,
+    -p_amount, -- Negative for leaving
+    -- p_from_currency REMOVED
+    p_description,
+    'Transfer Out',
+    p_date,
+    v_transfer_id,
+    1.0
+  ) RETURNING id INTO v_transaction_from_id;
+
+  -- Create Inbound Transaction (Destination)
+  -- SACRED LEDGER FIX: Remove currency_original from INSERT
+  -- The enforce_sacred_ledger_currency trigger will derive it from p_to_account_id
+  INSERT INTO transactions (
+    user_id,
+    account_id,
+    category_id,
+    amount_original,
+    -- currency_original REMOVED - trigger enforces from account
+    description,
+    notes,
+    date,
+    transfer_id,
+    exchange_rate
+  ) VALUES (
+    p_user_id,
+    p_to_account_id,
+    p_category_id,
+    p_amount_received, -- Positive for entering
+    -- p_to_currency REMOVED
+    p_description,
+    'Transfer In: ' || p_exchange_rate::text,
+    p_date,
+    v_transfer_id,
+    1.0
+  ) RETURNING id INTO v_transaction_to_id;
+
+  RETURN json_build_object(
+    'transfer_id', v_transfer_id,
+    'from_transaction_id', v_transaction_from_id,
+    'to_transaction_id', v_transaction_to_id
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") IS 'SACRED LEDGER: Creates a transfer between two accounts with linked transactions. Currency is automatically derived from each account via trigger, ensuring correctness.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") RETURNS json
@@ -566,21 +620,21 @@ BEGIN
       IF v_category_name IS NULL OR v_category_name = '' THEN RAISE EXCEPTION 'Category is required'; END IF;
       IF v_currency_code IS NULL OR v_currency_code = '' THEN RAISE EXCEPTION 'Currency is required'; END IF;
 
-      -- 1. Handle Account - Create with currency_code if doesn't exist
+      -- Account Lookup by Name + Currency
+      -- This ensures we match the correct account when multiple accounts share the same name
       SELECT id INTO v_account_id FROM bank_accounts
-      WHERE user_id = p_user_id AND lower(name) = lower(v_account_name);
+      WHERE user_id = p_user_id
+        AND lower(name) = lower(v_account_name)
+        AND currency_code = v_currency_code;
 
       IF v_account_id IS NULL THEN
-        -- FIXED: Added currency_code to account creation
+        -- Create account if it doesn't exist (with currency_code)
         INSERT INTO bank_accounts (user_id, name, color, currency_code)
         VALUES (p_user_id, v_account_name, p_default_account_color, v_currency_code)
         RETURNING id INTO v_account_id;
       END IF;
 
-      -- REMOVED: Lines that inserted into account_currencies table
-      -- REMOVED: Lines that inserted into currencies table
-
-      -- 2. Handle Category
+      -- Handle Category
       SELECT id INTO v_category_id FROM categories
       WHERE user_id = p_user_id AND lower(name) = lower(v_category_name);
 
@@ -590,13 +644,15 @@ BEGIN
         RETURNING id INTO v_category_id;
       END IF;
 
-      -- 3. Insert Transaction
+      -- Insert Transaction
+      -- SACRED LEDGER FIX: Remove currency_original from INSERT
+      -- The enforce_sacred_ledger_currency trigger will automatically derive it from v_account_id
       INSERT INTO transactions (
         user_id,
         date,
         amount_original,
-        amount_home,
-        currency_original,
+        amount_home, -- Placeholder, calculate_amount_home trigger will recalculate
+        -- currency_original REMOVED - trigger enforces it from account
         exchange_rate,
         description,
         notes,
@@ -606,8 +662,8 @@ BEGIN
         p_user_id,
         v_date,
         v_amount,
-        v_amount * v_exchange_rate,
-        v_currency_code,
+        v_amount * v_exchange_rate, -- Placeholder value
+        -- v_currency_code REMOVED - no longer used
         v_exchange_rate,
         v_description,
         v_notes,
@@ -635,6 +691,10 @@ $$;
 ALTER FUNCTION "public"."import_transactions"("p_user_id" "uuid", "p_transactions" "jsonb", "p_default_account_color" "text", "p_default_category_color" "text") OWNER TO "postgres";
 
 
+COMMENT ON FUNCTION "public"."import_transactions"("p_user_id" "uuid", "p_transactions" "jsonb", "p_default_account_color" "text", "p_default_category_color" "text") IS 'SACRED LEDGER: Import transactions from CSV with automatic account/category creation. Currency is derived from account_id via trigger, ensuring transactions always match their account currency.';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text" DEFAULT NULL::"text", "p_final_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_final_amount" numeric DEFAULT NULL::numeric) RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -648,17 +708,46 @@ DECLARE
 BEGIN
     -- 1. Fetch the inbox item
     SELECT * INTO v_inbox_record FROM transaction_inbox WHERE id = p_inbox_id;
-    
+
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Inbox item not found';
     END IF;
 
+    -- HARD-GATE VALIDATION: Ensure account_id is provided
+    IF p_account_id IS NULL THEN
+        RAISE EXCEPTION 'Account ID is required for promotion';
+    END IF;
+
+    -- HARD-GATE VALIDATION: Ensure category_id is provided
+    IF p_category_id IS NULL THEN
+        RAISE EXCEPTION 'Category ID is required for promotion';
+    END IF;
+
     -- 2. Determine final values (Use override if provided, else use inbox value)
-    v_amount_to_use := COALESCE(p_final_amount, v_inbox_record.amount);
+    -- CRITICAL: Use renamed columns (amount_original, currency_original)
+    v_amount_to_use := COALESCE(p_final_amount, v_inbox_record.amount_original);
     v_desc_to_use := COALESCE(p_final_description, v_inbox_record.description);
     v_date_to_use := COALESCE(p_final_date, v_inbox_record.date);
 
-    -- 3. INSERT into the Main Ledger (This triggers the Balance Update automatically)
+    -- HARD-GATE VALIDATION: Ensure amount is present
+    IF v_amount_to_use IS NULL THEN
+        RAISE EXCEPTION 'Amount is required for promotion';
+    END IF;
+
+    -- HARD-GATE VALIDATION: Ensure description is present
+    IF v_desc_to_use IS NULL OR trim(v_desc_to_use) = '' THEN
+        RAISE EXCEPTION 'Description is required for promotion';
+    END IF;
+
+    -- HARD-GATE VALIDATION: Ensure date is present
+    IF v_date_to_use IS NULL THEN
+        RAISE EXCEPTION 'Date is required for promotion';
+    END IF;
+
+    -- 3. INSERT into the Main Ledger
+    -- FULL MIRROR: Transfer notes and source_text directly (no appending)
+    -- BIRTH CERTIFICATE: Store inbox_id for permanent audit trail
+    -- SACRED LEDGER: currency_original auto-derived from account via trigger
     INSERT INTO transactions (
         user_id,
         account_id,
@@ -666,9 +755,11 @@ BEGIN
         date,
         description,
         amount_original,
-        currency_original,
-        amount_home, -- Triggers usually calculate this, but we insert raw for now
-        exchange_rate
+        amount_home,        -- Placeholder, calculate_amount_home trigger will recalculate
+        exchange_rate,
+        notes,              -- NEW: Direct transfer from inbox
+        source_text,        -- NEW: Raw context mirroring
+        inbox_id            -- NEW: Birth certificate
     ) VALUES (
         v_inbox_record.user_id,
         p_account_id,
@@ -676,13 +767,17 @@ BEGIN
         v_date_to_use,
         v_desc_to_use,
         v_amount_to_use,
-        v_inbox_record.currency,
-        v_amount_to_use, -- Assuming 1:1 for now, or you trigger 'calculate_amount_home'
-        1.0
+        v_amount_to_use,    -- Placeholder value
+        COALESCE(v_inbox_record.exchange_rate, 1.0),
+        v_inbox_record.notes,           -- Direct copy (may be null)
+        v_inbox_record.source_text,     -- Direct copy (may be null)
+        p_inbox_id                      -- Traceability link
     ) RETURNING id INTO v_new_transaction_id;
 
-    -- 4. DELETE from Inbox
-    DELETE FROM transaction_inbox WHERE id = p_inbox_id;
+    -- 4. Mark inbox item as processed (instead of deleting for audit trail)
+    UPDATE transaction_inbox
+    SET status = 'processed', updated_at = NOW()
+    WHERE id = p_inbox_id;
 
     RETURN json_build_object('success', true, 'transaction_id', v_new_transaction_id);
 END;
@@ -690,6 +785,107 @@ $$;
 
 
 ALTER FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text", "p_final_date" timestamp with time zone, "p_final_amount" numeric) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text", "p_final_date" timestamp with time zone, "p_final_amount" numeric) IS 'FULL MIRROR + HARD-GATE VALIDATION + SACRED LEDGER: Validates all required fields (account_id, category_id, amount, description, date) and transfers notes and source_text directly from inbox to ledger. Stores inbox_id as birth certificate for permanent audit trail. Currency is automatically derived from p_account_id via enforce_sacred_ledger_currency trigger.';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text" DEFAULT NULL::"text", "p_final_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_final_amount" numeric DEFAULT NULL::numeric, "p_exchange_rate" numeric DEFAULT NULL::numeric) RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+    v_inbox_record record;
+    v_new_transaction_id uuid;
+    v_amount_to_use numeric;
+    v_desc_to_use text;
+    v_date_to_use timestamptz;
+BEGIN
+    -- 1. Fetch the inbox item
+    SELECT * INTO v_inbox_record FROM transaction_inbox WHERE id = p_inbox_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Inbox item not found';
+    END IF;
+
+    -- HARD-GATE VALIDATION: Ensure account_id is provided
+    IF p_account_id IS NULL THEN
+        RAISE EXCEPTION 'Account ID is required for promotion';
+    END IF;
+
+    -- HARD-GATE VALIDATION: Ensure category_id is provided
+    IF p_category_id IS NULL THEN
+        RAISE EXCEPTION 'Category ID is required for promotion';
+    END IF;
+
+    -- 2. Determine final values (Use override if provided, else use inbox value)
+    -- CRITICAL: Use renamed columns (amount_original, currency_original)
+    v_amount_to_use := COALESCE(p_final_amount, v_inbox_record.amount_original);
+    v_desc_to_use := COALESCE(p_final_description, v_inbox_record.description);
+    v_date_to_use := COALESCE(p_final_date, v_inbox_record.date);
+
+    -- HARD-GATE VALIDATION: Ensure amount is present
+    IF v_amount_to_use IS NULL THEN
+        RAISE EXCEPTION 'Amount is required for promotion';
+    END IF;
+
+    -- HARD-GATE VALIDATION: Ensure description is present
+    IF v_desc_to_use IS NULL OR trim(v_desc_to_use) = '' THEN
+        RAISE EXCEPTION 'Description is required for promotion';
+    END IF;
+
+    -- HARD-GATE VALIDATION: Ensure date is present
+    IF v_date_to_use IS NULL THEN
+        RAISE EXCEPTION 'Date is required for promotion';
+    END IF;
+
+    -- 3. INSERT into the Main Ledger
+    -- FULL MIRROR: Transfer notes and source_text directly (no appending)
+    -- BIRTH CERTIFICATE: Store inbox_id for permanent audit trail
+    -- SACRED LEDGER: currency_original auto-derived from account via trigger
+    -- EXPLICIT STATE COMMITMENT: Exchange rate priority: UI parameter > inbox record > 1.0
+    INSERT INTO transactions (
+        user_id,
+        account_id,
+        category_id,
+        date,
+        description,
+        amount_original,
+        amount_home,        -- Placeholder, calculate_amount_home trigger will recalculate
+        exchange_rate,
+        notes,              -- NEW: Direct transfer from inbox
+        source_text,        -- NEW: Raw context mirroring
+        inbox_id            -- NEW: Birth certificate
+    ) VALUES (
+        v_inbox_record.user_id,
+        p_account_id,
+        p_category_id,
+        v_date_to_use,
+        v_desc_to_use,
+        v_amount_to_use,
+        v_amount_to_use,    -- Placeholder value
+        COALESCE(p_exchange_rate, v_inbox_record.exchange_rate, 1.0),
+        v_inbox_record.notes,           -- Direct copy (may be null)
+        v_inbox_record.source_text,     -- Direct copy (may be null)
+        p_inbox_id                      -- Traceability link
+    ) RETURNING id INTO v_new_transaction_id;
+
+    -- 4. Mark inbox item as processed (instead of deleting for audit trail)
+    UPDATE transaction_inbox
+    SET status = 'processed', updated_at = NOW()
+    WHERE id = p_inbox_id;
+
+    RETURN json_build_object('success', true, 'transaction_id', v_new_transaction_id);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text", "p_final_date" timestamp with time zone, "p_final_amount" numeric, "p_exchange_rate" numeric) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text", "p_final_date" timestamp with time zone, "p_final_amount" numeric, "p_exchange_rate" numeric) IS 'FULL MIRROR + HARD-GATE VALIDATION + SACRED LEDGER + EXPLICIT STATE COMMITMENT: Validates all required fields (account_id, category_id, amount, description, date) and transfers notes, source_text, and exchange_rate directly from UI state to ledger. Stores inbox_id as birth certificate for permanent audit trail. Currency is automatically derived from p_account_id via enforce_sacred_ledger_currency trigger. Exchange rate priority: explicit p_exchange_rate parameter (UI source of truth) > inbox record (fallback) > 1.0 (same-currency default).';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."reconcile_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_date" timestamp with time zone DEFAULT "now"()) RETURNS "uuid"
@@ -751,26 +947,26 @@ CREATE OR REPLACE FUNCTION "public"."replace_account_currency"("p_account_id" "u
     SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
-  -- Verify the user owns this account (RLS will also enforce this)
+  -- Verify user owns this account (security check)
   IF NOT EXISTS (
     SELECT 1 FROM bank_accounts
     WHERE id = p_account_id
-    AND user_id = auth.uid()
+      AND user_id = auth.uid()
   ) THEN
     RAISE EXCEPTION 'Account not found or access denied';
   END IF;
 
-  -- Update the account's currency_code
+  -- Update account's currency_code
+  -- All transactions automatically reflect new currency via JOIN (normalized architecture)
   UPDATE bank_accounts
   SET currency_code = p_new_currency_code
   WHERE id = p_account_id
     AND currency_code = p_old_currency_code;
 
-  -- Update all transactions with matching currency
-  UPDATE transactions
-  SET currency_original = p_new_currency_code
-  WHERE account_id = p_account_id
-    AND currency_original = p_old_currency_code;
+  -- REMOVED: Transaction update logic
+  -- Previously updated transactions.currency_original, which is now deleted
+  -- Currency is now automatically derived from account via JOIN
+  -- All transactions instantly reflect new currency without explicit UPDATE
 END;
 $$;
 
@@ -778,38 +974,8 @@ $$;
 ALTER FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) RETURNS "void"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public', 'pg_temp'
-    AS $$
-BEGIN
-  -- Verify the user owns this account (RLS will also enforce this)
-  IF NOT EXISTS (
-    SELECT 1 FROM bank_accounts 
-    WHERE id = p_account_id 
-    AND user_id = auth.uid()
-  ) THEN
-    RAISE EXCEPTION 'Account not found or access denied';
-  END IF;
+COMMENT ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) IS 'Updates account currency. All transactions automatically reflect new currency via account_id join (normalized architecture).';
 
-  -- Update account_currencies
-  UPDATE account_currencies
-  SET 
-    currency_code = p_new_currency_code,
-    starting_balance = p_new_starting_balance
-  WHERE account_id = p_account_id 
-    AND currency_code = p_old_currency_code;
-
-  -- Update all transactions with matching currency
-  UPDATE transactions
-  SET currency_original = p_new_currency_code
-  WHERE account_id = p_account_id 
-    AND currency_original = p_old_currency_code;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."sync_category_type_hierarchy"() RETURNS "trigger"
@@ -897,32 +1063,32 @@ CREATE OR REPLACE FUNCTION "public"."update_account_balance_ledger"() RETURNS "t
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-    -- Handle DELETES (Subtract old amount)
+    -- Handle DELETES (Subtract old amount in account's native currency)
     IF (TG_OP = 'DELETE') THEN
         UPDATE bank_accounts
-        SET current_balance = current_balance - OLD.amount_home
+        SET current_balance = current_balance - OLD.amount_original  -- FIXED: was amount_home
         WHERE id = OLD.account_id;
         RETURN OLD;
-    
-    -- Handle INSERTS (Add new amount)
+
+    -- Handle INSERTS (Add new amount in account's native currency)
     ELSIF (TG_OP = 'INSERT') THEN
         UPDATE bank_accounts
-        SET current_balance = current_balance + NEW.amount_home
+        SET current_balance = current_balance + NEW.amount_original  -- FIXED: was amount_home
         WHERE id = NEW.account_id;
         RETURN NEW;
 
-    -- Handle UPDATES (Subtract old, Add new)
+    -- Handle UPDATES (Subtract old, Add new in account's native currency)
     ELSIF (TG_OP = 'UPDATE') THEN
         -- Only update if the amount or account changed
-        IF (OLD.amount_home <> NEW.amount_home) OR (OLD.account_id <> NEW.account_id) THEN
+        IF (OLD.amount_original <> NEW.amount_original) OR (OLD.account_id <> NEW.account_id) THEN  -- FIXED: was amount_home
             -- Revert old impact
             UPDATE bank_accounts
-            SET current_balance = current_balance - OLD.amount_home
+            SET current_balance = current_balance - OLD.amount_original  -- FIXED: was amount_home
             WHERE id = OLD.account_id;
-            
+
             -- Apply new impact
             UPDATE bank_accounts
-            SET current_balance = current_balance + NEW.amount_home
+            SET current_balance = current_balance + NEW.amount_original  -- FIXED: was amount_home
             WHERE id = NEW.account_id;
         END IF;
         RETURN NEW;
@@ -933,6 +1099,10 @@ $$;
 
 
 ALTER FUNCTION "public"."update_account_balance_ledger"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."update_account_balance_ledger"() IS 'Maintains bank_accounts.current_balance as ledger of transactions in ACCOUNT NATIVE CURRENCY. Uses amount_original (not amount_home) to ensure balances reflect actual account currency amounts. Part of Zero Redundancy architecture where One Account = One Currency.';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
@@ -1001,6 +1171,26 @@ SET default_tablespace = '';
 SET default_table_access_method = "heap";
 
 
+CREATE TABLE IF NOT EXISTS "public"."account_balance_currency_fix_backup" (
+    "account_id" "uuid",
+    "user_id" "uuid",
+    "account_name" "text",
+    "account_currency" "text",
+    "old_balance" numeric,
+    "calculated_balance" numeric,
+    "discrepancy" numeric,
+    "transaction_count" bigint,
+    "backed_up_at" timestamp with time zone
+);
+
+
+ALTER TABLE "public"."account_balance_currency_fix_backup" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."account_balance_currency_fix_backup" IS 'Backup of account balances before currency bug fix (2025-12-29). Contains old_balance (incorrect), calculated_balance (correct), and discrepancy. Safe to drop 30 days after migration success.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."bank_accounts" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "user_id" "uuid" NOT NULL,
@@ -1024,50 +1214,6 @@ COMMENT ON COLUMN "public"."bank_accounts"."color" IS 'Hex color code for visual
 
 
 
-CREATE TABLE IF NOT EXISTS "public"."transactions" (
-    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "account_id" "uuid" NOT NULL,
-    "category_id" "uuid",
-    "date" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "description" "text",
-    "amount_original" numeric(20,4) NOT NULL,
-    "currency_original" "text" NOT NULL,
-    "exchange_rate" numeric(15,6) DEFAULT 1.0 NOT NULL,
-    "amount_home" numeric(20,4) NOT NULL,
-    "transfer_id" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "notes" "text"
-);
-
-
-ALTER TABLE "public"."transactions" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."transactions" IS 'Transactions table. Type is determined implicitly: transfer (transfer_id NOT NULL), opening balance (category_id NULL and transfer_id NULL), or standard (category_id NOT NULL with type from category).';
-
-
-
-COMMENT ON COLUMN "public"."transactions"."notes" IS 'Optional notes or memo for the transaction';
-
-
-
-CREATE OR REPLACE VIEW "public"."account_balances" WITH ("security_invoker"='true') AS
- SELECT "a"."id" AS "account_id",
-    "a"."group_id",
-    "a"."name",
-    "a"."currency_code",
-    "a"."type",
-    COALESCE("sum"("t"."amount_original"), (0)::numeric) AS "current_balance"
-   FROM ("public"."bank_accounts" "a"
-     LEFT JOIN "public"."transactions" "t" ON (("a"."id" = "t"."account_id")))
-  GROUP BY "a"."id", "a"."group_id", "a"."name", "a"."currency_code", "a"."type";
-
-
-ALTER VIEW "public"."account_balances" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."categories" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "user_id" "uuid",
@@ -1081,6 +1227,48 @@ CREATE TABLE IF NOT EXISTS "public"."categories" (
 
 
 ALTER TABLE "public"."categories" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."transactions" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "account_id" "uuid" NOT NULL,
+    "category_id" "uuid",
+    "date" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "description" "text",
+    "amount_original" numeric(20,4) NOT NULL,
+    "exchange_rate" numeric(15,6) DEFAULT 1.0 NOT NULL,
+    "amount_home" numeric(20,4) DEFAULT 0 NOT NULL,
+    "transfer_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "notes" "text",
+    "source_text" "text",
+    "inbox_id" "uuid"
+);
+
+
+ALTER TABLE "public"."transactions" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."transactions" IS 'Normalized transactions table. Currency is ALWAYS derived from bank_accounts.currency_code via account_id. Type is determined implicitly: transfer (transfer_id NOT NULL), opening balance (category_id NULL and transfer_id NULL), or standard (category_id NOT NULL).';
+
+
+
+COMMENT ON COLUMN "public"."transactions"."amount_home" IS 'SYSTEM-MANAGED FIELD: Automatically calculated by calculate_amount_home trigger as (amount_original * exchange_rate). The DEFAULT value (0) is ALWAYS overwritten before INSERT completes. Frontend should NOT send this field - it will be ignored.';
+
+
+
+COMMENT ON COLUMN "public"."transactions"."notes" IS 'Optional notes or memo for the transaction';
+
+
+
+COMMENT ON COLUMN "public"."transactions"."source_text" IS 'Raw source context (OCR, bank import data, etc.) transferred from inbox. Separate from user notes field.';
+
+
+
+COMMENT ON COLUMN "public"."transactions"."inbox_id" IS 'Tracks which inbox item this transaction was promoted from. Null for transactions created directly in the ledger.';
+
 
 
 CREATE OR REPLACE VIEW "public"."categories_with_counts" WITH ("security_invoker"='true') AS
@@ -1134,9 +1322,8 @@ ALTER VIEW "public"."parent_categories_with_counts" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."transaction_inbox" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "user_id" "uuid" NOT NULL,
-    "amount" numeric NOT NULL,
-    "currency" "text" DEFAULT 'USD'::"text" NOT NULL,
-    "description" "text" NOT NULL,
+    "amount_original" numeric,
+    "description" "text",
     "date" timestamp with time zone DEFAULT "now"(),
     "source_text" "text",
     "status" "text" DEFAULT 'pending'::"text" NOT NULL,
@@ -1144,30 +1331,95 @@ CREATE TABLE IF NOT EXISTS "public"."transaction_inbox" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "account_id" "uuid",
     "category_id" "uuid",
-    "exchange_rate" numeric DEFAULT 1.0
+    "exchange_rate" numeric DEFAULT 1.0,
+    "notes" "text"
 );
 
 
 ALTER TABLE "public"."transaction_inbox" OWNER TO "postgres";
 
 
+COMMENT ON TABLE "public"."transaction_inbox" IS 'Normalized inbox table (scratchpad for unprocessed transactions). Currency is derived from bank_accounts.currency_code via account_id (NULL if no account selected). Status values: pending, processed.';
+
+
+
+COMMENT ON COLUMN "public"."transaction_inbox"."amount_original" IS 'Transaction amount - nullable to support partial drafts in scratchpad mode';
+
+
+
+COMMENT ON COLUMN "public"."transaction_inbox"."description" IS 'Transaction description - nullable to support partial drafts in scratchpad mode';
+
+
+
+COMMENT ON COLUMN "public"."transaction_inbox"."notes" IS 'Optional notes or memo for the inbox item. Transferred to transaction.notes during promotion.';
+
+
+
+CREATE OR REPLACE VIEW "public"."transaction_inbox_view" WITH ("security_invoker"='true') AS
+ SELECT "i"."id",
+    "i"."user_id",
+    "i"."amount_original",
+    "i"."description",
+    "i"."date",
+    "i"."source_text",
+    "i"."status",
+    "i"."account_id",
+    "i"."category_id",
+    "i"."exchange_rate",
+    "i"."notes",
+    "i"."created_at",
+    "i"."updated_at",
+    "a"."name" AS "account_name",
+    "a"."currency_code" AS "currency_original",
+    "a"."color" AS "account_color",
+    "c"."name" AS "category_name",
+    "c"."color" AS "category_color",
+    "c"."type" AS "category_type"
+   FROM (("public"."transaction_inbox" "i"
+     LEFT JOIN "public"."bank_accounts" "a" ON (("i"."account_id" = "a"."id")))
+     LEFT JOIN "public"."categories" "c" ON (("i"."category_id" = "c"."id")));
+
+
+ALTER VIEW "public"."transaction_inbox_view" OWNER TO "postgres";
+
+
+COMMENT ON VIEW "public"."transaction_inbox_view" IS 'Denormalized inbox view with account/category details. currency_original is ALIASED from bank_accounts.currency_code (NULL if no account assigned). Normalized architecture - no redundant storage.';
+
+
+
 CREATE OR REPLACE VIEW "public"."transactions_view" WITH ("security_invoker"='true') AS
  SELECT "t"."id",
-    "t"."date",
+    "t"."user_id",
+    "t"."account_id",
+    "t"."category_id",
     "t"."description",
     "t"."amount_original",
     "t"."amount_home",
-    "t"."currency_original",
-    "c"."name" AS "category_name",
-    "c"."type" AS "category_type",
+    "t"."exchange_rate",
+    "t"."date",
+    "t"."notes",
+    "t"."source_text",
+    "t"."inbox_id",
+    "t"."transfer_id",
+    "t"."created_at",
+    "t"."updated_at",
     "a"."name" AS "account_name",
-    "a"."currency_code" AS "account_currency"
+    "a"."currency_code" AS "currency_original",
+    "a"."currency_code" AS "account_currency",
+    "a"."color" AS "account_color",
+    "c"."name" AS "category_name",
+    "c"."color" AS "category_color",
+    "c"."type" AS "category_type"
    FROM (("public"."transactions" "t"
-     LEFT JOIN "public"."categories" "c" ON (("t"."category_id" = "c"."id")))
-     LEFT JOIN "public"."bank_accounts" "a" ON (("t"."account_id" = "a"."id")));
+     LEFT JOIN "public"."bank_accounts" "a" ON (("t"."account_id" = "a"."id")))
+     LEFT JOIN "public"."categories" "c" ON (("t"."category_id" = "c"."id")));
 
 
 ALTER VIEW "public"."transactions_view" OWNER TO "postgres";
+
+
+COMMENT ON VIEW "public"."transactions_view" IS 'Denormalized view with account/category details. currency_original is ALIASED from bank_accounts.currency_code (normalized architecture - no redundant storage).';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."user_settings" (
@@ -1210,12 +1462,21 @@ ALTER TABLE ONLY "public"."transactions"
 
 
 
+ALTER TABLE ONLY "public"."bank_accounts"
+    ADD CONSTRAINT "unique_user_account_currency" UNIQUE ("user_id", "name", "currency_code");
+
+
+
 ALTER TABLE ONLY "public"."user_settings"
     ADD CONSTRAINT "user_settings_pkey" PRIMARY KEY ("user_id");
 
 
 
 CREATE INDEX "idx_accounts_group_id" ON "public"."bank_accounts" USING "btree" ("group_id");
+
+
+
+CREATE INDEX "idx_backup_account_id" ON "public"."account_balance_currency_fix_backup" USING "btree" ("account_id");
 
 
 
@@ -1252,6 +1513,10 @@ CREATE INDEX "idx_transactions_category_id" ON "public"."transactions" USING "bt
 
 
 CREATE INDEX "idx_transactions_date" ON "public"."transactions" USING "btree" ("date");
+
+
+
+CREATE INDEX "idx_transactions_inbox_id" ON "public"."transactions" USING "btree" ("inbox_id") WHERE ("inbox_id" IS NOT NULL);
 
 
 
@@ -1336,7 +1601,7 @@ ALTER TABLE ONLY "public"."categories"
 
 
 ALTER TABLE ONLY "public"."transactions"
-    ADD CONSTRAINT "fk_transactions_currency" FOREIGN KEY ("currency_original") REFERENCES "public"."global_currencies"("code");
+    ADD CONSTRAINT "fk_transactions_inbox" FOREIGN KEY ("inbox_id") REFERENCES "public"."transaction_inbox"("id") ON DELETE SET NULL;
 
 
 
@@ -1466,166 +1731,10 @@ ALTER TABLE "public"."transactions" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."user_settings" ENABLE ROW LEVEL SECURITY;
 
 
-
-
-ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
-
-
-REVOKE USAGE ON SCHEMA "public" FROM PUBLIC;
-GRANT ALL ON SCHEMA "public" TO PUBLIC;
+GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1671,6 +1780,12 @@ GRANT ALL ON FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_nam
 
 
 
+GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "service_role";
@@ -1713,6 +1828,12 @@ GRANT ALL ON FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_acco
 
 
 
+GRANT ALL ON FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text", "p_final_date" timestamp with time zone, "p_final_amount" numeric, "p_exchange_rate" numeric) TO "anon";
+GRANT ALL ON FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text", "p_final_date" timestamp with time zone, "p_final_amount" numeric, "p_exchange_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."promote_inbox_item"("p_inbox_id" "uuid", "p_account_id" "uuid", "p_category_id" "uuid", "p_final_description" "text", "p_final_date" timestamp with time zone, "p_final_amount" numeric, "p_exchange_rate" numeric) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."reconcile_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_date" timestamp with time zone) TO "anon";
 GRANT ALL ON FUNCTION "public"."reconcile_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_date" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."reconcile_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_date" timestamp with time zone) TO "service_role";
@@ -1722,12 +1843,6 @@ GRANT ALL ON FUNCTION "public"."reconcile_account_balance"("p_account_id" "uuid"
 GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) TO "anon";
 GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) TO "anon";
-GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."replace_account_currency"("p_account_id" "uuid", "p_old_currency_code" character varying, "p_new_currency_code" character varying, "p_new_starting_balance" numeric) TO "service_role";
 
 
 
@@ -1761,18 +1876,9 @@ GRANT ALL ON FUNCTION "public"."validate_category_hierarchy_func"() TO "service_
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+GRANT ALL ON TABLE "public"."account_balance_currency_fix_backup" TO "anon";
+GRANT ALL ON TABLE "public"."account_balance_currency_fix_backup" TO "authenticated";
+GRANT ALL ON TABLE "public"."account_balance_currency_fix_backup" TO "service_role";
 
 
 
@@ -1782,21 +1888,15 @@ GRANT ALL ON TABLE "public"."bank_accounts" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."transactions" TO "anon";
-GRANT ALL ON TABLE "public"."transactions" TO "authenticated";
-GRANT ALL ON TABLE "public"."transactions" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."account_balances" TO "anon";
-GRANT ALL ON TABLE "public"."account_balances" TO "authenticated";
-GRANT ALL ON TABLE "public"."account_balances" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."categories" TO "anon";
 GRANT ALL ON TABLE "public"."categories" TO "authenticated";
 GRANT ALL ON TABLE "public"."categories" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."transactions" TO "anon";
+GRANT ALL ON TABLE "public"."transactions" TO "authenticated";
+GRANT ALL ON TABLE "public"."transactions" TO "service_role";
 
 
 
@@ -1824,6 +1924,12 @@ GRANT ALL ON TABLE "public"."transaction_inbox" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."transaction_inbox_view" TO "anon";
+GRANT ALL ON TABLE "public"."transaction_inbox_view" TO "authenticated";
+GRANT ALL ON TABLE "public"."transaction_inbox_view" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."transactions_view" TO "anon";
 GRANT ALL ON TABLE "public"."transactions_view" TO "authenticated";
 GRANT ALL ON TABLE "public"."transactions_view" TO "service_role";
@@ -1836,16 +1942,13 @@ GRANT ALL ON TABLE "public"."user_settings" TO "service_role";
 
 
 
-
-
-
-
-
-
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+
+
+
 
 
 
@@ -1856,31 +1959,13 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUN
 
 
 
+
+
+
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
