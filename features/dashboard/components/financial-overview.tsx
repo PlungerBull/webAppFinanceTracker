@@ -154,8 +154,8 @@ export function FinancialOverview() {
 
       return (
         <div key={month.toISOString()} className={cn(
-          "text-center text-[12px] font-mono tabular-nums",
-          isParent ? "font-bold text-gray-900" : "text-gray-600"
+          "text-right text-[13px] font-mono tabular-nums",
+          isParent ? "font-semibold text-gray-700" : "text-gray-600"
         )}>
           {amount > 0 ? (
             <span className={type === 'income' ? 'text-emerald-600' : ''}>
@@ -177,11 +177,11 @@ export function FinancialOverview() {
       <React.Fragment key={group.parent.categoryId}>
         {/* Parent Row */}
         <div
-          className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 hover:bg-gray-50/80 cursor-pointer transition-colors group border-b border-gray-100"
+          className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 hover:bg-gray-50/80 cursor-pointer transition-colors group border-b border-gray-100"
           style={{ gridColumn: '1 / -1' }}
           onClick={() => toggleGroup(group.parent.categoryId)}
         >
-          <div className="py-3 flex items-center gap-3">
+          <div className="py-4 flex items-center gap-3">
             {/* Colored Spine */}
             <div
               className="w-1 h-5 rounded-r-md transition-all"
@@ -204,10 +204,10 @@ export function FinancialOverview() {
         {isExpanded && group.children.map(child => (
           <div
             key={child.categoryId}
-            className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 hover:bg-gray-50/50 transition-colors border-b border-gray-50"
+            className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 hover:bg-gray-50/50 transition-colors border-b border-gray-50"
             style={{ gridColumn: '1 / -1' }}
           >
-            <div className="py-2.5 pl-12 border-l border-gray-100/60">
+            <div className="py-3 pl-12 border-l-2 border-gray-100/60">
               <span className="text-[12px] text-gray-500 font-medium">
                 {child.categoryName}
               </span>
@@ -220,21 +220,21 @@ export function FinancialOverview() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-8 overflow-y-auto scrollbar-hide">
+    <div className="h-full overflow-y-auto scrollbar-hide">
       {/* CSS Grid Container */}
-      <div className="bg-white rounded-xl">
+      <div className="w-full">
         {/* Grid Layout: 1fr (flexible) + 6 fixed 85px columns */}
-        <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2">
+        <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 px-6">
 
           {/* Sticky Header Row */}
-          <div className="sticky top-0 bg-white/80 backdrop-blur-sm z-10 grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 border-b border-gray-200" style={{ gridColumn: '1 / -1' }}>
-            <div className="py-4 px-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+          <div className="sticky top-0 bg-zinc-50 z-10 grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 border-b border-gray-200" style={{ gridColumn: '1 / -1' }}>
+            <div className="py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
               Categorization
             </div>
             {months.map((month) => (
               <div
                 key={month.toISOString()}
-                className="py-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]"
+                className="py-5 text-right text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]"
               >
                 {month.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
               </div>
@@ -251,15 +251,15 @@ export function FinancialOverview() {
               {incomeGroups.map(group => renderGroup(group, 'income'))}
 
               {/* TOTAL INCOME Row */}
-              <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 bg-emerald-50/20" style={{ gridColumn: '1 / -1' }}>
-                <div className="py-3 px-4 text-[12px] font-bold text-emerald-700">
-                  TOTAL INCOME
+              <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-emerald-50/30 border-y border-emerald-100" style={{ gridColumn: '1 / -1' }}>
+                <div className="py-4 text-[12px] font-bold text-emerald-700 uppercase tracking-wide">
+                  Total Income
                 </div>
                 {months.map((month) => {
                   const monthKey = month.toISOString().slice(0, 7);
                   const amount = incomeTotals[monthKey] ?? 0;
                   return (
-                    <div key={month.toISOString()} className="py-3 text-center text-[12px] font-mono font-bold text-emerald-700 tabular-nums">
+                    <div key={month.toISOString()} className="py-4 text-right text-[13px] font-mono font-bold text-emerald-700 tabular-nums">
                       {amount > 0 ? formatCurrencyShort(amount, mainCurrency) : '—'}
                     </div>
                   );
@@ -278,15 +278,15 @@ export function FinancialOverview() {
               {expenseGroups.map(group => renderGroup(group, 'expense'))}
 
               {/* TOTAL EXPENSES Row */}
-              <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 bg-rose-50/20" style={{ gridColumn: '1 / -1' }}>
-                <div className="py-3 px-4 text-[12px] font-bold text-rose-700">
-                  TOTAL EXPENSES
+              <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-rose-50/30 border-y border-rose-100" style={{ gridColumn: '1 / -1' }}>
+                <div className="py-4 text-[12px] font-bold text-rose-700 uppercase tracking-wide">
+                  Total Expenses
                 </div>
                 {months.map((month) => {
                   const monthKey = month.toISOString().slice(0, 7);
                   const amount = expenseTotals[monthKey] ?? 0;
                   return (
-                    <div key={month.toISOString()} className="py-3 text-center text-[12px] font-mono font-bold text-rose-700 tabular-nums">
+                    <div key={month.toISOString()} className="py-4 text-right text-[13px] font-mono font-bold text-rose-700 tabular-nums">
                       {amount > 0 ? formatCurrencyShort(amount, mainCurrency) : '—'}
                     </div>
                   );
@@ -296,11 +296,11 @@ export function FinancialOverview() {
           )}
 
           {/* NET CASH FLOW Row */}
-          <div className="h-6" style={{ gridColumn: '1 / -1' }} />
-          <div className="grid grid-cols-[1fr_repeat(6,85px)] gap-x-2 bg-gray-50/30 rounded-xl border-y-2 border-gray-900/5 py-4" style={{ gridColumn: '1 / -1' }}>
-            <div className="px-4 flex items-center gap-2 text-[13px] font-bold text-gray-900">
+          <div className="h-8" style={{ gridColumn: '1 / -1' }} />
+          <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-gray-100/50 border-y-2 border-gray-200" style={{ gridColumn: '1 / -1' }}>
+            <div className="py-5 flex items-center gap-2 text-[13px] font-bold text-gray-900 uppercase tracking-wide">
               <ArrowRightLeft className="h-4 w-4" />
-              NET CASH FLOW
+              Net Cash Flow
             </div>
             {months.map((month) => {
               const monthKey = month.toISOString().slice(0, 7);
@@ -310,8 +310,8 @@ export function FinancialOverview() {
                 <div
                   key={month.toISOString()}
                   className={cn(
-                    "text-center text-[13px] font-mono font-bold tabular-nums",
-                    isPositive ? "text-emerald-600" : "text-rose-500"
+                    "py-5 text-right text-[14px] font-mono font-bold tabular-nums",
+                    isPositive ? "text-emerald-600" : "text-rose-600"
                   )}
                 >
                   {flow !== 0 ? formatCurrencyShort(flow, mainCurrency) : '—'}
@@ -319,6 +319,9 @@ export function FinancialOverview() {
               );
             })}
           </div>
+
+          {/* Bottom Spacing */}
+          <div className="h-8" style={{ gridColumn: '1 / -1' }} />
 
         </div>
       </div>
