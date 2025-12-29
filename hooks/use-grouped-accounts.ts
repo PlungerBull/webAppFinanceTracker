@@ -39,8 +39,8 @@ export function useGroupedAccounts() {
       return {
         groupId,
         name: name,
-        // TODO: color field not available in account_balances view - using default
-        // View needs migration to add: SELECT ba.color
+        // NOTE: Color is available in AccountBalance type from bank_accounts table
+        // Using default color for grouped accounts (individual accounts have their own colors)
         color: ACCOUNT.DEFAULT_COLOR,
         type: first.type || 'checking',
         balances: balances
