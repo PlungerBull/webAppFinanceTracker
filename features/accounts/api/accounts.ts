@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
 import { ACCOUNTS } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
+import type { Database } from '@/types/supabase';
 import type { UpdateAccountFormData } from '../schemas/account.schema';
 import {
-  dbAccountBalancesToDomain,
   dbAccountToDomain,
 } from '@/lib/types/data-transformers';
 

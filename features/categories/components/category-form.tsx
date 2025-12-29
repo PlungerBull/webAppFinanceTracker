@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { Database } from '@/types/database.types';
+import type { Database } from '@/types/supabase';
 
 // Use the view type which includes transaction_count
 type Category = Database['public']['Views']['categories_with_counts']['Row'];

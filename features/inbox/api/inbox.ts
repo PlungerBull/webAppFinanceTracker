@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { INBOX } from '@/lib/constants';
-import type { Database } from '@/types/database.types';
+import type { Database } from '@/types/supabase';
 import type { PromoteInboxItemParams, CreateInboxItemParams, UpdateInboxItemParams, InboxItem } from '../types';
 import {
   dbInboxItemsToDomain,

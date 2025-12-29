@@ -10,7 +10,7 @@
  * If database schema changes, we only update transformers here.
  */
 
-import type { Database } from '@/types/database.types';
+import type { Database } from '@/types/supabase';
 import type { Category, CategoryWithCount, ParentCategoryWithCount, TransactionView } from '@/types/domain';
 import type { InboxItem } from '@/features/inbox/types';
 
@@ -71,31 +71,9 @@ export function dbCurrencyToDomain(
   } as const;
 }
 
-/**
- * Transforms account_balances view row to domain AccountBalance type
- * NEW: Simplified structure with groupId and currencyCode
- */
-export function dbAccountBalanceToDomain(
-  dbBalance: Database['public']['Views']['account_balances']['Row']
-) {
-  return {
-    accountId: dbBalance.account_id,
-    groupId: dbBalance.group_id,
-    name: dbBalance.name,
-    currencyCode: dbBalance.currency_code,
-    type: dbBalance.type,
-    currentBalance: dbBalance.current_balance,
-  } as const;
-}
-
-/**
- * Transforms an array of account_balances view rows
- */
-export function dbAccountBalancesToDomain(
-  dbBalances: Database['public']['Views']['account_balances']['Row'][]
-) {
-  return dbBalances.map(dbAccountBalanceToDomain);
-}
+// NOTE: account_balances view was removed in migration 20251229013916_drop_redundant_account_balances_view.sql
+// The view was replaced with direct queries to bank_accounts table for O(1) performance.
+// If you need account balance data, query bank_accounts directly (see accountsApi.getAll()).
 
 /**
  * Transforms a database transaction_inbox row to domain InboxItem type
