@@ -92,7 +92,9 @@ export class DataImportService {
                 [IMPORT_EXPORT.RPC.PARAMS.USER_ID]: user.id,
                 [IMPORT_EXPORT.RPC.PARAMS.TRANSACTIONS]: processedRows,
                 [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_ACCOUNT_COLOR]: ACCOUNT.DEFAULT_COLOR,
-                [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_CATEGORY_COLOR]: CATEGORY.DEFAULT_COLOR
+                [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_CATEGORY_COLOR]: CATEGORY.DEFAULT_COLOR,
+                p_general_label: 'General',           // NEW: i18n support for hierarchy redirection
+                p_uncategorized_label: 'Uncategorized' // NEW: i18n support for unknown categories
             });
 
             if (error) throw new Error(IMPORT_EXPORT.ERRORS.RPC_CALL_FAILED(error.message));
