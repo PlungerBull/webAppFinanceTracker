@@ -89,6 +89,7 @@ export function AccountListItem({
       <span
         className={cn(
           'text-xs font-mono tabular-nums min-w-[60px] text-right',
+          'group-hover:opacity-0 transition-opacity',
           isNegative && 'text-red-500'
         )}
       >
