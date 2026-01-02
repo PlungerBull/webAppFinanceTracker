@@ -15,6 +15,9 @@
 -- - Store original category name in source_text for audit trail
 -- ============================================================================
 
+-- Drop the old function signature to avoid conflicts
+DROP FUNCTION IF EXISTS public.import_transactions(uuid, jsonb, text, text);
+
 CREATE OR REPLACE FUNCTION public.import_transactions(
   p_user_id uuid,
   p_transactions jsonb,
