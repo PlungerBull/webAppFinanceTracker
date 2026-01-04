@@ -358,12 +358,6 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                                 )}
                                             >
                                                 <div className="flex items-center gap-2">
-                                                    {migrationTargetId && (
-                                                        <div
-                                                            className="w-2 h-2 rounded-full"
-                                                            style={{ backgroundColor: availableParents.find(p => p.id === migrationTargetId)?.color || '#9CA3AF' }}
-                                                        />
-                                                    )}
                                                     <span className={migrationTargetId ? "text-gray-900 font-medium" : "text-gray-500"}>
                                                         {getMigrationTargetName() || "Select new parent group..."}
                                                     </span>
@@ -382,7 +376,6 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                                             }}
                                                             className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-2 transition-colors"
                                                         >
-                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: parent.color || '#9CA3AF' }} />
                                                             <span className="text-sm text-gray-700">{parent.name}</span>
                                                         </div>
                                                     ))}
