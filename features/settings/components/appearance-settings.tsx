@@ -28,8 +28,7 @@ export function AppearanceSettings() {
             const initialVisibility: Record<string, boolean> = {};
             accounts.forEach(acc => {
                 if (acc.accountId) {
-                    // TODO: isVisible not available in account_balances view - needs to fetch from bank_accounts table
-                    initialVisibility[acc.accountId] = true; // Default to visible
+                    initialVisibility[acc.accountId] = acc.isVisible ?? true;
                 }
             });
             setPendingVisibility(initialVisibility);
@@ -47,14 +46,13 @@ export function AppearanceSettings() {
     useEffect(() => {
         let changed = false;
 
-        // TODO: Account visibility checking disabled - isVisible not available in account_balances view
         // Check account visibility changes
-        // for (const acc of accounts) {
-        //     if (acc.accountId && pendingVisibility[acc.accountId] !== (acc.isVisible ?? true)) {
-        //         changed = true;
-        //         break;
-        //     }
-        // }
+        for (const acc of accounts) {
+            if (acc.accountId && pendingVisibility[acc.accountId] !== (acc.isVisible ?? true)) {
+                changed = true;
+                break;
+            }
+        }
 
         // Check currency changes
         if (selectedCurrency && selectedCurrency !== userSettings?.main_currency) {
@@ -62,7 +60,7 @@ export function AppearanceSettings() {
         }
 
         setHasChanges(changed);
-    }, [pendingVisibility, selectedCurrency, userSettings]);
+    }, [pendingVisibility, selectedCurrency, userSettings, accounts]);
 
     const handleToggle = (accountId: string) => {
         setPendingVisibility((prev) => ({
@@ -79,11 +77,11 @@ export function AppearanceSettings() {
         const promises: Promise<any>[] = [];
 
         // Save account visibility changes
-        // TODO: Account visibility feature disabled - isVisible not available in account_balances view
         const visibilityUpdates = Object.entries(pendingVisibility)
             .filter(([accountId, isVisible]) => {
-                // Always include all pending changes since we can't compare with current state
-                return true;
+                const account = accounts.find(acc => acc.accountId === accountId);
+                const currentValue = account?.isVisible ?? true;
+                return isVisible !== currentValue;
             })
             .map(([accountId, isVisible]) => ({ accountId, isVisible }));
 
@@ -129,16 +127,6 @@ export function AppearanceSettings() {
         );
     }
 
-    // Filter out duplicate accounts (since useAccounts returns balances which might be multiple per account)
-    // We only want unique bank accounts
-    const uniqueAccounts = Array.from(
-        new Map(
-            accounts
-                .filter((a) => a.accountId) // Ensure accountId exists
-                .map((a) => [a.accountId, a])
-        ).values()
-    );
-
     const isSaving = isSavingVisibility || isSavingCurrency;
 
     return (
@@ -167,12 +155,12 @@ export function AppearanceSettings() {
                         Bank Accounts
                     </h4>
                     <div className="space-y-2">
-                        {uniqueAccounts.length === 0 ? (
+                        {accounts.length === 0 ? (
                             <p className="text-sm text-muted-foreground italic">
                                 {ACCOUNT_UI.MESSAGES.NO_ACCOUNTS}
                             </p>
                         ) : (
-                            uniqueAccounts.map((account) => (
+                            accounts.map((account) => (
                                 <div
                                     key={account.accountId}
                                     className="flex items-center space-x-3 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
