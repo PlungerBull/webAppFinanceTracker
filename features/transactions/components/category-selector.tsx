@@ -39,12 +39,6 @@ export function CategorySelector({ value, onChange, disabled = false }: Category
                 disabled && "opacity-50 cursor-not-allowed"
               )}
             >
-              {/* Color Dot - Primary visual differentiator */}
-              <div
-                className="w-3 h-3 rounded-full flex-shrink-0 ring-1 ring-black/5"
-                style={{ backgroundColor: category.color }}
-              />
-
               {/* Category Name */}
               <span className="flex-1 text-left">{category.name}</span>
 
