@@ -43,4 +43,10 @@ Things 3 uses the "Magic Plus Button" which allows dragging to a specific spot i
 Your TransactionDetailPanel is a great step in the right direction (side-by-side editing), but your creation flow is still modal-heavy. We should discuss moving towards Inline Creation or Popovers for lighter interactions.
 
 
-5. we have to fix the sidebar, the 3 buttons are overlaping with the number of the accounts
+6. Find a faster way to assign categories to groupings
+7. Refresh faster when assigning categories to groupings
+8. When. groupings have 0 trasnactions, they show in a different ugly color
+9. INVESTIGATE WHY dev is behind main
+10. Assess how far we are from production on PROD
+11. Add the account_statement column
+

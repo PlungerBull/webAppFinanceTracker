@@ -7,7 +7,9 @@
       "Bash(npx supabase gen types:*)",
       "Bash(npm run build:*)",
       "Bash(npx supabase db push)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npx supabase link:*)",
+      "Bash(npx supabase migration:*)"
     ],
     "deny": [],
     "ask": []
