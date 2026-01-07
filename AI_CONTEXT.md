@@ -6,7 +6,7 @@
 
 **Include**: Tech stack, folder organization, abstract architectural patterns (e.g., Sacred Ledger), and "Do/Don't" rules.
 
-**Do NOT Include**: SQL definitions, table schemas, migration logs, or specific file line numbers.
+**Do NOT Include**: SQL definitions, table schemas, migration logs, specific file line numbers, or UI pixel measurements.
 
 **Maintenance**: Update only when a global architectural pattern or a major tech-stack component changes.
 
@@ -17,8 +17,15 @@
 **Description:** A personal finance application for tracking income, expenses, and budgeting.
 **Core Philosophy:** Strict separation between "Database Types" (snake_case) and "Domain Types" (camelCase). The frontend should never see raw database rows.
 
-## 2. Tech Stack
+## 2. Tech Stack & Rendering Strategy
 * **Framework:** Next.js 16 (App Router)
+* **Rendering Strategy:** Client-Side Heavy (SPA-like architecture)
+    * **CRITICAL:** This is NOT a traditional Next.js SSR app
+    * All data fetching uses **Supabase Client SDK** from browser
+    * Components are primarily Client Components (`"use client"`)
+    * **DO NOT** suggest Server Actions or Server Components for data mutations
+    * **DO NOT** suggest moving API logic to `app/api/` routes
+    * Think of this as a React SPA hosted on Next.js infrastructure
 * **Language:** TypeScript (Strict mode)
 * **Database & Auth:** Supabase (PostgreSQL)
 * **State Management (Server):** TanStack Query (React Query) v5
@@ -48,7 +55,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
   /import-export     -> CSV/Data migration services
   /inbox             -> Staging area for draft transactions & processing logic
   /settings          -> User preferences (Theme, Main Currency)
-  /shared            -> [NEW] Shared UI components used across features
+  /shared            -> Shared UI components used across features
     /components
       /transaction-detail-panel -> Unified detail panel for Inbox + Transactions
   /transactions      -> Transaction creation, listing, and transfers
@@ -69,55 +76,31 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * Create separate account rows for each currency (e.g., "Savings (USD)", "Savings (EUR)")
     * Link them with the same `group_id`
     * Use `create_account_group` RPC to create grouped accounts
-* **No Junction Tables:** The old `account_currencies` and `currencies` tables were removed. All currency logic is now on the `bank_accounts` table directly.
+* **No Junction Tables:** All currency logic lives on the `bank_accounts` table directly.
 * **Opening Balances:** Created as transactions with `category_id = NULL` AND `transfer_id = NULL`, using the description "Opening Balance".
-    * **UI Note:** Opening Balance option has been removed from the Add Transaction Modal (as of the Invisible Grouping refactor). Users should set opening balances during account creation.
+    * Users should set opening balances during account creation.
 * **Currency Changes:** To change an account's currency, users must create a new account. The Edit Account modal only allows editing name and color, displaying currency as read-only.
-* **Currency Inheritance (Unified Normalized Architecture - 2025-12-28):**
+* **Currency Inheritance (Normalized Architecture):**
     * **CRITICAL:** Currency is NOT an editable field in transaction forms, inbox detail panel, or transaction detail panels
     * Currency is **derived** from the selected bank account (one currency per account)
-    * **Normalized Architecture (Zero Redundancy) - Applies to BOTH Ledger AND Inbox:**
-        * **Transactions Table:** Currency is **NOT stored** in the `transactions` table (removed `currency_original` column)
-        * **Inbox Table:** Currency is **NOT stored** in the `transaction_inbox` table (removed `currency_original` column)
-        * Currency is **ALWAYS derived** from `bank_accounts.currency_code` via JOIN
+    * **Zero Redundancy Pattern:**
+        * `transactions` table has NO `currency_original` column
+        * `transaction_inbox` table has NO `currency_original` column
+        * Currency is ALWAYS derived from `bank_accounts.currency_code` via JOIN
         * Query `transactions_view` or `transaction_inbox_view` to access currency (exposed as `currency_original` alias)
         * This makes currency desync **structurally impossible** (no redundant storage)
     * **Frontend Contract:** Code MUST NOT send `currency_original` - it doesn't exist in either table
-    * **Implementation (Transactions):**
-        * Database: `transactions` table has NO currency column
-        * View: `transactions_view` aliases `bank_accounts.currency_code AS currency_original`
-        * TypeScript: Field is NOT present in Insert/Update types
-        * API Layer: Field is omitted from INSERT statements entirely
-        * Data flows via JOIN: `transactions.account_id → bank_accounts.currency_code`
-    * **Implementation (Inbox - Scratchpad Mode):**
-        * Database: `transaction_inbox` table has NO currency column
-        * View: `transaction_inbox_view` aliases `bank_accounts.currency_code AS currency_original` (LEFT JOIN)
-        * TypeScript: Field is present in View types but NOT in Insert/Update types
-        * API Layer: Field is omitted from INSERT/UPDATE statements entirely
-        * Data flows via LEFT JOIN: `transaction_inbox.account_id → bank_accounts.currency_code`
-        * **Special Case:** When `account_id` is NULL (draft without account), `currency_original` is NULL
-        * **Hard-Gate Validation:** `promote_inbox_item` RPC requires `account_id` before promotion
-    * **Benefits:**
-        * Zero possibility of currency desync (column doesn't exist in either table)
-        * Impossible to create transactions/inbox items with wrong currency (enforced by schema)
-        * No visual mismatches between list and detail panel views
-        * Database is single source of truth (normalized design)
-        * Simpler schema (one less column per table, no synchronization triggers needed)
-        * Reduced storage (no redundant data)
+    * **Data Flow:**
+        * Transactions: `transactions.account_id → bank_accounts.currency_code`
+        * Inbox: `transaction_inbox.account_id → bank_accounts.currency_code` (LEFT JOIN)
+        * When `account_id` is NULL (inbox draft without account), `currency_original` is NULL
+        * `promote_inbox_item` RPC requires `account_id` before promotion (hard-gate validation)
     * When user changes the account selection, the currency automatically updates to match the new account's currency
     * UI should display currency as read-only text, never as an input or selector
     * This applies to: Transaction forms, Inbox detail panel, Transaction detail panel, and all editing interfaces
-    * **Migration Notes (2025-12-28):**
-        * Part 1: Transactions normalization - Transitioned from "enforced consistency" (trigger) to "structural consistency"
-        * Part 2: Inbox normalization - Extended same pattern to inbox table for unified architecture
 * **Account Display Convention (UI Naming Pattern):**
     * **CRITICAL:** All account selectors MUST follow the format: `${Name} ${Code}`
     * **ALWAYS use `currencyCode`** (e.g., "USD", "EUR", "PEN") - NEVER use `currencySymbol` (e.g., "$", "€", "S/")
-    * **Rationale:** Currency symbols are ambiguous ($ = USD, CAD, AUD, etc.). Codes provide unambiguous identification.
-    * **Enforcement Scope:** This applies to ALL account selection interfaces:
-        * Add Transaction Modal (transaction-form.tsx) - SmartSelector component
-        * Transaction Detail Panel (form-section.tsx) - Radix Select component
-        * Account List Item (account-list-item.tsx) - Dashboard sidebar
     * **Example:** "BCP Credito PEN" ✅ NOT "BCP Credito S/" ❌
     * **Type Safety:** `SelectableAccount` interfaces must include `currencyCode: string` as a required field
 * **Account Name Normalization:**
@@ -145,62 +128,61 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * The `derivedType` field in forms is computed via `useEffect` when `categoryId` changes
     * Visual feedback: Amount displays in green (income) or red (expense) based on derived type
 * **Category Selector UI:**
-    * Flat single-level list (no section headers like "INCOME" or "EXPENSE")
-    * Color dots (3x3px) are the primary visual differentiator
+    * Flat single-level list (no section headers)
+    * Color indicators are the primary visual differentiator
     * No parent context shown (clean, minimal design)
     * Sorted: Income categories first, then Expense, then alphabetically
     * Hook: `useLeafCategories()` filters and returns only selectable categories
 * **Implementation:**
-    * **Add Transaction Modal:** Uses `CategorySelector` component with built-in `useLeafCategories()` filtering
-    * **Transaction Detail Panel:** Parent component fetches leaf categories via `useLeafCategories()` and passes to detail panel
-    * **Inbox Detail Panel:** Component fetches leaf categories directly via `useLeafCategories()` hook
     * **CRITICAL:** All category selectors MUST use `useLeafCategories()` - NEVER `useCategories()` directly for user selection
     * **Pattern:** Filter at the data source (hook level), not in the UI component (transformation level)
 
-### B. Data Flow & Transformation (CRITICAL)
+### B. Data Transformation Strategy (CRITICAL)
+
+#### B1. Core Transformation Pattern
 * **Never return raw DB rows to components.**
-* **API Layer Responsibility:** Fetch data from Supabase -> Transform snake_case to camelCase -> Return Domain Type.
-* **Transformer Pattern:** Use `dbTransactionToDomain` or similar helpers in `@/lib/types/data-transformers`.
+* **API Layer Responsibility:** Fetch data from Supabase → Transform snake_case to camelCase → Return Domain Type.
+* **Transformer Pattern:** Use helper functions in `@/lib/types/data-transformers`.
     * *Bad:* `return data` (frontend receives `user_id`)
     * *Good:* `return dbTransactionToDomain(data)` (frontend receives `userId`)
-* **Table vs View Transformers (Post-Normalization Pattern - 2025-12-28):**
-    * **Table Transformers:** For raw table rows (e.g., `dbTransactionToDomain`, `dbInboxItemToDomain`)
-        * Sets `currencyOriginal: undefined` because currency column doesn't exist in tables
-        * Use ONLY for internal operations, never for UI display
-        * Example: `dbTransactionToDomain()` - marks currency as undefined
-    * **View Transformers:** For database views (e.g., `dbTransactionViewToDomain`, `dbInboxItemViewToDomain`)
-        * Includes `currencyOriginal` from view's aliased JOIN (`bank_accounts.currency_code AS currency_original`)
-        * Includes joined display fields (account name, category name, colors)
-        * Use for ALL UI operations and frontend display
-        * Example: `dbTransactionViewToDomain()` - has complete data with currency
-    * **Critical Rule:** Mutations must never trust raw table data - always re-fetch from views
 
-### B2. Write-then-Read Pattern (Mutation Architecture - 2025-12-28)
-* **Problem:** After currency normalization, mutations that use `.select()` on raw tables return incomplete data (no `currencyOriginal`), poisoning React Query cache.
-* **Solution:** Implement "Write-then-Read" pattern for all mutations:
-    1. **Write:** Perform INSERT/UPDATE on raw table (e.g., `transactions`)
-    2. **Read:** Immediately re-fetch from view (e.g., `transactions_view`) using `getById()`
-    3. **Return:** Complete view data with currency to React Query cache
-* **Implementation Pattern:**
+#### B2. Table vs View Transformers
+* **Table Transformers:** For raw table rows (e.g., `dbTransactionToDomain`, `dbInboxItemToDomain`)
+    * Sets `currencyOriginal: undefined` because currency column doesn't exist in tables
+    * Use ONLY for internal operations, never for UI display
+* **View Transformers:** For database views (e.g., `dbTransactionViewToDomain`, `dbInboxItemViewToDomain`)
+    * Includes `currencyOriginal` from view's aliased JOIN (`bank_accounts.currency_code AS currency_original`)
+    * Includes joined display fields (account name, category name, colors)
+    * Use for ALL UI operations and frontend display
+* **Critical Rule:** Mutations must never trust raw table data - always re-fetch from views
+
+#### B3. Write-then-Read Pattern (Mutation Architecture)
+* **Rule:** Mutations must use "Write-then-Read" pattern to prevent incomplete data in React Query cache.
+* **Pattern:**
     ```typescript
-    // ❌ OLD: Returns incomplete data
+    // ✅ CORRECT: Write to table, then read from view
     const { data } = await supabase.from('transactions').insert({...}).select().single();
-    return dbTransactionToDomain(data); // currencyOriginal: undefined
-
-    // ✅ NEW: Write-then-Read
-    const { data } = await supabase.from('transactions').insert({...}).select().single();
-    return transactionsApi.getById(data.id); // currencyOriginal: from account
+    return transactionsApi.getById(data.id); // Returns complete view data with currency
     ```
-* **Applied To:**
-    * `transactionsApi.create()` - Returns `Promise<TransactionView>`
-    * `transactionsApi.update()` - Returns `Promise<TransactionView>`
-    * `transactionsApi.updateBatch()` - Returns `Promise<TransactionView>`
+* **Applied To:** All mutation operations (`create`, `update`, `updateBatch`)
+
+#### B4. Null/Undefined Normalization
+* **The Problem:** Database uses `null` for missing values, but TypeScript optional properties use `undefined`. Mixing both creates type confusion.
+* **The Solution:** Centralized bidirectional conversion in the data transformer layer:
+    * **Database → Domain:** `dbInboxItemToDomain()` converts `null → undefined` for all optional fields
+    * **Domain → Database:** `domainInboxItemToDbInsert()` converts `undefined → null` for database storage
+* **Domain Types Use Optional Properties:**
+    * **Good:** `interface InboxItem { amount?: number }` (single type: `number | undefined`)
+    * **Bad:** `interface InboxItem { amount: number | null }` (dual types: confusing!)
+    * **Exception:** Update params use explicit null unions (`amount?: number | null`) to differentiate "not provided" (undefined) vs "clear value" (null)
 * **Benefits:**
-    * React Query cache always has complete data with currency
-    * No "vanishing currency" bug after mutations
-    * Consistent with read operations (all use views)
-    * Single source of truth (views)
-* **Performance:** Adds one additional query per mutation (~50-150ms), acceptable for correctness
+    * Components only see `undefined`, never `null`
+    * Single source of truth for conversion logic
+    * Type safety without dual null/undefined checks
+* **Implementation:**
+    * Transformer: `lib/types/data-transformers.ts`
+    * Domain Types: `features/inbox/types.ts`, `features/shared/components/transaction-detail-panel/types.ts`
+    * API Layer: Uses transformer for all database operations
 
 ### C. State Management
 * **Server State:** Use `useQuery` / `useMutation` hooks located in `features/[feature]/hooks/`.
@@ -221,162 +203,71 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **DO NOT** create Next.js API Routes (`app/api/...`) or Server Actions unless strictly necessary (e.g., for webhooks).
     * **DO** call these API functions directly from your React Query hooks.
 
-### E. Styling & UI
+### E. Styling & UI Components
 * Use `tailwind-merge` and `clsx` (via the `cn` helper) for dynamic classes.
 * Prioritize Radix UI primitives for interactive elements (Dialogs, Popovers).
+* **UI Component Hierarchy:**
+    * **Before** using raw Radix primitives, check `@/components/shared` for pre-built patterns
+    * **Always** use `FormModal` for data entry and `DeleteDialog` for confirmations
+    * **Consistency:** Use established component patterns (Tag, Card, Badge) instead of custom implementations
 
-### F. Data Entry Strategy (The "Scratchpad" Pattern + Full Mirror Architecture)
-* **The "Clean Ledger" Rule:** The main `transactions` table must ONLY contain complete, valid data (Amount + Date + Account + Category).
-* **The "Scratchpad Inbox" Rule:** The `transaction_inbox` table accepts PARTIAL data with relaxed constraints:
-    * **Database Schema:** `amount_original`, `description`, and `notes` columns are NULLABLE
-    * **Purpose:** Enable frictionless data entry - users can save ANY amount of information instantly
-    * **Examples:** Just an amount, just a category, just a description, just notes - all valid inbox states
-* **Full Mirror Architecture (2025-12-28):** Inbox and Ledger achieve 1:1 schema parity:
-    * **Naming Standardization:** Both tables use `amount_original` and `currency_original` (no manual mapping friction)
-    * **Notes Functionality:** Inbox supports `notes` field for user annotations - transferred directly to ledger on promotion
-    * **Context Mirroring:** Ledger includes `source_text` column (raw OCR/import data) - transferred separately from notes
-    * **Birth Certificates:** Ledger includes `inbox_id` foreign key for permanent audit trail back to inbox origins
-    * **Field Transfer:** `promote_inbox_item` RPC transfers `notes`, `source_text`, and `exchange_rate` directly from UI state (no appending)
-    * **Explicit State Commitment:** UI is source of truth - `exchange_rate` parameter passed directly to RPC (priority: UI > inbox > 1.0)
-* **Smart Routing:** When building forms, check for data completeness:
-    * **Complete Data (4 fields):** Amount + Description + Account + Category -> Write to Ledger (`transactions`)
-    * **Partial Data (1-3 fields):** Any subset of fields -> Write to Inbox (`transaction_inbox`)
-    * **Implementation:** Three-state validation (Empty → Partial → Complete) with single "Save" button
-* **Promotion with Hard-Gate Validation (CRITICAL):**
-    * Data moves from Inbox to Ledger via the `promote_inbox_item` RPC function
-    * **Server-Side Hard-Gate:** RPC function explicitly validates ALL required fields before promotion:
-        * `account_id IS NULL` → RAISE EXCEPTION 'Account ID is required'
-        * `category_id IS NULL` → RAISE EXCEPTION 'Category ID is required'
-        * `amount_original IS NULL` → RAISE EXCEPTION 'Amount is required'
-        * `description IS NULL OR trim(description) = ''` → RAISE EXCEPTION 'Description is required'
-        * `date IS NULL` → RAISE EXCEPTION 'Date is required'
-    * **Audit Trail:** Promotion marks items as `status='processed'` instead of deleting them, plus stores `inbox_id` in ledger
-    * **Frontend Cannot Bypass:** Database-level validation ensures ledger integrity regardless of frontend state
-* **Auto-Promotion:** When editing inbox items in the detail panel, if all 4 required fields are complete, the item is automatically promoted to the ledger (with "vanishing effect")
-* **Optimistic UI:** Promoted items disappear instantly from inbox list (onMutate), with robust rollback on error (onError restores snapshot)
+### F. Data Entry Strategy (The "Scratchpad" Pattern)
 
-### G. Data Normalization Pattern (Centralized Transformer)
-* **The Problem:** Database uses `null` for missing values, but TypeScript optional properties use `undefined`. Mixing both creates type confusion.
-* **The Solution:** Centralized bidirectional conversion in the data transformer layer:
-    * **Database → Domain:** `dbInboxItemToDomain()` converts `null → undefined` for all optional fields
-    * **Domain → Database:** `domainInboxItemToDbInsert()` converts `undefined → null` for database storage
-* **Domain Types Use Optional Properties:**
-    * **Good:** `interface InboxItem { amount?: number }` (single type: `number | undefined`)
-    * **Bad:** `interface InboxItem { amount: number | null }` (dual types: confusing!)
-    * **Exception:** Update params use explicit null unions (`amount?: number | null`) to differentiate "not provided" (undefined) vs "clear value" (null)
-* **Benefits:**
-    * Components only see `undefined`, never `null`
-    * Single source of truth for conversion logic
-    * Type safety without dual null/undefined checks
-    * Follows project architecture standards
-* **Implementation:**
-    * Transformer: `lib/types/data-transformers.ts`
-    * Domain Types: `features/inbox/types.ts`, `features/shared/components/transaction-detail-panel/types.ts`
-    * API Layer: `features/inbox/api/inbox.ts` uses transformer for all database operations
+```mermaid
+flowchart LR
+    User[User Input] -->|Partial Data| Inbox[(transaction_inbox)]
+    User -->|Complete Data| Ledger[(transactions)]
 
-### H. Transaction Detail Panel Architecture (Unified Reconciliation Engine with Smart Save)
-* **Shared Component Pattern:** Both Inbox and Transactions views use the SAME detail panel component located at `features/shared/components/transaction-detail-panel/`.
-* **Smart Save System:** Intelligent button routing based on data completeness:
-    * **Inbox Mode - Dual Callbacks:**
-        * `onPartialSave`: Saves incomplete data as draft in inbox
-        * `onPromote`: Validates completeness & promotes to ledger (atomic via `promote_inbox_item` RPC)
-    * **Transaction Mode - Single Callback:**
-        * `onSave`: Updates existing transaction (requires complete data - Sacred Ledger Rule)
-    * **Readiness Calculation (Shared):**
-        * Pure function `calculateLedgerReadiness()` validates: amount, description, account, category, date, exchange rate (cross-currency)
-        * Returns `{ isReady, canSaveDraft, missingFields }` object
-        * **CRITICAL:** Exchange rate required when `selectedAccount.currencyCode !== mainCurrency` (NOT `data.currency`)
-    * **Button States:**
-        * **Inbox Complete:** "Save to Ledger" (Blue) - promotes to ledger
-        * **Inbox Incomplete:** "Save Draft" (Slate) - saves partial data
-        * **Inbox Cross-Currency (no rate):** "Save Draft (Rate Required)" - warns about missing rate
-        * **Transaction Complete + Changes:** "Keep Changes" (Slate-900) - saves updates
-        * **Transaction Incomplete:** Button DISABLED - prevents corruption (Sacred Ledger Rule)
-    * **Race Condition Protection:**
-        * Uses `useUserSettings()` to detect if main currency still loading
-        * Button disabled until `isSettingsReady = true`
-        * Prevents saves with wrong currency assumption (default USD vs actual main currency)
-* **Mode-Based Behavior:** The panel accepts a `mode` prop ('inbox' | 'transaction') that controls:
-    * **Button Text:** Dynamic based on readiness (see Smart Save states above)
-    * **Button Color:** Blue (ledger promotion), Slate (draft save), Slate-900 (transaction updates)
-    * **Warning Banner:** Orange (inbox - draft-friendly) vs Red (transaction - data integrity enforcement)
-    * **Amount Color:** Gray (inbox) vs Green/Red based on category type (transaction)
+    Inbox -->|Read via View| UI[UI Display]
+    Ledger -->|Read via View| UI
+
+    Inbox -->|promote_inbox_item RPC| Validation{Hard Gate}
+    Validation -->|Missing Fields| Error[RAISE EXCEPTION]
+    Validation -->|All Required Fields| Ledger
+
+    style Inbox fill:#fef3c7
+    style Ledger fill:#dcfce7
+    style Validation fill:#dbeafe
+    style Error fill:#fee2e2
+```
+
+* **The "Clean Ledger" Rule:** `transactions` table ONLY accepts complete data (Amount + Date + Account + Category).
+* **The "Scratchpad Inbox" Rule:** `transaction_inbox` accepts PARTIAL data (nullable columns: `amount_original`, `description`, `notes`).
+* **Smart Routing:**
+    * **Complete Data** → Write to `transactions`
+    * **Partial Data** → Write to `transaction_inbox`
+* **Promotion Flow:**
+    * Use `promote_inbox_item` RPC to move Inbox → Ledger
+    * **Hard-Gate Validation:** RPC validates ALL required fields (`account_id`, `category_id`, `amount_original`, `description`, `date`)
+    * **Audit Trail:** Promotion marks items as `status='processed'` and stores `inbox_id` in ledger
+    * **Auto-Promotion:** Detail panel automatically promotes when all fields complete
+* **Schema Parity:** Both tables use `amount_original`, support `notes` field, ledger includes `inbox_id` foreign key
+
+### G. Transaction Detail Panel (Unified Component)
+* **Path:** `features/shared/components/transaction-detail-panel/`
+* **Modes:** Accepts `mode="inbox"` (Drafts) or `mode="transaction"` (Ledger)
+* **Logic:**
+    * **Smart Save:** Analyzes `calculateLedgerReadiness()` function
+        * *Inbox Mode:* Allows "Save Draft" (Partial) or "Promote" (Complete via `promote_inbox_item` RPC)
+        * *Transaction Mode:* Only allows "Keep Changes" if all required fields valid (Sacred Ledger Rule)
+    * **Currency Display:** Uses fallback chain `selectedAccount?.currencyCode ?? data.currency` to prevent race conditions
+    * **Cross-Currency:** If `selectedAccount.currencyCode !== mainCurrency`, Exchange Rate field becomes mandatory
 * **Component Structure:**
-    * **IdentityHeader:** Editable payee (borderless input with "No description" placeholder) + editable amount (monospaced, dynamic color)
-        * **Dual-Source Currency Resolution (Race Condition Protection - 2025-12-28):**
-            * Currency display uses three-tier fallback chain to handle loading states
-            * **Tier 1 (REACTIVE):** Lookup from `accounts` array via `selectedAccount?.currencyCode`
-            * **Tier 2 (FALLBACK):** Use transaction's own `data.currency` property (survives loading race)
-            * **Tier 3 (DEFAULT):** Show "SELECT ACCOUNT" prompt if both undefined
-            * **Rationale:** Prevents "vanishing currency" when transaction loads from cache before `useAccounts` hook finishes hydrating
-            * **Implementation:** `const displayCurrency = selectedAccount?.currencyCode ?? data.currency ?? 'SELECT ACCOUNT'`
-    * **FormSection:** Account, Category, Date, Exchange Rate (conditional), Notes fields with `space-y-4` spacing
-        * **Account Selector:** Shows selected account name + currency code (e.g., "BCP Credito PEN")
-        * **Category Selector:** Shows selected category name with color dot
-        * **Date Picker:** Calendar popover with formatted date display
-        * **Exchange Rate Field (Reactive):** Only appears when selected account currency differs from user's main currency
-            * **CRITICAL:** Comparison logic: `selectedAccount.currencyCode !== mainCurrency` (from user settings)
-            * **NOT:** `data.currency` (which is temporary import metadata)
-            * Shows "REQUIRED" badge in orange when visible
-            * Orange border when empty to draw attention
-            * Displays conversion helper: "1 {mainCurrency} = ? {accountCurrency}"
-            * 4 decimal precision for accurate rates
-            * Validation: Required for ledger promotion if currencies differ, optional for draft save
-            * **Data Population:** Field populates from database via pattern: `editedFields.exchangeRate ?? data.exchangeRate ?? undefined`
-            * Follows same pattern as other fields (account, category, notes)
-        * **Notes Field:** Multiline textarea for transaction notes
-    * **MissingInfoBanner (Dual-Mode):**
-        * **Inbox Mode:** Orange warning (draft-friendly) - "Save as Draft" with helpful completion guidance
-        * **Transaction Mode:** Red error (Sacred Ledger enforcement) - "Cannot Save Incomplete Transaction" with specific missing fields
-        * Uses `getReadinessMessage()` helper for user-friendly field descriptions
-    * **ActionFooter:** Pinned bottom buttons with Smart Save logic (see Button States above)
-* **Data Requirements (CRITICAL):**
-    * **transactions_view Database View:** Must include both IDs and display names:
-        * IDs: `account_id`, `category_id` (required for editing)
-        * Names: `account_name`, `category_name` (for display)
-        * Colors: `account_color`, `category_color` (for UI indicators)
-        * Metadata: `user_id`, `exchange_rate`, `notes`, `created_at`, `updated_at`
-    * **Data Transformer:** `dbTransactionViewToDomain()` maps all fields from view to domain types
-* **Batch Save Pattern:**
-    * All edits are staged in local state (`EditedFields` object)
-    * NO auto-save on field change (prevents accidental edits)
-    * Explicit save via "Keep Changes" / "Promote to Ledger" button
-    * Confirmation dialog on close if unsaved changes exist
-* **API Functions:**
-    * Transactions: Use `transactionsApi.updateBatch()` to update multiple fields atomically
-    * Inbox: Use `inboxApi.promote()` with final values (description, amount, date, account, category, exchangeRate)
-* **Layout Pattern:**
-    * Both Inbox and Transactions use three-column layout: `Sidebar | TransactionList | DetailPanel`
-    * Fixed 400px width for detail panel
-    * Scrollable content area with pinned action footer
-* **Design System:**
-    * Typography: `text-[10px]` labels, `text-xl` payee, `text-3xl` amount
-    * Spacing: `px-6 py-4` panel padding, `space-y-4` form sections
-    * Colors: Orange (#f97316) for warnings, Blue (#2563eb) for inbox actions, Slate (#0f172a) for transaction actions
-    * Form inputs: `bg-gray-50` default, `focus:bg-white`, `rounded-xl`
-    * SelectValue Pattern: Must include children content to display selected value (not just placeholder)
-* **IMPORTANT:** Never create separate detail panels for Inbox/Transactions. Always use the shared component with appropriate mode prop.
+    * **IdentityHeader:** Editable payee + amount with currency display
+    * **FormSection:** Account, Category, Date, Exchange Rate (conditional), Notes
+    * **MissingInfoBanner:** Dual-mode warnings (orange for inbox, red for ledger)
+    * **ActionFooter:** Save/Promote buttons with validation
+* **Data Requirements:** Must include IDs + display names (account_id + account_name, category_id + category_name), colors, metadata
+* **Batch Save:** All edits staged in local state, explicit save via button, confirmation dialog on unsaved changes
+* **CRITICAL:** Never create separate detail panels - always use shared component with mode prop
 
-### I. Transaction List UI Design (Card-Based Layout)
-* **Card Layout:** Each transaction is a white rounded card with subtle shadow on hover
-* **Transaction Card Structure:**
-    * **Left Column (Identity):**
-        * Transaction description (semibold, 14px, truncated)
-        * Category tag (10px uppercase, colored)
-        * Date (10px, gray)
-    * **Right Column (Amount):**
-        * Amount value (18px, monospaced, green for income / black for expense)
-        * Currency code (10px, gray)
-* **Category Tag Styling (CURRENT DESIGN):**
-    * **Background:** Category color at 12.5% opacity (`${categoryColor}20`)
-    * **Text:** Full category color, bold/semibold for visibility
-    * **Border:** Category color at 25% opacity (`${categoryColor}40`)
-    * **NO vertical bar** on card edge
-    * **NO color dot** next to category name
-    * Visual example: Blue category = light blue background + **BLUE** bold text + blue-tinted border
-* **Selection State:** Blue ring and border when selected (`ring-2 ring-blue-500/20 border-blue-200`)
-* **Spacing:** `space-y-2` between cards, `px-4 py-3` card padding
-* **Notes Indicator:** REMOVED (previously showed as small dot, now hidden)
+### H. Transaction List UI (Behavioral Design)
+* **Card Layout:** Transactions displayed as cards with hover states
+* **Structure:** Two-column layout (Identity | Amount)
+* **Category Visualization:** Use the `Tag` component with category color inheritance
+* **Selection State:** Visual feedback when transaction selected
+* **Amount Display:** Monospaced font, color-coded by transaction type (income/expense)
+* **Refer to Design System:** For specific spacing, typography, and color values, see component implementations
 
 ## 5. Coding Standards "Do's and Don'ts"
 * **DO** use Zod schemas for all form inputs.
@@ -410,7 +301,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Data Rule:** SACRED. Real financial data. Backups required.
 
 ### B. The Flow of Change
-* **Code Flow:** Local `feat/branch` -> Merge to `dev` -> Promote to `main`.
+* **Code Flow:** Local `feat/branch` → Merge to `dev` → Promote to `main`.
 * **Schema Flow (Migrations):**
     * **NEVER** use the Supabase Dashboard Table Editor to change schema in Dev or Prod.
     * **ALWAYS** create migrations locally: `supabase db diff -f my_new_feature`.
@@ -421,58 +312,8 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 * **Vercel Dev:** Environment Variables set to "Development" & "Preview" scopes.
 * **Vercel Prod:** Environment Variables set to "Production" scope.
 
-## 7. Sacred Ledger Data Management
-
-### Clear All Data Function (`clear_user_data`)
-
-The `clear_user_data` RPC function implements the "Sacred Ledger" philosophy for secure, performant data resets.
-
-#### Core Principles
-
-**1. Identity Verification (Security)**
-* Function verifies requesting user matches authenticated session
-* Prevents unauthorized data wipes even if RPC endpoint is exposed
-* Throws exception if user IDs don't match: `"Unauthorized: User can only clear their own data"`
-
-**2. User Environment Preservation**
-* **CRITICAL**: `user_settings` table is NEVER touched
-* Theme preferences, main currency, week start day remain intact
-* User returns to "Fresh Start" with familiar environment (no reconfiguration needed)
-
-#### Frontend Usage
-
-**Component**: `features/settings/components/data-management.tsx`
-
-**Function Signature:**
-```typescript
-await supabase.rpc('clear_user_data', {
-  p_user_id: user.id  // Must match authenticated session
-});
-```
-
-**Success Flow:**
-1. User clicks "Clear Data" button (confirmation dialog shown)
-2. RPC function validates user identity (hard-gate check)
-3. Sequential deletion executes (inbox → accounts → categories)
-4. Success message displays: "All data cleared successfully. Starting fresh!"
-5. React Query cache invalidated (transactions, accounts, categories)
-6. Page refreshes to clean/onboarding state
-7. User settings remain intact (theme, currency, preferences)
-
-#### What Gets Deleted
-
-* ✅ All transactions (via CASCADE when accounts deleted)
-* ✅ All inbox items (staging area / scratchpad)
-* ✅ All categories (user-created only, respects hierarchy)
-* ✅ All bank accounts (triggers CASCADE deletion of transactions)
-
-#### What Gets Preserved
-
-* ✅ User settings (theme, main currency, week start)
-* ✅ Authentication record (user can still log in)
-* ✅ Global currencies table (shared reference data)
-
-#### Related Documentation
-
-* **DB Schema**: See `DB_SCHEMA.md` for function signature and technical details
-* **Migration History**: See `CHANGELOG.md` for implementation details and problem/solution narrative
+## 7. Global Data Management
+* **Reset Account:** Use RPC `clear_user_data(p_user_id)`
+    * **Deletes:** Transactions, Inbox, Accounts, Categories (CASCADE)
+    * **Preserves:** User Settings (Theme, Currency) & Auth
+    * **Security:** Enforces user identity match (Hard-Gate)
