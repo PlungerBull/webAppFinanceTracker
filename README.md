@@ -1,49 +1,66 @@
-Simple Expense Tracker
+# WebApp Finance Tracker
 
-CTO's Note: This is the entry point. For technical details, see CONTEXT_AI.md.
+A robust, personal finance management application built for data integrity and control. This app utilizes a smart Import workflow, allowing verified data to enter your records immediately while preserving a review stage for incomplete items.
 
-1. Project Overview
+## 🌟 Features
 
-Simple Expense Tracker is a beautiful, high-performance personal finance application. It is designed to feel like a "companion" rather than a spreadsheet, prioritizing warmth, speed, and offline capabilities.
+* **Double-Entry Style Integrity:** Strict "Sacred Ledger" design pattern.
+* **Smart Excel Import:** Import Excel files directly. Records containing all necessary fields are added straight to the Sacred Ledger, while incomplete data is routed to the Inbox for review.
+* **Multi-Currency Support:** Track accounts in different currencies with strict validation.
+* **Flexible Taxonomy:** Custom Categories and Groupings to organize your spending your way.
+* **Dashboard:** High-level financial overview and recent activity.
+* **Secure:** Powered by Supabase Auth and Row Level Security (RLS).
 
-2. Quick Start
+## 🛠 Tech Stack
 
-Follow these steps to get the application running locally in under 2 minutes.
+* **Frontend:** Next.js 14 (App Router), TypeScript, React
+* **UI System:** Tailwind CSS, Shadcn UI, Lucide Icons
+* **Backend/DB:** Supabase (PostgreSQL, Auth, Edge Functions)
+* **State Management:** TanStack Query
 
-1. Install Dependencies
+## 🚀 Getting Started
 
-# We use npm ci to ensure strictly versioned installs from package-lock.json
-npm ci
+### Prerequisites
 
+* Node.js 18+
+* A Supabase project
 
-2. Configure Environment
+### Installation
 
-Create your local environment file.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/webAppFinanceTracker.git
+   cd webAppFinanceTracker
+   ```
 
-cp .env.example .env.local
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
+### Environment Setup
 
-You must populate NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.
+Create a `.env.local` file in the root directory:
 
-3. Run the Server
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
+### Run Development Server
+
+```bash
 npm run dev
+```
 
+Open [http://localhost:3000](http://localhost:3000) to see the app.
 
-Access the app at http://localhost:3000.
+## 📚 Documentation Index
 
-3. Prerequisites
+For more detailed information about specific aspects of the project, please refer to the following documents:
 
-Node.js: v20.x or higher (Required for Next.js 16).
-
-Supabase: A running project (Cloud or Local).
-
-4. Documentation Index
-
-CONTEXT_AI.md: The technical manual. Stack, Schema, and Architecture.
-
-PRD.md: The Product Vision. What we are building and why.
-
-AI_RULES.md: The "Constitution". Rules for coding and maintaining this repo.
-
-TODO.md: The Roadmap. What is done and what is pending.
+* **AI_CONTEXT.md:** Context and coding standards for AI assistants and developers.
+* **ARCHITECTURE.md:** High-level architectural overview, design patterns, and folder structure.
+* **CHANGELOG.md:** Record of all notable changes made to the project.
+* **DB_SCHEMA.md:** Detailed documentation of the database tables, relationships, and key functions.
+* **TODO.md:** Project roadmap, active tasks, and known issues.

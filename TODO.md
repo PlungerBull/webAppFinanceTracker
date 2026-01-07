@@ -1,51 +1,35 @@
-BETTERMENT UI POINTS:
-6. How is the main currency interacting with the rest of the code?
+# Project Roadmap & Tasks
 
+**How to use this file:**
 
+* **Do not move tasks.** When you finish a task, check the box `[x]` and add the completion date at the end of the line (e.g., `(Completed: 2026-01-06)`).
+* **Cleanup:** Periodically delete lines that have been completed for a while to keep the list clean.
 
+## To-Do's
 
-FINAL DEPLOYMENT CHECKLIST:
-1. The "Boring but Critical" Legal Pages (Missing)
-2. Observability: "Flying Blind" (Missing)
-3. SEO & Social Sharing (Partial)
-4. User Experience Polish (Missing)
-5. Data Safety (Review Needed)
+- [ ] **Eject Direct API Calls:** Remove all direct `supabase.from()` calls in `features/transactions/api/transactions.ts`. The UI must never speak to the server directly.
+- [ ] **Install Local Database:** Add WatermelonDB (recommended for React/React Native parity) or RxDB to `package.json`.
+- [ ] **Define Client-Side Schema:** Replicate the robust SQL schema found in `DB_SCHEMA.md` into a JavaScript/JSON schema for the local DB.
+- [ ] **Implement Sync Engine:** Build the "Pull" (fetch changes) and "Push" (send offline commits) synchronization logic.
+- [ ] **Rewrite Hooks:** Refactor `useTransactions` to subscribe to the local database observables instead of React Query promises.
+- [ ] **Install Test Runner:** Add `vitest` and `@testing-library/react` immediately. We currently have zero test coverage.
+- [ ] **CI Pipeline:** Create a GitHub Action to block merges that fail type checks or linting.
+- [ ] **Error Boundary:** Wrap the application root in a global Error Boundary (e.g., Sentry) to catch white-screen crashes.
+- [ ] **Data Visualization:** Implement charts for "Monthly Spending" in the Dashboard.
+- [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports.
+- [ ] **Import Optimization:** Fix timeouts on large Excel imports (See migration `20260104200000_fix_import_timeout.sql` for context).
 
+## Known Issues
 
+- [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates.
+- [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers.
 
-IMPROVEMENT POINTS:
-1. The Illusion of Immediacy (State Management)
-Current State: Your application follows a "Pessimistic UI" pattern. I see a hook called useQueryInvalidation that is used extensively. When a user creates a transaction, the flow is likely:
+## Future Roadmap
 
-User clicks "Save".
-
-App sends request to Supabase.
-
-App waits for Supabase to confirm.
-
-App invalidates the ['transactions'] query.
-
-App refetches the data.
-
-UI updates.
-
-The "Sage" Advice: Tools like Todoist and Things 3 feel native because they lie to the user. They use Optimistic UI. When you check a box in Things 3, it creates a "fake" success state instantly. It doesn't wait for the cloud. To achieve that "buttery smooth" feel, we must move away from invalidateQueries as the primary update mechanism and move toward Direct Cache Manipulation. We need to update the React Query cache manually with the expected result before the server responds. If the server fails, we roll back.
-
-2. Friction vs. Flow (The Interaction Model)
-Current State: I see many files named *-modal.tsx (e.g., add-transaction-modal.tsx). Modals are effective, but they are high-friction. They demand 100% of the user's attention and obscure the context behind them.
-
-The "Sage" Advice:
-
-Notion excels at contextual creation. You don't open a modal to add a row; you click "New" and a row appears inline, or a side-panel slides in that keeps the context visible.
-
-Things 3 uses the "Magic Plus Button" which allows dragging to a specific spot in the list to insert tasks exactly where you want them.
-
-Your TransactionDetailPanel is a great step in the right direction (side-by-side editing), but your creation flow is still modal-heavy. We should discuss moving towards Inline Creation or Popovers for lighter interactions.
-
-
-6. Find a faster way to assign categories to groupings
-7. Refresh faster when assigning categories to groupings
-8. When. groupings have 0 trasnactions, they show in a different ugly color
-10. Assess how far we are from production on PROD
-11. Add the account_statement column
-
+- [ ] **Budgeting Module:** Create database schema and UI for setting monthly category budgets.
+- [ ] **Net Wealth Tracker:** Dashboard to track assets (accounts, investments) vs liabilities over time.
+- [ ] **Expense Sharing:** Functionality to share expenses or split bills with other users.
+- [ ] **Recurring Transactions:** Engine to automatically generate transactions for subscriptions/rent.
+- [ ] **Investment Tracking:** Support for tracking stock units/prices in accounts.
+- [ ] **Multi-user Households:** Allow sharing accounts between two Auth users.
+- [ ] **AI Categorization:** Use LLM to suggest categories for Inbox items based on history.
