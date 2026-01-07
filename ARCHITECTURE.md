@@ -53,6 +53,10 @@ features/transactions/
 ### 3. Server vs. Client State
 
 * **Server State:** Managed by TanStack Query. We aggressively cache read data and use optimistic updates for mutations (like deleting a transaction) to make the UI feel instant.
+* **Infinite Scroll:** Transaction and inbox lists use virtualized pagination for performance.
+    * Uses `useInfiniteQuery` with 50-item pages and offset-based pagination
+    * Virtual scrolling renders only ~15 visible items (via `@tanstack/react-virtual`)
+    * Server-side aggregation for filter counts (prevents inaccurate client-side counting)
 * **Client State:** Minimal. We prefer URL state (search params) for filters and modals to ensure shareability and deep-linking. Global UI state (like sidebar toggle) may live in `stores/`.
 
 ### 4. Database-Driven Logic

@@ -186,6 +186,11 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 
 ### C. State Management
 * **Server State:** Use `useQuery` / `useMutation` hooks located in `features/[feature]/hooks/`.
+* **Pagination:** All list queries use `useInfiniteQuery` with offset-based pagination.
+    * **Page Size:** 50 items per page (configured in `PAGINATION.DEFAULT_PAGE_SIZE`)
+    * **Virtualization:** Lists render only visible items (~15) using `@tanstack/react-virtual`
+    * **Pattern:** API returns `{ data, count }`, hooks flatten pages internally for UI consumption
+    * **Server-Side Aggregation:** Category counts use separate lightweight queries (not client-side counting)
 * **Invalidation:** Mutations must invalidate relevant query keys upon success.
     * *Example:* Creating a transaction must invalidate `['transactions']` AND `['accounts']` (since balances change).
 * **Division of Labor:**
