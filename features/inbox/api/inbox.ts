@@ -10,50 +10,35 @@ import {
 
 export const inboxApi = {
   /**
-   * Fetch Pending Items - Get all pending items with joined account/category data
+   * Fetch Pending Items with Pagination - For infinite scroll
+   * Get pending items with joined account/category data in pages
    * Strict filtering: Only status='pending' items
    * Sort: Oldest first (FIFO) so users handle backlog chronologically
    * Uses transaction_inbox_view for currency derivation from account
    */
-  getPending: async (): Promise<InboxItem[]> => {
+  getPendingPaginated: async (pagination?: {
+    offset: number;
+    limit: number;
+  }): Promise<{ data: InboxItem[]; count: number | null }> => {
     const supabase = createClient();
+    const { offset = 0, limit = 50 } = pagination || {};
 
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from('transaction_inbox_view')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('status', 'pending')
-      .order('date', { ascending: true }); // FIFO: Oldest first
+      .order('date', { ascending: true }) // FIFO: Oldest first
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.error(`${INBOX.API.CONSOLE.ERROR_PREFIX} ${INBOX.API.CONSOLE.FETCH_ITEMS}`, error);
       throw new Error(error.message || INBOX.API.ERRORS.FETCH_FAILED);
     }
 
-    // Transform view rows to domain InboxItem with centralized transformer
-    return dbInboxItemViewsToDomain(data || []);
-  },
-
-  /**
-   * LEGACY: Fetch All - Get all pending items (without joins)
-   * Use getPending() instead for better performance with joined data
-   * @deprecated Use getPending() for new code
-   */
-  getAll: async () => {
-    const supabase = createClient();
-
-    const { data, error } = await supabase
-      .from('transaction_inbox')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true }); // FIFO: Oldest first
-
-    if (error) {
-      console.error(`${INBOX.API.CONSOLE.ERROR_PREFIX} ${INBOX.API.CONSOLE.FETCH_ITEMS}`, error);
-      throw new Error(error.message || INBOX.API.ERRORS.FETCH_FAILED);
-    }
-
-    // Transform snake_case to camelCase before returning to frontend
-    return data ? dbInboxItemsToDomain(data) : [];
+    return {
+      data: dbInboxItemViewsToDomain(data || []),
+      count,
+    };
   },
 
   /**

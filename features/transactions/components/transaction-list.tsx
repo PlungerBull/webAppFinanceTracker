@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { format, isToday } from 'date-fns';
-import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown, Circle } from 'lucide-react';
+import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
-import { TRANSACTIONS } from '@/lib/constants';
+import { TRANSACTIONS, PAGINATION } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -27,10 +28,14 @@ type TransactionListRow = Omit<TransactionRow, 'amountOriginal' | 'amountHome'> 
 interface TransactionListProps {
   transactions: (TransactionRow | TransactionListRow)[];
   isLoading: boolean;
+  isFetchingNextPage?: boolean;
+  hasNextPage?: boolean;
+  fetchNextPage?: () => void;
   selectedTransactionId: string | null;
   onTransactionSelect?: (id: string) => void;
   title?: string | null;
   variant?: 'default' | 'compact';
+  totalCount?: number | null;
   // Filter props
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
@@ -45,10 +50,14 @@ interface TransactionListProps {
 export function TransactionList({
   transactions,
   isLoading,
+  isFetchingNextPage = false,
+  hasNextPage = false,
+  fetchNextPage,
   selectedTransactionId,
   onTransactionSelect,
   title,
   variant = 'default',
+  totalCount,
   searchQuery,
   onSearchChange,
   selectedDate,
@@ -59,22 +68,56 @@ export function TransactionList({
   categoryCounts = {},
 }: TransactionListProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-
-  // In compact mode, we don't use the sidebar context for padding
   const isCompact = variant === 'compact';
+
+  // Parent ref for virtualizer
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // Initialize virtualizer
+  const virtualizer = useVirtualizer({
+    count: transactions.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => PAGINATION.VIRTUAL_ITEM_SIZE_ESTIMATE,
+    overscan: PAGINATION.OVERSCAN,
+  });
+
+  // Infinite scroll trigger
+  const virtualItems = virtualizer.getVirtualItems();
+  const lastVirtualItem = virtualItems[virtualItems.length - 1];
+
+  useEffect(() => {
+    if (!lastVirtualItem || !fetchNextPage) return;
+
+    // Trigger fetch when user scrolls near the end
+    if (
+      lastVirtualItem.index >= transactions.length - 1 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      fetchNextPage();
+    }
+  }, [
+    lastVirtualItem,
+    transactions.length,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  ]);
+
+  // Reset scroll position when filters change
+  useEffect(() => {
+    virtualizer.scrollToIndex(0, { align: 'start' });
+  }, [searchQuery, selectedDate, selectedCategories]);
 
   // Format date for display
   const formatDateDisplay = (dateString: string) => {
     if (!dateString) return '';
     try {
       // FORCE "Wall Clock" Date Parsing
-      // 1. Take only the YYYY-MM-DD part (first 10 chars)
-      // 2. Append T00:00:00 to force local midnight
-      // 3. This ignores any time/zone info from the DB
-      const cleanDate = dateString.substring(0, 10); // Take "YYYY-MM-DD"
+      const cleanDate = dateString.substring(0, 10);
       const localDate = new Date(cleanDate + 'T00:00:00');
 
-      if (isNaN(localDate.getTime())) return dateString; // Fallback for invalid dates
+      if (isNaN(localDate.getTime())) return dateString;
 
       if (isToday(localDate)) {
         return 'Today';
@@ -97,6 +140,11 @@ export function TransactionList({
               <h1 className="text-xl font-bold text-gray-900">
                 {title || TRANSACTIONS.UI.LABELS.TRANSACTIONS}
               </h1>
+              {totalCount !== null && (
+                <span className="ml-2 text-sm text-gray-500">
+                  ({totalCount} total)
+                </span>
+              )}
             </div>
 
             {/* Filter Toolbar */}
@@ -226,8 +274,12 @@ export function TransactionList({
         </>
       )}
 
-      {/* Card List (Scrollable) */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      {/* Virtualized List Container */}
+      <div
+        ref={parentRef}
+        className="flex-1 overflow-y-auto px-6 py-4"
+        style={{ contain: 'strict' }}
+      >
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -239,84 +291,118 @@ export function TransactionList({
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            {transactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                onClick={() => onTransactionSelect?.(transaction.id)}
-                className={cn(
-                  // Card base styling
-                  'relative bg-white rounded-xl border border-gray-100 px-4 py-3',
-                  'transition-all duration-200 cursor-pointer',
-                  'hover:shadow-sm hover:border-gray-200',
-                  // Selected state
-                  selectedTransactionId === transaction.id
-                    ? 'ring-2 ring-blue-500/20 border-blue-200'
-                    : '',
-                  // Disable interactivity if no handler
-                  !onTransactionSelect && 'cursor-default hover:shadow-none'
-                )}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  {/* LEFT COLUMN: Identity */}
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    {/* Payee Name */}
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {transaction.description || 'Untitled Transaction'}
-                    </p>
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const transaction = transactions[virtualItem.index];
+              return (
+                <div
+                  key={transaction.id}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                  className="pb-2" // Gap between cards
+                >
+                  <div
+                    onClick={() => onTransactionSelect?.(transaction.id)}
+                    className={cn(
+                      'relative bg-white rounded-xl border border-gray-100 px-4 py-3',
+                      'transition-all duration-200 cursor-pointer',
+                      'hover:shadow-sm hover:border-gray-200',
+                      selectedTransactionId === transaction.id
+                        ? 'ring-2 ring-blue-500/20 border-blue-200'
+                        : '',
+                      !onTransactionSelect && 'cursor-default hover:shadow-none'
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      {/* LEFT COLUMN: Identity */}
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        {/* Payee Name */}
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {transaction.description || 'Untitled Transaction'}
+                        </p>
 
-                    {/* Category Pill + Date */}
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md"
-                        style={{
-                          backgroundColor: transaction.categoryColor
-                            ? `${transaction.categoryColor}20` // 20 = 12.5% opacity in hex
-                            : '#f9fafb',
-                          color: transaction.categoryColor || '#6b7280',
-                          borderWidth: '1px',
-                          borderStyle: 'solid',
-                          borderColor: transaction.categoryColor
-                            ? `${transaction.categoryColor}40` // 40 = 25% opacity in hex
-                            : '#e5e7eb'
-                        }}
-                      >
-                        {transaction.categoryName || 'Uncategorized'}
-                      </span>
-                      {/* Date */}
-                      <p className="text-[10px] text-gray-400">
-                        {formatDateDisplay(transaction.date)}
-                      </p>
+                        {/* Category Pill + Date */}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md"
+                            style={{
+                              backgroundColor: transaction.categoryColor
+                                ? `${transaction.categoryColor}20`
+                                : '#f9fafb',
+                              color: transaction.categoryColor || '#6b7280',
+                              borderWidth: '1px',
+                              borderStyle: 'solid',
+                              borderColor: transaction.categoryColor
+                                ? `${transaction.categoryColor}40`
+                                : '#e5e7eb'
+                            }}
+                          >
+                            {transaction.categoryName || 'Uncategorized'}
+                          </span>
+                          {/* Date */}
+                          <p className="text-[10px] text-gray-400">
+                            {formatDateDisplay(transaction.date)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* RIGHT COLUMN: Value */}
+                      <div className="text-right flex-shrink-0">
+                        {/* Amount */}
+                        <p
+                          className={cn(
+                            'text-lg font-bold font-mono tabular-nums',
+                            transaction.amountOriginal === null
+                              ? 'text-gray-400'
+                              : transaction.amountOriginal >= 0
+                              ? 'text-green-600'
+                              : 'text-gray-900'
+                          )}
+                        >
+                          {transaction.amountOriginal === null
+                            ? '--'
+                            : formatCurrency(transaction.amountOriginal, transaction.currencyOriginal).replace(/[A-Z]{3}\s?/, '')
+                          }
+                        </p>
+
+                        {/* Currency Label */}
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {transaction.accountId ? transaction.currencyOriginal : 'SELECT ACCOUNT'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-
-                  {/* RIGHT COLUMN: Value */}
-                  <div className="text-right flex-shrink-0">
-                    {/* Amount */}
-                    <p
-                      className={cn(
-                        'text-lg font-bold font-mono tabular-nums',
-                        transaction.amountOriginal === null
-                          ? 'text-gray-400'  // Muted for draft state
-                          : transaction.amountOriginal >= 0
-                          ? 'text-green-600'
-                          : 'text-gray-900'
-                      )}
-                    >
-                      {transaction.amountOriginal === null
-                        ? '--'
-                        : formatCurrency(transaction.amountOriginal, transaction.currencyOriginal).replace(/[A-Z]{3}\s?/, '')
-                      }
-                    </p>
-
-                    {/* Currency Label - always show (SELECT ACCOUNT when no account, currency code when account selected) */}
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {transaction.accountId ? transaction.currencyOriginal : 'SELECT ACCOUNT'}
-                    </p>
-                  </div>
                 </div>
+              );
+            })}
+
+            {/* Loading more indicator */}
+            {isFetchingNextPage && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${virtualizer.getTotalSize()}px`,
+                  left: 0,
+                  width: '100%',
+                }}
+                className="py-4 flex justify-center"
+              >
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

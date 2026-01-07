@@ -13,20 +13,28 @@ import {
 } from '@/lib/types/data-transformers';
 
 export const transactionsApi = {
-  // Get all transactions for the current user (RLS handles user filtering)
-  getAll: async (filters?: {
-    categoryId?: string;
-    accountId?: string;
-    categoryIds?: string[];
-    searchQuery?: string;
-    date?: Date | string;
-  }): Promise<TransactionView[]> => {
+  // Get all transactions with pagination for infinite scroll
+  getAllPaginated: async (
+    filters?: {
+      categoryId?: string;
+      accountId?: string;
+      categoryIds?: string[];
+      searchQuery?: string;
+      date?: Date | string;
+    },
+    pagination?: {
+      offset: number;
+      limit: number;
+    }
+  ): Promise<{ data: TransactionView[]; count: number | null }> => {
     const supabase = createClient();
+    const { offset = 0, limit = 50 } = pagination || {};
 
     let query = supabase
       .from('transactions_view')
-      .select('*')
-      .order('date', { ascending: false });
+      .select('*', { count: 'exact' })
+      .order('date', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     // Apply category filter (single category)
     if (filters?.categoryId) {
@@ -50,23 +58,23 @@ export const transactionsApi = {
 
     // Apply date filter
     if (filters?.date) {
-      // Ensure date is formatted as YYYY-MM-DD
       const dateStr = filters.date instanceof Date
         ? filters.date.toISOString().split('T')[0]
         : filters.date.split('T')[0];
-
       query = query.eq('date', dateStr);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
       console.error(TRANSACTIONS.API.CONSOLE.FETCH_TRANSACTIONS, error);
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.FETCH_ALL_FAILED);
     }
 
-    // Transform snake_case to camelCase before returning to frontend
-    return data ? dbTransactionViewsToDomain(data) : [];
+    return {
+      data: data ? dbTransactionViewsToDomain(data) : [],
+      count,
+    };
   },
 
   // Get a single transaction by ID (RLS handles user filtering)
@@ -220,5 +228,56 @@ export const transactionsApi = {
       console.error(TRANSACTIONS.API.CONSOLE.DELETE_TRANSACTION, error);
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.DELETE_FAILED);
     }
+  },
+
+  // Get category counts for filtered transactions (server-side aggregation)
+  // Used for filter dropdown to show accurate counts even with pagination
+  getCategoryCounts: async (filters?: {
+    accountId?: string;
+    categoryIds?: string[];
+    searchQuery?: string;
+    date?: Date | string;
+  }): Promise<Record<string, number>> => {
+    const supabase = createClient();
+
+    // Build query with same filters as main query
+    let query = supabase
+      .from('transactions_view')
+      .select('category_id');
+
+    // Apply filters (must match getAllPaginated logic)
+    if (filters?.accountId) {
+      query = query.eq('account_id', filters.accountId);
+    }
+    if (filters?.categoryIds && filters.categoryIds.length > 0) {
+      query = query.in('category_id', filters.categoryIds);
+    }
+    if (filters?.searchQuery) {
+      query = query.ilike('description', `%${filters.searchQuery}%`);
+    }
+    if (filters?.date) {
+      const dateStr = filters.date instanceof Date
+        ? filters.date.toISOString().split('T')[0]
+        : filters.date.split('T')[0];
+      query = query.eq('date', dateStr);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error(TRANSACTIONS.API.CONSOLE.FETCH_TRANSACTIONS, error);
+      throw new Error(error.message || TRANSACTIONS.API.ERRORS.FETCH_ALL_FAILED);
+    }
+
+    // Count transactions per category
+    const counts: Record<string, number> = {};
+    data?.forEach((row) => {
+      const categoryId = row.category_id;
+      if (categoryId) {
+        counts[categoryId] = (counts[categoryId] || 0) + 1;
+      }
+    });
+
+    return counts;
   },
 };

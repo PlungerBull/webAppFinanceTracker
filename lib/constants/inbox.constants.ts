@@ -64,5 +64,6 @@ export const INBOX = {
   QUERY_KEYS: {
     ALL: ['inbox'] as const,
     PENDING: ['inbox', 'pending'] as const,
+    PENDING_INFINITE: ['inbox', 'pending', 'infinite'] as const,
   },
 } as const;

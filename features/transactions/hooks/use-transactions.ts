@@ -1,10 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionsApi } from '../api/transactions';
 import type {
   CreateTransactionFormData,
   CreateTransactionLedgerData,
   UpdateTransactionFormData
 } from '../schemas/transaction.schema';
+import { PAGINATION } from '@/lib/constants';
 
 export function useTransactions(filters?: {
   categoryId?: string;
@@ -13,11 +14,33 @@ export function useTransactions(filters?: {
   searchQuery?: string;
   date?: Date | string;
 }) {
-  return useQuery({
-    queryKey: ['transactions', filters],
-    queryFn: () => transactionsApi.getAll(filters),
+  const query = useInfiniteQuery({
+    queryKey: ['transactions', 'infinite', filters],
+    queryFn: ({ pageParam = 0 }) =>
+      transactionsApi.getAllPaginated(filters, {
+        offset: pageParam,
+        limit: PAGINATION.DEFAULT_PAGE_SIZE,
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.data.length < PAGINATION.DEFAULT_PAGE_SIZE) {
+        return undefined; // No more pages
+      }
+      const nextOffset = allPages.reduce((acc, page) => acc + page.data.length, 0);
+      return nextOffset;
+    },
+    initialPageParam: 0,
     placeholderData: (previousData) => previousData,
   });
+
+  // Flatten pages for UI consumption
+  const flattenedData = query.data?.pages.flatMap(page => page.data) ?? [];
+  const totalCount = query.data?.pages[0]?.count ?? null;
+
+  return {
+    ...query,
+    data: flattenedData,
+    totalCount,
+  };
 }
 
 export function useTransaction(id: string) {
@@ -37,7 +60,7 @@ export function useAddTransaction() {
   return useMutation({
     mutationFn: (data: CreateTransactionLedgerData) => transactionsApi.create(data),
     onSuccess: () => {
-      // Invalidate all transaction-related queries (including monthly-spending)
+      // Invalidate all transaction-related queries (including category counts)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
@@ -88,5 +111,21 @@ export function useDeleteTransaction() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
+  });
+}
+
+// Hook to get category counts for filter dropdown (server-side aggregation)
+// This ensures accurate counts even with pagination
+export function useCategoryCounts(filters?: {
+  accountId?: string;
+  categoryIds?: string[];
+  searchQuery?: string;
+  date?: Date | string;
+}) {
+  return useQuery({
+    queryKey: ['transactions', 'category-counts', filters],
+    queryFn: () => transactionsApi.getCategoryCounts(filters),
+    // Cache for 1 minute - counts don't change frequently
+    staleTime: 60 * 1000,
   });
 }

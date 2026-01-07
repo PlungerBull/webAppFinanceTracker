@@ -10,7 +10,14 @@ import type { InboxItem } from '../types';
 
 function InboxContent() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const { data: inboxItems = [], isLoading } = useInboxItems();
+  const {
+    data: inboxItems,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    totalCount,
+  } = useInboxItems();
 
   // Transform InboxItem to match TransactionRow shape expected by TransactionList
   // NULL-SAFE: Handle partial drafts with missing amount/description
@@ -44,13 +51,17 @@ function InboxContent() {
       {/* Section 1: Sidebar */}
       <Sidebar />
 
-      {/* Section 2: Inbox List */}
+      {/* Section 2: Inbox List (Virtualized with Infinite Scroll) */}
       <TransactionList
         transactions={transactions}
         isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
+        hasNextPage={hasNextPage}
+        fetchNextPage={fetchNextPage}
         selectedTransactionId={selectedItemId}
         onTransactionSelect={setSelectedItemId}
         title="Inbox"
+        totalCount={totalCount}
         variant="default"
       />
 

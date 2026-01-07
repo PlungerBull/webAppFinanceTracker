@@ -7,7 +7,7 @@ import { SidebarProvider } from '@/contexts/sidebar-context';
 import { TransactionList } from '@/features/transactions/components/transaction-list';
 import { TransactionDetailPanel } from '@/features/transactions/components/transaction-detail-panel';
 import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
-import { useTransactions } from '../hooks/use-transactions';
+import { useTransactions, useCategoryCounts } from '../hooks/use-transactions';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
@@ -46,8 +46,15 @@ function TransactionsContent() {
     return categoryFilter;
   }, [selectedCategories, categoryFilter]);
 
-  // Use API layer hooks instead of direct database calls
-  const { data: transactions = [], isLoading: isLoadingTransactions } = useTransactions({
+  // Use API layer hooks instead of direct database calls (infinite query for virtualization)
+  const {
+    data: transactions,
+    isLoading: isLoadingTransactions,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    totalCount,
+  } = useTransactions({
     accountId: accountId || undefined,
     categoryId: categoryId || undefined,
     categoryIds: activeCategoryIds,
@@ -59,6 +66,14 @@ function TransactionsContent() {
   const categories = useLeafCategories();
   const { data: accountsData = [] } = useGroupedAccounts(); // Still needed for sidebar
   const { data: flatAccounts = [] } = useAccounts(); // Flat accounts with currencySymbol for detail panel
+
+  // Get server-side category counts (accurate even with pagination)
+  const { data: categoryCounts = {} } = useCategoryCounts({
+    accountId: accountId || undefined,
+    categoryIds: activeCategoryIds,
+    searchQuery: searchQuery || undefined,
+    date: selectedDate,
+  });
 
   const isLoading = isLoadingTransactions;
 
@@ -73,13 +88,6 @@ function TransactionsContent() {
   // No client-side filtering needed anymore - API handles it all
   const filteredTransactions = transactions;
 
-  // Calculate transaction counts per category
-  // Since we are filtering on server, these counts will reflect the *filtered* set
-  const categoryCounts = categories.reduce((acc: Record<string, number>, category) => {
-    acc[category.id] = filteredTransactions.filter((t: TransactionRow) => t.categoryId === category.id).length;
-    return acc;
-  }, {});
-
   // Determine the title for the transaction list
   const pageTitle = groupingName || categoryName || accountName || 'Transactions';
 
@@ -92,13 +100,17 @@ function TransactionsContent() {
       {/* Section 1: Sidebar */}
       <Sidebar />
 
-      {/* Section 2: Transactions List */}
+      {/* Section 2: Transactions List (Virtualized with Infinite Scroll) */}
       <TransactionList
         transactions={filteredTransactions}
         isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
+        hasNextPage={hasNextPage}
+        fetchNextPage={fetchNextPage}
         selectedTransactionId={selectedTransactionId}
         onTransactionSelect={setSelectedTransactionId}
         title={pageTitle}
+        totalCount={totalCount}
         // Filter props
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}

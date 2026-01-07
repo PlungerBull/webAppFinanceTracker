@@ -1,19 +1,41 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inboxApi } from '../api/inbox';
-import { INBOX } from '@/lib/constants';
+import { INBOX, PAGINATION } from '@/lib/constants';
 import type { PromoteInboxItemParams, CreateInboxItemParams, UpdateInboxItemParams, InboxItem } from '../types';
 
 /**
- * Hook to fetch all pending inbox items with joined account/category data
+ * Hook to fetch all pending inbox items with pagination for infinite scroll
  * Returns items in FIFO order (oldest first)
  * Includes account and category information for display
  */
 export function useInboxItems() {
-  return useQuery({
-    queryKey: INBOX.QUERY_KEYS.PENDING,
-    queryFn: () => inboxApi.getPending(),
+  const query = useInfiniteQuery({
+    queryKey: INBOX.QUERY_KEYS.PENDING_INFINITE,
+    queryFn: ({ pageParam = 0 }) =>
+      inboxApi.getPendingPaginated({
+        offset: pageParam,
+        limit: PAGINATION.DEFAULT_PAGE_SIZE,
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.data.length < PAGINATION.DEFAULT_PAGE_SIZE) {
+        return undefined;
+      }
+      const nextOffset = allPages.reduce((acc, page) => acc + page.data.length, 0);
+      return nextOffset;
+    },
+    initialPageParam: 0,
     placeholderData: (previousData) => previousData,
   });
+
+  // Flatten pages for UI consumption
+  const flattenedData = query.data?.pages.flatMap(page => page.data) ?? [];
+  const totalCount = query.data?.pages[0]?.count ?? null;
+
+  return {
+    ...query,
+    data: flattenedData,
+    totalCount,
+  };
 }
 
 /**
@@ -57,23 +79,31 @@ export function usePromoteInboxItem() {
       // Extract inbox ID from params
       const inboxId = 'inboxId' in params ? params.inboxId : params.id;
 
-      // Cancel outgoing refetches to avoid race conditions
-      await queryClient.cancelQueries({ queryKey: INBOX.QUERY_KEYS.PENDING });
+      // Cancel ALL inbox queries to avoid race conditions
+      await queryClient.cancelQueries({ queryKey: INBOX.QUERY_KEYS.ALL });
 
-      // Snapshot previous value for rollback
-      const previousInbox = queryClient.getQueryData<InboxItem[]>(INBOX.QUERY_KEYS.PENDING);
+      // Snapshot previous values for rollback (both query types)
+      const previousInfinite = queryClient.getQueryData(INBOX.QUERY_KEYS.PENDING_INFINITE);
 
-      // Optimistically remove item from inbox list (VANISHING EFFECT)
-      queryClient.setQueryData<InboxItem[]>(INBOX.QUERY_KEYS.PENDING, (old) => {
-        return old?.filter(item => item.id !== inboxId) || [];
+      // Optimistically update infinite query (all pages)
+      queryClient.setQueryData(INBOX.QUERY_KEYS.PENDING_INFINITE, (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            data: page.data.filter((item: InboxItem) => item.id !== inboxId),
+            count: page.count ? page.count - 1 : null,
+          })),
+        };
       });
 
-      return { previousInbox };
+      return { previousInfinite };
     },
     onError: (err, variables, context) => {
       // Rollback on error - restore previous inbox state
-      if (context?.previousInbox) {
-        queryClient.setQueryData(INBOX.QUERY_KEYS.PENDING, context.previousInbox);
+      if (context?.previousInfinite) {
+        queryClient.setQueryData(INBOX.QUERY_KEYS.PENDING_INFINITE, context.previousInfinite);
       }
     },
     onSuccess: () => {

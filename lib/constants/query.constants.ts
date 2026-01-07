@@ -2,6 +2,15 @@
  * React Query configuration and cache key constants
  */
 
+/**
+ * Pagination constants for infinite scroll
+ */
+export const PAGINATION = {
+  DEFAULT_PAGE_SIZE: 50,
+  VIRTUAL_ITEM_SIZE_ESTIMATE: 80, // Card height (64px) + gap (16px)
+  OVERSCAN: 5,
+} as const;
+
 export const QUERY_CONFIG = {
   /**
    * Stale time: How long data is considered fresh before refetching
