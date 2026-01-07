@@ -94,7 +94,7 @@ export function ActionFooter({
   const IconComponent = buttonState.icon;
 
   return (
-    <div className="bg-gray-50/30 border-t border-gray-100 px-6 py-4">
+    <div className="bg-white border-t border-gray-100 px-6 py-4">
       <div className="flex flex-col gap-2">
         {/* Primary Action Button with Smart Save */}
         <Button

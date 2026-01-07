@@ -40,7 +40,7 @@ function InboxContent() {
     : null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-900">
+    <div className="flex h-screen overflow-hidden bg-white dark:bg-zinc-900">
       {/* Section 1: Sidebar */}
       <Sidebar />
 

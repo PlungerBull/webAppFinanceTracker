@@ -116,14 +116,14 @@ export function DataManagement() {
                         </div>
                     </div>
                     {importError && (
-                        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{importError}</div>
+                        <div className="text-sm text-red-600 bg-white border border-red-200 p-2 rounded">{importError}</div>
                     )}
                     {importSuccess && (
-                        <div className="text-sm text-green-600 bg-green-50 p-2 rounded">{importSuccess}</div>
+                        <div className="text-sm text-green-600 bg-white border border-green-200 p-2 rounded">{importSuccess}</div>
                     )}
 
                     {/* Import Instructions Warning */}
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-900/10 p-4">
+                    <div className="rounded-lg border border-amber-200 bg-white dark:border-amber-900/30 dark:bg-amber-900/10 p-4">
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
                             <div className="space-y-3 text-sm">
@@ -191,7 +191,7 @@ export function DataManagement() {
             <div className="space-y-4">
                 <h4 className="text-sm font-medium text-red-600 uppercase tracking-wider">{SETTINGS.HEADERS.DANGER_ZONE}</h4>
 
-                <div className="flex items-start justify-between p-4 rounded-lg border border-red-100 dark:border-red-900/20 bg-red-50/50 dark:bg-red-900/10">
+                <div className="flex items-start justify-between p-4 rounded-lg border border-red-200 dark:border-red-900/20 bg-white dark:bg-red-900/10">
                     <div className="space-y-1">
                         <div className="font-medium text-red-700 dark:text-red-400 flex items-center gap-2">
                             <Trash2 className="h-4 w-4" />

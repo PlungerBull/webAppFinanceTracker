@@ -18,7 +18,7 @@ export default async function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-900 dark:to-black">
+    <div className="min-h-screen bg-white dark:from-zinc-900 dark:to-black">
       <div className="container mx-auto px-4 py-16">
         {/* Hero Section */}
         <div className="text-center max-w-4xl mx-auto mb-20">
@@ -48,7 +48,7 @@ export default async function Home() {
         {/* Features Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           <div className="text-center p-6">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-white border-2 border-blue-200 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Zap className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
             <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
@@ -60,7 +60,7 @@ export default async function Home() {
           </div>
 
           <div className="text-center p-6">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-white border-2 border-green-200 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Globe className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
@@ -72,7 +72,7 @@ export default async function Home() {
           </div>
 
           <div className="text-center p-6">
-            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-white border-2 border-purple-200 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Shield className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             </div>
             <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">

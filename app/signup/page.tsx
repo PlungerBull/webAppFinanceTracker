@@ -44,7 +44,7 @@ export default function SignUpPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-900 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-zinc-900 p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl">{AUTH.SIGNUP.CHECK_EMAIL_TITLE}</CardTitle>
@@ -69,7 +69,7 @@ export default function SignUpPage() {
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-md">
+              <div className="p-3 text-sm text-red-600 bg-white border border-red-200 dark:bg-red-900/20 rounded-md">
                 {error}
               </div>
             )}

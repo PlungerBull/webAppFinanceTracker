@@ -80,8 +80,8 @@ export function FormSection({
         >
           <SelectTrigger
             className={cn(
-              'w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
-              isAccountMissing && 'border-orange-200 text-orange-600 bg-orange-50/30'
+              'w-full bg-white border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
+              isAccountMissing && 'border-orange-200 text-orange-600 bg-white'
             )}
           >
             <SelectValue placeholder="Select account...">
@@ -124,8 +124,8 @@ export function FormSection({
         >
           <SelectTrigger
             className={cn(
-              'w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
-              isCategoryMissing && 'border-orange-200 text-orange-600 bg-orange-50/30'
+              'w-full bg-white border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
+              isCategoryMissing && 'border-orange-200 text-orange-600 bg-white'
             )}
           >
             <SelectValue placeholder="Select category...">
@@ -208,8 +208,8 @@ export function FormSection({
               }}
               placeholder="e.g., 1.18"
               className={cn(
-                'w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
-                !exchangeRateValue && 'border-orange-200 bg-orange-50/30'
+                'w-full bg-white border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
+                !exchangeRateValue && 'border-orange-200 bg-white'
               )}
             />
             <p className="text-xs text-gray-500 px-1">
@@ -231,7 +231,7 @@ export function FormSection({
           value={notesValue}
           onChange={(e) => onFieldChange('notes', e.target.value)}
           placeholder="Add notes or memo..."
-          className="w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium resize-none focus:bg-white focus:border-gray-200 transition-colors min-h-[60px]"
+          className="w-full bg-white border-gray-100 rounded-xl px-4 py-3 text-sm font-medium resize-none focus:bg-white focus:border-gray-200 transition-colors min-h-[60px]"
         />
       </div>
     </div>

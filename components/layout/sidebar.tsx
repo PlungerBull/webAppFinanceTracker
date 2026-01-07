@@ -22,7 +22,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex flex-col h-screen bg-gray-50/30 border-r border-gray-200 transition-all duration-300 relative',
+        'flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300 relative',
         isCollapsed ? 'w-0' : 'w-72',
         className
       )}
@@ -60,9 +60,9 @@ export function Sidebar({ className }: SidebarProps) {
                 <Button
                   onClick={openTransactionModal}
                   variant="outline"
-                  className="w-full justify-start h-9 px-0 py-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900 text-gray-700 shadow-sm hover:shadow transition-all group"
+                  className="w-full justify-start h-9 px-0 py-2 border-gray-200 hover:bg-white hover:border-gray-300 hover:text-gray-900 text-gray-700 shadow-sm hover:shadow transition-all group"
                 >
-                  <div className="mx-2 h-5 w-5 rounded bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                  <div className="mx-2 h-5 w-5 rounded bg-white border border-blue-200 flex items-center justify-center group-hover:border-blue-300 transition-colors">
                     <Plus className="h-3.5 w-3.5 text-blue-600" />
                   </div>
                   <span className="font-medium">New Transaction</span>

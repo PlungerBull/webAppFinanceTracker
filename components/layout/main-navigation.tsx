@@ -33,7 +33,7 @@ export function MainNavigation({ isCollapsed }: MainNavigationProps) {
             className={cn(
               'w-full justify-start px-3 py-2 gap-3',
               isCollapsed && 'justify-center px-2',
-              isActive ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-100'
+              isActive ? 'bg-white text-gray-900 font-medium border border-gray-200' : 'text-gray-600 hover:bg-white hover:border hover:border-gray-200'
             )}
           >
             <Link href={item.href}>

@@ -326,8 +326,8 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                                                     key={sub.id}
                                                     onClick={() => toggleSubcategorySelection(sub.id)}
                                                     className={cn(
-                                                        'flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer transition-colors',
-                                                        selectedSubcategoryIds.includes(sub.id) && 'bg-blue-50/30'
+                                                        'flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-white cursor-pointer transition-colors',
+                                                        selectedSubcategoryIds.includes(sub.id) && 'bg-white border border-blue-200'
                                                     )}
                                                 >
                                                     {selectedSubcategoryIds.includes(sub.id) ? (

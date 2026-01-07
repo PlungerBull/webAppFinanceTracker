@@ -177,7 +177,7 @@ export function FinancialOverview() {
       <React.Fragment key={group.parent.categoryId}>
         {/* Parent Row */}
         <div
-          className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 hover:bg-gray-50/80 cursor-pointer transition-colors group border-b border-gray-100"
+          className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 hover:bg-white cursor-pointer transition-colors group border-b border-gray-100"
           style={{ gridColumn: '1 / -1' }}
           onClick={() => toggleGroup(group.parent.categoryId)}
         >
@@ -204,7 +204,7 @@ export function FinancialOverview() {
         {isExpanded && group.children.map(child => (
           <div
             key={child.categoryId}
-            className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 hover:bg-gray-50/50 transition-colors border-b border-gray-50"
+            className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 hover:bg-white transition-colors border-b border-gray-50"
             style={{ gridColumn: '1 / -1' }}
           >
             <div className="py-3 pl-12 border-l-2 border-gray-100/60">
@@ -227,7 +227,7 @@ export function FinancialOverview() {
         <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 px-6">
 
           {/* Sticky Header Row */}
-          <div className="sticky top-0 bg-zinc-50 z-10 grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 border-b border-gray-200" style={{ gridColumn: '1 / -1' }}>
+          <div className="sticky top-0 bg-white z-10 grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 border-b border-gray-200" style={{ gridColumn: '1 / -1' }}>
             <div className="py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
               Categorization
             </div>
@@ -251,7 +251,7 @@ export function FinancialOverview() {
               {incomeGroups.map(group => renderGroup(group, 'income'))}
 
               {/* TOTAL INCOME Row */}
-              <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-emerald-50/30 border-y border-emerald-100" style={{ gridColumn: '1 / -1' }}>
+              <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-white border-y border-emerald-200" style={{ gridColumn: '1 / -1' }}>
                 <div className="py-4 text-[12px] font-bold text-emerald-700 uppercase tracking-wide">
                   Total Income
                 </div>
@@ -278,7 +278,7 @@ export function FinancialOverview() {
               {expenseGroups.map(group => renderGroup(group, 'expense'))}
 
               {/* TOTAL EXPENSES Row */}
-              <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-rose-50/30 border-y border-rose-100" style={{ gridColumn: '1 / -1' }}>
+              <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-white border-y border-rose-200" style={{ gridColumn: '1 / -1' }}>
                 <div className="py-4 text-[12px] font-bold text-rose-700 uppercase tracking-wide">
                   Total Expenses
                 </div>
@@ -297,7 +297,7 @@ export function FinancialOverview() {
 
           {/* NET CASH FLOW Row */}
           <div className="h-8" style={{ gridColumn: '1 / -1' }} />
-          <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-gray-100/50 border-y-2 border-gray-200" style={{ gridColumn: '1 / -1' }}>
+          <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-white border-y-2 border-gray-300" style={{ gridColumn: '1 / -1' }}>
             <div className="py-5 flex items-center gap-2 text-[13px] font-bold text-gray-900 uppercase tracking-wide">
               <ArrowRightLeft className="h-4 w-4" />
               Net Cash Flow

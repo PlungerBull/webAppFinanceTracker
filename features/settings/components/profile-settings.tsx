@@ -78,12 +78,12 @@ export function ProfileSettings({ user, initialize, openPasswordModal, openEmail
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                 {error && (
-                    <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-md">
+                    <div className="p-3 text-sm text-red-600 bg-white border border-red-200 dark:bg-red-900/20 rounded-md">
                         {error}
                     </div>
                 )}
                 {success && (
-                    <div className="p-3 text-sm text-green-700 bg-green-50 dark:bg-green-900/20 rounded-md">
+                    <div className="p-3 text-sm text-green-700 bg-white border border-green-200 dark:bg-green-900/20 rounded-md">
                         {SETTINGS.MESSAGES.SUCCESS.PROFILE_UPDATED}
                     </div>
                 )}

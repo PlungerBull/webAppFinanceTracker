@@ -184,7 +184,7 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
               onClick={handleDelete}
               disabled={isSubmitting}
               variant="destructive"
-              className="bg-red-50 text-red-600 hover:bg-red-100 p-3 rounded-xl transition-colors"
+              className="bg-white border border-red-200 text-red-600 hover:bg-white hover:border-red-300 p-3 rounded-xl transition-colors"
             >
               <Trash2 className="w-5 h-5" />
             </Button>

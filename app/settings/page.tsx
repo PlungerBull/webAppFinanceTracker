@@ -23,7 +23,7 @@ export default function SettingsPage() {
   return (
     <div className="flex h-full">
       {/* Sidebar */}
-      <div className="w-[280px] flex-shrink-0 bg-zinc-50 dark:bg-zinc-900/50 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
+      <div className="w-[280px] flex-shrink-0 bg-white dark:bg-zinc-900/50 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
         <div className="p-4 pb-2">
           <h2 className="text-xl font-semibold mb-4 px-2">Settings</h2>
         </div>
@@ -33,7 +33,7 @@ export default function SettingsPage() {
             variant="ghost"
             className={cn(
               "w-full justify-start px-3 py-2 h-auto font-normal",
-              activeTab === 'account' ? "bg-zinc-200/60 dark:bg-zinc-800 font-medium" : "hover:bg-zinc-200/40 dark:hover:bg-zinc-800/50"
+              activeTab === 'account' ? "bg-white border border-zinc-300 dark:bg-zinc-800 font-medium" : "hover:bg-white hover:border hover:border-zinc-200 dark:hover:bg-zinc-800/50"
             )}
             onClick={() => setActiveTab('account')}
           >
@@ -44,7 +44,7 @@ export default function SettingsPage() {
             variant="ghost"
             className={cn(
               "w-full justify-start px-3 py-2 h-auto font-normal",
-              activeTab === 'data' ? "bg-zinc-200/60 dark:bg-zinc-800 font-medium" : "hover:bg-zinc-200/40 dark:hover:bg-zinc-800/50"
+              activeTab === 'data' ? "bg-white border border-zinc-300 dark:bg-zinc-800 font-medium" : "hover:bg-white hover:border hover:border-zinc-200 dark:hover:bg-zinc-800/50"
             )}
             onClick={() => setActiveTab('data')}
           >
@@ -55,7 +55,7 @@ export default function SettingsPage() {
             variant="ghost"
             className={cn(
               "w-full justify-start px-3 py-2 h-auto font-normal",
-              activeTab === 'appearance' ? "bg-zinc-200/60 dark:bg-zinc-800 font-medium" : "hover:bg-zinc-200/40 dark:hover:bg-zinc-800/50"
+              activeTab === 'appearance' ? "bg-white border border-zinc-300 dark:bg-zinc-800 font-medium" : "hover:bg-white hover:border hover:border-zinc-200 dark:hover:bg-zinc-800/50"
             )}
             onClick={() => setActiveTab('appearance')}
           >

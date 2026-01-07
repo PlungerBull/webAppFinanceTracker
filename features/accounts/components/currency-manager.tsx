@@ -54,7 +54,7 @@ export function CurrencyManager({
                         <button
                             type="button"
                             disabled={disabled}
-                            className="text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                            className="text-xs font-bold text-blue-600 hover:bg-white hover:border hover:border-blue-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
                         >
                             <Plus className="w-3 h-3" />
                             Add Currency
@@ -105,7 +105,7 @@ export function CurrencyManager({
                                     type="button"
                                     onClick={() => handleRemoveCurrency(currency.currency_code)}
                                     disabled={disabled}
-                                    className="ml-1 p-0.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    className="ml-1 p-0.5 rounded text-gray-400 hover:text-red-500 hover:bg-white hover:border hover:border-red-200 transition-colors"
                                 >
                                     <X className="w-3.5 h-3.5" />
                                 </button>
@@ -114,7 +114,7 @@ export function CurrencyManager({
                     })}
                 </div>
             ) : (
-                <div className="text-center text-sm text-gray-500 p-4 bg-gray-50/30 border border-gray-100 rounded-xl">
+                <div className="text-center text-sm text-gray-500 p-4 bg-white border border-gray-100 rounded-xl">
                     No currencies added yet
                 </div>
             )}

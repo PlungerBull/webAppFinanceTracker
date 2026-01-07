@@ -86,7 +86,7 @@ export function TransactionList({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-50/50 overflow-hidden border-r border-gray-200">
+    <div className="flex-1 flex flex-col h-full bg-white overflow-hidden border-r border-gray-200">
       {/* Header - only show in default mode */}
       {!isCompact && (
         <>
@@ -176,7 +176,7 @@ export function TransactionList({
                     {categories.map((category) => (
                       <div
                         key={category.id}
-                        className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-md cursor-pointer"
+                        className="flex items-center gap-2 p-2 hover:bg-white hover:border hover:border-gray-200 rounded-md cursor-pointer"
                         onClick={() => {
                           const newSelection = selectedCategories.includes(category.id)
                             ? selectedCategories.filter(id => id !== category.id)

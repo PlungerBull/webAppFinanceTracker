@@ -194,7 +194,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
               <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
                 {/* Error Display */}
                 {error && (
-                  <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
+                  <div className="p-3 text-sm text-red-600 bg-white border border-red-200 rounded-xl">
                     {error}
                   </div>
                 )}
