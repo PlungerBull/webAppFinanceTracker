@@ -1,52 +1,49 @@
-BETTERMENT UI POINTS:
-6. How is the main currency interacting with the rest of the code?
+Simple Expense Tracker
+
+CTO's Note: This is the entry point. For technical details, see CONTEXT_AI.md.
+
+1. Project Overview
+
+Simple Expense Tracker is a beautiful, high-performance personal finance application. It is designed to feel like a "companion" rather than a spreadsheet, prioritizing warmth, speed, and offline capabilities.
+
+2. Quick Start
+
+Follow these steps to get the application running locally in under 2 minutes.
+
+1. Install Dependencies
+
+# We use npm ci to ensure strictly versioned installs from package-lock.json
+npm ci
 
 
+2. Configure Environment
+
+Create your local environment file.
+
+cp .env.example .env.local
 
 
-FINAL DEPLOYMENT CHECKLIST:
-1. The "Boring but Critical" Legal Pages (Missing)
-2. Observability: "Flying Blind" (Missing)
-3. SEO & Social Sharing (Partial)
-4. User Experience Polish (Missing)
-5. Data Safety (Review Needed)
+You must populate NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.
+
+3. Run the Server
+
+npm run dev
 
 
+Access the app at http://localhost:3000.
 
-IMPROVEMENT POINTS:
-1. The Illusion of Immediacy (State Management)
-Current State: Your application follows a "Pessimistic UI" pattern. I see a hook called useQueryInvalidation that is used extensively. When a user creates a transaction, the flow is likely:
+3. Prerequisites
 
-User clicks "Save".
+Node.js: v20.x or higher (Required for Next.js 16).
 
-App sends request to Supabase.
+Supabase: A running project (Cloud or Local).
 
-App waits for Supabase to confirm.
+4. Documentation Index
 
-App invalidates the ['transactions'] query.
+CONTEXT_AI.md: The technical manual. Stack, Schema, and Architecture.
 
-App refetches the data.
+PRD.md: The Product Vision. What we are building and why.
 
-UI updates.
+AI_RULES.md: The "Constitution". Rules for coding and maintaining this repo.
 
-The "Sage" Advice: Tools like Todoist and Things 3 feel native because they lie to the user. They use Optimistic UI. When you check a box in Things 3, it creates a "fake" success state instantly. It doesn't wait for the cloud. To achieve that "buttery smooth" feel, we must move away from invalidateQueries as the primary update mechanism and move toward Direct Cache Manipulation. We need to update the React Query cache manually with the expected result before the server responds. If the server fails, we roll back.
-
-2. Friction vs. Flow (The Interaction Model)
-Current State: I see many files named *-modal.tsx (e.g., add-transaction-modal.tsx). Modals are effective, but they are high-friction. They demand 100% of the user's attention and obscure the context behind them.
-
-The "Sage" Advice:
-
-Notion excels at contextual creation. You don't open a modal to add a row; you click "New" and a row appears inline, or a side-panel slides in that keeps the context visible.
-
-Things 3 uses the "Magic Plus Button" which allows dragging to a specific spot in the list to insert tasks exactly where you want them.
-
-Your TransactionDetailPanel is a great step in the right direction (side-by-side editing), but your creation flow is still modal-heavy. We should discuss moving towards Inline Creation or Popovers for lighter interactions.
-
-
-6. Find a faster way to assign categories to groupings
-7. Refresh faster when assigning categories to groupings
-8. When. groupings have 0 trasnactions, they show in a different ugly color
-9. INVESTIGATE WHY dev is behind main
-10. Assess how far we are from production on PROD
-11. Add the account_statement column
-
+TODO.md: The Roadmap. What is done and what is pending.
