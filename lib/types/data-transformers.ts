@@ -11,7 +11,7 @@
  */
 
 import type { Database } from '@/types/supabase';
-import type { Category, CategoryWithCount, ParentCategoryWithCount, TransactionView } from '@/types/domain';
+import type { Category, CategoryWithCount, ParentCategoryWithCount, TransactionView, UserSettings } from '@/types/domain';
 import type { InboxItem } from '@/features/inbox/types';
 
 // ============================================================================
@@ -583,4 +583,21 @@ export function isValidDateString(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const date = new Date(value);
   return !isNaN(date.getTime());
+}
+
+/**
+ * Transforms a database user_settings row to domain UserSettings type
+ */
+export function dbUserSettingsToDomain(
+  dbSettings: Database['public']['Tables']['user_settings']['Row']
+): UserSettings {
+  return {
+    userId: dbSettings.user_id,
+    mainCurrency: dbSettings.main_currency,
+    startOfWeek: dbSettings.start_of_week,
+    theme: dbSettings.theme,
+    transactionSortPreference: dbSettings.transaction_sort_preference as 'date' | 'created_at',
+    createdAt: dbSettings.created_at,
+    updatedAt: dbSettings.updated_at,
+  };
 }

@@ -26,3 +26,20 @@ export function useUpdateMainCurrency() {
         },
     });
 }
+
+/**
+ * Hook to update the transaction sort preference
+ */
+export function useUpdateSortPreference() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: userSettingsApi.updateSortPreference,
+        onSuccess: () => {
+            // Invalidate settings to update cached preference
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_SETTINGS });
+            // Invalidate transactions to trigger re-fetch with new sort
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        },
+    });
+}

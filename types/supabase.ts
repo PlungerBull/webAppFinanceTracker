@@ -39,42 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_balance_currency_fix_backup: {
-        Row: {
-          account_currency: string | null
-          account_id: string | null
-          account_name: string | null
-          backed_up_at: string | null
-          calculated_balance: number | null
-          discrepancy: number | null
-          old_balance: number | null
-          transaction_count: number | null
-          user_id: string | null
-        }
-        Insert: {
-          account_currency?: string | null
-          account_id?: string | null
-          account_name?: string | null
-          backed_up_at?: string | null
-          calculated_balance?: number | null
-          discrepancy?: number | null
-          old_balance?: number | null
-          transaction_count?: number | null
-          user_id?: string | null
-        }
-        Update: {
-          account_currency?: string | null
-          account_id?: string | null
-          account_name?: string | null
-          backed_up_at?: string | null
-          calculated_balance?: number | null
-          discrepancy?: number | null
-          old_balance?: number | null
-          transaction_count?: number | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       bank_accounts: {
         Row: {
           color: string
@@ -381,6 +345,7 @@ export type Database = {
           main_currency: string | null
           start_of_week: number | null
           theme: string | null
+          transaction_sort_preference: string
           updated_at: string
           user_id: string
         }
@@ -389,6 +354,7 @@ export type Database = {
           main_currency?: string | null
           start_of_week?: number | null
           theme?: string | null
+          transaction_sort_preference?: string
           updated_at?: string
           user_id: string
         }
@@ -397,6 +363,7 @@ export type Database = {
           main_currency?: string | null
           start_of_week?: number | null
           theme?: string | null
+          transaction_sort_preference?: string
           updated_at?: string
           user_id?: string
         }
@@ -568,14 +535,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["account_currency"]
+            columns: ["currency_original"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["currency_original"]
+            columns: ["account_currency"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
@@ -626,6 +593,10 @@ export type Database = {
       }
     }
     Functions: {
+      bulk_update_transactions: {
+        Args: { p_transaction_ids: string[]; p_updates: Json }
+        Returns: Json
+      }
       cleanup_orphaned_categories: {
         Args: never
         Returns: {
@@ -715,7 +686,9 @@ export type Database = {
         Args: {
           p_default_account_color: string
           p_default_category_color: string
+          p_general_label?: string
           p_transactions: Json
+          p_uncategorized_label?: string
           p_user_id: string
         }
         Returns: Json

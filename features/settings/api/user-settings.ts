@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { dbUserSettingsToDomain } from '@/lib/types/data-transformers';
 
 export const userSettingsApi = {
     /**
@@ -17,7 +18,7 @@ export const userSettingsApi = {
             throw new Error(error.message || 'Failed to fetch user settings');
         }
 
-        return data;
+        return dbUserSettingsToDomain(data);
     },
 
     /**
@@ -46,6 +47,35 @@ export const userSettingsApi = {
             throw new Error(error.message || 'Failed to update main currency');
         }
 
-        return data;
+        return dbUserSettingsToDomain(data);
+    },
+
+    /**
+     * Update the transaction sort preference for the current user
+     */
+    updateSortPreference: async (sortBy: 'date' | 'created_at') => {
+        const supabase = createClient();
+
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            throw new Error('User not authenticated');
+        }
+
+        const { data, error } = await supabase
+            .from('user_settings')
+            .update({ transaction_sort_preference: sortBy })
+            .eq('user_id', user.id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error updating sort preference:', error);
+            throw new Error(error.message || 'Failed to update sort preference');
+        }
+
+        return dbUserSettingsToDomain(data);
     },
 };

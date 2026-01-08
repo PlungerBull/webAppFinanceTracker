@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { format, isToday } from 'date-fns';
-import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown } from 'lucide-react';
+import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown, Clock, CalendarDays, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { TRANSACTIONS, PAGINATION } from '@/lib/constants';
@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TransactionRow } from '../types';
 
 // Nullable amount type for inbox items (draft state)
@@ -45,6 +46,14 @@ interface TransactionListProps {
   onCategoryChange?: (categoryIds: string[]) => void;
   categories?: { id: string; name: string; color: string }[];
   categoryCounts?: Record<string, number>;
+  // Sort props
+  sortBy?: 'date' | 'created_at';
+  onSortChange?: (sortBy: 'date' | 'created_at') => void;
+  // Bulk selection props
+  isBulkMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleBulkMode?: () => void;
+  onToggleSelection?: (id: string, index: number, event: React.MouseEvent) => void;
 }
 
 export function TransactionList({
@@ -64,8 +73,14 @@ export function TransactionList({
   onDateChange,
   selectedCategories = [],
   onCategoryChange,
+  sortBy = 'date',
+  onSortChange,
   categories = [],
   categoryCounts = {},
+  isBulkMode = false,
+  selectedIds = new Set(),
+  onToggleBulkMode,
+  onToggleSelection,
 }: TransactionListProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const isCompact = variant === 'compact';
@@ -167,6 +182,47 @@ export function TransactionList({
 
               {/* Vertical Divider */}
               <div className="h-5 w-px bg-gray-200" />
+
+              {/* Sort Toggle */}
+              <Tabs value={sortBy} onValueChange={(value) => onSortChange?.(value as 'date' | 'created_at')}>
+                <TabsList className="h-8 p-[2px] bg-gray-100/80">
+                  <TabsTrigger
+                    value="date"
+                    className="h-full px-2.5 text-xs gap-1.5"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Date
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="created_at"
+                    className="h-full px-2.5 text-xs gap-1.5"
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    Added
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Vertical Divider */}
+              <div className="h-5 w-px bg-gray-200" />
+
+              {/* Bulk Mode Toggle */}
+              {onToggleBulkMode && (
+                <>
+                  <Button
+                    variant={isBulkMode ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={onToggleBulkMode}
+                    className="h-8 px-3 text-sm"
+                  >
+                    <ListChecks className="mr-2 h-4 w-4" />
+                    {isBulkMode ? 'Exit Bulk Mode' : 'Select Multiple'}
+                  </Button>
+
+                  {/* Vertical Divider */}
+                  <div className="h-5 w-px bg-gray-200" />
+                </>
+              )}
 
               {/* Date Filter */}
               <Popover>
@@ -300,6 +356,8 @@ export function TransactionList({
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
               const transaction = transactions[virtualItem.index];
+              const isSelected = isBulkMode && selectedIds.has(transaction.id);
+
               return (
                 <div
                   key={transaction.id}
@@ -315,18 +373,40 @@ export function TransactionList({
                   className="pb-2" // Gap between cards
                 >
                   <div
-                    onClick={() => onTransactionSelect?.(transaction.id)}
+                    onClick={(e) => {
+                      if (isBulkMode) {
+                        // In bulk mode, toggle selection
+                        onToggleSelection?.(transaction.id, virtualItem.index, e);
+                      } else {
+                        // Normal mode: open detail panel
+                        onTransactionSelect?.(transaction.id);
+                      }
+                    }}
                     className={cn(
                       'relative bg-white rounded-xl border border-gray-100 px-4 py-3',
                       'transition-all duration-200 cursor-pointer',
                       'hover:shadow-sm hover:border-gray-200',
-                      selectedTransactionId === transaction.id
-                        ? 'ring-2 ring-blue-500/20 border-blue-200'
-                        : '',
-                      !onTransactionSelect && 'cursor-default hover:shadow-none'
+                      isBulkMode && isSelected && 'ring-2 ring-blue-500 border-blue-400 bg-blue-50',
+                      !isBulkMode && selectedTransactionId === transaction.id && 'ring-2 ring-blue-500/20 border-blue-200',
+                      !onTransactionSelect && !isBulkMode && 'cursor-default hover:shadow-none'
                     )}
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    {/* Checkbox - only visible in bulk mode */}
+                    {isBulkMode && (
+                      <div className="absolute top-3 left-3 z-10">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => {
+                            // Prevent event bubbling to parent div
+                            const syntheticEvent = new MouseEvent('click', { bubbles: false });
+                            onToggleSelection?.(transaction.id, virtualItem.index, syntheticEvent as any);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+
+                    <div className={cn('flex items-start justify-between gap-4', isBulkMode && 'ml-8')}>
                       {/* LEFT COLUMN: Identity */}
                       <div className="flex-1 min-w-0 space-y-1.5">
                         {/* Payee Name */}

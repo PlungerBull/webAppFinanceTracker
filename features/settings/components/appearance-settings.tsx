@@ -37,8 +37,8 @@ export function AppearanceSettings() {
 
     // Initialize currency from user settings
     useEffect(() => {
-        if (userSettings?.main_currency) {
-            setSelectedCurrency(userSettings.main_currency);
+        if (userSettings?.mainCurrency) {
+            setSelectedCurrency(userSettings.mainCurrency);
         }
     }, [userSettings]);
 
@@ -55,7 +55,7 @@ export function AppearanceSettings() {
         }
 
         // Check currency changes
-        if (selectedCurrency && selectedCurrency !== userSettings?.main_currency) {
+        if (selectedCurrency && selectedCurrency !== userSettings?.mainCurrency) {
             changed = true;
         }
 
@@ -97,7 +97,7 @@ export function AppearanceSettings() {
         }
 
         // Save currency changes
-        if (selectedCurrency && selectedCurrency !== userSettings?.main_currency) {
+        if (selectedCurrency && selectedCurrency !== userSettings?.mainCurrency) {
             promises.push(
                 new Promise((resolve, reject) => {
                     updateMainCurrency(selectedCurrency, {

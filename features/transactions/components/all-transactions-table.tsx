@@ -1,17 +1,22 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useSearchParams } from 'next/navigation';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { TransactionList } from '@/features/transactions/components/transaction-list';
 import { TransactionDetailPanel } from '@/features/transactions/components/transaction-detail-panel';
+import { BulkActionBar } from '@/features/transactions/components/bulk-action-bar';
 import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
-import { useTransactions, useCategoryCounts } from '../hooks/use-transactions';
+import { useTransactions, useCategoryCounts, useBulkUpdateTransactions } from '../hooks/use-transactions';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useUserSettings, useUpdateSortPreference } from '@/features/settings/hooks/use-user-settings';
+import { useTransactionSelection } from '@/stores/transaction-selection-store';
+import { toast } from 'sonner';
 import type { TransactionRow } from '../types';
+import type { TransactionSortMode } from '@/types/domain';
 
 function TransactionsContent() {
   const searchParams = useSearchParams();
@@ -20,6 +25,45 @@ function TransactionsContent() {
   const groupingId = searchParams.get('grouping');
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
+  // Bulk selection store
+  const {
+    selectedIds,
+    isBulkMode,
+    stagedUpdates,
+    lastSelectedIndex,
+    toggleSelection,
+    selectRange,
+    clearSelection,
+    setStagedUpdate,
+    clearStagedUpdates,
+    enterBulkMode,
+    exitBulkMode,
+    hasSelection,
+    canApply,
+  } = useTransactionSelection();
+
+  // Fetch user settings for sort preference
+  const { data: userSettings, isLoading: isLoadingSettings } = useUserSettings();
+  const updateSortPreference = useUpdateSortPreference();
+
+  // Local sort state (synced with user settings)
+  const [sortBy, setSortBy] = useState<TransactionSortMode>(
+    userSettings?.transactionSortPreference || 'date'
+  );
+
+  // Sync local state when settings load/change
+  useEffect(() => {
+    if (userSettings?.transactionSortPreference) {
+      setSortBy(userSettings.transactionSortPreference);
+    }
+  }, [userSettings?.transactionSortPreference]);
+
+  // Handle sort toggle with persistence
+  const handleSortChange = (newSortBy: TransactionSortMode) => {
+    setSortBy(newSortBy); // Immediate UI update
+    updateSortPreference.mutate(newSortBy); // Persist to database
+  };
+
   // Fetch children if grouping is selected
   const { data: groupingChildren = [] } = useGroupingChildren(groupingId || '');
 
@@ -27,6 +71,9 @@ function TransactionsContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // Bulk update mutation
+  const bulkUpdateMutation = useBulkUpdateTransactions();
 
   // Build category filter for grouping
   const categoryFilter = useMemo(() => {
@@ -61,6 +108,7 @@ function TransactionsContent() {
     // Server-side filtering
     searchQuery: searchQuery || undefined,
     date: selectedDate,
+    sortBy, // Pass current sort mode
   });
 
   const categories = useLeafCategories();
@@ -73,9 +121,10 @@ function TransactionsContent() {
     categoryIds: activeCategoryIds,
     searchQuery: searchQuery || undefined,
     date: selectedDate,
+    sortBy, // Pass for cache separation
   });
 
-  const isLoading = isLoadingTransactions;
+  const isLoading = isLoadingTransactions || isLoadingSettings;
 
   // Use grouped accounts directly (each group represents an account)
   const accounts = accountsData;
@@ -94,6 +143,71 @@ function TransactionsContent() {
   const selectedTransaction = selectedTransactionId
     ? transactions.find((t: TransactionRow) => t.id === selectedTransactionId) || null
     : null;
+
+  // Clear selections when filters change
+  useEffect(() => {
+    if (isBulkMode && hasSelection()) {
+      clearSelection();
+    }
+  }, [searchQuery, selectedDate, selectedCategories, sortBy]);
+
+  // Handle bulk mode toggle
+  const handleToggleBulkMode = () => {
+    if (isBulkMode) {
+      exitBulkMode();
+    } else {
+      enterBulkMode();
+    }
+  };
+
+  // Handle selection toggle with Shift+Click support
+  const handleToggleSelection = (id: string, index: number, event: React.MouseEvent) => {
+    if (event.shiftKey && lastSelectedIndex !== null) {
+      // Range selection
+      const allTransactionIds = transactions.map(t => t.id);
+      selectRange(lastSelectedIndex, index, allTransactionIds);
+    } else {
+      // Single toggle
+      toggleSelection(id, index);
+    }
+  };
+
+  // Handle bulk apply
+  const handleBulkApply = async () => {
+    if (!canApply()) {
+      toast.error('Please select transactions and specify at least one field to update');
+      return;
+    }
+
+    // Show warning for large selections
+    if (selectedIds.size >= 50) {
+      toast.info(`Processing ${selectedIds.size} transactions. This may take a moment...`);
+    }
+
+    try {
+      const result = await bulkUpdateMutation.mutateAsync({
+        ids: Array.from(selectedIds),
+        updates: stagedUpdates,
+      });
+
+      // Show feedback
+      if (result.errorCount > 0) {
+        toast.error(
+          `Updated ${result.successCount} transactions, ${result.errorCount} failed. Check console for details.`,
+          { duration: 5000 }
+        );
+        console.error('Bulk update errors:', result.errors);
+      } else {
+        toast.success(`Successfully updated ${result.successCount} transactions`);
+      }
+
+      // Clear selections and staged updates after successful operation
+      clearSelection();
+      clearStagedUpdates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update transactions');
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-zinc-900">
@@ -120,6 +234,14 @@ function TransactionsContent() {
         onCategoryChange={setSelectedCategories}
         categories={categories}
         categoryCounts={categoryCounts}
+        // Sort props
+        sortBy={sortBy}
+        onSortChange={handleSortChange}
+        // Bulk selection props
+        isBulkMode={isBulkMode}
+        selectedIds={selectedIds}
+        onToggleBulkMode={handleToggleBulkMode}
+        onToggleSelection={handleToggleSelection}
       />
 
       {/* Section 3: Transaction Details Panel */}
@@ -129,6 +251,25 @@ function TransactionsContent() {
         categories={categories}
         accounts={flatAccounts}
       />
+
+      {/* Bulk Action Bar - show when selections exist */}
+      {hasSelection() && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onClearSelection={clearSelection}
+          onApply={handleBulkApply}
+          isApplying={bulkUpdateMutation.isPending}
+          canApply={canApply()}
+          categoryValue={stagedUpdates.categoryId}
+          onCategoryChange={(value) => setStagedUpdate('categoryId', value)}
+          accountValue={stagedUpdates.accountId}
+          onAccountChange={(value) => setStagedUpdate('accountId', value)}
+          dateValue={stagedUpdates.date}
+          onDateChange={(value) => setStagedUpdate('date', value)}
+          notesValue={stagedUpdates.notes}
+          onNotesChange={(value) => setStagedUpdate('notes', value)}
+        />
+      )}
     </div>
   );
 }

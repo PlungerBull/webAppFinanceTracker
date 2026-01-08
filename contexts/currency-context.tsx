@@ -25,7 +25,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   // Get main currency from user settings
   const mainCurrency = useMemo(
-    () => userSettings?.main_currency || CURRENCY.DEFAULT,
+    () => userSettings?.mainCurrency || CURRENCY.DEFAULT,
     [userSettings]
   );
 

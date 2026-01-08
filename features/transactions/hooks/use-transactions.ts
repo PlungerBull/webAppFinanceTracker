@@ -13,6 +13,7 @@ export function useTransactions(filters?: {
   categoryIds?: string[];
   searchQuery?: string;
   date?: Date | string;
+  sortBy?: 'date' | 'created_at';
 }) {
   const query = useInfiniteQuery({
     queryKey: ['transactions', 'infinite', filters],
@@ -114,6 +115,29 @@ export function useDeleteTransaction() {
   });
 }
 
+export function useBulkUpdateTransactions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ ids, updates }: {
+      ids: string[];
+      updates: {
+        categoryId?: string;
+        accountId?: string;
+        date?: string;
+        notes?: string;
+      };
+    }) => transactionsApi.bulkUpdate(ids, updates),
+    onSuccess: (data) => {
+      // Invalidate all transaction queries (including infinite query)
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+
+      // Invalidate accounts (balances may have changed)
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+    },
+  });
+}
+
 // Hook to get category counts for filter dropdown (server-side aggregation)
 // This ensures accurate counts even with pagination
 export function useCategoryCounts(filters?: {
@@ -121,6 +145,7 @@ export function useCategoryCounts(filters?: {
   categoryIds?: string[];
   searchQuery?: string;
   date?: Date | string;
+  sortBy?: 'date' | 'created_at';
 }) {
   return useQuery({
     queryKey: ['transactions', 'category-counts', filters],

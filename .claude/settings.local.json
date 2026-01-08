@@ -14,7 +14,8 @@
       "Bash(git merge dev -m \"$\\(cat <<''EOF''\nMerge dev to main: documentation optimization\n\nMajor documentation refactoring to improve AI comprehension:\n\n- Optimize AI_CONTEXT.md \\(21% reduction, add Mermaid flowchart\\)\n- Clean DB_SCHEMA.md \\(remove all dated commentary\\)\n- Add ARCHITECTURE.md with design patterns\n- Update README.md with comprehensive overview\n- Replace TODO.md with structured roadmap\n\nAll changes focused on presenting current architectural state\nwithout historical evolution narrative.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npx supabase:*)",
       "Bash(npm install:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

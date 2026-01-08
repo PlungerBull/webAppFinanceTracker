@@ -216,9 +216,13 @@ export interface UserSettings {
   mainCurrency: string | null;
   startOfWeek: number | null;
   theme: string | null;
+  transactionSortPreference: 'date' | 'created_at';
   createdAt: string;
   updatedAt: string;
 }
+
+// Transaction sort mode type alias
+export type TransactionSortMode = 'date' | 'created_at';
 
 // ============================================================================
 // TYPE ALIASES (For backward compatibility)

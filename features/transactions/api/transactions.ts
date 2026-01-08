@@ -21,6 +21,7 @@ export const transactionsApi = {
       categoryIds?: string[];
       searchQuery?: string;
       date?: Date | string;
+      sortBy?: 'date' | 'created_at';
     },
     pagination?: {
       offset: number;
@@ -29,11 +30,18 @@ export const transactionsApi = {
   ): Promise<{ data: TransactionView[]; count: number | null }> => {
     const supabase = createClient();
     const { offset = 0, limit = 50 } = pagination || {};
+    const sortBy = filters?.sortBy || 'date'; // Default to Financial Ledger
 
     let query = supabase
       .from('transactions_view')
       .select('*', { count: 'exact' })
-      .order('date', { ascending: false })
+      // Primary sort by selected field (date or created_at)
+      .order(
+        sortBy === 'date' ? 'date' : 'created_at',
+        { ascending: false }
+      )
+      // Tie-breaker: Always add created_at DESC for deterministic ordering
+      .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     // Apply category filter (single category)
@@ -230,6 +238,54 @@ export const transactionsApi = {
     }
   },
 
+  // Bulk update multiple transactions
+  // Uses RPC function for atomic operation with validation
+  bulkUpdate: async (
+    transactionIds: string[],
+    updates: {
+      categoryId?: string;
+      accountId?: string;
+      date?: string;
+      notes?: string;
+    }
+  ): Promise<{
+    success: boolean;
+    successCount: number;
+    errorCount: number;
+    updatedIds: string[];
+    errors: Array<{ transactionId: string; error: string }>;
+  }> => {
+    const supabase = createClient();
+
+    // Transform camelCase to RPC JSON format (stays camelCase for JSON)
+    const rpcUpdates: Record<string, unknown> = {};
+    if (updates.categoryId !== undefined) rpcUpdates.categoryId = updates.categoryId;
+    if (updates.accountId !== undefined) rpcUpdates.accountId = updates.accountId;
+    if (updates.date !== undefined) rpcUpdates.date = updates.date;
+    if (updates.notes !== undefined) rpcUpdates.notes = updates.notes;
+
+    const { data, error } = await supabase.rpc('bulk_update_transactions', {
+      p_transaction_ids: transactionIds,
+      p_updates: rpcUpdates as any, // Cast to any since JSONB type is complex
+    });
+
+    if (error || !data) {
+      console.error('Bulk update failed:', error);
+      throw new Error(error?.message || 'Failed to update transactions');
+    }
+
+    // Cast data as our expected response type (JSONB from Postgres)
+    const result = data as unknown as {
+      success: boolean;
+      successCount: number;
+      errorCount: number;
+      updatedIds: string[];
+      errors: Array<{ transactionId: string; error: string }>;
+    };
+
+    return result;
+  },
+
   // Get category counts for filtered transactions (server-side aggregation)
   // Used for filter dropdown to show accurate counts even with pagination
   getCategoryCounts: async (filters?: {
@@ -237,6 +293,7 @@ export const transactionsApi = {
     categoryIds?: string[];
     searchQuery?: string;
     date?: Date | string;
+    sortBy?: 'date' | 'created_at'; // For API consistency (not used in aggregation query)
   }): Promise<Record<string, number>> => {
     const supabase = createClient();
 
