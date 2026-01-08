@@ -1,12 +1,7 @@
 # Project Roadmap & Tasks
 
-**How to use this file:**
 
-* **Do not move tasks.** When you finish a task, check the box `[x]` and add the completion date at the end of the line (e.g., `(Completed: 2026-01-06)`).
-* **Cleanup:** Periodically delete lines that have been completed for a while to keep the list clean.
-
-## To-Do's
-
+- [x] **Virtualization & Infinite Scroll Strategy:** We are currently fetching all data upfront. This is not scalable. We will refactor to a "Just-In-Time" model.
 - [ ] **Eject Direct API Calls:** Remove all direct `supabase.from()` calls in `features/transactions/api/transactions.ts`. The UI must never speak to the server directly.
 - [ ] **Install Local Database:** Add WatermelonDB (recommended for React/React Native parity) or RxDB to `package.json`.
 - [ ] **Define Client-Side Schema:** Replicate the robust SQL schema found in `DB_SCHEMA.md` into a JavaScript/JSON schema for the local DB.
@@ -15,7 +10,6 @@
 - [ ] **Install Test Runner:** Add `vitest` and `@testing-library/react` immediately. We currently have zero test coverage.
 - [ ] **CI Pipeline:** Create a GitHub Action to block merges that fail type checks or linting.
 - [ ] **Error Boundary:** Wrap the application root in a global Error Boundary (e.g., Sentry) to catch white-screen crashes.
-- [ ] **Data Visualization:** Implement charts for "Monthly Spending" in the Dashboard.
 - [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports.
 - [ ] **Import Optimization:** Fix timeouts on large Excel imports (See migration `20260104200000_fix_import_timeout.sql` for context).
 
@@ -23,6 +17,7 @@
 
 - [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates.
 - [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers.
+- [ ] **Main Currency:** This is not fixed, its locked to a single main currency, if you change it you brake eeverything
 
 ## Future Roadmap
 
