@@ -67,6 +67,64 @@ Crucial business rules are enforced at the database level using PostgreSQL const
 * **Example:** A trigger prevents a Transaction from having a different currency than its parent Account.
 * **Example:** Account balances are updated via triggers (`update_account_balance`), ensuring that even raw SQL inserts update the balance correctly.
 
+### 5. Page Layout Pattern for Authenticated Views
+
+All authenticated pages (dashboard, transactions, inbox, reconciliations) follow a consistent layout pattern:
+
+**Required Structure:**
+```tsx
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { YourPageComponent } from '@/features/your-feature/components/your-page-component';
+
+export default async function YourPage() {
+  // 1. Server-side auth check
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
+  // 2. Wrap content in DashboardLayout
+  return (
+    <DashboardLayout>
+      <YourPageComponent />
+    </DashboardLayout>
+  );
+}
+```
+
+**What DashboardLayout Provides:**
+- **SidebarProvider**: Context for sidebar state (collapsed/expanded)
+- **Sidebar Component**: Left panel with navigation (Home, Inbox, Transactions, Reconciliations) and account list
+- **Main Content Area**: Right panel (`flex-1 overflow-y-auto`) for page content
+
+**Layout Anatomy:**
+```
+┌─────────────────────────────────────────────────┐
+│  DashboardLayout (flex container)               │
+│  ┌──────────┬───────────────────────────────┐  │
+│  │          │                               │  │
+│  │ Sidebar  │  Main Content Area            │  │
+│  │ (fixed   │  (flex-1 overflow-y-auto)     │  │
+│  │  width)  │                               │  │
+│  │          │  Your page component renders  │  │
+│  │          │  here with full context       │  │
+│  │          │                               │  │
+│  └──────────┴───────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+```
+
+**Why This Matters:**
+- Ensures consistent navigation context across all authenticated views
+- Users can always see their accounts and switch between features
+- Maintains sidebar state (collapsed/expanded) across page navigation
+- Provides visual consistency and predictable UX
+
 ## Data Flow (Import Example)
 
 1. **User Action:** Uploads `bank_statement.xlsx`.
