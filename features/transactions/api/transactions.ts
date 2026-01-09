@@ -11,18 +11,12 @@ import {
   dbTransactionViewsToDomain,
   dbTransactionToDomain,
 } from '@/lib/types/data-transformers';
+import { applyTransactionFilters, type TransactionFilters } from './filters';
 
 export const transactionsApi = {
   // Get all transactions with pagination for infinite scroll
   getAllPaginated: async (
-    filters?: {
-      categoryId?: string;
-      accountId?: string;
-      categoryIds?: string[];
-      searchQuery?: string;
-      date?: Date | string;
-      sortBy?: 'date' | 'created_at';
-    },
+    filters?: TransactionFilters,
     pagination?: {
       offset: number;
       limit: number;
@@ -44,33 +38,8 @@ export const transactionsApi = {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // Apply category filter (single category)
-    if (filters?.categoryId) {
-      query = query.eq('category_id', filters.categoryId);
-    }
-
-    // Apply account filter
-    if (filters?.accountId) {
-      query = query.eq('account_id', filters.accountId);
-    }
-
-    // Apply category IDs filter (multiple categories, e.g., for grouping)
-    if (filters?.categoryIds && filters.categoryIds.length > 0) {
-      query = query.in('category_id', filters.categoryIds);
-    }
-
-    // Apply search filter (description)
-    if (filters?.searchQuery) {
-      query = query.ilike('description', `%${filters.searchQuery}%`);
-    }
-
-    // Apply date filter
-    if (filters?.date) {
-      const dateStr = filters.date instanceof Date
-        ? filters.date.toISOString().split('T')[0]
-        : filters.date.split('T')[0];
-      query = query.eq('date', dateStr);
-    }
+    // Apply all standard filters (centralized)
+    query = applyTransactionFilters(query, filters);
 
     const { data, error, count } = await query;
 
@@ -288,13 +257,7 @@ export const transactionsApi = {
 
   // Get category counts for filtered transactions (server-side aggregation)
   // Used for filter dropdown to show accurate counts even with pagination
-  getCategoryCounts: async (filters?: {
-    accountId?: string;
-    categoryIds?: string[];
-    searchQuery?: string;
-    date?: Date | string;
-    sortBy?: 'date' | 'created_at'; // For API consistency (not used in aggregation query)
-  }): Promise<Record<string, number>> => {
+  getCategoryCounts: async (filters?: TransactionFilters): Promise<Record<string, number>> => {
     const supabase = createClient();
 
     // Build query with same filters as main query
@@ -302,22 +265,8 @@ export const transactionsApi = {
       .from('transactions_view')
       .select('category_id');
 
-    // Apply filters (must match getAllPaginated logic)
-    if (filters?.accountId) {
-      query = query.eq('account_id', filters.accountId);
-    }
-    if (filters?.categoryIds && filters.categoryIds.length > 0) {
-      query = query.in('category_id', filters.categoryIds);
-    }
-    if (filters?.searchQuery) {
-      query = query.ilike('description', `%${filters.searchQuery}%`);
-    }
-    if (filters?.date) {
-      const dateStr = filters.date instanceof Date
-        ? filters.date.toISOString().split('T')[0]
-        : filters.date.split('T')[0];
-      query = query.eq('date', dateStr);
-    }
+    // Apply standard filters (centralized)
+    query = applyTransactionFilters(query, filters);
 
     const { data, error } = await query;
 

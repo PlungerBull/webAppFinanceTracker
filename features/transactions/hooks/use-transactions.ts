@@ -5,16 +5,10 @@ import type {
   CreateTransactionLedgerData,
   UpdateTransactionFormData
 } from '../schemas/transaction.schema';
+import type { TransactionFilters } from '../api/filters';
 import { PAGINATION } from '@/lib/constants';
 
-export function useTransactions(filters?: {
-  categoryId?: string;
-  accountId?: string;
-  categoryIds?: string[];
-  searchQuery?: string;
-  date?: Date | string;
-  sortBy?: 'date' | 'created_at';
-}) {
+export function useTransactions(filters?: TransactionFilters) {
   const query = useInfiniteQuery({
     queryKey: ['transactions', 'infinite', filters],
     queryFn: ({ pageParam = 0 }) =>
