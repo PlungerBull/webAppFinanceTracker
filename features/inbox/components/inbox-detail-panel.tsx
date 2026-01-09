@@ -41,12 +41,14 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   // Transform flat accounts for the detail panel
   const selectableAccounts: SelectableAccount[] = useMemo(
     () =>
-      accountsData.map((account) => ({
-        id: account.accountId!,
-        name: account.name!,
-        currencyCode: account.currencyCode!,
-        color: account.color || '#3b82f6',
-      })),
+      accountsData
+        .filter((account) => account.accountId && account.name && account.currencyCode)
+        .map((account) => ({
+          id: account.accountId,
+          name: account.name,
+          currencyCode: account.currencyCode,
+          color: account.color || '#3b82f6',
+        })),
     [accountsData]
   );
 

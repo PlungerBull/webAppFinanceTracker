@@ -41,18 +41,22 @@ export function TransactionDetailPanel({
       date: transaction.date,
       notes: transaction.notes ?? undefined,
       exchangeRate: transaction.exchangeRate ?? undefined,
+      reconciliationId: transaction.reconciliationId ?? undefined,
+      cleared: transaction.cleared ?? false,
     };
   }, [transaction]);
 
   // Transform accounts to SelectableAccount format
   const selectableAccounts: SelectableAccount[] = useMemo(
     () =>
-      accounts.map((account) => ({
-        id: account.accountId!,
-        name: account.name!,
-        currencyCode: account.currencyCode!,
-        color: account.color || undefined,
-      })),
+      accounts
+        .filter((account) => account.accountId && account.name && account.currencyCode)
+        .map((account) => ({
+          id: account.accountId,
+          name: account.name,
+          currencyCode: account.currencyCode,
+          color: account.color || undefined,
+        })),
     [accounts]
   );
 

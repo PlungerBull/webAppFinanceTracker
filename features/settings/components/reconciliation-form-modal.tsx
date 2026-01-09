@@ -129,7 +129,7 @@ export function ReconciliationFormModal({
               </SelectTrigger>
               <SelectContent>
                 {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id!}>
+                  <SelectItem key={account.accountId} value={account.accountId}>
                     {account.name} ({account.currencyCode})
                   </SelectItem>
                 ))}

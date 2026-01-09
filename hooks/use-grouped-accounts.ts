@@ -44,8 +44,9 @@ export function useGroupedAccounts() {
         color: ACCOUNT.DEFAULT_COLOR,
         type: first.type || 'checking',
         balances: balances
+          .filter((b) => b.accountId) // Only include balances with valid accountId
           .map((b) => ({
-            accountId: b.accountId!,
+            accountId: b.accountId,
             currency: b.currencyCode ?? 'USD',
             amount: b.currentBalance ?? 0,
           }))
