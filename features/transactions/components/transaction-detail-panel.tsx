@@ -34,7 +34,7 @@ export function TransactionDetailPanel({
     return {
       id: transaction.id,
       description: transaction.description ?? undefined,
-      amount: transaction.amountOriginal,
+      amountOriginal: transaction.amountOriginal,
       currency: transaction.currencyOriginal,
       accountId: transaction.accountId,
       categoryId: transaction.categoryId ?? undefined,

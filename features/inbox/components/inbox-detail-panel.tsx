@@ -28,13 +28,13 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     return {
       id: item.id,
       description: item.description,
-      amount: item.amountOriginal,       // RENAMED field
-      currency: item.currencyOriginal,   // RENAMED field
+      amountOriginal: item.amountOriginal,
+      currency: item.currencyOriginal,
       accountId: item.accountId,
       categoryId: item.categoryId,
       date: item.date,
-      notes: item.notes,                 // CHANGED: Use actual notes from inbox
-      sourceText: item.sourceText,       // NEW: Include source context
+      notes: item.notes,
+      sourceText: item.sourceText,
     };
   }, [item]);
 

@@ -31,7 +31,7 @@ export function IdentityHeader({
   const handleAmountChange = (value: string) => {
     // Allow empty string to clear back to undefined (draft state)
     if (value === '') {
-      onFieldChange('amount', undefined); // Not 0!
+      onFieldChange('amountOriginal', undefined); // Not 0!
       return;
     }
 
@@ -39,10 +39,10 @@ export function IdentityHeader({
     if (/^-?\d*\.?\d*$/.test(value)) {
       const numValue = parseFloat(value);
       if (!isNaN(numValue)) {
-        onFieldChange('amount', numValue);
+        onFieldChange('amountOriginal', numValue);
       } else if (value === '-') {
         // Allow typing just minus sign
-        onFieldChange('amount', undefined);
+        onFieldChange('amountOriginal', undefined);
       }
     }
   };
@@ -80,10 +80,10 @@ export function IdentityHeader({
           type="text"
           inputMode="decimal"
           value={
-            editedFields.amount !== undefined
-              ? String(editedFields.amount)
-              : data.amount !== undefined
-              ? String(data.amount)
+            editedFields.amountOriginal !== undefined
+              ? String(editedFields.amountOriginal)
+              : data.amountOriginal !== undefined
+              ? String(data.amountOriginal)
               : ''  // Empty string for controlled input (not undefined!)
           }
           onChange={(e) => handleAmountChange(e.target.value)}

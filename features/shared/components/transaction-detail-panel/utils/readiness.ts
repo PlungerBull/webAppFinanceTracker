@@ -11,7 +11,7 @@ export interface LedgerReadinessState {
 }
 
 export type ReadinessField =
-  | 'amount'
+  | 'amountOriginal'
   | 'description'
   | 'account'
   | 'category'
@@ -58,7 +58,7 @@ export function calculateLedgerReadiness(
   const missing: ReadinessField[] = [];
 
   // Merge edited fields with original data (edited takes precedence)
-  const finalAmount = editedFields.amount ?? data.amount;
+  const finalAmount = editedFields.amountOriginal ?? data.amountOriginal;
   const finalDescription = editedFields.description ?? data.description;
   const finalAccountId = editedFields.accountId ?? data.accountId;
   const finalCategoryId = editedFields.categoryId ?? data.categoryId;
@@ -66,7 +66,7 @@ export function calculateLedgerReadiness(
 
   // Check each required field
   if (!finalAmount || finalAmount === 0) {
-    missing.push('amount');
+    missing.push('amountOriginal');
   }
 
   if (!finalDescription || finalDescription.trim() === '') {
@@ -128,7 +128,7 @@ export function getReadinessMessage(state: LedgerReadinessState): string {
   }
 
   const fieldNames: Record<ReadinessField, string> = {
-    amount: 'amount',
+    amountOriginal: 'amount',  // Display name stays "amount" for UX
     description: 'description',
     account: 'account',
     category: 'category',

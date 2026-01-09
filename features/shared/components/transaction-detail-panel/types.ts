@@ -13,7 +13,7 @@ export type PanelMode = 'inbox' | 'transaction';
 export interface PanelData {
   id: string;
   description?: string;
-  amount?: number;
+  amountOriginal?: number;
   currency: string;
   accountId?: string;
   categoryId?: string;
@@ -28,7 +28,7 @@ export interface PanelData {
  */
 export interface EditedFields {
   description?: string;
-  amount?: number;
+  amountOriginal?: number;
   accountId?: string;
   categoryId?: string;
   date?: string;
@@ -63,7 +63,7 @@ export interface SelectableCategory {
  */
 export interface ValidationErrors {
   description?: string;
-  amount?: string;
+  amountOriginal?: string;
   accountId?: string;
   categoryId?: string;
   date?: string;

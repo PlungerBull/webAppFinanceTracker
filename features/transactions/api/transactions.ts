@@ -10,6 +10,7 @@ import {
   dbTransactionViewToDomain,
   dbTransactionViewsToDomain,
   dbTransactionToDomain,
+  domainTransactionToDbUpdate,
 } from '@/lib/types/data-transformers';
 import { applyTransactionFilters, type TransactionFilters } from './filters';
 
@@ -142,7 +143,7 @@ export const transactionsApi = {
     id: string,
     updates: {
       description?: string;
-      amount?: number;
+      amountOriginal?: number;
       accountId?: string;
       categoryId?: string;
       date?: string;
@@ -152,30 +153,8 @@ export const transactionsApi = {
   ): Promise<TransactionView> => {
     const supabase = createClient();
 
-    // Transform camelCase panel fields to snake_case database fields
-    const dbUpdates: Record<string, unknown> = {};
-
-    if (updates.description !== undefined) {
-      dbUpdates.description = updates.description;
-    }
-    if (updates.amount !== undefined) {
-      dbUpdates.amount_original = updates.amount;
-    }
-    if (updates.accountId !== undefined) {
-      dbUpdates.account_id = updates.accountId;
-    }
-    if (updates.categoryId !== undefined) {
-      dbUpdates.category_id = updates.categoryId;
-    }
-    if (updates.date !== undefined) {
-      dbUpdates.date = updates.date;
-    }
-    if (updates.notes !== undefined) {
-      dbUpdates.notes = updates.notes;
-    }
-    if (updates.exchangeRate !== undefined) {
-      dbUpdates.exchange_rate = updates.exchangeRate;
-    }
+    // Use centralized transformer for type-safe field mapping
+    const dbUpdates = domainTransactionToDbUpdate(updates);
 
     const { error } = await supabase
       .from('transactions')
