@@ -76,8 +76,14 @@ export const useTransactionSelection = create<TransactionSelectionState>((set, g
     const newStaged = { ...state.stagedUpdates };
     if (value === undefined) {
       delete newStaged[field]; // Reset to "No Change"
+    } else if (field === 'reconciliationId') {
+      // reconciliationId can be string | null
+      newStaged.reconciliationId = value;
     } else {
-      newStaged[field] = value;
+      // Other fields are string only (filter out null)
+      if (value !== null) {
+        newStaged[field] = value;
+      }
     }
     return { stagedUpdates: newStaged };
   }),
