@@ -274,6 +274,36 @@ flowchart LR
 * **Amount Display:** Monospaced font, color-coded by transaction type (income/expense)
 * **Refer to Design System:** For specific spacing, typography, and color values, see component implementations
 
+### I. Bulk Selection Pattern (File Manager Interaction Model)
+* **State Architecture:** Two independent state variables (never coupled)
+    * `selectedTransactionId` (singular): Controls RIGHT detail panel (focus)
+    * `selectedIds` (Set): Controls BOTTOM bulk action bar (selection for batch operations)
+* **Click Behavior (Finder/Windows Explorer model):**
+    * **Normal Click:** RESET behavior
+        * Clears all existing selections
+        * Focuses the clicked item in detail panel
+        * Starts new selection set with only that item
+    * **Cmd/Ctrl+Click:** ADDITIVE selection
+        * Toggles individual items in/out of selection
+        * Does NOT affect focus
+    * **Shift+Click:** RANGE selection
+        * Selects all items between last selected and current
+        * Does NOT affect focus
+* **Visual States (Three distinct appearances):**
+    * Focus only: `ring-blue-500/20` (subtle ring, no background)
+    * Selected only: `ring-blue-500 bg-blue-50/20` (stronger ring + light tint)
+    * Both focus and selected: `ring-blue-600 bg-blue-50` (strongest ring + full tint)
+* **Bulk Mode:** Toggled via header button, shows checkboxes on cards
+* **Checkbox Behavior:** Uses `stopPropagation()`, calls selection handler directly
+* **Detail Panel:** Stays visible during bulk mode, shows last focused transaction (no warning overlay)
+* **Batch Operations:** Use RPC functions for atomic updates (e.g., `bulk_update_transactions`)
+* **Filter Changes:** Auto-clear selections when filters change (prevent stale IDs)
+* **Implementation Files:**
+    * State: `stores/transaction-selection-store.ts` (Zustand)
+    * UI: `features/transactions/components/transaction-list.tsx`
+    * Orchestration: `features/transactions/components/all-transactions-table.tsx`
+    * Actions: `features/transactions/components/bulk-action-bar.tsx`
+
 ## 5. Coding Standards "Do's and Don'ts"
 * **DO** use Zod schemas for all form inputs.
 * **DO** use absolute imports (e.g., `@/components/...`) instead of relative imports (`../../`).

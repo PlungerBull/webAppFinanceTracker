@@ -368,25 +368,30 @@ export function TransactionList({
                       // Check for modifier keys - these should trigger bulk mode automatically
                       const hasModifierKey = e.shiftKey || e.metaKey || e.ctrlKey;
 
-                      if (hasModifierKey && !isBulkMode) {
-                        // Auto-enter bulk mode when using modifier keys
-                        onToggleBulkMode?.();
-                        // Then handle the selection
-                        onToggleSelection?.(transaction.id, virtualItem.index, e);
-                      } else if (isBulkMode) {
-                        // Already in bulk mode, handle selection normally
+                      if (hasModifierKey) {
+                        // Modifier keys: Handle selection (enter bulk mode if needed)
+                        if (!isBulkMode) {
+                          onToggleBulkMode?.();
+                        }
                         onToggleSelection?.(transaction.id, virtualItem.index, e);
                       } else {
-                        // Normal mode, no modifiers: open detail panel
-                        onTransactionSelect?.(transaction.id);
+                        // Regular click: RESET behavior (like Finder/Windows Explorer)
+                        // 1. Clear all existing selections
+                        // 2. Focus the clicked item (right panel)
+                        // 3. Start new selection set with only this item
+                        onToggleSelection?.(transaction.id, virtualItem.index, e);
                       }
                     }}
                     className={cn(
                       'relative bg-white rounded-xl border border-gray-100 px-4 py-3',
                       'transition-all duration-200 cursor-pointer',
                       'hover:shadow-sm hover:border-gray-200',
-                      isBulkMode && isSelected && 'ring-2 ring-blue-500 border-blue-400 bg-blue-50',
-                      !isBulkMode && selectedTransactionId === transaction.id && 'ring-2 ring-blue-500/20 border-blue-200',
+                      // Focus state (right panel) - subtle blue ring
+                      selectedTransactionId === transaction.id && !isSelected && 'ring-2 ring-blue-500/20 border-blue-200',
+                      // Selection state (bulk mode) - stronger blue with tint
+                      isBulkMode && isSelected && selectedTransactionId !== transaction.id && 'ring-2 ring-blue-500 border-blue-400 bg-blue-50/20',
+                      // Master state (both focus and selected) - strongest blue
+                      selectedTransactionId === transaction.id && isSelected && 'ring-2 ring-blue-600 border-blue-600 bg-blue-50',
                       !onTransactionSelect && !isBulkMode && 'cursor-default hover:shadow-none'
                     )}
                   >

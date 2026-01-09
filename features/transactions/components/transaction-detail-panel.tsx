@@ -26,9 +26,6 @@ export function TransactionDetailPanel({
   const updateMutation = useUpdateTransactionBatch();
   const deleteMutation = useDeleteTransaction();
 
-  // Get bulk mode state for kill-switch
-  const { isBulkMode, exitBulkMode, clearSelection } = useTransactionSelection();
-
   // Transform TransactionRow to PanelData
   // Converts null → undefined for consistency with PanelData interface
   const panelData: PanelData | null = useMemo(() => {
@@ -102,14 +99,6 @@ export function TransactionDetailPanel({
     // We don't have a close mechanism, but this satisfies the shared panel interface
   };
 
-  // Handle kill-switch: Any interaction exits bulk mode
-  const handleKillSwitch = () => {
-    if (isBulkMode) {
-      exitBulkMode();
-      clearSelection();
-    }
-  };
-
   if (!panelData) {
     return (
       <div className="w-[400px] bg-white border-l border-gray-200 flex items-center justify-center text-gray-500">
@@ -119,39 +108,15 @@ export function TransactionDetailPanel({
   }
 
   return (
-    <div className="relative">
-      <SharedPanel
-        mode="transaction"
-        data={panelData}
-        accounts={selectableAccounts}
-        categories={selectableCategories}
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onClose={handleClose}
-        isLoading={updateMutation.isPending || deleteMutation.isPending}
-      />
-
-      {/* Kill-switch overlay when bulk mode is active */}
-      {isBulkMode && (
-        <div
-          className="absolute inset-0 bg-white/90 backdrop-blur-sm cursor-pointer z-50"
-          onClick={handleKillSwitch}
-        >
-          <div className="sticky top-0 bg-orange-50 border-l-4 border-orange-400 p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-orange-900">
-                  Selection Active
-                </p>
-                <p className="text-xs text-orange-700 mt-0.5">
-                  Click to edit this transaction
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <SharedPanel
+      mode="transaction"
+      data={panelData}
+      accounts={selectableAccounts}
+      categories={selectableCategories}
+      onSave={handleSave}
+      onDelete={handleDelete}
+      onClose={handleClose}
+      isLoading={updateMutation.isPending || deleteMutation.isPending}
+    />
   );
 }

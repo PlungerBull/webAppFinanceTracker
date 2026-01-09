@@ -160,20 +160,23 @@ function TransactionsContent() {
     }
   };
 
-  // Handle selection toggle with Shift+Click and Cmd/Ctrl+Click support
+  // Handle selection toggle with Shift+Click, Cmd/Ctrl+Click, and normal click support
   const handleToggleSelection = (id: string, index: number, event: React.MouseEvent) => {
     const allTransactionIds = transactions.map(t => t.id);
+    const hasModifierKey = event.shiftKey || event.metaKey || event.ctrlKey;
 
     if (event.shiftKey && lastSelectedIndex !== null) {
       // Shift+Click: Range selection from last selected to current
       selectRange(lastSelectedIndex, index, allTransactionIds);
-    } else if (event.metaKey || event.ctrlKey) {
-      // Cmd/Ctrl+Click: Toggle individual item (add/remove from selection)
+    } else if (hasModifierKey) {
+      // Cmd/Ctrl+Click: Toggle individual item (additive selection)
       toggleSelection(id, index);
     } else {
-      // Regular Click: Clear all and select only this item
+      // Normal Click: RESET behavior
+      // Clear all selections, focus this item, start new selection set with only this item
       clearSelection();
       toggleSelection(id, index);
+      setSelectedTransactionId(id);
     }
   };
 
