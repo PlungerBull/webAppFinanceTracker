@@ -150,40 +150,13 @@ export function TransactionList({
         <>
           {/* Global Header (Fixed) */}
           <div className="z-20 pt-6 pb-2 px-6">
-            {/* Title */}
-            <div className="flex items-center mb-4">
+            {/* Title with Sort Toggle */}
+            <div className="flex items-center justify-between mb-4">
               <h1 className="text-xl font-bold text-gray-900">
                 {title || TRANSACTIONS.UI.LABELS.TRANSACTIONS}
               </h1>
-              {totalCount !== null && (
-                <span className="ml-2 text-sm text-gray-500">
-                  ({totalCount} total)
-                </span>
-              )}
-            </div>
 
-            {/* Filter Toolbar */}
-            <div className="flex items-center gap-2">
-              {/* Search Input (Collapsible) */}
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-[15px] w-[15px] text-gray-400" />
-                <Input
-                  placeholder="Search..."
-                  value={searchQuery || ''}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  className={cn(
-                    "pl-7 py-1.5 h-8 text-sm bg-gray-100/50 border-transparent hover:bg-gray-100 focus:bg-white focus:ring-1 focus:ring-gray-300 transition-all duration-200 placeholder:text-gray-500",
-                    isSearchFocused ? "w-48" : "w-32"
-                  )}
-                />
-              </div>
-
-              {/* Vertical Divider */}
-              <div className="h-5 w-px bg-gray-200" />
-
-              {/* Sort Toggle */}
+              {/* Sort Toggle - Date/Added */}
               <Tabs value={sortBy} onValueChange={(value) => onSortChange?.(value as 'date' | 'created_at')}>
                 <TabsList className="h-8 p-[2px] bg-gray-100/80">
                   <TabsTrigger
@@ -202,10 +175,10 @@ export function TransactionList({
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+            </div>
 
-              {/* Vertical Divider */}
-              <div className="h-5 w-px bg-gray-200" />
-
+            {/* Filter Toolbar */}
+            <div className="flex items-center gap-2">
               {/* Bulk Mode Toggle */}
               {onToggleBulkMode && (
                 <>
@@ -223,6 +196,25 @@ export function TransactionList({
                   <div className="h-5 w-px bg-gray-200" />
                 </>
               )}
+
+              {/* Search Input (Collapsible) */}
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-[15px] w-[15px] text-gray-400" />
+                <Input
+                  placeholder="Search..."
+                  value={searchQuery || ''}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  className={cn(
+                    "pl-7 py-1.5 h-8 text-sm bg-gray-100/50 border-transparent hover:bg-gray-100 focus:bg-white focus:ring-1 focus:ring-gray-300 transition-all duration-200 placeholder:text-gray-500",
+                    isSearchFocused ? "w-48" : "w-32"
+                  )}
+                />
+              </div>
+
+              {/* Vertical Divider */}
+              <div className="h-5 w-px bg-gray-200" />
 
               {/* Date Filter */}
               <Popover>
