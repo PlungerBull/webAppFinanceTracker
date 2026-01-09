@@ -365,14 +365,19 @@ export function TransactionList({
                 >
                   <div
                     onClick={(e) => {
-                      if (isBulkMode) {
-                        // In bulk mode, handle selection with modifier keys
-                        // Shift+Click: Range selection
-                        // Cmd/Ctrl+Click: Toggle individual
-                        // Regular Click: Single select (clear others)
+                      // Check for modifier keys - these should trigger bulk mode automatically
+                      const hasModifierKey = e.shiftKey || e.metaKey || e.ctrlKey;
+
+                      if (hasModifierKey && !isBulkMode) {
+                        // Auto-enter bulk mode when using modifier keys
+                        onToggleBulkMode?.();
+                        // Then handle the selection
+                        onToggleSelection?.(transaction.id, virtualItem.index, e);
+                      } else if (isBulkMode) {
+                        // Already in bulk mode, handle selection normally
                         onToggleSelection?.(transaction.id, virtualItem.index, e);
                       } else {
-                        // Normal mode: open detail panel
+                        // Normal mode, no modifiers: open detail panel
                         onTransactionSelect?.(transaction.id);
                       }
                     }}
