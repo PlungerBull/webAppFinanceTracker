@@ -14,6 +14,97 @@
 
 ---
 
+## 2026-01-09: Security Hardening - Search Path Hijacking Mitigation
+
+### Problem: Supabase Security Advisor Warnings for Mutable Search Paths
+
+Supabase Security Advisor flagged 4 trigger functions with **mutable search paths**, making them vulnerable to Search Path Hijacking attacks:
+
+**The Security Gap:**
+- PostgreSQL's `search_path` acts like a PATH variable - tells the database where to look for tables/functions
+- Functions without explicit `SET search_path` declarations are vulnerable to schema shadowing attacks
+- An attacker with limited database access could create malicious tables in their own schema
+- When vulnerable functions run, they might find the attacker's fake tables first → data corruption or security bypass
+
+**Vulnerable Functions:**
+1. `check_reconciliation_date_overlap()` - Prevents overlapping reconciliation periods
+2. `auto_set_cleared_flag()` - Auto-manages cleared flag when reconciliation links change
+3. `check_reconciliation_account_match()` - **Sacred Ledger Hard Gate** - enforces account match constraint
+4. `check_transaction_reconciliation_lock()` - Semi-permeable lock on completed reconciliations
+
+**Why This Matters:**
+- **Data Integrity**: Reconciliation is our "Contract of Truth" - hijacked functions could allow impossible balance states
+- **Compliance**: SOC2 auditors flag mutable search paths on validation functions as critical findings
+- **Sync Engine Risk**: Offline-first sync constantly triggers these functions - corruption could scale rapidly
+
+### Solution: Explicit Search Path Hardening
+
+**Migration:** `20260109000006_harden_trigger_search_paths.sql`
+
+**Key Changes:**
+- Added `SET search_path TO ''` to all 4 trigger functions
+- Empty search path forces explicit schema qualification (e.g., `public.reconciliations`)
+- Zero code logic changes required - functions already used fully qualified names (`public.table`)
+- Updated function comments to document hardening
+
+**The Pattern:**
+
+```sql
+-- Before (Vulnerable)
+CREATE OR REPLACE FUNCTION public.check_reconciliation_date_overlap()
+RETURNS TRIGGER AS $$
+BEGIN
+    SELECT COUNT(*) FROM public.reconciliations WHERE ...  -- ⚠️ Implicit schema resolution
+END;
+$$ LANGUAGE plpgsql;
+
+-- After (Hardened)
+CREATE OR REPLACE FUNCTION public.check_reconciliation_date_overlap()
+RETURNS TRIGGER
+SET search_path TO ''  -- 🔒 Lock path - force explicit qualification
+AS $$
+BEGIN
+    SELECT COUNT(*) FROM public.reconciliations WHERE ...  -- ✅ Must use qualified name
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Old Way vs. New Way
+
+| Aspect | Old Way (Vulnerable) | New Way (Hardened) |
+|--------|---------------------|---------------------|
+| **Search path** | Mutable (role-dependent) | Locked to empty string |
+| **Schema resolution** | Implicit (searches multiple schemas) | Explicit (must qualify) |
+| **Hijacking risk** | Medium (attacker could shadow tables) | Zero (no implicit resolution) |
+| **Code changes** | N/A | None (already used `public.` prefix) |
+| **Supabase warnings** | 4 warnings flagged | Zero warnings |
+| **Compliance** | Red flag for SOC2 audits | Best-practice security baseline |
+
+### Benefits
+
+- ✅ **Zero Search Path Hijacking Risk**: Functions can only access explicitly qualified schemas
+- ✅ **SOC2 Compliance Ready**: Passes security linter checks for database functions
+- ✅ **Defense in Depth**: Even if attacker gains limited access, cannot manipulate validation logic
+- ✅ **No Breaking Changes**: All table references already used `public.` schema prefix
+- ✅ **Unified Security Posture**: All 37 SECURITY DEFINER functions + 4 trigger functions now hardened
+
+### Migration Complexity
+
+- **Risk Level:** Low (zero code logic changes, only search path declaration added)
+- **Testing Impact:** None (functions already used qualified names)
+- **Rollback Strategy:** Revert to previous function definitions (no data changes)
+- **Performance Impact:** None (search path resolution is compile-time, not runtime)
+
+### Future Prevention Checklist
+
+Added to code review standards:
+- All new `SECURITY DEFINER` functions must include `SET search_path TO 'public'`
+- All new trigger functions must include `SET search_path TO ''`
+- All table references must use fully qualified names (`public.table_name`)
+- No reliance on implicit schema resolution in database functions
+
+---
+
 ## 2025-12-28: Inbox Currency Normalization (Part 2 of Unified Normalization)
 
 ### Problem: Extended Redundant Storage from Transactions to Inbox
