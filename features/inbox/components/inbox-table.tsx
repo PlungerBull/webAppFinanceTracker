@@ -42,6 +42,8 @@ function InboxContent() {
     transferId: null,                                    // Inbox items are never transfers
     description: item.description ?? '—',               // Show dash if undefined
     notes: null,
+    reconciliationId: null,                              // Inbox items aren't reconciled yet
+    cleared: false,                                      // Inbox items aren't cleared
   }));
 
   const selectedItem = selectedItemId
