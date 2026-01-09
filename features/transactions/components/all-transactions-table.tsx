@@ -160,14 +160,19 @@ function TransactionsContent() {
     }
   };
 
-  // Handle selection toggle with Shift+Click support
+  // Handle selection toggle with Shift+Click and Cmd/Ctrl+Click support
   const handleToggleSelection = (id: string, index: number, event: React.MouseEvent) => {
+    const allTransactionIds = transactions.map(t => t.id);
+
     if (event.shiftKey && lastSelectedIndex !== null) {
-      // Range selection
-      const allTransactionIds = transactions.map(t => t.id);
+      // Shift+Click: Range selection from last selected to current
       selectRange(lastSelectedIndex, index, allTransactionIds);
+    } else if (event.metaKey || event.ctrlKey) {
+      // Cmd/Ctrl+Click: Toggle individual item (add/remove from selection)
+      toggleSelection(id, index);
     } else {
-      // Single toggle
+      // Regular Click: Clear all and select only this item
+      clearSelection();
       toggleSelection(id, index);
     }
   };

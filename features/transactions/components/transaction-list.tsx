@@ -186,10 +186,9 @@ export function TransactionList({
                     variant={isBulkMode ? 'default' : 'ghost'}
                     size="sm"
                     onClick={onToggleBulkMode}
-                    className="h-8 px-3 text-sm"
+                    className="h-8 px-2"
                   >
-                    <ListChecks className="mr-2 h-4 w-4" />
-                    {isBulkMode ? 'Exit Bulk Mode' : 'Select Multiple'}
+                    <ListChecks className="h-4 w-4" />
                   </Button>
 
                   {/* Vertical Divider */}
@@ -367,7 +366,10 @@ export function TransactionList({
                   <div
                     onClick={(e) => {
                       if (isBulkMode) {
-                        // In bulk mode, toggle selection
+                        // In bulk mode, handle selection with modifier keys
+                        // Shift+Click: Range selection
+                        // Cmd/Ctrl+Click: Toggle individual
+                        // Regular Click: Single select (clear others)
                         onToggleSelection?.(transaction.id, virtualItem.index, e);
                       } else {
                         // Normal mode: open detail panel
@@ -388,12 +390,11 @@ export function TransactionList({
                       <div className="absolute top-3 left-3 z-10">
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={(checked) => {
-                            // Prevent event bubbling to parent div
-                            const syntheticEvent = new MouseEvent('click', { bubbles: false });
-                            onToggleSelection?.(transaction.id, virtualItem.index, syntheticEvent as any);
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Pass through the click event with modifier keys preserved
+                            onToggleSelection?.(transaction.id, virtualItem.index, e as any);
                           }}
-                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                     )}
