@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Hash, CreditCard, Calendar as CalendarIcon, FileText, Loader2, FileCheck, Link, Unlink } from 'lucide-react';
+import { X, Hash, CreditCard, Calendar as CalendarIcon, FileText, Loader2, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { SmartSelector } from './smart-selector';
@@ -15,8 +15,6 @@ interface BulkActionBarProps {
   selectedCount: number;
   onClearSelection: () => void;
   onApply: () => void;
-  onLink?: () => void; // NEW: For linking to reconciliation
-  onUnlink?: () => void; // NEW: For unlinking from reconciliation
   isApplying: boolean;
   canApply: boolean;
 
@@ -33,17 +31,15 @@ interface BulkActionBarProps {
   notesValue?: string;
   onNotesChange: (notes: string | undefined) => void;
 
-  // NEW: Reconciliation props
-  activeReconciliationId?: string | null;
-  onReconciliationChange: (reconciliationId: string | null) => void;
+  // Reconciliation props
+  reconciliationValue?: string | null;
+  onReconciliationChange: (reconciliationId: string | null | undefined) => void;
 }
 
 export function BulkActionBar({
   selectedCount,
   onClearSelection,
   onApply,
-  onLink,
-  onUnlink,
   isApplying,
   canApply,
   categoryValue,
@@ -54,18 +50,18 @@ export function BulkActionBar({
   onDateChange,
   notesValue,
   onNotesChange,
-  activeReconciliationId,
+  reconciliationValue,
   onReconciliationChange,
 }: BulkActionBarProps) {
   const leafCategories = useLeafCategories();
   const { data: groupedAccounts = [] } = useGroupedAccounts();
   const { data: reconciliations = [] } = useReconciliations();
-  const { data: reconciliationSummary } = useReconciliationSummary(activeReconciliationId);
+  const { data: reconciliationSummary } = useReconciliationSummary(reconciliationValue);
 
   // Get display names for selected values
   const selectedCategory = leafCategories.find((c) => c.id === categoryValue);
   const selectedAccount = groupedAccounts.find((g) => g.groupId === accountValue);
-  const selectedReconciliation = reconciliations.find((r) => r.id === activeReconciliationId);
+  const selectedReconciliation = reconciliations.find((r) => r.id === reconciliationValue);
 
   // Flatten accounts for selection
   const flatAccounts = groupedAccounts.map((group) => ({
@@ -190,10 +186,25 @@ export function BulkActionBar({
               icon={FileCheck}
               label="Reconciliation"
               value={selectedReconciliation?.name}
-              placeholder="Select..."
+              placeholder="No Change"
               className="bg-transparent border-0"
             >
               <div className="w-72 max-h-96 overflow-y-auto p-2">
+                {/* Clear option */}
+                <button
+                  type="button"
+                  onClick={() => onReconciliationChange(undefined)}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                    reconciliationValue === undefined
+                      ? 'bg-gray-100 text-gray-900 font-medium'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  )}
+                >
+                  <span className="flex-1 text-left">Clear (Unlink)</span>
+                  {reconciliationValue === undefined && <X className="w-4 h-4 text-gray-500" />}
+                </button>
+
                 {draftReconciliations.length === 0 ? (
                   <div className="text-center text-sm text-gray-500 py-4">
                     No draft reconciliations available
@@ -206,13 +217,13 @@ export function BulkActionBar({
                       onClick={() => onReconciliationChange(reconciliation.id)}
                       className={cn(
                         'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-                        activeReconciliationId === reconciliation.id
+                        reconciliationValue === reconciliation.id
                           ? 'bg-gray-100 text-gray-900 font-medium'
                           : 'text-gray-700 hover:bg-gray-50'
                       )}
                     >
                       <span className="flex-1 text-left truncate">{reconciliation.name}</span>
-                      {activeReconciliationId === reconciliation.id && (
+                      {reconciliationValue === reconciliation.id && (
                         <X className="w-4 h-4 text-gray-500" />
                       )}
                     </button>
@@ -223,72 +234,42 @@ export function BulkActionBar({
           </div>
         </div>
 
-        {/* Reconciliation Math Display & Actions (only when active) */}
-        {activeReconciliationId && (
+        {/* Reconciliation Math Display (only when a reconciliation is selected) */}
+        {reconciliationValue && reconciliationSummary && (
           <>
             {/* Vertical Divider */}
             <div className="h-8 w-px bg-slate-700" />
 
             {/* Math Display */}
-            {reconciliationSummary && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg">
-                <div className="text-xs text-slate-300">
-                  <span className="font-mono">
-                    Diff: {reconciliationSummary.difference.toFixed(2)}
-                  </span>
-                  {reconciliationSummary.isBalanced && (
-                    <span className="ml-2 text-green-400">✓</span>
-                  )}
-                </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg">
+              <div className="text-xs text-slate-300">
+                <span className="font-mono">
+                  Diff: {reconciliationSummary.difference.toFixed(2)}
+                </span>
+                {reconciliationSummary.isBalanced && (
+                  <span className="ml-2 text-green-400">✓</span>
+                )}
               </div>
-            )}
-
-            {/* Link/Unlink Buttons */}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-white hover:bg-slate-800 h-auto py-1.5 px-3"
-              onClick={onLink}
-              disabled={!canApply || isApplying}
-            >
-              {isApplying ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              ) : (
-                <Link className="w-3.5 h-3.5 mr-1.5" />
-              )}
-              Link
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-white hover:bg-slate-800 h-auto py-1.5 px-3"
-              onClick={onUnlink}
-              disabled={!canApply || isApplying}
-            >
-              <Unlink className="w-3.5 h-3.5 mr-1.5" />
-              Unlink
-            </Button>
+            </div>
           </>
         )}
 
-        {/* Standard Apply Button (when no reconciliation active) */}
-        {!activeReconciliationId && (
-          <>
-            <div className="h-8 w-px bg-slate-700" />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-white hover:bg-slate-800 h-auto py-1.5 px-3"
-              onClick={onApply}
-              disabled={!canApply || isApplying}
-            >
-              {isApplying ? (
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-              ) : null}
-              Apply
-            </Button>
-          </>
-        )}
+        {/* Vertical Divider before Apply */}
+        <div className="h-8 w-px bg-slate-700" />
+
+        {/* Apply Button */}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-white hover:bg-slate-800 h-auto py-1.5 px-3"
+          onClick={onApply}
+          disabled={!canApply || isApplying}
+        >
+          {isApplying ? (
+            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+          ) : null}
+          Apply
+        </Button>
       </div>
     </div>
   );

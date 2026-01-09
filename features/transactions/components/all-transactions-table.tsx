@@ -32,7 +32,6 @@ function TransactionsContent() {
     isBulkMode,
     stagedUpdates,
     lastSelectedIndex,
-    activeReconciliationId,
     toggleSelection,
     selectRange,
     clearSelection,
@@ -40,7 +39,6 @@ function TransactionsContent() {
     clearStagedUpdates,
     enterBulkMode,
     exitBulkMode,
-    setActiveReconciliation,
     hasSelection,
     canApply,
   } = useTransactionSelection();
@@ -200,6 +198,28 @@ function TransactionsContent() {
     }
 
     try {
+      // Handle reconciliation linking/unlinking separately if reconciliationId is in stagedUpdates
+      if ('reconciliationId' in stagedUpdates) {
+        const reconciliationId = stagedUpdates.reconciliationId;
+
+        if (reconciliationId === undefined) {
+          // Unlink transactions
+          await unlinkTransactionsMutation.mutateAsync(Array.from(selectedIds));
+        } else if (reconciliationId) {
+          // Link transactions to reconciliation
+          await linkTransactionsMutation.mutateAsync({
+            reconciliationId,
+            transactionIds: Array.from(selectedIds),
+          });
+        }
+
+        // Clear selections and staged updates after successful operation
+        clearSelection();
+        clearStagedUpdates();
+        return;
+      }
+
+      // Standard bulk update for other fields
       const result = await bulkUpdateMutation.mutateAsync({
         ids: Array.from(selectedIds),
         updates: stagedUpdates,
@@ -224,59 +244,6 @@ function TransactionsContent() {
     }
   };
 
-  // Link transactions to reconciliation
-  const handleLink = async () => {
-    if (!activeReconciliationId) {
-      toast.error('Please select a reconciliation');
-      return;
-    }
-
-    if (selectedIds.size === 0) {
-      toast.error('Please select transactions to link');
-      return;
-    }
-
-    // Show warning for large selections
-    if (selectedIds.size >= 50) {
-      toast.info(`Processing ${selectedIds.size} transactions. This may take a moment...`);
-    }
-
-    try {
-      await linkTransactionsMutation.mutateAsync({
-        reconciliationId: activeReconciliationId,
-        transactionIds: Array.from(selectedIds),
-      });
-
-      // Clear selections after successful operation
-      clearSelection();
-    } catch (error) {
-      console.error('Failed to link transactions:', error);
-      // Error toast handled by mutation hook
-    }
-  };
-
-  // Unlink transactions from reconciliation
-  const handleUnlink = async () => {
-    if (selectedIds.size === 0) {
-      toast.error('Please select transactions to unlink');
-      return;
-    }
-
-    // Show warning for large selections
-    if (selectedIds.size >= 50) {
-      toast.info(`Processing ${selectedIds.size} transactions. This may take a moment...`);
-    }
-
-    try {
-      await unlinkTransactionsMutation.mutateAsync(Array.from(selectedIds));
-
-      // Clear selections after successful operation
-      clearSelection();
-    } catch (error) {
-      console.error('Failed to unlink transactions:', error);
-      // Error toast handled by mutation hook
-    }
-  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-zinc-900">
@@ -327,8 +294,6 @@ function TransactionsContent() {
           selectedCount={selectedIds.size}
           onClearSelection={clearSelection}
           onApply={handleBulkApply}
-          onLink={handleLink}
-          onUnlink={handleUnlink}
           isApplying={
             bulkUpdateMutation.isPending ||
             linkTransactionsMutation.isPending ||
@@ -343,8 +308,8 @@ function TransactionsContent() {
           onDateChange={(value) => setStagedUpdate('date', value)}
           notesValue={stagedUpdates.notes}
           onNotesChange={(value) => setStagedUpdate('notes', value)}
-          activeReconciliationId={activeReconciliationId}
-          onReconciliationChange={setActiveReconciliation}
+          reconciliationValue={stagedUpdates.reconciliationId}
+          onReconciliationChange={(value) => setStagedUpdate('reconciliationId', value)}
         />
       )}
     </div>
