@@ -63,7 +63,7 @@ export function BulkActionBar({
   }));
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-300 bg-slate-900 shadow-2xl">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-xl border border-gray-300 bg-slate-900 shadow-2xl">
       <div className="flex items-center gap-4 px-6 py-4">
         {/* Selection Count Badge */}
         <div className="flex items-center gap-2">
