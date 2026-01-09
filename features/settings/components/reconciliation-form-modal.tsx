@@ -128,7 +128,7 @@ export function ReconciliationFormModal({
             >
               <SelectTrigger
                 className={cn(
-                  'bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors',
+                  'w-full bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors',
                   errors.accountId && 'border-red-500'
                 )}
               >
