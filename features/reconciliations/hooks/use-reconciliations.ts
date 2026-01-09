@@ -26,10 +26,10 @@ export function useReconciliations(accountId?: string) {
 /**
  * Fetch single reconciliation
  */
-export function useReconciliation(id: string) {
+export function useReconciliation(id: string | null | undefined) {
   return useQuery({
-    queryKey: QUERY_KEYS.RECONCILIATIONS.BY_ID(id),
-    queryFn: () => reconciliationsApi.getById(id),
+    queryKey: QUERY_KEYS.RECONCILIATIONS.BY_ID(id || 'none'),
+    queryFn: () => reconciliationsApi.getById(id!),
     enabled: !!id,
   });
 }
@@ -41,7 +41,7 @@ export function useReconciliation(id: string) {
  * CTO Directive: Rely on TanStack Query invalidation upon mutation success
  * (link/unlink mutations invalidate this query for instant updates)
  */
-export function useReconciliationSummary(reconciliationId: string | null) {
+export function useReconciliationSummary(reconciliationId: string | null | undefined) {
   return useQuery({
     queryKey: QUERY_KEYS.RECONCILIATIONS.SUMMARY(reconciliationId || 'none'),
     queryFn: () => reconciliationsApi.getSummary(reconciliationId!),

@@ -52,9 +52,9 @@ export function TransactionDetailPanel({
       accounts
         .filter((account) => account.accountId && account.name && account.currencyCode)
         .map((account) => ({
-          id: account.accountId,
-          name: account.name,
-          currencyCode: account.currencyCode,
+          id: account.accountId!,
+          name: account.name!,
+          currencyCode: account.currencyCode!,
           color: account.color || undefined,
         })),
     [accounts]

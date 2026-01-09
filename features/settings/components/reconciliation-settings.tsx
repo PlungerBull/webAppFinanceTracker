@@ -71,7 +71,7 @@ export function ReconciliationSettings() {
       ) : (
         <div className="space-y-3">
           {reconciliations.map((reconciliation) => {
-            const account = accounts.find((a) => a.id === reconciliation.accountId);
+            const account = accounts.find((a) => a.accountId === reconciliation.accountId);
 
             return (
               <div
