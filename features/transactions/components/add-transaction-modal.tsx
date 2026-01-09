@@ -32,7 +32,6 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   // Transaction form state
   const [transactionData, setTransactionData] = useState<TransactionFormData>({
     amount: '',
-    derivedType: null, // Auto-derived from category
     categoryId: null,
     fromAccountId: null, // Single source of truth
     exchangeRate: '',
@@ -80,7 +79,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       const hasAnyData = hasAmount || hasDescription || hasAccount || hasCategory;
 
       // Check if ALL required fields exist (Ledger Ready)
-      const isComplete = hasAmount && hasDescription && hasAccount && hasCategory && transactionData.derivedType;
+      const isComplete = hasAmount && hasDescription && hasAccount && hasCategory;
 
       return {
         hasAnyData,      // At least one field filled
@@ -112,7 +111,6 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     setMode('transaction');
     setTransactionData({
       amount: '',
-      derivedType: null, // Reset derived type
       categoryId: null,
       fromAccountId: null, // Single source of truth
       exchangeRate: '',
@@ -170,7 +168,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
             // currency_original REMOVED - Sacred Ledger trigger derives from account_id
             account_id: transactionData.fromAccountId!,
             category_id: transactionData.categoryId!,
-            type: transactionData.derivedType!,
+            // type REMOVED - transaction type is derived from category_id by database
             date: format(transactionData.date, 'yyyy-MM-dd'),
             notes: transactionData.notes || undefined,
             exchange_rate: rate,
@@ -290,7 +288,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
                   'Transfer Funds'
                 ) : (
                   // DYNAMIC BUTTON TEXT: Shows routing destination
-                  (transactionData.fromAccountId && transactionData.categoryId && transactionData.derivedType)
+                  (transactionData.fromAccountId && transactionData.categoryId)
                     ? 'Add Transaction'  // Goes to Ledger
                     : 'Save to Inbox'      // Goes to Inbox
                 )}

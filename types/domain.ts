@@ -62,6 +62,8 @@ export interface TransactionView {
   categoryId: string | null;
   categoryName: string | null;
   categoryColor: string | null;
+  categoryType: 'income' | 'expense' | 'opening_balance' | null; // From transactions_view JOIN
+  transferId: string | null; // Identifies transfer transactions
   description: string | null;
   notes: string | null;
 }

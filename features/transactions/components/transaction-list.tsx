@@ -21,6 +21,7 @@ import type { TransactionRow } from '../types';
 
 // Nullable amount type for inbox items (draft state)
 // Regular transactions have required amounts, but inbox items can have null amounts
+// Note: Must include all TransactionView fields including categoryType and transferId
 type TransactionListRow = Omit<TransactionRow, 'amountOriginal' | 'amountHome'> & {
   amountOriginal: number | null;
   amountHome: number | null;

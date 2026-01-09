@@ -504,8 +504,10 @@ export function dbTransactionViewToDomain(
     accountColor: dbTransactionView.account_color,  // FIXED: Now uses actual field
     categoryName: dbTransactionView.category_name,
     categoryColor: dbTransactionView.category_color, // FIXED: Now uses actual field
+    categoryType: dbTransactionView.category_type as 'income' | 'expense' | 'opening_balance' | null,
 
     // Optional fields
+    transferId: dbTransactionView.transfer_id,
     description: dbTransactionView.description,
     notes: dbTransactionView.notes,                 // FIXED: Now uses actual field
   };

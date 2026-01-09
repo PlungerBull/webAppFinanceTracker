@@ -31,7 +31,7 @@ This database implements a **two-level category hierarchy** with UI presentation
 - **UI Presentation:** Only leaf categories (children + orphaned parents) are selectable
 - **Type Inheritance:** Database trigger `sync_category_type_hierarchy` ensures children inherit parent's `type` field automatically
 - **Color Inheritance:** Database triggers `cascade_color_to_children` and `sync_child_category_color` ensure children inherit parent's color
-- **Transaction Type Derivation:** Frontend automatically derives transaction type from selected category (no manual type selection)
+- **Transaction Type Derivation:** Database derives transaction type from category relationship; `transactions_view` exposes `category_type` via JOIN (no manual type selection, no frontend state duplication)
 - **Validation:** Trigger `check_transaction_category_hierarchy` prevents transactions from being assigned to parent categories
 
 ### Opening Balance Pattern

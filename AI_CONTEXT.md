@@ -124,9 +124,10 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * Triggers: `cascade_color_to_children` and `sync_child_category_color` ensure children inherit parent colors
 * **Transaction Type Auto-Derivation:**
     * Users do NOT manually select transaction type (Income/Expense)
-    * Transaction type is automatically derived from the selected category's type
-    * The `derivedType` field in forms is computed via `useEffect` when `categoryId` changes
-    * Visual feedback: Amount displays in green (income) or red (expense) based on derived type
+    * Transaction type is automatically derived from the selected category's type by the database
+    * Database exposes `category_type` via `transactions_view` JOIN with categories table
+    * Frontend displays visual feedback: Amount displays in green (income) or red (expense) by looking up `selectedCategory.type` directly
+    * No derived state needed - direct category lookup from loaded categories array
 * **Category Selector UI:**
     * Flat single-level list (no section headers)
     * Color indicators are the primary visual differentiator

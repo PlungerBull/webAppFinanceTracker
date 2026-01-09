@@ -15,7 +15,6 @@ import type { Category, AccountBalance } from '@/types/domain';
 
 export interface TransactionFormData {
   amount: string;
-  derivedType: 'income' | 'expense' | null; // Auto-derived from selected category
   categoryId: string | null;
   fromAccountId: string | null; // Single source of truth
   exchangeRate: string;
@@ -44,19 +43,6 @@ export function TransactionForm({
   const selectedAccount = flatAccounts.find((a) => a.accountId === data.fromAccountId);
   const selectedCategory = categories.find((c) => c.id === data.categoryId);
 
-  // Auto-derive transaction type from selected category
-  useEffect(() => {
-    if (data.categoryId && categories.length > 0) {
-      const selectedCategory = categories.find((c) => c.id === data.categoryId);
-      if (selectedCategory && selectedCategory.type !== data.derivedType) {
-        onChange({ derivedType: selectedCategory.type as 'income' | 'expense' });
-      }
-    } else if (data.derivedType !== null) {
-      // Clear derived type when no category selected
-      onChange({ derivedType: null });
-    }
-  }, [data.categoryId, categories, data.derivedType, onChange]);
-
   const handleAccountChange = (accountId: string) => {
     onChange({ fromAccountId: accountId });
   };
@@ -73,8 +59,8 @@ export function TransactionForm({
                 data.amount
                   ? cn(
                       "font-bold",
-                      data.derivedType === 'income' ? "text-green-600" :
-                      data.derivedType === 'expense' ? "text-red-600" :
+                      selectedCategory?.type === 'income' ? "text-green-600" :
+                      selectedCategory?.type === 'expense' ? "text-red-600" :
                       "text-gray-900"
                     )
                   : "font-medium text-gray-300"

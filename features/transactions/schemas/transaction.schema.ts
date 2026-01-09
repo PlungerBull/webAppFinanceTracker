@@ -36,6 +36,9 @@ export const createTransactionSchema = z.object({
   exchange_rate: z
     .number()
     .positive(VALIDATION.MESSAGES.EXCHANGE_RATE_POSITIVE),
+  // NOTE: The 'type' field is DEPRECATED for manual transaction creation
+  // Transaction type is automatically derived from category_id by the database
+  // This field is kept for backward compatibility with import/export features
   type: z
     .enum(['income', 'expense', 'opening_balance'])
     .nullable()
@@ -102,6 +105,8 @@ export const updateTransactionSchema = z.object({
     .number()
     .positive(VALIDATION.MESSAGES.EXCHANGE_RATE_POSITIVE)
     .optional(),
+  // NOTE: The 'type' field is DEPRECATED for manual updates
+  // Transaction type is automatically derived from category_id by the database
   type: z
     .enum(['income', 'expense', 'opening_balance'])
     .nullable()

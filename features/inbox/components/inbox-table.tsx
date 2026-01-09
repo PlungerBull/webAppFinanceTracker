@@ -38,6 +38,8 @@ function InboxContent() {
     categoryId: item.categoryId ?? null,                 // undefined → null
     categoryName: item.category?.name ?? null,
     categoryColor: item.category?.color ?? null,
+    categoryType: null,                                  // Inbox items don't have type yet
+    transferId: null,                                    // Inbox items are never transfers
     description: item.description ?? '—',               // Show dash if undefined
     notes: null,
   }));
