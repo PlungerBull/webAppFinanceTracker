@@ -115,16 +115,23 @@ export function ReconciliationFormModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Account Selector */}
           <div className="space-y-2">
-            <Label>Account</Label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Account
+            </label>
             <Select
               value={watch('accountId')}
               onValueChange={(value) => setValue('accountId', value)}
               disabled={isEditing} // Cannot change account for existing reconciliation
             >
-              <SelectTrigger className={cn(errors.accountId && 'border-red-500')}>
+              <SelectTrigger
+                className={cn(
+                  'bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors',
+                  errors.accountId && 'border-red-500'
+                )}
+              >
                 <SelectValue placeholder="Select account..." />
               </SelectTrigger>
               <SelectContent>
@@ -136,40 +143,51 @@ export function ReconciliationFormModal({
               </SelectContent>
             </Select>
             {errors.accountId && (
-              <p className="text-sm text-red-500">{errors.accountId.message}</p>
+              <p className="text-xs text-red-500">{errors.accountId.message}</p>
             )}
           </div>
 
           {/* Name */}
           <div className="space-y-2">
-            <Label>Name</Label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Reconciliation Name
+            </label>
             <Input
               {...register('name')}
               placeholder="e.g., Dec 2025 Bank Statement"
-              className={cn(errors.name && 'border-red-500')}
+              className={cn(
+                'bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors',
+                errors.name && 'border-red-500'
+              )}
             />
-            {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+            {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
           </div>
 
           {/* Balance Fields (Side by Side) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Beginning Balance</Label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Beginning Balance
+              </label>
               <Input
                 type="number"
                 step="0.01"
                 {...register('beginningBalance', { valueAsNumber: true })}
                 placeholder="0.00"
+                className="bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors font-mono"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Ending Balance</Label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Ending Balance
+              </label>
               <Input
                 type="number"
                 step="0.01"
                 {...register('endingBalance', { valueAsNumber: true })}
                 placeholder="0.00"
+                className="bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors font-mono"
               />
             </div>
           </div>
@@ -177,13 +195,15 @@ export function ReconciliationFormModal({
           {/* Date Range (Optional) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Start Date (Optional)</Label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Start Date (Optional)
+              </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal',
+                      'w-full justify-start text-left font-normal bg-gray-50 border-2 border-transparent hover:bg-gray-100 focus:border-blue-500 focus:bg-white transition-colors',
                       !dateStart && 'text-muted-foreground'
                     )}
                   >
@@ -202,13 +222,15 @@ export function ReconciliationFormModal({
             </div>
 
             <div className="space-y-2">
-              <Label>End Date (Optional)</Label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                End Date (Optional)
+              </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal',
+                      'w-full justify-start text-left font-normal bg-gray-50 border-2 border-transparent hover:bg-gray-100 focus:border-blue-500 focus:bg-white transition-colors',
                       !dateEnd && 'text-muted-foreground'
                     )}
                   >
