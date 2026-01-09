@@ -305,6 +305,29 @@ flowchart LR
     * Orchestration: `features/transactions/components/all-transactions-table.tsx`
     * Actions: `features/transactions/components/bulk-action-bar.tsx`
 
+### J. Reconciliation & Audit System
+* **Purpose:** Bank statement reconciliation with selective field immutability ("Semi-Permeable Lock")
+* **Architecture:** Account-scoped sessions (one reconciliation per account, non-overlapping date ranges)
+* **Reconciliation States:** Draft (editable, transactions unlocked) | Completed (locked transactions)
+* **Semi-Permeable Lock (Database-Enforced):**
+    * **Locked fields (when completed):** Amount, Date, Account
+    * **Editable fields:** Category, Description, Notes
+    * **Enforcement:** Database trigger `check_transaction_reconciliation_lock`
+* **Data Integrity:**
+    * Account mismatch prevention via trigger `check_reconciliation_account_match`
+    * Date range overlap prevention via trigger `check_reconciliation_date_overlap`
+    * Auto-cleared flag when linked to reconciliation
+* **UI Zones:**
+    * **Vault (Settings):** Create/manage reconciliation sessions (beginning balance, ending balance, date range)
+    * **Workspace (Transactions):** Bulk link/unlink via enhanced bulk action bar
+    * **HUD:** Real-time math display: `Difference = Ending Balance - (Beginning Balance + Linked Sum)`
+* **Performance:** Query invalidation strategy (no polling) via TanStack Query
+* **Implementation Files:**
+    * API: `features/reconciliations/api/reconciliations.ts`
+    * Hooks: `features/reconciliations/hooks/use-reconciliations.ts`
+    * Settings: `features/settings/components/reconciliation-settings.tsx`
+    * Detail Panel: Badge + field locking in `transaction-detail-panel/`
+
 ## 5. Coding Standards "Do's and Don'ts"
 * **DO** use Zod schemas for all form inputs.
 * **DO** use absolute imports (e.g., `@/components/...`) instead of relative imports (`../../`).

@@ -11,7 +11,16 @@
  */
 
 import type { Database } from '@/types/supabase';
-import type { Category, CategoryWithCount, ParentCategoryWithCount, TransactionView, UserSettings } from '@/types/domain';
+import type {
+  Category,
+  CategoryWithCount,
+  ParentCategoryWithCount,
+  TransactionView,
+  UserSettings,
+  Reconciliation,
+  ReconciliationStatus,
+  ReconciliationSummary,
+} from '@/types/domain';
 import type { InboxItem } from '@/features/inbox/types';
 
 // ============================================================================
@@ -510,6 +519,10 @@ export function dbTransactionViewToDomain(
     transferId: dbTransactionView.transfer_id,
     description: dbTransactionView.description,
     notes: dbTransactionView.notes,                 // FIXED: Now uses actual field
+
+    // Reconciliation fields (Audit Workspace)
+    reconciliationId: dbTransactionView.reconciliation_id,
+    cleared: dbTransactionView.cleared ?? false,
   };
 }
 
@@ -601,5 +614,104 @@ export function dbUserSettingsToDomain(
     transactionSortPreference: dbSettings.transaction_sort_preference as 'date' | 'created_at',
     createdAt: dbSettings.created_at,
     updatedAt: dbSettings.updated_at,
+  };
+}
+
+// ============================================================================
+// RECONCILIATION TRANSFORMERS
+// ============================================================================
+
+/**
+ * Transforms a database reconciliations row to domain Reconciliation type
+ */
+export function dbReconciliationToDomain(
+  dbReconciliation: Database['public']['Tables']['reconciliations']['Row']
+): Reconciliation {
+  return {
+    id: dbReconciliation.id,
+    userId: dbReconciliation.user_id,
+    accountId: dbReconciliation.account_id,
+    name: dbReconciliation.name,
+    beginningBalance: Number(dbReconciliation.beginning_balance),
+    endingBalance: Number(dbReconciliation.ending_balance),
+    dateStart: dbReconciliation.date_start,
+    dateEnd: dbReconciliation.date_end,
+    status: dbReconciliation.status as ReconciliationStatus,
+    createdAt: dbReconciliation.created_at,
+    updatedAt: dbReconciliation.updated_at,
+  };
+}
+
+/**
+ * Transforms an array of reconciliations
+ */
+export function dbReconciliationsToDomain(
+  dbReconciliations: Database['public']['Tables']['reconciliations']['Row'][]
+): Reconciliation[] {
+  return dbReconciliations.map(dbReconciliationToDomain);
+}
+
+/**
+ * Transforms domain reconciliation data to database insert format
+ */
+export function domainReconciliationToDbInsert(data: {
+  userId: string;
+  accountId: string;
+  name: string;
+  beginningBalance: number;
+  endingBalance: number;
+  dateStart?: string | null;
+  dateEnd?: string | null;
+  status?: ReconciliationStatus;
+}): Database['public']['Tables']['reconciliations']['Insert'] {
+  return {
+    user_id: data.userId,
+    account_id: data.accountId,
+    name: data.name,
+    beginning_balance: data.beginningBalance,
+    ending_balance: data.endingBalance,
+    date_start: data.dateStart ?? null,
+    date_end: data.dateEnd ?? null,
+    status: data.status,
+  };
+}
+
+/**
+ * Transforms domain reconciliation data to database update format
+ */
+export function domainReconciliationToDbUpdate(data: {
+  name?: string;
+  beginningBalance?: number;
+  endingBalance?: number;
+  dateStart?: string | null;
+  dateEnd?: string | null;
+  status?: ReconciliationStatus;
+}): Database['public']['Tables']['reconciliations']['Update'] {
+  const update: Database['public']['Tables']['reconciliations']['Update'] = {};
+
+  if (data.name !== undefined) update.name = data.name;
+  if (data.beginningBalance !== undefined) update.beginning_balance = data.beginningBalance;
+  if (data.endingBalance !== undefined) update.ending_balance = data.endingBalance;
+  if (data.dateStart !== undefined) update.date_start = data.dateStart;
+  if (data.dateEnd !== undefined) update.date_end = data.dateEnd;
+  if (data.status !== undefined) update.status = data.status;
+
+  return update;
+}
+
+/**
+ * Transforms RPC reconciliation summary to domain type
+ * The RPC returns JSONB, so we need to handle the transformation carefully
+ */
+export function dbReconciliationSummaryToDomain(
+  dbSummary: any  // JSONB from RPC - not strictly typed
+): ReconciliationSummary {
+  return {
+    beginningBalance: Number(dbSummary.beginningBalance),
+    endingBalance: Number(dbSummary.endingBalance),
+    linkedSum: Number(dbSummary.linkedSum),
+    linkedCount: Number(dbSummary.linkedCount),
+    difference: Number(dbSummary.difference),
+    isBalanced: Boolean(dbSummary.isBalanced),
   };
 }

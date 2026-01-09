@@ -21,6 +21,8 @@ export interface PanelData {
   notes?: string;
   sourceText?: string;    // NEW: Raw source context (OCR, bank import, etc.)
   exchangeRate?: number;  // For cross-currency transactions
+  reconciliationId?: string | null;  // NEW: Links to reconciliation session
+  cleared?: boolean;  // NEW: Auto-managed flag (TRUE when linked to reconciliation)
 }
 
 /**

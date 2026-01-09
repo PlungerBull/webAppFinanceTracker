@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { useReconciliation } from '@/features/reconciliations/hooks/use-reconciliations';
 import type { PanelMode, EditedFields, PanelData, SelectableAccount } from './types';
 
 interface IdentityHeaderProps {
@@ -20,6 +21,10 @@ export function IdentityHeader({
   categoryType,
   accounts,
 }: IdentityHeaderProps) {
+  // Fetch reconciliation data to determine field locking
+  const { data: reconciliation } = useReconciliation(data.reconciliationId ?? null);
+  const isLocked = reconciliation?.status === 'completed';
+
   // Determine amount color based on mode and category type
   const getAmountColor = () => {
     if (mode === 'inbox') return 'text-gray-900';
@@ -87,9 +92,11 @@ export function IdentityHeader({
               : ''  // Empty string for controlled input (not undefined!)
           }
           onChange={(e) => handleAmountChange(e.target.value)}
+          disabled={isLocked}
           className={cn(
             'text-3xl font-mono font-bold tracking-tighter bg-transparent border-none outline-none focus:ring-0 p-0 transition-colors',
-            getAmountColor()
+            getAmountColor(),
+            isLocked && 'opacity-50 cursor-not-allowed'
           )}
           placeholder="--"
         />

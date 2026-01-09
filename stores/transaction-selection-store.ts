@@ -16,6 +16,9 @@ interface TransactionSelectionState {
   // Staged updates (field-level intent tracking)
   stagedUpdates: StagedUpdates;
 
+  // Reconciliation state (Audit Workspace)
+  activeReconciliationId: string | null;
+
   // Actions
   toggleSelection: (id: string, index: number) => void;
   selectRange: (startIndex: number, endIndex: number, allTransactionIds: string[]) => void;
@@ -24,6 +27,7 @@ interface TransactionSelectionState {
   clearStagedUpdates: () => void;
   enterBulkMode: () => void;
   exitBulkMode: () => void;
+  setActiveReconciliation: (id: string | null) => void;
 
   // Computed getters
   hasSelection: () => boolean;
@@ -35,6 +39,7 @@ export const useTransactionSelection = create<TransactionSelectionState>((set, g
   lastSelectedIndex: null,
   isBulkMode: false,
   stagedUpdates: {},
+  activeReconciliationId: null,
 
   toggleSelection: (id, index) => set((state) => {
     const newSelected = new Set(state.selectedIds);
@@ -90,7 +95,10 @@ export const useTransactionSelection = create<TransactionSelectionState>((set, g
     selectedIds: new Set(),
     lastSelectedIndex: null,
     stagedUpdates: {},
+    activeReconciliationId: null, // Clear active reconciliation when exiting bulk mode
   }),
+
+  setActiveReconciliation: (id) => set({ activeReconciliationId: id }),
 
   hasSelection: () => get().selectedIds.size > 0,
 

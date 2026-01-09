@@ -118,12 +118,36 @@ Users should set opening balances during account creation.
 | **notes** | text | YES | `-` | User notes or memo for the transaction (separate from source_text) |
 | **source_text** | text | YES | `-` | Raw source context (OCR, bank import data, etc.) - transferred from inbox |
 | **inbox_id** | uuid | YES | `-` | Birth certificate - links to original inbox item for audit trail (NULL for manually created transactions) |
+| **reconciliation_id** | uuid | YES | `-` | Links to reconciliation session (triggers semi-permeable lock when completed) |
+| **cleared** | bool | NO | `false` | Auto-managed flag - TRUE when linked to reconciliation |
 
 **Currency Architecture:**
 - Currency is **NOT stored** in the transactions table
 - Currency is **ALWAYS derived** from the parent account via JOIN: `bank_accounts.currency_code`
 - Query `transactions_view` to access currency (exposed as `currency_original` alias)
 - This eliminates redundancy and makes currency desync structurally impossible
+
+---
+
+### 📄 Table: `reconciliations`
+
+| Column | Type | Nullable | Default | Description |
+|---|---|---|---|---|
+| **id** | uuid | NO | `uuid_generate_v4()` | Primary key |
+| **user_id** | uuid | NO | `-` | Foreign key to the user |
+| **account_id** | uuid | NO | `-` | Account being reconciled (one reconciliation per account) |
+| **name** | text | NO | `-` | Reconciliation session name |
+| **beginning_balance** | numeric | NO | `-` | Starting balance from bank statement |
+| **ending_balance** | numeric | NO | `-` | Ending balance from bank statement |
+| **date_start** | date | YES | `-` | Start date of reconciliation period (NULL for unbounded) |
+| **date_end** | date | YES | `-` | End date of reconciliation period (NULL for unbounded) |
+| **status** | text | NO | `'draft'` | Session status: 'draft' (editable) or 'completed' (triggers transaction lock) |
+| **created_at** | timestamptz | NO | `now()` | Record creation timestamp |
+| **updated_at** | timestamptz | NO | `now()` | Last update timestamp |
+
+**Constraints:**
+- `reconciliations_valid_date_range CHECK ((date_start IS NULL AND date_end IS NULL) OR (date_start IS NOT NULL AND date_end IS NOT NULL AND date_end >= date_start))` - Date range validation
+- `check_reconciliation_date_overlap()` trigger prevents overlapping date ranges for the same account
 
 ---
 
@@ -253,6 +277,8 @@ Users should set opening balances during account creation.
 | **category_name** | text | Name of the associated category |
 | **category_color** | text | Hex color of the associated category (for UI) |
 | **category_type** | transaction_type | Type of the associated category |
+| **reconciliation_id** | uuid | Links to reconciliation session |
+| **cleared** | bool | Auto-managed flag - TRUE when linked to reconciliation |
 
 **SQL Definition:**
 ```sql
@@ -400,6 +426,14 @@ LEFT JOIN categories c ON i.category_id = c.id;
 |---|---|---|---|
 | `cleanup_orphaned_categories` | `TABLE(...)` | - | Cleans up categories that were created but have no associated user or transactions |
 
+### Reconciliation Functions
+
+| Function Name | Return Type | Arguments | Description |
+|---|---|---|---|
+| `link_transactions_to_reconciliation` | `jsonb` | `p_reconciliation_id uuid`, `p_transaction_ids uuid[]` | Atomically links transactions to reconciliation. Validates account match, sets cleared flag. Returns `{ success, linked_count }` |
+| `unlink_transactions_from_reconciliation` | `jsonb` | `p_transaction_ids uuid[]` | Atomically unlinks transactions from reconciliation. Returns `{ success, unlinked_count }` |
+| `get_reconciliation_summary` | `jsonb` | `p_reconciliation_id uuid` | Returns summary: `{ beginningBalance, endingBalance, linkedSum, linkedCount, difference, isBalanced }` |
+
 ### Trigger Functions
 
 | Function Name | Return Type | Description |
@@ -413,6 +447,9 @@ LEFT JOIN categories c ON i.category_id = c.id;
 | `validate_category_hierarchy_func` | `trigger` | Trigger function to enforce rules on category hierarchy (e.g., parents cannot be children, type matching) |
 | `check_transaction_category_hierarchy` | `trigger` | Trigger function to prevent transactions from being assigned to parent categories (only leaf nodes) |
 | `update_account_balance_ledger` | `trigger` | Automates the `current_balance` updates on the accounts table. Uses `amount_original` (account's native currency) to maintain accurate balances per "One Account = One Currency" architecture. |
+| `check_reconciliation_account_match` | `trigger` | Prevents linking transactions to reconciliations from different accounts (Sacred Ledger protection) |
+| `check_transaction_reconciliation_lock` | `trigger` | Semi-permeable lock - blocks amount/date/account edits when reconciliation completed, allows category/description/notes |
+| `check_reconciliation_date_overlap` | `trigger` | Prevents overlapping reconciliation date ranges for the same account |
 
 ---
 

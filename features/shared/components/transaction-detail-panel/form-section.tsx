@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Hash, Calendar as CalendarIcon, FileText, ArrowRightLeft } from 'lucide-react';
+import { Building2, Hash, Calendar as CalendarIcon, FileText, ArrowRightLeft, FileCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useCurrency } from '@/contexts/currency-context';
+import { useReconciliation } from '@/features/reconciliations/hooks/use-reconciliations';
 import type { PanelMode, EditedFields, PanelData, SelectableAccount, SelectableCategory } from './types';
 
 interface FormSectionProps {
@@ -41,6 +42,10 @@ export function FormSection({
 }: FormSectionProps) {
   // Access user's main currency
   const { mainCurrency } = useCurrency();
+
+  // Fetch reconciliation data to determine field locking
+  const { data: reconciliation } = useReconciliation(data.reconciliationId ?? null);
+  const isLocked = reconciliation?.status === 'completed';
 
   const selectedAccountId = editedFields.accountId ?? data.accountId;
   const selectedCategoryId = editedFields.categoryId ?? data.categoryId;
@@ -77,11 +82,13 @@ export function FormSection({
         <Select
           value={selectedAccountId || undefined}
           onValueChange={(value) => onFieldChange('accountId', value)}
+          disabled={isLocked}
         >
           <SelectTrigger
             className={cn(
               'w-full bg-white border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-gray-200 transition-colors',
-              isAccountMissing && 'border-orange-200 text-orange-600 bg-white'
+              isAccountMissing && 'border-orange-200 text-orange-600 bg-white',
+              isLocked && 'opacity-50 cursor-not-allowed'
             )}
           >
             <SelectValue placeholder="Select account...">
@@ -109,6 +116,42 @@ export function FormSection({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Reconciliation Status Badge */}
+      {data.reconciliationId && reconciliation && (
+        <div className="space-y-2">
+          <label className="flex items-center gap-2">
+            <FileCheck className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
+              Reconciliation
+            </span>
+          </label>
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-3 border rounded-xl",
+            reconciliation.status === 'completed'
+              ? "bg-green-50 border-green-200"
+              : "bg-blue-50 border-blue-200"
+          )}>
+            <FileCheck className={cn(
+              "w-4 h-4",
+              reconciliation.status === 'completed' ? "text-green-600" : "text-blue-600"
+            )} />
+            <div className="flex-1">
+              <span className={cn(
+                "text-sm font-medium",
+                reconciliation.status === 'completed' ? "text-green-700" : "text-blue-700"
+              )}>
+                {reconciliation.name}
+              </span>
+              {reconciliation.status === 'completed' && (
+                <p className="text-xs text-green-600 mt-0.5">
+                  Amount, Date, and Account are locked
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Category Selector */}
       <div className="space-y-2">
@@ -158,9 +201,11 @@ export function FormSection({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
+              disabled={isLocked}
               className={cn(
                 'w-full bg-gray-50 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium justify-start text-left focus:bg-white focus:border-gray-200 transition-colors',
-                !parsedDate && 'text-gray-500'
+                !parsedDate && 'text-gray-500',
+                isLocked && 'opacity-50 cursor-not-allowed'
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
@@ -177,6 +222,7 @@ export function FormSection({
                 }
               }}
               initialFocus
+              disabled={isLocked}
             />
           </PopoverContent>
         </Popover>

@@ -66,6 +66,10 @@ export interface TransactionView {
   transferId: string | null; // Identifies transfer transactions
   description: string | null;
   notes: string | null;
+
+  // Reconciliation fields (Audit Workspace)
+  reconciliationId: string | null; // Links to reconciliation session
+  cleared: boolean; // Auto-managed: TRUE when linked to reconciliation
 }
 
 /**
@@ -234,3 +238,55 @@ export type TransactionSortMode = 'date' | 'created_at';
  * Alias for Account - used by some components that reference BankAccount
  */
 export type BankAccount = Account;
+
+// ============================================================================
+// RECONCILIATION TYPES (Frontend camelCase)
+// ============================================================================
+
+/**
+ * Reconciliation Status
+ * - draft: Reconciliation in progress, transactions can be linked/unlinked
+ * - completed: Reconciliation locked, linked transactions become immutable (semi-permeable lock)
+ */
+export type ReconciliationStatus = 'draft' | 'completed';
+
+/**
+ * Reconciliation session tracking the "Contract of Truth" between bank statements and ledger
+ */
+export interface Reconciliation {
+  id: string;
+  userId: string;
+  accountId: string;
+  name: string;
+  beginningBalance: number;
+  endingBalance: number;
+  dateStart: string | null; // ISO timestamp - optional filter for transaction date range
+  dateEnd: string | null;   // ISO timestamp - optional filter for transaction date range
+  status: ReconciliationStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Reconciliation with joined account display data
+ * Used in Settings Manager to show account name/currency alongside reconciliation
+ */
+export interface ReconciliationWithAccount extends Reconciliation {
+  accountName: string;
+  accountColor: string;
+  accountCurrency: string;
+}
+
+/**
+ * Real-time reconciliation math summary
+ * Formula: Difference = Ending Balance - (Beginning Balance + Linked Sum)
+ * isBalanced = true when Difference = 0
+ */
+export interface ReconciliationSummary {
+  beginningBalance: number;
+  endingBalance: number;
+  linkedSum: number;      // Sum of amount_home for all linked transactions
+  linkedCount: number;    // Number of transactions linked to this reconciliation
+  difference: number;     // The "gap" that needs to be reconciled
+  isBalanced: boolean;    // TRUE when difference = 0 (reconciliation complete)
+}

@@ -1,7 +1,6 @@
 # Project Roadmap & Tasks
 
 
-- [x] **Virtualization & Infinite Scroll Strategy:** We are currently fetching all data upfront. This is not scalable. We will refactor to a "Just-In-Time" model.
 - [ ] **Eject Direct API Calls:** Remove all direct `supabase.from()` calls in `features/transactions/api/transactions.ts`. The UI must never speak to the server directly.
 - [ ] **Install Local Database:** Add WatermelonDB (recommended for React/React Native parity) or RxDB to `package.json`.
 - [ ] **Define Client-Side Schema:** Replicate the robust SQL schema found in `DB_SCHEMA.md` into a JavaScript/JSON schema for the local DB.

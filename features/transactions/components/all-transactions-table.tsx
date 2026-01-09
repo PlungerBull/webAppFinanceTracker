@@ -14,6 +14,7 @@ import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useUserSettings, useUpdateSortPreference } from '@/features/settings/hooks/use-user-settings';
 import { useTransactionSelection } from '@/stores/transaction-selection-store';
+import { useLinkTransactions, useUnlinkTransactions } from '@/features/reconciliations/hooks/use-reconciliations';
 import { toast } from 'sonner';
 import type { TransactionRow } from '../types';
 import type { TransactionSortMode } from '@/types/domain';
@@ -31,6 +32,7 @@ function TransactionsContent() {
     isBulkMode,
     stagedUpdates,
     lastSelectedIndex,
+    activeReconciliationId,
     toggleSelection,
     selectRange,
     clearSelection,
@@ -38,6 +40,7 @@ function TransactionsContent() {
     clearStagedUpdates,
     enterBulkMode,
     exitBulkMode,
+    setActiveReconciliation,
     hasSelection,
     canApply,
   } = useTransactionSelection();
@@ -74,6 +77,10 @@ function TransactionsContent() {
 
   // Bulk update mutation
   const bulkUpdateMutation = useBulkUpdateTransactions();
+
+  // Reconciliation mutations
+  const linkTransactionsMutation = useLinkTransactions();
+  const unlinkTransactionsMutation = useUnlinkTransactions();
 
   // Build category filter for grouping
   const categoryFilter = useMemo(() => {
@@ -217,6 +224,60 @@ function TransactionsContent() {
     }
   };
 
+  // Link transactions to reconciliation
+  const handleLink = async () => {
+    if (!activeReconciliationId) {
+      toast.error('Please select a reconciliation');
+      return;
+    }
+
+    if (selectedIds.size === 0) {
+      toast.error('Please select transactions to link');
+      return;
+    }
+
+    // Show warning for large selections
+    if (selectedIds.size >= 50) {
+      toast.info(`Processing ${selectedIds.size} transactions. This may take a moment...`);
+    }
+
+    try {
+      await linkTransactionsMutation.mutateAsync({
+        reconciliationId: activeReconciliationId,
+        transactionIds: Array.from(selectedIds),
+      });
+
+      // Clear selections after successful operation
+      clearSelection();
+    } catch (error) {
+      console.error('Failed to link transactions:', error);
+      // Error toast handled by mutation hook
+    }
+  };
+
+  // Unlink transactions from reconciliation
+  const handleUnlink = async () => {
+    if (selectedIds.size === 0) {
+      toast.error('Please select transactions to unlink');
+      return;
+    }
+
+    // Show warning for large selections
+    if (selectedIds.size >= 50) {
+      toast.info(`Processing ${selectedIds.size} transactions. This may take a moment...`);
+    }
+
+    try {
+      await unlinkTransactionsMutation.mutateAsync(Array.from(selectedIds));
+
+      // Clear selections after successful operation
+      clearSelection();
+    } catch (error) {
+      console.error('Failed to unlink transactions:', error);
+      // Error toast handled by mutation hook
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-zinc-900">
       {/* Section 1: Sidebar */}
@@ -266,7 +327,13 @@ function TransactionsContent() {
           selectedCount={selectedIds.size}
           onClearSelection={clearSelection}
           onApply={handleBulkApply}
-          isApplying={bulkUpdateMutation.isPending}
+          onLink={handleLink}
+          onUnlink={handleUnlink}
+          isApplying={
+            bulkUpdateMutation.isPending ||
+            linkTransactionsMutation.isPending ||
+            unlinkTransactionsMutation.isPending
+          }
           canApply={canApply()}
           categoryValue={stagedUpdates.categoryId}
           onCategoryChange={(value) => setStagedUpdate('categoryId', value)}
@@ -276,6 +343,8 @@ function TransactionsContent() {
           onDateChange={(value) => setStagedUpdate('date', value)}
           notesValue={stagedUpdates.notes}
           onNotesChange={(value) => setStagedUpdate('notes', value)}
+          activeReconciliationId={activeReconciliationId}
+          onReconciliationChange={setActiveReconciliation}
         />
       )}
     </div>

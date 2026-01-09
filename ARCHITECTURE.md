@@ -35,6 +35,7 @@ The `features/` directory is currently organized into these core domains:
 * `accounts`: Logic for bank accounts, balances, and account settings.
 * `categories`: Management of transaction categories and taxonomy.
 * `transactions`: The core ledger logic, including creating, editing, and listing transactions.
+* `reconciliations`: Bank statement reconciliation with selective field locking.
 * `summary` (or similar): Logic for dashboards and financial overviews.
 * `import` (if present): Logic for handling CSV/Excel file parsing and reconciliation.
 

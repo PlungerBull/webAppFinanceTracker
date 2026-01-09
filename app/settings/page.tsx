@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
-import { User, Database, Palette } from 'lucide-react';
+import { User, Database, Palette, FileCheck } from 'lucide-react';
 import { ChangePasswordModal } from '@/components/settings/change-password-modal';
 import { ChangeEmailModal } from '@/components/settings/change-email-modal';
 import { cn } from '@/lib/utils';
@@ -11,8 +11,9 @@ import { SETTINGS_TABS } from '@/lib/constants';
 import { ProfileSettings } from '@/features/settings/components/profile-settings';
 import { DataManagement } from '@/features/settings/components/data-management';
 import { AppearanceSettings } from '@/features/settings/components/appearance-settings';
+import { ReconciliationSettings } from '@/features/settings/components/reconciliation-settings';
 
-type SettingsTab = 'account' | 'data' | 'appearance';
+type SettingsTab = 'account' | 'data' | 'appearance' | 'reconciliations';
 
 export default function SettingsPage() {
   const { user, initialize } = useAuthStore();
@@ -62,6 +63,17 @@ export default function SettingsPage() {
             <Palette className="mr-3 h-4 w-4 text-muted-foreground" />
             Appearance
           </Button>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start px-3 py-2 h-auto font-normal",
+              activeTab === 'reconciliations' ? "bg-white border border-zinc-300 dark:bg-zinc-800 font-medium" : "hover:bg-white hover:border hover:border-zinc-200 dark:hover:bg-zinc-800/50"
+            )}
+            onClick={() => setActiveTab('reconciliations')}
+          >
+            <FileCheck className="mr-3 h-4 w-4 text-muted-foreground" />
+            Reconciliations
+          </Button>
         </div>
       </div>
 
@@ -77,9 +89,11 @@ export default function SettingsPage() {
             />
           ) : activeTab === 'data' ? (
             <DataManagement />
-          ) : (
+          ) : activeTab === 'appearance' ? (
             <AppearanceSettings />
-          )}
+          ) : activeTab === 'reconciliations' ? (
+            <ReconciliationSettings />
+          ) : null}
         </div>
       </div>
 
