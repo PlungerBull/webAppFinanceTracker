@@ -260,8 +260,8 @@ function TransactionsContent() {
         accounts={flatAccounts}
       />
 
-      {/* Bulk Action Bar - show when selections exist */}
-      {hasSelection() && (
+      {/* Bulk Action Bar - show only in bulk mode when selections exist */}
+      {isBulkMode && hasSelection() && (
         <BulkActionBar
           selectedCount={selectedIds.size}
           onClearSelection={clearSelection}
