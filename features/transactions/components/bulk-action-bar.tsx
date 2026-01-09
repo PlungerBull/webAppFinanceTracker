@@ -179,11 +179,6 @@ export function BulkActionBar({
           </div>
         </div>
 
-        {/* Vertical Divider */}
-        <div className="h-8 w-px bg-slate-700" />
-
-        {/* Zone C: Reconciliation Workspace (NEW) */}
-
         {/* Reconciliation Selector */}
         <div className="relative">
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-slate-800 transition-colors">
@@ -228,26 +223,27 @@ export function BulkActionBar({
           </div>
         </div>
 
-        {/* Reconciliation Math Display (when active) */}
-        {activeReconciliationId && reconciliationSummary && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg">
-            <div className="text-xs text-slate-300">
-              <span className="font-mono">
-                Diff: {reconciliationSummary.difference.toFixed(2)}
-              </span>
-              {reconciliationSummary.isBalanced && (
-                <span className="ml-2 text-green-400">✓</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Zone D: Actions */}
-
-        {/* Link/Unlink Buttons (when reconciliation active) */}
-        {activeReconciliationId ? (
+        {/* Reconciliation Math Display & Actions (only when active) */}
+        {activeReconciliationId && (
           <>
+            {/* Vertical Divider */}
             <div className="h-8 w-px bg-slate-700" />
+
+            {/* Math Display */}
+            {reconciliationSummary && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg">
+                <div className="text-xs text-slate-300">
+                  <span className="font-mono">
+                    Diff: {reconciliationSummary.difference.toFixed(2)}
+                  </span>
+                  {reconciliationSummary.isBalanced && (
+                    <span className="ml-2 text-green-400">✓</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Link/Unlink Buttons */}
             <Button
               size="sm"
               variant="ghost"
@@ -273,8 +269,10 @@ export function BulkActionBar({
               Unlink
             </Button>
           </>
-        ) : (
-          // Standard Apply Button (when no reconciliation active)
+        )}
+
+        {/* Standard Apply Button (when no reconciliation active) */}
+        {!activeReconciliationId && (
           <>
             <div className="h-8 w-px bg-slate-700" />
             <Button
