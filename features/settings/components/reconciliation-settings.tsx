@@ -52,10 +52,9 @@ export function ReconciliationSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-5xl mx-auto py-12 px-8">
-        {/* The Header: Bold & Authoritative */}
-        <div className="mb-12">
+    <div className="space-y-8">
+      {/* The Header: Bold & Authoritative */}
+      <div className="mb-12">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-gray-900 mb-2">
@@ -247,7 +246,6 @@ export function ReconciliationSettings() {
           }}
           reconciliationId={editingReconciliation}
         />
-      </div>
     </div>
   );
 }

@@ -15,7 +15,11 @@
       "Bash(npx supabase:*)",
       "Bash(npm install:*)",
       "Bash(git commit:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
