@@ -151,26 +151,27 @@ export function ReconciliationFormModal({
             {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
           </div>
 
-          {/* Beginning Balance */}
-          <div className="space-y-2">
-            <Label>Beginning Balance</Label>
-            <Input
-              type="number"
-              step="0.01"
-              {...register('beginningBalance', { valueAsNumber: true })}
-              placeholder="0.00"
-            />
-          </div>
+          {/* Balance Fields (Side by Side) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Beginning Balance</Label>
+              <Input
+                type="number"
+                step="0.01"
+                {...register('beginningBalance', { valueAsNumber: true })}
+                placeholder="0.00"
+              />
+            </div>
 
-          {/* Ending Balance */}
-          <div className="space-y-2">
-            <Label>Ending Balance</Label>
-            <Input
-              type="number"
-              step="0.01"
-              {...register('endingBalance', { valueAsNumber: true })}
-              placeholder="0.00"
-            />
+            <div className="space-y-2">
+              <Label>Ending Balance</Label>
+              <Input
+                type="number"
+                step="0.01"
+                {...register('endingBalance', { valueAsNumber: true })}
+                placeholder="0.00"
+              />
+            </div>
           </div>
 
           {/* Date Range (Optional) */}
