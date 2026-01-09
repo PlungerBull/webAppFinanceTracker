@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Home, ArrowLeftRight, Inbox } from 'lucide-react';
+import { Home, ArrowLeftRight, Inbox, FileCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MainNavigationProps {
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/inbox', label: 'Inbox', icon: Inbox },
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
+  { href: '/reconciliations', label: 'Reconciliations', icon: FileCheck },
 ];
 
 export function MainNavigation({ isCollapsed }: MainNavigationProps) {
