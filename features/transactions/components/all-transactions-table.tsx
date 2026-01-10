@@ -310,6 +310,8 @@ function TransactionsContent() {
           onNotesChange={(value) => setStagedUpdate('notes', value)}
           reconciliationValue={stagedUpdates.reconciliationId}
           onReconciliationChange={(value) => setStagedUpdate('reconciliationId', value)}
+          selectedIds={selectedIds}
+          transactions={transactions}
         />
       )}
     </div>

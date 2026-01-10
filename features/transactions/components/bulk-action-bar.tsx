@@ -10,6 +10,7 @@ import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { useReconciliations, useReconciliationSummary } from '@/features/reconciliations/hooks/use-reconciliations';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -34,6 +35,10 @@ interface BulkActionBarProps {
   // Reconciliation props
   reconciliationValue?: string | null;
   onReconciliationChange: (reconciliationId: string | null | undefined) => void;
+
+  // Real-time diff calculation
+  selectedIds?: Set<string>;
+  transactions?: Array<{ id: string; amountHome: number; reconciliationId?: string | null }>;
 }
 
 export function BulkActionBar({
@@ -52,6 +57,8 @@ export function BulkActionBar({
   onNotesChange,
   reconciliationValue,
   onReconciliationChange,
+  selectedIds,
+  transactions = [],
 }: BulkActionBarProps) {
   const leafCategories = useLeafCategories();
   const { data: groupedAccounts = [] } = useGroupedAccounts();
@@ -78,6 +85,34 @@ export function BulkActionBar({
 
   // Filter reconciliations to only show draft status (cannot link to completed)
   const draftReconciliations = reconciliations.filter((r) => r.status === 'draft');
+
+  // Real-time diff calculation: Calculate preview of diff if reconciliation is selected
+  const previewDiff = useMemo(() => {
+    if (!reconciliationValue || !reconciliationSummary || !selectedIds || !transactions.length) {
+      return null;
+    }
+
+    const selectedReconciliation = reconciliations.find((r) => r.id === reconciliationValue);
+    if (!selectedReconciliation) return null;
+
+    // Get all transactions that would be linked after apply
+    const selectedTransactionIds = Array.from(selectedIds);
+    const selectedTransactions = transactions.filter((t) => selectedTransactionIds.includes(t.id));
+
+    // Calculate sum of selected transactions
+    const selectedSum = selectedTransactions.reduce((sum, t) => sum + t.amountHome, 0);
+
+    // Calculate preview difference
+    // Formula: Ending Balance - (Beginning Balance + Current Linked Sum + Selected Sum)
+    const currentLinkedSum = reconciliationSummary.linkedSum;
+    const previewLinkedSum = currentLinkedSum + selectedSum;
+    const previewDifference = selectedReconciliation.endingBalance - (selectedReconciliation.beginningBalance + previewLinkedSum);
+
+    return {
+      difference: previewDifference,
+      isBalanced: Math.abs(previewDifference) < 0.01, // Allow for floating point precision
+    };
+  }, [reconciliationValue, reconciliationSummary, selectedIds, transactions, reconciliations]);
 
   return (
     <div className="fixed bottom-6 left-6 right-6 z-30 flex justify-center animate-in fade-in slide-in-from-bottom-4">
@@ -249,7 +284,7 @@ export function BulkActionBar({
         </div>
 
         {/* Reconciliation Math Display (only when a reconciliation is selected) */}
-        {reconciliationValue && reconciliationSummary && (
+        {reconciliationValue && (previewDiff || reconciliationSummary) && (
           <>
             {/* Vertical Divider */}
             <div className="h-8 w-px bg-slate-700" />
@@ -258,9 +293,9 @@ export function BulkActionBar({
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg">
               <div className="text-xs text-slate-300">
                 <span className="font-mono">
-                  Diff: {reconciliationSummary.difference.toFixed(2)}
+                  Diff: {(previewDiff?.difference ?? reconciliationSummary?.difference ?? 0).toFixed(2)}
                 </span>
-                {reconciliationSummary.isBalanced && (
+                {(previewDiff?.isBalanced ?? reconciliationSummary?.isBalanced) && (
                   <span className="ml-2 text-green-400">✓</span>
                 )}
               </div>
