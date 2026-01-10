@@ -44,6 +44,7 @@ function InboxContent() {
     notes: null,
     reconciliationId: null,                              // Inbox items aren't reconciled yet
     cleared: false,                                      // Inbox items aren't cleared
+    reconciliationStatus: null,                          // Inbox items aren't reconciled yet
   }));
 
   const selectedItem = selectedItemId
