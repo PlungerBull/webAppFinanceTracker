@@ -96,7 +96,9 @@ export function BulkActionBar({
         <div className="relative">
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-slate-800 transition-colors">
             <Hash className="size-3.5 text-blue-400" />
-            <span>Category</span>
+            <span className={cn("truncate max-w-[120px]", selectedCategory && "font-semibold")}>
+              {selectedCategory?.name || 'Category'}
+            </span>
           </button>
           <div className="absolute inset-0 opacity-0">
             <SmartSelector
@@ -115,7 +117,9 @@ export function BulkActionBar({
         <div className="relative">
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-slate-800 transition-colors">
             <CreditCard className="size-3.5 text-green-400" />
-            <span>Account</span>
+            <span className={cn("truncate max-w-[120px]", selectedAccount && "font-semibold")}>
+              {selectedAccount ? `${selectedAccount.name} (${selectedAccount.currencyCode})` : 'Account'}
+            </span>
           </button>
           <div className="absolute inset-0 opacity-0">
             <SmartSelector
@@ -155,7 +159,9 @@ export function BulkActionBar({
         <div className="relative">
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-slate-800 transition-colors">
             <CalendarIcon className="size-3.5 text-orange-400" />
-            <span>Date</span>
+            <span className={cn("truncate max-w-[120px]", dateValue && "font-semibold")}>
+              {dateValue ? format(new Date(dateValue), 'MMM dd, yyyy') : 'Date'}
+            </span>
           </button>
           <div className="absolute inset-0 opacity-0">
             <SmartSelector
@@ -179,7 +185,9 @@ export function BulkActionBar({
         <div className="relative">
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-slate-800 transition-colors">
             <FileCheck className="size-3.5 text-purple-400" />
-            <span>Reconciliation</span>
+            <span className={cn("truncate max-w-[120px]", selectedReconciliation && "font-semibold")}>
+              {selectedReconciliation?.name || 'Reconciliation'}
+            </span>
           </button>
           <div className="absolute inset-0 opacity-0">
             <SmartSelector
