@@ -60,8 +60,14 @@ export function BulkActionBar({
 
   // Get display names for selected values
   const selectedCategory = leafCategories.find((c) => c.id === categoryValue);
-  const selectedAccount = groupedAccounts.find((g) => g.groupId === accountValue);
+  const selectedAccountRaw = groupedAccounts.find((g) => g.groupId === accountValue);
   const selectedReconciliation = reconciliations.find((r) => r.id === reconciliationValue);
+
+  // Transform account data for clean display (flatten currency from balances array)
+  const selectedAccount = selectedAccountRaw ? {
+    ...selectedAccountRaw,
+    displayCurrency: selectedAccountRaw.balances[0]?.currency ?? 'USD'
+  } : undefined;
 
   // Flatten accounts for selection
   const flatAccounts = groupedAccounts.map((group) => ({
@@ -118,7 +124,7 @@ export function BulkActionBar({
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-slate-800 transition-colors">
             <CreditCard className="size-3.5 text-green-400" />
             <span className={cn("truncate max-w-[120px]", selectedAccount && "font-semibold")}>
-              {selectedAccount ? `${selectedAccount.name} (${selectedAccount.currencyCode})` : 'Account'}
+              {selectedAccount ? `${selectedAccount.name} (${selectedAccount.displayCurrency})` : 'Account'}
             </span>
           </button>
           <div className="absolute inset-0 opacity-0">
