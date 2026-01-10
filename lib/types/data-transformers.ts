@@ -523,6 +523,7 @@ export function dbTransactionViewToDomain(
     // Reconciliation fields (Audit Workspace)
     reconciliationId: dbTransactionView.reconciliation_id,
     cleared: dbTransactionView.cleared ?? false,
+    reconciliationStatus: (dbTransactionView.reconciliation_status || null) as 'draft' | 'completed' | null,
   };
 }
 
