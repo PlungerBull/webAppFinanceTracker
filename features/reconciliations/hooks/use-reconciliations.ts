@@ -147,9 +147,18 @@ export function useLinkTransactions() {
 
       // Show appropriate toast based on results
       if (result.errorCount > 0) {
+        // Extract unique error messages (group by error type)
+        const errorMessages = result.errors.map(e => e.error);
+        const uniqueErrors = [...new Set(errorMessages)];
+
+        // Show detailed error for Sacred Ledger violations and other specific errors
+        const errorDetail = uniqueErrors.length === 1
+          ? uniqueErrors[0]
+          : `${uniqueErrors.join(', ')}`;
+
         toast.error(
-          `Linked ${result.successCount} transactions, ${result.errorCount} failed.`,
-          { duration: 5000 }
+          `Linked ${result.successCount} transactions, ${result.errorCount} failed: ${errorDetail}`,
+          { duration: 6000 }
         );
       } else {
         toast.success(`Successfully linked ${result.successCount} transactions`);
@@ -180,9 +189,18 @@ export function useUnlinkTransactions() {
 
       // Show appropriate toast based on results
       if (result.errorCount > 0) {
+        // Extract unique error messages (group by error type)
+        const errorMessages = result.errors.map(e => e.error);
+        const uniqueErrors = [...new Set(errorMessages)];
+
+        // Show detailed error messages
+        const errorDetail = uniqueErrors.length === 1
+          ? uniqueErrors[0]
+          : `${uniqueErrors.join(', ')}`;
+
         toast.error(
-          `Unlinked ${result.successCount} transactions, ${result.errorCount} failed.`,
-          { duration: 5000 }
+          `Unlinked ${result.successCount} transactions, ${result.errorCount} failed: ${errorDetail}`,
+          { duration: 6000 }
         );
       } else {
         toast.success(`Successfully unlinked ${result.successCount} transactions`);
