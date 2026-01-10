@@ -12,12 +12,12 @@
 - [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports.
 - [ ] **Import Optimization:** Fix timeouts on large Excel imports (See migration `20260104200000_fix_import_timeout.sql` for context).
 
-## Known Issues
+
 
 - [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates.
 - [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers.
 - [ ] **Main Currency:** This is not fixed, its locked to a single main currency, if you change it you brake eeverything
-- [ ] **Bulk Transaction Pills:** Make bulk transaction pills show the selected value instead of just the action name
+
 
 ## Future Roadmap
 

@@ -70,6 +70,7 @@ export interface TransactionView {
   // Reconciliation fields (Audit Workspace)
   reconciliationId: string | null; // Links to reconciliation session
   cleared: boolean; // Auto-managed: TRUE when linked to reconciliation
+  reconciliationStatus: 'draft' | 'completed' | null; // Status of linked reconciliation (for UI icons)
 }
 
 /**

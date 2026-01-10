@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { format, isToday } from 'date-fns';
-import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown, Clock, CalendarDays, ListChecks } from 'lucide-react';
+import { Loader2, Search, Calendar as CalendarIcon, X, Hash, ChevronDown, Clock, CalendarDays, ListChecks, CheckCircle2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { TRANSACTIONS, PAGINATION } from '@/lib/constants';
@@ -441,6 +441,21 @@ export function TransactionList({
                             {formatDateDisplay(transaction.date)}
                           </p>
                         </div>
+                      </div>
+
+                      {/* MIDDLE COLUMN: Reconciliation Status Icons */}
+                      <div className="flex items-center flex-shrink-0">
+                        {/* Emerald Lock - Completed/Finalized Reconciliation */}
+                        {'reconciliationStatus' in transaction && transaction.reconciliationStatus === 'completed' && (
+                          <div className="inline-flex items-center justify-center w-5 h-5 rounded bg-emerald-50">
+                            <Lock className="w-3 h-3 text-emerald-600" />
+                          </div>
+                        )}
+
+                        {/* Blue Checkmark - Linked to Draft Reconciliation */}
+                        {'reconciliationStatus' in transaction && transaction.reconciliationStatus === 'draft' && transaction.cleared && (
+                          <CheckCircle2 className="w-5 h-5 text-blue-500 opacity-60 hover:opacity-100 transition-opacity" />
+                        )}
                       </div>
 
                       {/* RIGHT COLUMN: Value */}
