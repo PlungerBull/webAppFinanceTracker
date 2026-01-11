@@ -24,6 +24,7 @@ function InboxContent() {
   // Preserve null state for amounts (don't convert to 0) to show "--" placeholder in list
   const transactions = inboxItems.map((item) => ({
     id: item.id,
+    version: 1, // Inbox drafts initialize at version 1 (satisfies TransactionList requirement)
     userId: item.userId,
     accountId: item.accountId || '',                     // Empty string for missing account
     accountName: item.account?.name || 'Unassigned',
