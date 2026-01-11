@@ -4,12 +4,13 @@ A robust, personal finance management application built for data integrity and c
 
 ## 🌟 Features
 
-* **Double-Entry Style Integrity:** Strict "Sacred Ledger" design pattern.
-* **Smart Excel Import:** Import Excel files directly. Records containing all necessary fields are added straight to the Sacred Ledger, while incomplete data is routed to the Inbox for review.
-* **Multi-Currency Support:** Track accounts in different currencies with strict validation.
-* **Flexible Taxonomy:** Custom Categories and Groupings to organize your spending your way.
-* **Dashboard:** High-level financial overview and recent activity.
-* **Secure:** Powered by Supabase Auth and Row Level Security (RLS).
+* **Zero-Latency UX:** Instant UI updates with optimistic sync architecture - edits feel immediate like Linear/Reflect
+* **Double-Entry Style Integrity:** Strict "Sacred Ledger" design pattern
+* **Smart Excel Import:** Import Excel files directly. Records containing all necessary fields are added straight to the Sacred Ledger, while incomplete data is routed to the Inbox for review
+* **Multi-Currency Support:** Track accounts in different currencies with strict validation
+* **Flexible Taxonomy:** Custom Categories and Groupings to organize your spending your way
+* **Dashboard:** High-level financial overview and recent activity
+* **Secure:** Powered by Supabase Auth and Row Level Security (RLS)
 
 ## 🛠 Tech Stack
 

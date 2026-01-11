@@ -120,6 +120,12 @@ Users should set opening balances during account creation.
 | **inbox_id** | uuid | YES | `-` | Birth certificate - links to original inbox item for audit trail (NULL for manually created transactions) |
 | **reconciliation_id** | uuid | YES | `-` | Links to reconciliation session (triggers semi-permeable lock when completed) |
 | **cleared** | bool | NO | `false` | Auto-managed flag - TRUE when linked to reconciliation |
+| **version** | integer | NO | `1` | Optimistic concurrency control version (auto-incremented by trigger on UPDATE) |
+
+**Optimistic Concurrency:**
+- `version` column enables zero-latency UX with conflict detection
+- Trigger `increment_transaction_version` auto-increments version on every UPDATE
+- Version-checked RPCs prevent concurrent modification conflicts (see RPC Functions section)
 
 **Currency Architecture:**
 - Currency is **NOT stored** in the transactions table
@@ -399,6 +405,9 @@ LEFT JOIN categories c ON i.category_id = c.id;
 | `import_transactions` | `jsonb` | `p_user_id uuid`, `p_transactions jsonb`, `p_default_account_color text`, `p_default_category_color text` | Imports a batch of transactions from JSON array. Auto-creates accounts with `currency_code`. Identifies accounts by **name + currency** (not just name) to support multi-currency accounts with same name. |
 | `clear_user_data` | `void` | `p_user_id uuid` | Securely deletes all financial data (Transactions, Inbox, Accounts, Categories) via CASCADE. Preserves User Settings & Auth. Enforces identity verification hard-gate. |
 | `replace_account_currency` | `void` | `p_account_id uuid`, `p_old_currency_code varchar`, `p_new_currency_code varchar` | Updates account's currency_code and all associated transactions. |
+| `update_transaction_with_version` | `jsonb` | `p_transaction_id uuid`, `p_expected_version integer`, `p_updates jsonb` | Version-safe transaction update for optimistic concurrency control. Checks expected version matches current version, performs update, returns `{success, error, newVersion}`. Prevents concurrent modification conflicts. |
+| `delete_transaction_with_version` | `jsonb` | `p_transaction_id uuid`, `p_expected_version integer` | Version-safe transaction delete. Checks version before deleting, returns `{success, error, currentData}` with conflict details if transaction was modified. Prevents accidental deletion of edited transactions. |
+| `bulk_update_transactions` | `jsonb` | `p_transaction_ids uuid[]`, `p_versions integer[]`, `p_updates jsonb` | Atomic bulk update with version checking for each transaction. Returns `{success, successCount, errorCount, updatedIds, errors[]}` with per-transaction conflict tracking. |
 
 ### Transfer Functions
 

@@ -192,6 +192,18 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * **Virtualization:** Lists render only visible items (~15) using `@tanstack/react-virtual`
     * **Pattern:** API returns `{ data, count }`, hooks flatten pages internally for UI consumption
     * **Server-Side Aggregation:** Category counts use separate lightweight queries (not client-side counting)
+* **Optimistic Updates (Zero-Latency UX):**
+    * **Architecture:** Optimistic-Sync pattern for all transaction mutations (instant UI, background sync)
+    * **Version Control:** Database-enforced optimistic concurrency via `version` column (auto-increment trigger)
+    * **Mutation Pattern:**
+        * `onMutate`: Cancel queries → Snapshot state → Optimistic update → Calculate balance deltas
+        * `onError`: Rollback snapshots → Show conflict toast
+        * `onSettled`: Always invalidate to sync with server truth
+    * **Conflict Resolution:** Silent auto-retry (max 2 attempts), toast only after exhaustion
+    * **Balance Calculations:** Use centralized utility (`lib/utils/balance-logic.ts`) with cents arithmetic
+    * **Cache Updates:** Use `setQueriesData()` (plural) to update ALL filter views simultaneously
+    * **Client UUIDs:** Generate IDs with `crypto.randomUUID()` for instant feedback with real IDs
+    * **React Query Config:** `staleTime: 10min` (prevents background refetch flicker), retry with exponential backoff
 * **Invalidation:** Mutations must invalidate relevant query keys upon success.
     * *Example:* Creating a transaction must invalidate `['transactions']` AND `['accounts']` (since balances change).
 * **Division of Labor:**

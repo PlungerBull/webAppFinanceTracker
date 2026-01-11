@@ -53,7 +53,15 @@ features/transactions/
 
 ### 3. Server vs. Client State
 
-* **Server State:** Managed by TanStack Query. We aggressively cache read data and use optimistic updates for mutations (like deleting a transaction) to make the UI feel instant.
+* **Server State:** Managed by TanStack Query with Optimistic-Sync architecture for zero-latency UX.
+* **Optimistic Updates (Zero-Latency UX):**
+    * **Pattern:** Request-Response → Optimistic-Sync (instant UI updates, background sync)
+    * **Implementation:** All transaction mutations use optimistic updates similar to Linear/Reflect
+    * **Version Control:** Database-enforced optimistic concurrency prevents data loss from concurrent edits
+    * **Conflict Resolution:** Silent auto-retry (max 2 attempts), user notification only after exhaustion
+    * **Balance Calculations:** Client-side calculation using cents arithmetic (prevents floating-point errors)
+    * **Client UUIDs:** Generate transaction IDs with `crypto.randomUUID()` for instant feedback
+    * **Cache Strategy:** Update ALL filter views simultaneously via `setQueriesData()` predicate
 * **Infinite Scroll:** Transaction and inbox lists use virtualized pagination for performance.
     * Uses `useInfiniteQuery` with 50-item pages and offset-based pagination
     * Virtual scrolling renders only ~15 visible items (via `@tanstack/react-virtual`)
