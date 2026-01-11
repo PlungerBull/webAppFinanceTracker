@@ -24,7 +24,8 @@
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
       "Bash(git ls-files:*)",
-      "Bash(supabase db push:*)"
+      "Bash(supabase db push:*)",
+      "Bash(supabase gen types:*)"
     ],
     "deny": [],
     "ask": []
