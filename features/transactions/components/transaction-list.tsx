@@ -284,10 +284,6 @@ export function TransactionList({
                           checked={selectedCategories.includes(category.id)}
                           onCheckedChange={() => { }}
                         />
-                        <div
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: category.color }}
-                        />
                         <span className="flex-1 text-sm">{category.name}</span>
                         <span className="text-sm text-gray-500">
                           {categoryCounts[category.id] || 0}

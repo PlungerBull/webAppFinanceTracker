@@ -183,10 +183,6 @@ export function BulkActionBar({
                         : 'text-gray-700 hover:bg-gray-50'
                     )}
                   >
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: account.color }}
-                    />
                     <span className="flex-1 text-left truncate">{account.name}</span>
                     {accountValue === account.id && <X className="w-4 h-4 text-gray-500" />}
                   </button>
