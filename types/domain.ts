@@ -21,6 +21,7 @@
  *
  * CRITICAL FIELDS (guaranteed non-null by transformer):
  * - id, userId, accountId, accountName: Always present
+ * - version: Optimistic concurrency control (auto-incremented on UPDATE)
  * - amountOriginal, amountHome: Always present (defaults to 0)
  * - currencyOriginal: Always present (defaults to 'USD')
  * - exchangeRate: Always present (defaults to 1)
@@ -33,6 +34,7 @@
 export interface TransactionView {
   // Critical fields - guaranteed non-null
   id: string;
+  version: number; // NEW: Optimistic concurrency control
   userId: string;
   accountId: string;
   accountName: string;
@@ -79,6 +81,7 @@ export interface TransactionView {
  */
 export interface Transaction {
   id: string;
+  version: number; // NEW: Optimistic concurrency control
   userId: string;
   accountId: string;
   categoryId: string | null;

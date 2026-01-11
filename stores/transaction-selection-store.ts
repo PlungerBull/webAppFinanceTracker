@@ -8,9 +8,19 @@ interface StagedUpdates {
   reconciliationId?: string | null;
 }
 
+/**
+ * Selected transaction with version for optimistic concurrency control
+ * Version is required for version-checked bulk updates
+ */
+interface SelectedTransaction {
+  id: string;
+  version: number;
+}
+
 interface TransactionSelectionState {
-  // Selection state
-  selectedIds: Set<string>;
+  // Selection state - NEW: Track ID + version pairs for optimistic locking
+  selectedTransactions: Map<string, SelectedTransaction>; // Key = transaction ID
+  selectedIds: Set<string>; // DEPRECATED: Keep for backward compatibility during migration
   lastSelectedIndex: number | null;
   isBulkMode: boolean;
 
@@ -18,8 +28,8 @@ interface TransactionSelectionState {
   stagedUpdates: StagedUpdates;
 
   // Actions
-  toggleSelection: (id: string, index: number) => void;
-  selectRange: (startIndex: number, endIndex: number, allTransactionIds: string[]) => void;
+  toggleSelection: (id: string, index: number, version?: number) => void;
+  selectRange: (startIndex: number, endIndex: number, allTransactionIds: string[], allTransactionVersions?: number[]) => void;
   clearSelection: () => void;
   setStagedUpdate: (field: keyof StagedUpdates, value: string | null | undefined) => void;
   clearStagedUpdates: () => void;
@@ -29,45 +39,63 @@ interface TransactionSelectionState {
   // Computed getters
   hasSelection: () => boolean;
   canApply: () => boolean;
+
+  // NEW: Version-aware getters for bulk operations
+  getSelectedIds: () => string[];
+  getSelectedVersions: () => number[];
+  getSelectedPairs: () => SelectedTransaction[];
 }
 
 export const useTransactionSelection = create<TransactionSelectionState>((set, get) => ({
-  selectedIds: new Set(),
+  selectedTransactions: new Map(),
+  selectedIds: new Set(), // DEPRECATED: Kept for backward compatibility
   lastSelectedIndex: null,
   isBulkMode: false,
   stagedUpdates: {},
 
-  toggleSelection: (id, index) => set((state) => {
-    const newSelected = new Set(state.selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
+  toggleSelection: (id, index, version = 1) => set((state) => {
+    const newSelectedTransactions = new Map(state.selectedTransactions);
+    const newSelectedIds = new Set(state.selectedIds);
+
+    if (newSelectedTransactions.has(id)) {
+      newSelectedTransactions.delete(id);
+      newSelectedIds.delete(id); // Keep deprecated Set in sync
     } else {
-      newSelected.add(id);
+      newSelectedTransactions.set(id, { id, version });
+      newSelectedIds.add(id); // Keep deprecated Set in sync
     }
+
     return {
-      selectedIds: newSelected,
+      selectedTransactions: newSelectedTransactions,
+      selectedIds: newSelectedIds,
       lastSelectedIndex: index,
     };
   }),
 
-  selectRange: (startIndex, endIndex, allTransactionIds) => set((state) => {
-    const newSelected = new Set(state.selectedIds);
+  selectRange: (startIndex, endIndex, allTransactionIds, allTransactionVersions = []) => set((state) => {
+    const newSelectedTransactions = new Map(state.selectedTransactions);
+    const newSelectedIds = new Set(state.selectedIds);
     const [min, max] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
 
     // Only select items within loaded range (virtualization safety)
     for (let i = min; i <= max; i++) {
       if (i >= 0 && i < allTransactionIds.length && allTransactionIds[i]) {
-        newSelected.add(allTransactionIds[i]);
+        const id = allTransactionIds[i];
+        const version = allTransactionVersions[i] ?? 1; // Default to version 1 if not provided
+        newSelectedTransactions.set(id, { id, version });
+        newSelectedIds.add(id); // Keep deprecated Set in sync
       }
     }
 
     return {
-      selectedIds: newSelected,
+      selectedTransactions: newSelectedTransactions,
+      selectedIds: newSelectedIds,
       lastSelectedIndex: endIndex,
     };
   }),
 
   clearSelection: () => set({
+    selectedTransactions: new Map(),
     selectedIds: new Set(),
     lastSelectedIndex: null,
   }),
@@ -94,15 +122,29 @@ export const useTransactionSelection = create<TransactionSelectionState>((set, g
 
   exitBulkMode: () => set({
     isBulkMode: false,
+    selectedTransactions: new Map(),
     selectedIds: new Set(),
     lastSelectedIndex: null,
     stagedUpdates: {},
   }),
 
-  hasSelection: () => get().selectedIds.size > 0,
+  hasSelection: () => get().selectedTransactions.size > 0,
 
   canApply: () => {
-    const { selectedIds, stagedUpdates } = get();
-    return selectedIds.size > 0 && Object.keys(stagedUpdates).length > 0;
+    const { selectedTransactions, stagedUpdates } = get();
+    return selectedTransactions.size > 0 && Object.keys(stagedUpdates).length > 0;
+  },
+
+  // NEW: Version-aware getters for bulk operations
+  getSelectedIds: () => {
+    return Array.from(get().selectedTransactions.keys());
+  },
+
+  getSelectedVersions: () => {
+    return Array.from(get().selectedTransactions.values()).map(txn => txn.version);
+  },
+
+  getSelectedPairs: () => {
+    return Array.from(get().selectedTransactions.values());
   },
 }));

@@ -87,11 +87,16 @@ export const transactionsApi = {
       throw new Error(TRANSACTIONS.API.ERRORS.USER_NOT_AUTHENTICATED);
     }
 
+    // Generate client-side UUID for optimistic updates
+    // This allows UI to render the new transaction immediately with a real ID
+    const clientId = crypto.randomUUID();
+
     // TypeScript guarantees these fields are present due to CreateTransactionLedgerData type
     // No runtime checks needed - compilation will fail if required fields are missing
     const { data, error } = await supabase
       .from('transactions')
       .insert({
+        id: clientId, // NEW: Client-provided ID for optimistic updates
         user_id: user.id,
         description: transactionData.description || null,
         amount_original: transactionData.amount_original,
@@ -104,6 +109,7 @@ export const transactionsApi = {
         // Field is OMITTED - enforce_sacred_ledger_currency trigger sets correct value before INSERT completes
         exchange_rate: transactionData.exchange_rate,
         notes: transactionData.notes || null, // ✅ Capture notes
+        // version defaults to 1 (database DEFAULT)
       })
       .select()
       .single();
@@ -118,27 +124,54 @@ export const transactionsApi = {
     return transactionsApi.getById(data.id);
   },
 
-  // Update an existing transaction (RLS handles user filtering)
-  update: async (id: string, transactionData: UpdateTransactionFormData): Promise<TransactionView> => {
+  // Update an existing transaction with version checking
+  // Returns { data, conflict } to allow caller to handle version conflicts
+  update: async (
+    id: string,
+    transactionData: UpdateTransactionFormData
+  ): Promise<{ data: TransactionView | null; conflict: boolean }> => {
     const supabase = createClient();
 
-    const { error } = await supabase
-      .from('transactions')
-      .update(transactionData) // amount_home will be recalculated by trigger if needed
-      .eq('id', id);
+    // Use version-checked RPC instead of direct UPDATE
+    const { data, error } = await supabase.rpc('update_transaction_with_version', {
+      p_transaction_id: id,
+      p_expected_version: transactionData.version,
+      p_updates: {
+        description: transactionData.description,
+        amountOriginal: transactionData.amount_original,
+        accountId: transactionData.account_id,
+        categoryId: transactionData.category_id,
+        date: transactionData.date,
+        notes: transactionData.notes,
+        exchangeRate: transactionData.exchange_rate,
+      },
+    });
 
     if (error) {
       console.error(TRANSACTIONS.API.CONSOLE.UPDATE_TRANSACTION, error);
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
     }
 
-    // Write-then-Read: Fetch from view to get complete data with currency
-    // Raw table row lacks currency_original - must query transactions_view for complete object
-    return transactionsApi.getById(id);
+    const result = data as { success: boolean; error?: string; newVersion?: number };
+
+    // Version conflict detected
+    if (!result.success && result.error === 'version_conflict') {
+      return { data: null, conflict: true };
+    }
+
+    // Other error (not_found, concurrent_modification)
+    if (!result.success) {
+      throw new Error(result.error || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
+    }
+
+    // Success - fetch updated transaction
+    const updated = await transactionsApi.getById(id);
+    return { data: updated, conflict: false };
   },
 
   // Batch update transaction fields (used by unified detail panel)
   // Accepts EditedFields from the panel and transforms to database format
+  // NEW: Requires version for optimistic concurrency control
   updateBatch: async (
     id: string,
     updates: {
@@ -149,47 +182,85 @@ export const transactionsApi = {
       date?: string;
       notes?: string;
       exchangeRate?: number;
-    }
-  ): Promise<TransactionView> => {
+    },
+    version: number
+  ): Promise<{ data: TransactionView | null; conflict: boolean }> => {
     const supabase = createClient();
 
-    // Use centralized transformer for type-safe field mapping
-    const dbUpdates = domainTransactionToDbUpdate(updates);
-
-    const { error } = await supabase
-      .from('transactions')
-      .update(dbUpdates)
-      .eq('id', id);
+    // Use version-checked RPC (same as regular update)
+    const { data, error } = await supabase.rpc('update_transaction_with_version', {
+      p_transaction_id: id,
+      p_expected_version: version,
+      p_updates: {
+        description: updates.description,
+        amountOriginal: updates.amountOriginal,
+        accountId: updates.accountId,
+        categoryId: updates.categoryId,
+        date: updates.date,
+        notes: updates.notes,
+        exchangeRate: updates.exchangeRate,
+      },
+    });
 
     if (error) {
       console.error(TRANSACTIONS.API.CONSOLE.UPDATE_TRANSACTION, error);
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
     }
 
-    // Write-then-Read: Fetch from view to get complete data with currency
-    // Raw table row lacks currency_original - must query transactions_view for complete object
-    return transactionsApi.getById(id);
+    const result = data as { success: boolean; error?: string; newVersion?: number };
+
+    // Version conflict detected
+    if (!result.success && result.error === 'version_conflict') {
+      return { data: null, conflict: true };
+    }
+
+    // Other error
+    if (!result.success) {
+      throw new Error(result.error || TRANSACTIONS.API.ERRORS.UPDATE_FAILED);
+    }
+
+    // Success - fetch updated transaction
+    const updated = await transactionsApi.getById(id);
+    return { data: updated, conflict: false };
   },
 
-  // Delete a transaction (RLS handles user filtering)
-  delete: async (id: string) => {
+  // Delete a transaction with version checking (CTO Refinement #3)
+  // Prevents accidental deletion of modified transactions
+  delete: async (id: string, version: number): Promise<{ success: boolean; conflict: boolean; currentData?: any }> => {
     const supabase = createClient();
 
-    const { error } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', id);
+    // Use version-checked delete RPC
+    const { data, error } = await supabase.rpc('delete_transaction_with_version', {
+      p_transaction_id: id,
+      p_expected_version: version,
+    });
 
     if (error) {
       console.error(TRANSACTIONS.API.CONSOLE.DELETE_TRANSACTION, error);
       throw new Error(error.message || TRANSACTIONS.API.ERRORS.DELETE_FAILED);
     }
+
+    const result = data as { success: boolean; error?: string; currentData?: any; message?: string };
+
+    // Version conflict - transaction was modified
+    if (!result.success && result.error === 'version_conflict') {
+      return { success: false, conflict: true, currentData: result.currentData };
+    }
+
+    // Other error
+    if (!result.success) {
+      throw new Error(result.error || TRANSACTIONS.API.ERRORS.DELETE_FAILED);
+    }
+
+    return { success: true, conflict: false };
   },
 
-  // Bulk update multiple transactions
+  // Bulk update multiple transactions with version checking
   // Uses RPC function for atomic operation with validation
+  // NEW: Requires versions array (parallel to transactionIds)
   bulkUpdate: async (
     transactionIds: string[],
+    versions: number[], // NEW: Version array for optimistic locking
     updates: {
       categoryId?: string;
       accountId?: string;
@@ -201,7 +272,7 @@ export const transactionsApi = {
     successCount: number;
     errorCount: number;
     updatedIds: string[];
-    errors: Array<{ transactionId: string; error: string }>;
+    errors: Array<{ transactionId: string; error: string; conflict?: boolean }>;
   }> => {
     const supabase = createClient();
 
@@ -214,6 +285,7 @@ export const transactionsApi = {
 
     const { data, error } = await supabase.rpc('bulk_update_transactions', {
       p_transaction_ids: transactionIds,
+      p_versions: versions, // NEW: Pass versions array
       p_updates: rpcUpdates as any, // Cast to any since JSONB type is complex
     });
 
@@ -228,7 +300,7 @@ export const transactionsApi = {
       successCount: number;
       errorCount: number;
       updatedIds: string[];
-      errors: Array<{ transactionId: string; error: string }>;
+      errors: Array<{ transactionId: string; error: string; conflict?: boolean }>;
     };
 
     return result;

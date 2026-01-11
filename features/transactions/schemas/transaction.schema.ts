@@ -72,7 +72,12 @@ export const createTransactionLedgerSchema = createTransactionSchema.extend({
 });
 
 // Update transaction schema
+// CRITICAL: version is REQUIRED for optimistic concurrency control
 export const updateTransactionSchema = z.object({
+  version: z
+    .number()
+    .int()
+    .positive('Version must be a positive integer'), // REQUIRED: Prevents forgetting version at compile time
   description: z
     .string()
     .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.DESCRIPTION_REQUIRED)
