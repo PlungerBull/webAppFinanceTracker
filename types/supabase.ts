@@ -592,6 +592,9 @@ export type Database = {
           inbox_id: string | null
           notes: string | null
           reconciliation_id: string | null
+          reconciliation_status:
+            | Database["public"]["Enums"]["reconciliation_status"]
+            | null
           source_text: string | null
           transfer_id: string | null
           updated_at: string | null
