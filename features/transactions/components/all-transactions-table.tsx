@@ -41,6 +41,8 @@ function TransactionsContent() {
     exitBulkMode,
     hasSelection,
     canApply,
+    getSelectedIds,
+    getSelectedVersions,
   } = useTransactionSelection();
 
   // Fetch user settings for sort preference
@@ -221,7 +223,8 @@ function TransactionsContent() {
 
       // Standard bulk update for other fields
       const result = await bulkUpdateMutation.mutateAsync({
-        ids: Array.from(selectedIds),
+        ids: getSelectedIds(),
+        versions: getSelectedVersions(),
         updates: stagedUpdates,
       });
 

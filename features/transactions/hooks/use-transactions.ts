@@ -85,14 +85,18 @@ export function useAddTransaction() {
         date: data.date,
         notes: data.notes ?? null,
         exchangeRate: data.exchange_rate,
-        type: 'expense', // Will be derived by server
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         // View-specific fields (will be populated by server)
         accountName: '',
-        accountCurrencyCode: '',
+        accountColor: null,
         categoryName: null,
         categoryColor: null,
+        categoryType: null,
+        transferId: null,
+        reconciliationId: null,
+        cleared: false,
+        reconciliationStatus: null,
       };
 
       // 5. Optimistically add transaction to ALL infinite queries

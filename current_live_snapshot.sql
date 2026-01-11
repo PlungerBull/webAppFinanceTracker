@@ -2078,6 +2078,7 @@ CREATE OR REPLACE VIEW "public"."transactions_view" WITH ("security_invoker"='tr
     "t"."cleared",
     "t"."created_at",
     "t"."updated_at",
+    "t"."version",
     "a"."name" AS "account_name",
     "a"."currency_code" AS "currency_original",
     "a"."currency_code" AS "account_currency",
@@ -2093,7 +2094,7 @@ CREATE OR REPLACE VIEW "public"."transactions_view" WITH ("security_invoker"='tr
 ALTER VIEW "public"."transactions_view" OWNER TO "postgres";
 
 
-COMMENT ON VIEW "public"."transactions_view" IS 'Enriched transaction view with joined account and category display data. Includes reconciliation_id and cleared flag for audit workspace. Uses security_invoker = true to enforce RLS policies.';
+COMMENT ON VIEW "public"."transactions_view" IS 'Enriched transaction view with joined account and category display data. Includes version for optimistic concurrency control, reconciliation_id and cleared flag for audit workspace. Uses security_invoker = true to enforce RLS policies.';
 
 
 

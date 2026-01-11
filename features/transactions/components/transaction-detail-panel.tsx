@@ -87,6 +87,7 @@ export function TransactionDetailPanel({
 
     await updateMutation.mutateAsync({
       id: transaction.id,
+      version: transaction.version,
       updates,
     });
   };
@@ -94,7 +95,7 @@ export function TransactionDetailPanel({
   // Handle delete
   const handleDelete = async () => {
     if (!transaction) return;
-    await deleteMutation.mutateAsync(transaction.id);
+    await deleteMutation.mutateAsync({ id: transaction.id, version: transaction.version });
   };
 
   // Handle close (no-op, panel is always visible)

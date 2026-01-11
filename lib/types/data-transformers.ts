@@ -493,6 +493,7 @@ export function dbTransactionViewToDomain(
   return {
     // IDs (now available from view)
     id: dbTransactionView.id || '',
+    version: dbTransactionView.version ?? 1, // Optimistic concurrency control
     userId: dbTransactionView.user_id || '',
     accountId: dbTransactionView.account_id || '', // FIXED: Now uses actual field
     categoryId: dbTransactionView.category_id,      // FIXED: Now uses actual field

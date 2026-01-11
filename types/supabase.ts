@@ -599,6 +599,7 @@ export type Database = {
           transfer_id: string | null
           updated_at: string | null
           user_id: string | null
+          version: number | null
         }
         Relationships: [
           {
@@ -669,7 +670,11 @@ export type Database = {
     }
     Functions: {
       bulk_update_transactions: {
-        Args: { p_transaction_ids: string[]; p_updates: Json }
+        Args: { p_transaction_ids: string[]; p_versions: number[]; p_updates: Json }
+        Returns: Json
+      }
+      delete_transaction_with_version: {
+        Args: { p_transaction_id: string; p_expected_version: number }
         Returns: Json
       }
       cleanup_orphaned_categories: {
@@ -814,6 +819,10 @@ export type Database = {
       }
       unlink_transactions_from_reconciliation: {
         Args: { p_transaction_ids: string[] }
+        Returns: Json
+      }
+      update_transaction_with_version: {
+        Args: { p_transaction_id: string; p_expected_version: number; p_updates: Json }
         Returns: Json
       }
     }
