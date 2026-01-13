@@ -31,9 +31,11 @@ CREATE VIEW "public"."transactions_view" WITH ("security_invoker"='true') AS
     "a"."color" AS "account_color",
     "c"."name" AS "category_name",
     "c"."color" AS "category_color",
-    "c"."type" AS "category_type"
-   FROM (("public"."transactions" "t"
+    "c"."type" AS "category_type",
+    "r"."status" AS "reconciliation_status" -- Joined from reconciliations table for UI status icons
+   FROM ((("public"."transactions" "t"
      LEFT JOIN "public"."bank_accounts" "a" ON (("t"."account_id" = "a"."id")))
-     LEFT JOIN "public"."categories" "c" ON (("t"."category_id" = "c"."id")));
+     LEFT JOIN "public"."categories" "c" ON (("t"."category_id" = "c"."id")))
+     LEFT JOIN "public"."reconciliations" "r" ON (("t"."reconciliation_id" = "r"."id")));
 
 COMMENT ON VIEW "public"."transactions_view" IS 'Enriched transaction view with joined account and category display data. Includes version for optimistic concurrency control, reconciliation_id and cleared flag for audit workspace. Uses security_invoker = true to enforce RLS policies.';

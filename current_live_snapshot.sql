@@ -2085,10 +2085,12 @@ CREATE OR REPLACE VIEW "public"."transactions_view" WITH ("security_invoker"='tr
     "a"."color" AS "account_color",
     "c"."name" AS "category_name",
     "c"."color" AS "category_color",
-    "c"."type" AS "category_type"
-   FROM (("public"."transactions" "t"
+    "c"."type" AS "category_type",
+    "r"."status" AS "reconciliation_status"
+   FROM ((("public"."transactions" "t"
      LEFT JOIN "public"."bank_accounts" "a" ON (("t"."account_id" = "a"."id")))
-     LEFT JOIN "public"."categories" "c" ON (("t"."category_id" = "c"."id")));
+     LEFT JOIN "public"."categories" "c" ON (("t"."category_id" = "c"."id")))
+     LEFT JOIN "public"."reconciliations" "r" ON (("t"."reconciliation_id" = "r"."id")));
 
 
 ALTER VIEW "public"."transactions_view" OWNER TO "postgres";

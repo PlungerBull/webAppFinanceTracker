@@ -311,6 +311,7 @@ export type Database = {
           transfer_id: string | null
           updated_at: string
           user_id: string
+          version: number
         }
         Insert: {
           account_id: string
@@ -330,6 +331,7 @@ export type Database = {
           transfer_id?: string | null
           updated_at?: string
           user_id: string
+          version?: number
         }
         Update: {
           account_id?: string
@@ -349,6 +351,7 @@ export type Database = {
           transfer_id?: string | null
           updated_at?: string
           user_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -670,11 +673,11 @@ export type Database = {
     }
     Functions: {
       bulk_update_transactions: {
-        Args: { p_transaction_ids: string[]; p_versions: number[]; p_updates: Json }
-        Returns: Json
-      }
-      delete_transaction_with_version: {
-        Args: { p_transaction_id: string; p_expected_version: number }
+        Args: {
+          p_transaction_ids: string[]
+          p_updates: Json
+          p_versions: number[]
+        }
         Returns: Json
       }
       cleanup_orphaned_categories: {
@@ -737,6 +740,10 @@ export type Database = {
             }
             Returns: Json
           }
+      delete_transaction_with_version: {
+        Args: { p_expected_version: number; p_transaction_id: string }
+        Returns: Json
+      }
       delete_transfer: {
         Args: { p_transfer_id: string; p_user_id: string }
         Returns: undefined
@@ -822,7 +829,11 @@ export type Database = {
         Returns: Json
       }
       update_transaction_with_version: {
-        Args: { p_transaction_id: string; p_expected_version: number; p_updates: Json }
+        Args: {
+          p_expected_version: number
+          p_transaction_id: string
+          p_updates: Json
+        }
         Returns: Json
       }
     }
