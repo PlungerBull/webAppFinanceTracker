@@ -2,8 +2,11 @@
 -- Description: Update transactions_view to include version column for optimistic concurrency control
 -- Date: 2026-01-11
 
--- Drop and recreate the view with version column included
-CREATE OR REPLACE VIEW "public"."transactions_view" WITH ("security_invoker"='true') AS
+-- Must DROP and recreate because PostgreSQL doesn't allow reordering columns with CREATE OR REPLACE
+DROP VIEW IF EXISTS "public"."transactions_view";
+
+-- Recreate the view with version column included
+CREATE VIEW "public"."transactions_view" WITH ("security_invoker"='true') AS
  SELECT "t"."id",
     "t"."user_id",
     "t"."account_id",
