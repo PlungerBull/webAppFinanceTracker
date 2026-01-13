@@ -11,14 +11,16 @@
   - Auth provider abstraction (IAuthProvider + Supabase implementation)
   - **Status:** Ready for component migration (Days 9-10)
 
-- [ ] **Complete Repository Pattern Migration (Days 9-10):** ⏳ **IN PROGRESS**
-  - [ ] Rename `use-transactions-new.ts` → `use-transactions.ts` (replace old file)
-  - [ ] Update component type imports: `TransactionView` → `TransactionViewEntity`
-  - [ ] Update component type imports: `CreateTransactionLedgerData` → `CreateTransactionDTO`
-  - [ ] Update schemas to use domain constants
-  - [ ] Deprecate old `transactionsApi` in `features/transactions/api/transactions.ts`
-  - [ ] Full regression testing (CRUD, optimistic updates, version conflicts)
-  - [ ] Update DB_SCHEMA.md with soft delete documentation
+- [x] **Complete Repository Pattern Migration (Days 9-10):** ✅ **COMPLETED**
+  - [x] Rename `use-transactions-new.ts` → `use-transactions.ts` (replaced old file)
+  - [x] Update component type imports: `TransactionView` → `TransactionViewEntity` (via alias)
+  - [x] Update component type imports: `CreateTransactionLedgerData` → `CreateTransactionDTO`
+  - [x] Update schemas to use domain constants reference
+  - [x] Deprecate old `transactionsApi` in `features/transactions/api/transactions.ts`
+  - [x] Fix all TypeScript compilation errors (transaction-list, transaction-header)
+  - [x] Integer cents conversion at display boundary
+  - [ ] Full regression testing (CRUD, optimistic updates, version conflicts) - TODO
+  - [ ] Update DB_SCHEMA.md with soft delete documentation - TODO
 
 - [ ] **Phase 2 - Offline Sync (Future):**
   - [ ] Install Local Database: Add WatermelonDB or RxDB to `package.json`
