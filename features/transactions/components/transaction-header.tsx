@@ -28,6 +28,8 @@ export function TransactionHeader({
     cancelEdit,
     saveEdit,
 }: TransactionHeaderProps) {
+    // Convert integer cents to decimal for display
+    const amountOriginal = transaction.amountCents / 100;
     return (
         <div className="mb-6">
             {/* Description */}
@@ -101,13 +103,13 @@ export function TransactionHeader({
                     <p
                         className={cn(
                             'text-2xl font-bold tabular-nums cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 px-2 py-1 -mx-2 rounded',
-                            transaction.amountOriginal >= 0
+                            amountOriginal >= 0
                                 ? 'text-green-600 dark:text-green-500'
                                 : 'text-red-600 dark:text-red-500'
                         )}
-                        onClick={() => startEdit('amount', transaction.amountOriginal)}
+                        onClick={() => startEdit('amount', amountOriginal)}
                     >
-                        {formatCurrency(transaction.amountOriginal, transaction.currencyOriginal)}
+                        {formatCurrency(amountOriginal, transaction.currencyOriginal)}
                     </p>
                 )}
             </div>

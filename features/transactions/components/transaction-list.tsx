@@ -87,12 +87,30 @@ export function TransactionList({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const isCompact = variant === 'compact';
 
+  // Normalize transactions to ensure decimal amounts for display
+  // Converts TransactionRow (with amountCents) → TransactionListRow (with amountOriginal as decimal)
+  const normalizedTransactions: TransactionListRow[] = transactions.map((t) => {
+    // Check if transaction has amountCents (new format) or amountOriginal (already normalized)
+    const hasAmountCents = 'amountCents' in t;
+
+    return {
+      ...t,
+      // Convert integer cents to decimal for display, or use existing decimal
+      amountOriginal: hasAmountCents
+        ? (t as TransactionViewEntity).amountCents / 100
+        : (t as TransactionListRow).amountOriginal,
+      amountHome: hasAmountCents
+        ? (t as TransactionViewEntity).amountHomeCents / 100
+        : (t as TransactionListRow).amountHome,
+    } as TransactionListRow;
+  });
+
   // Parent ref for virtualizer
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Initialize virtualizer
   const virtualizer = useVirtualizer({
-    count: transactions.length,
+    count: normalizedTransactions.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => PAGINATION.VIRTUAL_ITEM_SIZE_ESTIMATE,
     overscan: PAGINATION.OVERSCAN,
@@ -107,7 +125,7 @@ export function TransactionList({
 
     // Trigger fetch when user scrolls near the end
     if (
-      lastVirtualItem.index >= transactions.length - 1 &&
+      lastVirtualItem.index >= normalizedTransactions.length - 1 &&
       hasNextPage &&
       !isFetchingNextPage
     ) {
@@ -115,7 +133,7 @@ export function TransactionList({
     }
   }, [
     lastVirtualItem,
-    transactions.length,
+    normalizedTransactions.length,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -344,7 +362,7 @@ export function TransactionList({
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
-              const transaction = transactions[virtualItem.index];
+              const transaction = normalizedTransactions[virtualItem.index];
               const isSelected = isBulkMode && selectedIds.has(transaction.id);
 
               return (
