@@ -1,3 +1,31 @@
+/**
+ * DEPRECATED: Old Transactions API (Direct Supabase Calls)
+ *
+ * ⚠️ WARNING: This file is DEPRECATED and scheduled for removal.
+ *
+ * DO NOT USE IN NEW CODE. Use the Repository Pattern instead:
+ * - Import hooks from: @/features/transactions/hooks
+ * - Use: useTransactions(), useAddTransaction(), useUpdateTransaction(), etc.
+ *
+ * Why deprecated:
+ * 1. Violates Repository Pattern architecture
+ * 2. Direct Supabase calls prevent platform independence (iOS can't use this)
+ * 3. No type safety with DataResult pattern
+ * 4. Missing business logic (retry on conflict, auth extraction)
+ * 5. Not compatible with offline-first sync architecture
+ *
+ * Migration Guide:
+ * OLD: const { data } = await transactionsApi.getAllPaginated(filters, pagination)
+ * NEW: const { data } = useTransactions(filters)  // Hook handles pagination automatically
+ *
+ * OLD: await transactionsApi.create(data)
+ * NEW: const { mutate } = useAddTransaction(); mutate(data);
+ *
+ * See: AI_CONTEXT.md section 4H for full Repository Pattern guide
+ *
+ * @deprecated Use hooks from @/features/transactions/hooks instead
+ */
+
 import { createClient } from '@/lib/supabase/client';
 import { TRANSACTIONS } from '@/lib/constants';
 import type {
@@ -14,6 +42,10 @@ import {
 } from '@/lib/types/data-transformers';
 import { applyTransactionFilters, type TransactionFilters } from './filters';
 
+/**
+ * @deprecated Use hooks from @/features/transactions/hooks instead
+ * This API object is kept for backward compatibility only.
+ */
 export const transactionsApi = {
   // Get all transactions with pagination for infinite scroll
   getAllPaginated: async (

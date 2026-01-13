@@ -26,7 +26,8 @@
       "Bash(git ls-files:*)",
       "Bash(supabase db push:*)",
       "Bash(supabase gen types:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
