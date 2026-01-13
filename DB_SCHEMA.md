@@ -120,12 +120,23 @@ Users should set opening balances during account creation.
 | **inbox_id** | uuid | YES | `-` | Birth certificate - links to original inbox item for audit trail (NULL for manually created transactions) |
 | **reconciliation_id** | uuid | YES | `-` | Links to reconciliation session (triggers semi-permeable lock when completed) |
 | **cleared** | bool | NO | `false` | Auto-managed flag - TRUE when linked to reconciliation |
-| **version** | integer | NO | `1` | Optimistic concurrency control version (auto-incremented by trigger on UPDATE) |
+| **version** | integer | NO | `1` | Version-based sync counter (global monotonic sequence) - incremented by trigger on INSERT/UPDATE |
+| **deleted_at** | timestamptz | YES | `-` | Soft delete timestamp (NULL = active, NOT NULL = deleted) - enables offline sync tombstone pattern |
 
-**Optimistic Concurrency:**
-- `version` column enables zero-latency UX with conflict detection
-- Trigger `increment_transaction_version` auto-increments version on every UPDATE
-- Version-checked RPCs prevent concurrent modification conflicts (see RPC Functions section)
+**Version-Based Sync (Offline-First Architecture):**
+- `version` column uses global monotonic sequence `global_transaction_version` (NOT per-transaction)
+- Enables Todoist-style delta sync: `getChangesSince(lastKnownVersion)` returns all transactions with `version > lastKnownVersion`
+- Clock-independent sync (no timestamp comparison issues)
+- Trigger `set_transaction_version()` auto-assigns next sequence value on INSERT/UPDATE
+- Version-checked RPCs prevent concurrent modification conflicts (optimistic concurrency control)
+
+**Soft Deletes (Tombstone Pattern):**
+- `deleted_at` column enables soft delete behavior for offline sync compatibility
+- **Physical DELETEs are prohibited** - always use `soft_delete_transaction` RPC
+- Soft-deleted records remain in database but are filtered out by `transactions_view` (`WHERE deleted_at IS NULL`)
+- Enables offline devices to detect deletions during sync (tombstone reconciliation)
+- Can be restored via `restore_transaction` RPC (sets `deleted_at = NULL`)
+- Query soft-deleted transactions via `get_deleted_transactions` RPC for sync purposes
 
 **Currency Architecture:**
 - Currency is **NOT stored** in the transactions table
@@ -279,7 +290,8 @@ Users should set opening balances during account creation.
 | **cleared** | bool | Auto-managed flag - TRUE when linked to reconciliation |
 | **created_at** | timestamptz | Creation timestamp |
 | **updated_at** | timestamptz | Last update timestamp |
-| **version** | integer | Optimistic concurrency control version |
+| **deleted_at** | timestamptz | Soft delete timestamp (NULL = active, NOT NULL = deleted) |
+| **version** | integer | Version-based sync counter (global monotonic sequence) |
 | **account_name** | text | Name of the associated account |
 | **account_color** | text | Hex color of the associated account (for UI) |
 | **category_name** | text | Name of the associated category |
@@ -309,7 +321,8 @@ SELECT
   t.cleared,
   t.created_at,
   t.updated_at,
-  t.version,  -- Optimistic concurrency control
+  t.deleted_at,  -- Soft delete timestamp (NULL = active)
+  t.version,     -- Version-based sync counter (global monotonic sequence)
 
   -- Account fields (currency aliased from account)
   a.name AS account_name,
@@ -414,8 +427,12 @@ LEFT JOIN categories c ON i.category_id = c.id;
 | `clear_user_data` | `void` | `p_user_id uuid` | Securely deletes all financial data (Transactions, Inbox, Accounts, Categories) via CASCADE. Preserves User Settings & Auth. Enforces identity verification hard-gate. |
 | `replace_account_currency` | `void` | `p_account_id uuid`, `p_old_currency_code varchar`, `p_new_currency_code varchar` | Updates account's currency_code and all associated transactions. |
 | `update_transaction_with_version` | `jsonb` | `p_transaction_id uuid`, `p_expected_version integer`, `p_updates jsonb` | Version-safe transaction update for optimistic concurrency control. Checks expected version matches current version, performs update, returns `{success, error, newVersion}`. Prevents concurrent modification conflicts. |
-| `delete_transaction_with_version` | `jsonb` | `p_transaction_id uuid`, `p_expected_version integer` | Version-safe transaction delete. Checks version before deleting, returns `{success, error, currentData}` with conflict details if transaction was modified. Prevents accidental deletion of edited transactions. |
+| `delete_transaction_with_version` | `jsonb` | `p_transaction_id uuid`, `p_expected_version integer` | **DEPRECATED** - Version-safe transaction delete (physical DELETE). Use `soft_delete_transaction` for offline-sync compatibility. |
+| `soft_delete_transaction` | `jsonb` | `p_transaction_id uuid`, `p_expected_version integer` | Soft deletes transaction by setting `deleted_at = NOW()`. Version-safe with optimistic concurrency control. Returns `{success, error}`. Enables offline sync tombstone pattern. |
+| `restore_transaction` | `jsonb` | `p_transaction_id uuid` | Restores soft-deleted transaction by setting `deleted_at = NULL`. Returns `{success, error, transaction}`. |
+| `get_deleted_transactions` | `jsonb` | `p_user_id uuid`, `p_since_version integer` (optional) | Fetches soft-deleted transactions for delta sync. Returns `{transactions, currentServerVersion}`. Used for offline sync reconciliation. |
 | `bulk_update_transactions` | `jsonb` | `p_transaction_ids uuid[]`, `p_versions integer[]`, `p_updates jsonb` | Atomic bulk update with version checking for each transaction. Returns `{success, successCount, errorCount, updatedIds, errors[]}` with per-transaction conflict tracking. |
+| `create_transfer_transaction` | `jsonb` | `p_user_id uuid`, `p_from_account_id uuid`, `p_to_account_id uuid`, `p_amount_cents integer`, `p_date timestamptz`, `p_description text`, `p_notes text` | **Atomic transfer protocol** - Creates paired OUT/IN transactions in single database transaction. Guarantees all-or-nothing (prevents orphaned half-transfers). Returns `{transferId, outTransactionId, inTransactionId}`. Uses integer cents to prevent floating-point drift. |
 
 ### Transfer Functions
 
@@ -467,6 +484,7 @@ LEFT JOIN categories c ON i.category_id = c.id;
 | `check_reconciliation_account_match` | `trigger` | Prevents linking transactions to reconciliations from different accounts (Sacred Ledger protection) |
 | `check_transaction_reconciliation_lock` | `trigger` | Semi-permeable lock - blocks amount/date/account edits when reconciliation completed, allows category/description/notes |
 | `check_reconciliation_date_overlap` | `trigger` | Prevents overlapping reconciliation date ranges for the same account |
+| `set_transaction_version` | `trigger` | **Version-based sync** - Auto-assigns next value from `global_transaction_version` sequence on INSERT/UPDATE. Enables Todoist-style delta sync with clock-independent versioning. Trigger fires BEFORE INSERT/UPDATE. |
 
 ---
 
