@@ -346,8 +346,11 @@ export interface TransactionFilters {
   /** Filter by account ID */
   readonly accountId?: string;
 
-  /** Filter by category ID */
+  /** Filter by single category ID */
   readonly categoryId?: string;
+
+  /** Filter by multiple category IDs (for grouping/aggregation) */
+  readonly categoryIds?: string[];
 
   /** Filter by date range (start) - ISO 8601 */
   readonly startDate?: string;
@@ -363,6 +366,12 @@ export interface TransactionFilters {
 
   /** Search query (matches description or notes) */
   readonly searchQuery?: string;
+
+  /** Filter by exact date (ISO 8601) */
+  readonly date?: Date | string;
+
+  /** Sort order */
+  readonly sortBy?: 'date' | 'created_at';
 
   /** Filter by cleared status (for reconciliation) */
   readonly cleared?: boolean;

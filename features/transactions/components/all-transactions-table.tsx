@@ -16,7 +16,7 @@ import { useUserSettings, useUpdateSortPreference } from '@/features/settings/ho
 import { useTransactionSelection } from '@/stores/transaction-selection-store';
 import { useLinkTransactions, useUnlinkTransactions } from '@/features/reconciliations/hooks/use-reconciliations';
 import { toast } from 'sonner';
-import type { TransactionRow } from '../types';
+import type { TransactionViewEntity } from '../domain';
 import type { TransactionSortMode } from '@/types/domain';
 
 function TransactionsContent() {
@@ -148,7 +148,7 @@ function TransactionsContent() {
   const pageTitle = groupingName || categoryName || accountName || 'Transactions';
 
   const selectedTransaction = selectedTransactionId
-    ? transactions.find((t: TransactionRow) => t.id === selectedTransactionId) || null
+    ? transactions.find((t: TransactionViewEntity) => t.id === selectedTransactionId) || null
     : null;
 
   // Clear selections when filters change
@@ -222,19 +222,18 @@ function TransactionsContent() {
       }
 
       // Standard bulk update for other fields
+      // Note: Bulk updates don't support version checking yet (todo: implement optimistic locking for bulk ops)
       const result = await bulkUpdateMutation.mutateAsync({
-        ids: getSelectedIds(),
-        versions: getSelectedVersions(),
+        transactionIds: getSelectedIds(),
         updates: stagedUpdates,
       });
 
       // Show feedback
-      if (result.errorCount > 0) {
+      if (result.failureCount > 0) {
         toast.error(
-          `Updated ${result.successCount} transactions, ${result.errorCount} failed. Check console for details.`,
+          `Updated ${result.successCount} transactions, ${result.failureCount} failed.`,
           { duration: 5000 }
         );
-        console.error('Bulk update errors:', result.errors);
       } else {
         toast.success(`Successfully updated ${result.successCount} transactions`);
       }

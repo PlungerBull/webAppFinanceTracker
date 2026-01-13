@@ -161,17 +161,14 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           // The backend/database will enforce any additional constraints
 
           // SACRED LEDGER: currency_original is automatically derived from account_id by database trigger
-          // DO NOT pass currency_original - it will be set correctly by the database
+          // Repository Pattern: Use CreateTransactionDTO with camelCase and integer cents
           await addTransactionMutation.mutateAsync({
             description: transactionData.payee!,
-            amount_original: finalAmount!,
-            // currency_original REMOVED - Sacred Ledger trigger derives from account_id
-            account_id: transactionData.fromAccountId!,
-            category_id: transactionData.categoryId!,
-            // type REMOVED - transaction type is derived from category_id by database
-            date: format(transactionData.date, 'yyyy-MM-dd'),
+            amountCents: Math.round(finalAmount! * 100), // Convert decimal to integer cents
+            accountId: transactionData.fromAccountId!,
+            categoryId: transactionData.categoryId!,
+            date: format(transactionData.date, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"), // ISO 8601 with milliseconds
             notes: transactionData.notes || undefined,
-            exchange_rate: rate,
           });
 
           toast.success('Transaction saved');

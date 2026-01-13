@@ -6,12 +6,12 @@ import { TransactionDetailPanel as SharedPanel } from '@/features/shared/compone
 import type { PanelData, SelectableAccount, SelectableCategory } from '@/features/shared/components/transaction-detail-panel';
 import { useUpdateTransactionBatch, useDeleteTransaction } from '../hooks/use-transactions';
 import { useTransactionSelection } from '@/stores/transaction-selection-store';
-import type { TransactionRow } from '../types';
+import type { TransactionViewEntity } from '../domain';
 import type { CategoryWithCount, AccountBalance } from '@/types/domain';
 import { cn } from '@/lib/utils';
 
 interface TransactionDetailPanelProps {
-  transaction: TransactionRow | null;
+  transaction: TransactionViewEntity | null;
   accountId: string | null;
   categories: CategoryWithCount[];
   accounts: AccountBalance[]; // Use AccountBalance which has currencySymbol
@@ -34,7 +34,7 @@ export function TransactionDetailPanel({
     return {
       id: transaction.id,
       description: transaction.description ?? undefined,
-      amountOriginal: transaction.amountOriginal,
+      amountOriginal: transaction.amountCents / 100, // Convert integer cents to decimal
       currency: transaction.currencyOriginal,
       accountId: transaction.accountId,
       categoryId: transaction.categoryId ?? undefined,

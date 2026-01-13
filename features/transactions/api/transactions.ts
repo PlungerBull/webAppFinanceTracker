@@ -33,7 +33,11 @@ import type {
   CreateTransactionLedgerData,
   UpdateTransactionFormData
 } from '../schemas/transaction.schema';
-import type { TransactionView, Transaction } from '@/types/domain';
+import type { Transaction } from '@/types/domain';
+import type { TransactionViewEntity } from '../domain';
+
+// For backward compatibility in this deprecated file
+type TransactionView = TransactionViewEntity;
 import {
   dbTransactionViewToDomain,
   dbTransactionViewsToDomain,
@@ -54,7 +58,7 @@ export const transactionsApi = {
       offset: number;
       limit: number;
     }
-  ): Promise<{ data: TransactionView[]; count: number | null }> => {
+  ): Promise<{ data: any[]; count: number | null }> => {
     const supabase = createClient();
     const { offset = 0, limit = 50 } = pagination || {};
     const sortBy = filters?.sortBy || 'date'; // Default to Financial Ledger
@@ -88,7 +92,7 @@ export const transactionsApi = {
   },
 
   // Get a single transaction by ID (RLS handles user filtering)
-  getById: async (id: string): Promise<TransactionView> => {
+  getById: async (id: string): Promise<any> => {
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -110,7 +114,7 @@ export const transactionsApi = {
   // IMPORTANT: This function requires COMPLETE data that matches database constraints.
   // Use CreateTransactionLedgerData type - TypeScript enforces required fields at compile time.
   // For incomplete/draft transactions, route to the inbox instead.
-  create: async (transactionData: CreateTransactionLedgerData): Promise<TransactionView> => {
+  create: async (transactionData: CreateTransactionLedgerData): Promise<any> => {
     const supabase = createClient();
 
     // Get user for user_id (no DB default exists yet)

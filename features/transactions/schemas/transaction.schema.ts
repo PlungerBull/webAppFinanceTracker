@@ -1,3 +1,19 @@
+/**
+ * Transaction Zod Schemas (Form Validation)
+ *
+ * NOTE: These schemas use UI-level constants from @/lib/constants.
+ * For platform-agnostic validation (TypeScript/Swift), see:
+ * - @/features/transactions/domain/constants.ts (TRANSACTION_VALIDATION)
+ *
+ * The domain constants should be used in:
+ * - Repository layer validation
+ * - Service layer business logic
+ * - iOS Swift validation
+ *
+ * These Zod schemas are for:
+ * - Form validation (UI layer)
+ * - API request validation (Next.js)
+ */
 import { z } from 'zod';
 import { VALIDATION, UI, CURRENCY } from '@/lib/constants';
 

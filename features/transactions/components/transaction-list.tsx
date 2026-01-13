@@ -18,13 +18,14 @@ import {
 } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TransactionRow } from '../types';
+import type { TransactionViewEntity } from '../domain';
 
 // Nullable amount type for inbox items (draft state)
-// Regular transactions have required amounts, but inbox items can have null amounts
-// Note: Must include all TransactionView fields including categoryType and transferId
-type TransactionListRow = Omit<TransactionRow, 'amountOriginal' | 'amountHome'> & {
-  amountOriginal: number | null;
-  amountHome: number | null;
+// Regular transactions have required amounts, but inbox items can have null amounts (for displaying "--")
+// Repository Pattern: Uses integer cents (amountCents), converted to decimal for display
+type TransactionListRow = Omit<TransactionViewEntity, 'amountCents' | 'amountHomeCents'> & {
+  amountOriginal: number | null; // Display format: decimal (converted from amountCents)
+  amountHome: number | null; // Display format: decimal (converted from amountHomeCents)
 };
 
 interface TransactionListProps {

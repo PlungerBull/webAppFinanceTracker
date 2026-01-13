@@ -1,7 +1,13 @@
 import { utils, writeFile } from 'xlsx';
 import { createClient } from '@/lib/supabase/client';
-import { dbTransactionViewsToDomain } from '@/lib/types/data-transformers';
+import { createTransactionRepository } from '@/features/transactions/repository';
 
+/**
+ * Data Export Service
+ *
+ * Uses Repository Pattern for data access.
+ * Converts integer cents back to decimal amounts for Excel export.
+ */
 export class DataExportService {
     private supabase = createClient();
 
@@ -9,22 +15,21 @@ export class DataExportService {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) throw new Error('User not authenticated');
 
-        // Fetch all transactions with related data using view
-        const { data: dbTransactions, error } = await this.supabase
-            .from('transactions_view')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('date', { ascending: false });
+        // Use repository to fetch transactions (Repository Pattern)
+        const repository = createTransactionRepository(this.supabase);
+        const result = await repository.getAllPaginated(user.id, {}, { offset: 0, limit: 10000 });
 
-        if (error) throw new Error(`Failed to fetch data: ${error.message}`);
+        if (!result.success) {
+            throw new Error(`Failed to fetch data: ${result.error.message}`);
+        }
 
-        // Transform database rows to domain objects
-        const transactions = dbTransactionViewsToDomain(dbTransactions);
+        const transactions = result.data.data;
 
-        // Format domain objects for Excel
+        // Format domain entities for Excel
+        // Convert INTEGER CENTS → DECIMAL for human-readable export
         const rows = transactions.map(t => ({
             Date: t.date,
-            Amount: t.amountOriginal,
+            Amount: t.amountCents / 100, // Convert integer cents to decimal
             Description: t.description || '',
             Category: t.categoryName || '',
             Account: t.accountName,

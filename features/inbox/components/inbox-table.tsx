@@ -19,33 +19,36 @@ function InboxContent() {
     totalCount,
   } = useInboxItems();
 
-  // Transform InboxItem to match TransactionRow shape expected by TransactionList
+  // Transform InboxItem to match TransactionViewEntity shape expected by TransactionList
   // NULL-SAFE: Handle partial drafts with missing amount/description
-  // Preserve null state for amounts (don't convert to 0) to show "--" placeholder in list
+  // INTEGER CENTS: Convert decimal amounts to integer cents (Repository Pattern)
   const transactions = inboxItems.map((item) => ({
     id: item.id,
-    version: 1, // Inbox drafts initialize at version 1 (satisfies TransactionList requirement)
+    version: 1, // Inbox drafts initialize at version 1
     userId: item.userId,
-    accountId: item.accountId || '',                     // Empty string for missing account
+    accountId: item.accountId || '',
     accountName: item.account?.name || 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
-    amountOriginal: item.amountOriginal ?? null,         // Preserve null for draft state (RENAMED)
-    amountHome: item.amountOriginal ?? null,             // Preserve null for draft state (RENAMED)
-    currencyOriginal: item.currencyOriginal || '',       // Empty string when no currency (RENAMED)
+    accountCurrency: item.currencyOriginal || 'USD', // Currency from account
+    // INTEGER CENTS: Convert decimal to integer cents (Repository Pattern requirement)
+    amountCents: item.amountOriginal != null ? Math.round(item.amountOriginal * 100) : 0,
+    amountHomeCents: item.amountOriginal != null ? Math.round(item.amountOriginal * 100) : 0,
+    currencyOriginal: item.currencyOriginal || '',
     exchangeRate: item.exchangeRate ?? 1.0,
     date: item.date || new Date().toISOString(),
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    categoryId: item.categoryId ?? null,                 // undefined → null
+    deletedAt: null, // Inbox items are never soft-deleted
+    categoryId: item.categoryId ?? null,
     categoryName: item.category?.name ?? null,
     categoryColor: item.category?.color ?? null,
-    categoryType: null,                                  // Inbox items don't have type yet
-    transferId: null,                                    // Inbox items are never transfers
-    description: item.description ?? '—',               // Show dash if undefined
+    categoryType: null, // Inbox items don't have type yet
+    transferId: null, // Inbox items are never transfers
+    description: item.description ?? '—', // Show dash if undefined
     notes: null,
-    reconciliationId: null,                              // Inbox items aren't reconciled yet
-    cleared: false,                                      // Inbox items aren't cleared
-    reconciliationStatus: null,                          // Inbox items aren't reconciled yet
+    reconciliationId: null, // Inbox items aren't reconciled yet
+    cleared: false, // Inbox items aren't cleared
+    reconciliationStatus: null, // Inbox items aren't reconciled yet
   }));
 
   const selectedItem = selectedItemId

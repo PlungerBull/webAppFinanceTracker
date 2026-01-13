@@ -38,7 +38,7 @@ interface BulkActionBarProps {
 
   // Real-time diff calculation
   selectedIds?: Set<string>;
-  transactions?: Array<{ id: string; amountHome: number; reconciliationId?: string | null }>;
+  transactions?: Array<{ id: string; amountHomeCents: number; reconciliationId?: string | null }>;
 }
 
 export function BulkActionBar({
@@ -100,7 +100,7 @@ export function BulkActionBar({
     const selectedTransactions = transactions.filter((t) => selectedTransactionIds.includes(t.id));
 
     // Calculate sum of selected transactions
-    const selectedSum = selectedTransactions.reduce((sum, t) => sum + t.amountHome, 0);
+    const selectedSum = selectedTransactions.reduce((sum, t) => sum + (t.amountHomeCents / 100), 0);
 
     // Calculate preview difference
     // Formula: Ending Balance - (Beginning Balance + Current Linked Sum + Selected Sum)
