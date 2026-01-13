@@ -275,20 +275,21 @@ Users should set opening balances during account creation.
 | **source_text** | text | Raw source context (OCR, bank import data, etc.) |
 | **inbox_id** | uuid | Birth certificate - links to original inbox item for audit trail |
 | **transfer_id** | uuid | Transfer identifier (if part of a transfer) |
+| **reconciliation_id** | uuid | Links to reconciliation session |
+| **cleared** | bool | Auto-managed flag - TRUE when linked to reconciliation |
 | **created_at** | timestamptz | Creation timestamp |
 | **updated_at** | timestamptz | Last update timestamp |
+| **version** | integer | Optimistic concurrency control version |
 | **account_name** | text | Name of the associated account |
-| **account_currency** | text | Currency of the associated account |
 | **account_color** | text | Hex color of the associated account (for UI) |
 | **category_name** | text | Name of the associated category |
 | **category_color** | text | Hex color of the associated category (for UI) |
 | **category_type** | transaction_type | Type of the associated category |
-| **reconciliation_id** | uuid | Links to reconciliation session |
-| **cleared** | bool | Auto-managed flag - TRUE when linked to reconciliation |
+| **reconciliation_status** | reconciliation_status | Status of linked reconciliation (draft/completed/null) for UI icons |
 
 **SQL Definition:**
 ```sql
-CREATE VIEW transactions_view AS
+CREATE VIEW transactions_view WITH (security_invoker = true) AS
 SELECT
   -- Core transaction fields
   t.id,
@@ -304,8 +305,11 @@ SELECT
   t.source_text,
   t.inbox_id,
   t.transfer_id,
+  t.reconciliation_id,
+  t.cleared,
   t.created_at,
   t.updated_at,
+  t.version,  -- Optimistic concurrency control
 
   -- Account fields (currency aliased from account)
   a.name AS account_name,
@@ -316,10 +320,14 @@ SELECT
   -- Category fields
   c.name AS category_name,
   c.color AS category_color,
-  c.type AS category_type
+  c.type AS category_type,
+
+  -- Reconciliation fields
+  r.status AS reconciliation_status  -- For UI status icons
 FROM transactions t
 LEFT JOIN bank_accounts a ON t.account_id = a.id
-LEFT JOIN categories c ON t.category_id = c.id;
+LEFT JOIN categories c ON t.category_id = c.id
+LEFT JOIN reconciliations r ON t.reconciliation_id = r.id;
 ```
 
 **Note:** `currency_original` is an alias for `account_currency` (both source from `bank_accounts.currency_code`). This aliasing strategy eliminates frontend code changes after normalization.
