@@ -340,6 +340,245 @@ flowchart LR
     * Settings: `features/settings/components/reconciliation-settings.tsx`
     * Detail Panel: Badge + field locking in `transaction-detail-panel/`
 
+### H. Repository Pattern Architecture (Phase 1: Todoist-Style Foundation)
+
+**STATUS:** ✅ **IMPLEMENTED** (Days 0-8 Complete)
+
+**Strategic Vision:** Building foundation for Todoist-style offline-first delta sync architecture across Web (TypeScript) and iOS (Swift).
+
+**The Problem We Solved:**
+- **Logic Drift Prevention:** Without architectural layers, TypeScript (Web) and Swift (iOS) implementations diverge over time
+- **Offline Sync Foundation:** Hard deletes make offline sync impossible - tombstone pattern required
+- **Data Integrity:** Floating-point arithmetic causes balance drift; version conflicts need retry logic
+- **Cross-Platform Compatibility:** Need platform-agnostic contracts that both TypeScript and Swift can implement
+
+**Architectural Layers (Current State):**
+```
+UI Component → React Query Hook → Service Layer → Repository Interface → Supabase Implementation → Database
+                      ↓                   ↓                   ↓
+              Optimistic Updates    Business Logic    Data Access Layer
+              (Zero-latency UX)     (UUID, Retry)     (INTEGER CENTS conversion)
+                                          ↓
+                                 iOS Swift mirrors exactly
+```
+
+**Critical Mandates Implemented:**
+
+1. **Atomic Transfer Protocol** (CTO Mandate #1)
+   - Problem: Network drop between two `create()` calls → unbalanced ledger
+   - Solution: `create_transfer_transaction()` RPC creates both OUT and IN transactions atomically
+   - Impact: All-or-nothing transfers (both succeed or both fail)
+
+2. **Version-Based Sync** (CTO Mandate #2)
+   - Problem: Clock drift causes missed deletions/updates during sync
+   - Solution: Global monotonic `global_transaction_version` sequence (clock-independent)
+   - Impact: Deterministic sync even if device clock is wrong
+
+3. **Sacred Integer Arithmetic** (CTO Mandate #3)
+   - Problem: Floating-point drift (`0.1 + 0.2 !== 0.3`) causes balance errors
+   - Solution: Domain entities use `amountCents: number` (INTEGER), repository converts DECIMAL ↔ INT
+   - Impact: TypeScript and Swift produce identical balance calculations (zero drift)
+
+4. **Soft Deletes** (CTO Mandate #4)
+   - Problem: Hard deletes → offline clients can't reconcile deletions
+   - Solution: `deleted_at` column + tombstone pattern
+   - Impact: Delta sync can fetch "what was deleted since last sync"
+
+5. **Strict ISO 8601** (CTO Mandate #5)
+   - Problem: Swift's `ISO8601DateFormatter` crashes on malformed dates
+   - Solution: `validateISODate()` enforces `YYYY-MM-DDTHH:mm:ss.SSSZ` format
+   - Impact: Cross-platform date compatibility guaranteed
+
+6. **Auth Provider Abstraction** (CTO Mandate #6)
+   - Problem: Service layer calling `supabase.auth.getUser()` → won't work with Native Apple Sign-In
+   - Solution: `IAuthProvider` interface (SupabaseAuthProvider for Web, AppleAuthProvider for iOS)
+   - Impact: iOS can use Native Apple Auth seamlessly
+
+7. **DataResult Pattern** (CTO Mandate #7)
+   - Problem: TypeScript `try/catch` too loose for iOS team
+   - Solution: `DataResult<T>` type mirrors Swift's `Result<T, Error>`
+   - Impact: Explicit success/failure contracts
+
+8. **Real Dependency Injection** (CTO Mandate #8)
+   - Problem: Singletons make testing impossible
+   - Solution: Factory functions with parameters (no hidden state)
+   - Impact: Full testability with mock dependencies
+
+9. **Shared Validation Constants** (CTO Mandate #9)
+   - Problem: Zod validation rules are TypeScript-only
+   - Solution: `TRANSACTION_VALIDATION` constants in domain layer
+   - Impact: Both platforms use identical validation rules
+
+**Folder Structure:**
+```
+features/transactions/
+├── domain/                          [NEW] Platform-agnostic entities
+│   ├── entities.ts                 TransactionEntity (with INTEGER CENTS)
+│   ├── types.ts                    DTOs, DataResult<T>, filters
+│   ├── constants.ts                Validation rules (shared with iOS)
+│   ├── errors.ts                   Domain-specific error classes
+│   └── index.ts                    Centralized exports
+├── repository/                      [NEW] Data Access Layer
+│   ├── transaction-repository.interface.ts    Platform contract
+│   ├── supabase-transaction-repository.ts     Supabase implementation
+│   └── index.ts                    Factory function (DI)
+├── services/                        [NEW] Business Logic Layer
+│   ├── transaction-service.interface.ts       Service contract
+│   ├── transaction-service.ts                 Business logic
+│   └── index.ts                    Factory function (DI)
+├── hooks/                           [REFACTORED] React Query integration
+│   ├── use-transaction-service.ts  Service initialization hook
+│   └── use-transactions-new.ts     Refactored hooks using service layer
+├── api/                             [DEPRECATED] Old direct API calls
+│   └── transactions.ts             Will be replaced by service layer
+└── schemas/                         [UPDATE] Use domain constants
+    └── transaction.schema.ts       Zod schemas
+
+lib/
+├── auth/                            [NEW] Auth abstraction
+│   ├── auth-provider.interface.ts  IAuthProvider interface
+│   ├── supabase-auth-provider.ts   Web implementation
+│   └── index.ts                    Exports
+└── utils/
+    └── date-validation.ts           [NEW] Strict ISO 8601 validation
+```
+
+**Key Files & Their Purpose:**
+
+| File | Purpose | Key Responsibility |
+|------|---------|-------------------|
+| `domain/entities.ts` | Domain models with INTEGER CENTS | `TransactionEntity`, `TransactionViewEntity` |
+| `domain/types.ts` | DTOs and Result types | `DataResult<T>`, `CreateTransactionDTO`, `UpdateTransactionDTO` |
+| `domain/constants.ts` | Platform-agnostic validation | `TRANSACTION_VALIDATION`, `TRANSACTION_ERRORS` |
+| `domain/errors.ts` | Domain error classes | `TransactionError`, `VersionConflictError`, etc. |
+| `repository/*.ts` | Data access layer (CRUD only) | Supabase calls, DECIMAL ↔ INT conversion |
+| `services/*.ts` | Business logic layer | UUID generation, retry logic, auth extraction |
+| `hooks/use-transaction-service.ts` | Service initialization | Creates service with DI |
+| `lib/auth/*.ts` | Auth provider abstraction | Support for Native Apple Sign-In |
+| `lib/utils/date-validation.ts` | Strict date validation | Prevents Swift crashes |
+
+**Usage Patterns:**
+
+1. **Creating a Transaction (Hook Layer):**
+   ```typescript
+   // Component
+   const addTransaction = useAddTransaction();
+   await addTransaction.mutateAsync({
+     accountId: 'abc-123',
+     amountCents: 1050,  // $10.50 as INTEGER CENTS
+     date: '2024-01-12T10:30:00.123Z',
+     categoryId: 'cat-456',
+     description: 'Coffee shop'
+   });
+   ```
+
+2. **Service Layer (Business Logic):**
+   ```typescript
+   // Service extracts userId, generates UUID, calls repository
+   async create(data: CreateTransactionDTO): Promise<TransactionViewEntity> {
+     const userId = await this.authProvider.getCurrentUserId();
+     const transactionId = crypto.randomUUID();
+     const result = await this.repository.create(userId, transactionId, data);
+     if (!result.success) throw result.error;
+     return result.data;
+   }
+   ```
+
+3. **Repository Layer (Data Access):**
+   ```typescript
+   // Repository converts INTEGER CENTS → DECIMAL, inserts, converts back
+   async create(userId, transactionId, data): Promise<DataResult<TransactionViewEntity>> {
+     await supabase.from('transactions').insert({
+       id: transactionId,
+       user_id: userId,
+       amount_original: this.fromCents(data.amountCents),  // INT → DECIMAL
+       // ... other fields
+     });
+     // Write-then-Read: fetch from view to get complete data
+     return this.getById(userId, transactionId);
+   }
+   ```
+
+**iOS Swift Mirror Example:**
+```swift
+// Service Layer (mirrors TypeScript exactly)
+class TransactionService: TransactionServiceProtocol {
+    private let repository: TransactionRepositoryProtocol
+    private let authProvider: AuthProviderProtocol
+
+    func create(data: CreateTransactionDTO) async throws -> TransactionViewEntity {
+        let userId = try await authProvider.getCurrentUserId()
+        let transactionId = UUID().uuidString
+
+        let result = try await repository.create(
+            userId: userId,
+            transactionId: transactionId,
+            data: data
+        )
+
+        return result  // Swift Result type unwraps automatically
+    }
+}
+
+// Domain Entity (INTEGER CENTS - matches TypeScript)
+struct TransactionEntity: Codable {
+    let id: String
+    let version: Int
+    let userId: String
+    let amountCents: Int  // Never Double! Prevents drift
+    let amountHomeCents: Int
+    let currencyOriginal: String
+    let exchangeRate: Decimal
+    // ... rest of fields
+}
+```
+
+**Migration Status:**
+- ✅ **Days 0-8 Complete:** Database migration, domain layer, repository layer, service layer, refactored hooks
+- ⏳ **Days 9-10 Pending:** Replace old hooks file, update component type imports
+- ⏳ **Day 11 Pending:** Testing, documentation updates
+
+**Critical Rules:**
+
+1. **DO** use INTEGER CENTS for all amounts in domain layer
+   - Domain: `amountCents: 1050` (INTEGER)
+   - Database: `amount_original: 10.50` (NUMERIC)
+   - Repository handles conversion
+
+2. **DO** use service layer for all data operations (not direct API calls)
+   - Hook → Service → Repository → Database
+   - Never skip layers
+
+3. **DO** use `DataResult<T>` pattern in repository
+   - Return `{ success: true, data }` or `{ success: false, error }`
+   - Never throw exceptions from repository
+
+4. **DO** use dependency injection (factory functions with parameters)
+   - `createTransactionService(repository, authProvider)`
+   - No singletons, no hidden state
+
+5. **DO** validate ISO 8601 dates in repository before inserting
+   - `validateISODate(data.date)` → return ValidationError if fails
+   - Format: `YYYY-MM-DDTHH:mm:ss.SSSZ` (strict)
+
+6. **DO NOT** use decimal amounts in domain entities
+   - ❌ `amount: 10.50`
+   - ✅ `amountCents: 1050`
+
+7. **DO NOT** call repository directly from hooks
+   - Always go through service layer
+   - Service handles auth, UUID generation, retry logic
+
+8. **DO NOT** put business logic in repository
+   - Repository: Pure data access (CRUD only)
+   - Service: Business logic (UUID, retry, auth)
+
+**Future Enhancements (Phase 2 - Post iOS Launch):**
+- Local cache layer (IndexedDB for Web, SQLite for iOS)
+- Sync queue for offline operations
+- Delta sync API (`getChangesSince(version)`)
+- Conflict resolution with last-write-wins + version vectors
+
 ## 5. Coding Standards "Do's and Don'ts"
 * **DO** use Zod schemas for all form inputs.
 * **DO** use absolute imports (e.g., `@/components/...`) instead of relative imports (`../../`).

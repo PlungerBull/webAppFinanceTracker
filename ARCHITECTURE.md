@@ -41,14 +41,31 @@ The `features/` directory is currently organized into these core domains:
 
 **Feature Module Structure:**
 
-Inside each domain folder (e.g., `features/transactions/`), we encapsulate logic to keep the global namespace clean. A typical feature folder contains:
+Inside each domain folder (e.g., `features/transactions/`), we encapsulate logic to keep the global namespace clean. The transactions feature uses a **Repository Pattern** (see section 6 below) with this layered structure:
 
 ```
 features/transactions/
-├── api/             # Supabase queries & mutations (useGetTransactions, useCreateTransaction)
-├── components/      # Domain-specific UI (TransactionForm, TransactionList)
-├── hooks/           # Complex logic hooks (useTransactionFilters)
-└── types.ts         # shared interfaces for this domain
+├── domain/           # Platform-agnostic entities, types, constants, errors
+│   ├── entities.ts   # Core domain entities (TransactionEntity, TransactionViewEntity)
+│   ├── types.ts      # DTOs, DataResult pattern, value objects
+│   ├── constants.ts  # Validation rules shared with iOS
+│   ├── errors.ts     # Domain-specific error classes
+│   └── index.ts      # Public exports
+├── repository/       # Data Access Layer (Infrastructure isolation)
+│   ├── transaction-repository.interface.ts  # Platform-agnostic contract
+│   ├── supabase-transaction-repository.ts   # Supabase implementation
+│   └── index.ts      # Factory function (DI)
+├── services/         # Business Logic Layer
+│   ├── transaction-service.interface.ts     # Service contract
+│   ├── transaction-service.ts               # Business logic (retry, auth, UUID generation)
+│   └── index.ts      # Factory function (DI)
+├── hooks/            # React Query hooks (UI integration)
+│   ├── use-transaction-service.ts           # Service initialization
+│   ├── use-transactions.ts                  # React Query hooks using service
+│   └── ...other hooks
+├── components/       # Domain-specific UI (TransactionForm, TransactionList)
+├── api/              # [DEPRECATED] Old direct API calls (being phased out)
+└── schemas/          # Zod validation schemas
 ```
 
 ### 3. Server vs. Client State
@@ -144,3 +161,232 @@ export default async function YourPage() {
    * **Match:** `INSERT INTO transactions ...`
    * **No Match:** `INSERT INTO inbox ...`
 5. **UI Response:** React Query invalidates `['transactions']` and `['inbox']` keys.
+
+## 6. Repository Pattern Architecture (Transactions Feature)
+
+### Overview
+
+The transactions feature implements a **Repository Pattern with Todoist-style offline-first architecture** to support dual-platform development (Web TypeScript + iOS Swift/SwiftUI). This pattern creates platform-agnostic contracts that prevent "Logic Drift" between platforms.
+
+**Status:** ✅ **IMPLEMENTED** (Days 0-8 Complete, Component Migration Pending)
+
+### Strategic Vision
+
+This architecture enables **Todoist-style offline sync** capabilities:
+- **Current State (Phase 1):** Repository Pattern with platform-agnostic contracts + soft deletes
+- **Future State (Phase 2):** Full offline sync with local cache (IndexedDB/SQLite) and delta sync API
+
+### Core CTO Mandates (All Implemented)
+
+#### 1. Atomic Transfer Protocol
+**Problem:** Network interruption between two `create()` calls leaves ledger unbalanced.
+**Solution:** Single atomic RPC (`create_transfer_transaction`) creates both OUT and IN transactions.
+**Impact:** iOS app can never encounter orphaned half-transfers.
+
+#### 2. Version-Based Sync (NOT Timestamps)
+**Problem:** Clock drift causes missed deletions/updates during sync.
+**Solution:** Global monotonic version counter (`global_transaction_version` sequence).
+**Impact:** Sync works even if device clock is wrong - deterministic and gap-proof.
+
+#### 3. Sacred Integer Arithmetic
+**Problem:** Floating-point math causes balance drift (`0.1 + 0.2 !== 0.3`).
+**Solution:** Domain entities use integer cents only - conversion at service boundary.
+**Impact:** TypeScript and Swift produce identical balance calculations - zero drift.
+
+#### 4. Soft Deletes (Tombstone Pattern)
+**Problem:** Hard deletes break offline sync - iOS can't detect deletions.
+**Solution:** Set `deleted_at = NOW()` instead of physical DELETE.
+**Impact:** Enables delta sync with tombstone reconciliation.
+
+#### 5. DataResult Pattern (Swift-Compatible)
+**Problem:** TypeScript's `try/catch` is too loose - iOS needs explicit contracts.
+**Solution:** `DataResult<T>` wrapper with success/failure/conflict states.
+**Impact:** iOS can mirror with Swift's `Result<T, Error>` type.
+
+#### 6. Auth Provider Abstraction
+**Problem:** Service layer calling `supabase.auth.getUser()` won't work with iOS Native Apple Auth.
+**Solution:** `IAuthProvider` interface with platform-specific implementations.
+**Impact:** iOS can use Native Apple Sign-In while Web uses Supabase Auth.
+
+#### 7. Strict ISO 8601 Enforcement
+**Problem:** JavaScript's `new Date()` is forgiving - Swift's `ISO8601DateFormatter` crashes on malformed dates.
+**Solution:** Repository validates `YYYY-MM-DDTHH:mm:ss.SSSZ` format with regex.
+**Impact:** Cross-platform date handling never fails.
+
+#### 8. Shared Validation Constants
+**Problem:** Zod validation rules are TypeScript-only - iOS needs same constraints.
+**Solution:** Extract validation rules into `constants.ts` file.
+**Impact:** Both platforms enforce identical business rules.
+
+#### 9. Real Dependency Injection
+**Problem:** Singleton factory functions make testing impossible.
+**Solution:** Factory functions accept dependencies as parameters.
+**Impact:** Can inject mock repositories/services for testing.
+
+### Architectural Layers
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  UI Components (React/SwiftUI)                                  │
+│  - Transaction forms, lists, filters                            │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│  React Query Hooks (Web) / Combine Subscribers (iOS)            │
+│  - useTransactions(), useAddTransaction(), etc.                 │
+│  - Optimistic updates for zero-latency UX                       │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│  Service Layer (ITransactionService)                            │
+│  - Business logic (UUID generation, retry on conflict)          │
+│  - Auth context extraction (via IAuthProvider)                  │
+│  - Platform-agnostic (TypeScript/Swift implementations)         │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│  Repository Layer (ITransactionRepository)                      │
+│  - Data access contract (platform-agnostic interface)           │
+│  - Supabase implementation (Web) / iOS implementation (future)  │
+│  - DECIMAL ↔ INTEGER CENTS conversion at boundary               │
+│  - DataResult<T> pattern for explicit error handling            │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│  Database (PostgreSQL via Supabase)                             │
+│  - Soft deletes (deleted_at column)                             │
+│  - Version-based sync (global_transaction_version sequence)     │
+│  - Atomic transfer RPC (create_transfer_transaction)            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow Example (Creating Transaction)
+
+**Web (TypeScript):**
+```typescript
+// 1. UI Component
+<TransactionForm onSubmit={handleSubmit} />
+
+// 2. React Query Hook
+const { mutate } = useAddTransaction();
+mutate({ accountId: '...', amountCents: 1050, date: '...' });
+
+// 3. Service Layer (business logic)
+class TransactionService {
+  async create(data: CreateTransactionDTO): Promise<TransactionViewEntity> {
+    const userId = await this.authProvider.getCurrentUserId(); // Auth abstraction
+    const transactionId = crypto.randomUUID(); // Client-side UUID
+
+    const result = await this.repository.create(userId, transactionId, data);
+    if (!result.success) throw result.error; // DataResult pattern
+    return result.data;
+  }
+}
+
+// 4. Repository Layer (data access)
+class SupabaseTransactionRepository {
+  async create(userId, transactionId, data): Promise<DataResult<TransactionViewEntity>> {
+    // Convert INTEGER CENTS → DECIMAL for database
+    const { error } = await supabase.from('transactions').insert({
+      id: transactionId,
+      user_id: userId,
+      amount_original: this.fromCents(data.amountCents), // 1050 → 10.50
+      ...
+    });
+
+    if (error) return { success: false, data: null, error: new RepositoryError(error.message) };
+    return this.getById(userId, transactionId); // Write-then-Read
+  }
+}
+
+// 5. Database
+-- INSERT with trigger updating global_transaction_version sequence
+```
+
+**iOS (Swift - Future Implementation):**
+```swift
+// 1. UI Component
+TransactionFormView(onSubmit: viewModel.handleSubmit)
+
+// 2. Combine Publisher / Async-Await
+let transaction = try await viewModel.createTransaction(data)
+
+// 3. Service Layer (business logic)
+class TransactionService {
+    func create(data: CreateTransactionDTO) async throws -> TransactionViewEntity {
+        let userId = try await authProvider.getCurrentUserId() // Native Apple Auth
+        let transactionId = UUID().uuidString // Client-side UUID
+
+        let result = try await repository.create(userId: userId, transactionId: transactionId, data: data)
+        if !result.success { throw result.error } // DataResult pattern
+        return result.data
+    }
+}
+
+// 4. Repository Layer (data access)
+class SupabaseTransactionRepository {
+    func create(userId: String, transactionId: String, data: CreateTransactionDTO) async -> Result<TransactionViewEntity, Error> {
+        // Convert INTEGER CENTS → DECIMAL for database
+        let response = try await supabase.from("transactions").insert([
+            "id": transactionId,
+            "user_id": userId,
+            "amount_original": fromCents(data.amountCents), // 1050 → 10.50
+            ...
+        ])
+
+        guard response.error == nil else {
+            return .failure(RepositoryError(response.error.message))
+        }
+        return try await getById(userId: userId, id: transactionId) // Write-then-Read
+    }
+}
+
+// 5. Database (same PostgreSQL instance)
+```
+
+### Key Benefits
+
+1. **Platform Independence:** iOS team can implement Swift protocols without web knowledge
+2. **Logic Parity:** Both platforms execute identical business logic (retry, auth, validation)
+3. **Testability:** Mock repositories/services for unit testing
+4. **Offline Readiness:** Soft deletes + version-based sync prepare for Phase 2
+5. **Type Safety:** DataResult pattern prevents silent error swallowing
+6. **Balance Integrity:** Integer cents prevent floating-point drift across platforms
+
+### Migration Status
+
+**✅ Completed (Days 0-8):**
+- Database migration (soft deletes, version sequence, atomic transfer RPC)
+- Domain layer (entities with integer cents, types, constants, errors)
+- Repository layer (interface + Supabase implementation with DataResult pattern)
+- Service layer (business logic with retry on conflict)
+- Hook layer (React Query hooks using service)
+- Auth provider abstraction (IAuthProvider + Supabase implementation)
+
+**⏳ Pending (Days 9-11):**
+- Component type migration (`TransactionView` → `TransactionViewEntity`)
+- Hook file renaming (`use-transactions-new.ts` → `use-transactions.ts`)
+- Deprecate old API (`features/transactions/api/transactions.ts`)
+- Full regression testing
+- Update DB_SCHEMA.md documentation
+
+### Critical Rules for Using Repository Pattern
+
+**DO:**
+- ✅ Use hooks that call service layer (`useAddTransaction`, `useUpdateTransaction`)
+- ✅ Use domain entities (`TransactionViewEntity`, `TransactionEntity`)
+- ✅ Use DTOs for input (`CreateTransactionDTO`, `UpdateTransactionDTO`)
+- ✅ Handle `DataResult<T>` explicitly (check `success` field before accessing `data`)
+- ✅ Use integer cents in domain entities (`amountCents: 1050` for $10.50)
+- ✅ Inject dependencies via factory functions (for testing)
+
+**DON'T:**
+- ❌ Call `supabase.from('transactions')` directly from components/hooks
+- ❌ Use old `transactionsApi` functions (deprecated, will be removed)
+- ❌ Use old types like `TransactionView` (use `TransactionViewEntity` instead)
+- ❌ Use decimal amounts in domain layer (always use integer cents)
+- ❌ Throw errors from repository methods (return `DataResult<T>` instead)
+- ❌ Skip version field in update operations (required for optimistic concurrency)
+- ❌ Hard delete transactions (use soft delete via `service.delete()`)
+
+For detailed implementation examples and iOS integration guide, see [AI_CONTEXT.md](./AI_CONTEXT.md) section 4H.
