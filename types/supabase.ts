@@ -301,6 +301,7 @@ export type Database = {
           cleared: boolean
           created_at: string
           date: string
+          deleted_at: string | null
           description: string | null
           exchange_rate: number
           id: string
@@ -321,6 +322,7 @@ export type Database = {
           cleared?: boolean
           created_at?: string
           date?: string
+          deleted_at?: string | null
           description?: string | null
           exchange_rate?: number
           id?: string
@@ -341,6 +343,7 @@ export type Database = {
           cleared?: boolean
           created_at?: string
           date?: string
+          deleted_at?: string | null
           description?: string | null
           exchange_rate?: number
           id?: string
@@ -589,6 +592,7 @@ export type Database = {
           created_at: string | null
           currency_original: string | null
           date: string | null
+          deleted_at: string | null
           description: string | null
           exchange_rate: number | null
           id: string | null
@@ -747,6 +751,26 @@ export type Database = {
       delete_transfer: {
         Args: { p_transfer_id: string; p_user_id: string }
         Returns: undefined
+      }
+      create_transfer_transaction: {
+        Args: {
+          p_user_id: string
+          p_from_account_id: string
+          p_to_account_id: string
+          p_amount_cents: number
+          p_date: string
+          p_description?: string | null
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      restore_transaction: {
+        Args: { p_transaction_id: string }
+        Returns: Json
+      }
+      get_deleted_transactions: {
+        Args: { p_user_id: string; p_since_version?: number }
+        Returns: Json
       }
       get_monthly_spending_by_category:
         | {

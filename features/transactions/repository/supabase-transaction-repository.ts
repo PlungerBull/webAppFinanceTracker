@@ -41,7 +41,7 @@ import {
   TransactionError,
   TransactionNotFoundError,
   TransactionVersionConflictError,
-  RepositoryError,
+  TransactionRepositoryError,
   TransactionValidationError,
 } from '../domain/errors';
 import { validateISODate } from '@/lib/utils/date-validation';
@@ -236,7 +236,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to fetch transactions: ${error.message}`),
+          error: new TransactionRepositoryError(`Failed to fetch transactions: ${error.message}`),
         };
       }
 
@@ -254,7 +254,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -282,7 +282,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to fetch transaction: ${error.message}`),
+          error: new TransactionRepositoryError(`Failed to fetch transaction: ${error.message}`),
         };
       }
 
@@ -294,7 +294,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -318,7 +318,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to fetch category counts: ${error.message}`),
+          error: new TransactionRepositoryError(`Failed to fetch category counts: ${error.message}`),
         };
       }
 
@@ -337,7 +337,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -400,7 +400,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to create transaction: ${insertError.message}`),
+          error: new TransactionRepositoryError(`Failed to create transaction: ${insertError.message}`),
         };
       }
 
@@ -410,7 +410,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -453,7 +453,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to update transaction: ${rpcError.message}`),
+          error: new TransactionRepositoryError(`Failed to update transaction: ${rpcError.message}`),
         };
       }
 
@@ -483,7 +483,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Update failed: ${result.error}`),
+          error: new TransactionRepositoryError(`Update failed: ${result.error}`),
         };
       }
 
@@ -493,7 +493,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -536,7 +536,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
     return {
       success: false,
       data: null,
-      error: new RepositoryError('Bulk update not yet implemented'),
+      error: new TransactionRepositoryError('Bulk update not yet implemented'),
     };
   }
 
@@ -563,7 +563,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to delete transaction: ${rpcError.message}`),
+          error: new TransactionRepositoryError(`Failed to delete transaction: ${rpcError.message}`),
         };
       }
 
@@ -593,7 +593,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Delete failed: ${result.error}`),
+          error: new TransactionRepositoryError(`Delete failed: ${result.error}`),
         };
       }
 
@@ -605,7 +605,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -627,7 +627,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to restore transaction: ${rpcError.message}`),
+          error: new TransactionRepositoryError(`Failed to restore transaction: ${rpcError.message}`),
         };
       }
 
@@ -637,7 +637,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Restore failed: ${result.error}`),
+          error: new TransactionRepositoryError(`Restore failed: ${result.error}`),
         };
       }
 
@@ -647,7 +647,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -670,16 +670,20 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to fetch deleted transactions: ${rpcError.message}`),
+          error: new TransactionRepositoryError(`Failed to fetch deleted transactions: ${rpcError.message}`),
         };
       }
 
       // Transform to domain entities
-      const deletedTransactions = this.dbTransactionViewsToDomain(rpcData || []);
+      const deletedTransactions = this.dbTransactionViewsToDomain(
+        (rpcData as Database['public']['Views']['transactions_view']['Row'][]) || []
+      );
 
-      // Get current server version
-      const { data: versionData } = await this.supabase.rpc('get_current_server_version');
-      const currentServerVersion = (versionData as any)?.version || 0;
+      // Get current server version from max version in results
+      // TODO: Create dedicated RPC for getting global version
+      const currentServerVersion = deletedTransactions.length > 0
+        ? Math.max(...deletedTransactions.map(t => t.version))
+        : 0;
 
       return {
         success: true,
@@ -693,7 +697,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -734,7 +738,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError(`Failed to create transfer: ${rpcError.message}`),
+          error: new TransactionRepositoryError(`Failed to create transfer: ${rpcError.message}`),
         };
       }
 
@@ -752,7 +756,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         return {
           success: false,
           data: null,
-          error: new RepositoryError('Failed to fetch created transfer transactions'),
+          error: new TransactionRepositoryError('Failed to fetch created transfer transactions'),
         };
       }
 
@@ -770,7 +774,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: false,
         data: null,
-        error: new RepositoryError(`Unexpected error: ${(err as Error).message}`),
+        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
       };
     }
   }
@@ -787,7 +791,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
     return {
       success: false,
       data: null,
-      error: new RepositoryError('Delta sync not yet implemented'),
+      error: new TransactionRepositoryError('Delta sync not yet implemented'),
     };
   }
 
@@ -799,7 +803,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
     return {
       success: false,
       data: null,
-      error: new RepositoryError('Permanent delete not yet implemented'),
+      error: new TransactionRepositoryError('Permanent delete not yet implemented'),
     };
   }
 }
