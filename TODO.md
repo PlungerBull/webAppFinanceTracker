@@ -1,17 +1,37 @@
 # Project Roadmap & Tasks
 
-## Repository Pattern Implementation (Transactions)
+## Repository Pattern Implementation
 
-- [ ] **Repository Pattern - Remaining Tasks:**
-  - [ ] Full regression testing (CRUD, optimistic updates, version conflicts)
-  - [ ] Update DB_SCHEMA.md with soft delete documentation
+### Transactions Feature: ✅ Migrated
 
-- [ ] **Phase 2 - Offline Sync (Future):**
-  - [ ] Install Local Database: Add WatermelonDB or RxDB to `package.json`
-  - [ ] Define Client-Side Schema: Replicate SQL schema into JavaScript/JSON schema
-  - [ ] Implement Sync Engine: Build "Pull" (fetch changes) and "Push" (send offline commits) logic
-  - [ ] Rewrite Hooks: Subscribe to local database observables instead of React Query
-  - [ ] Delta Sync API: Implement `getChangesSince(version)` endpoint
+### Inbox Feature: ❌ Legacy
+- [ ] Create `InboxEntity` in domain layer (integer cents, typed status)
+- [ ] Create `IInboxRepository` interface + `SupabaseInboxRepository` implementation
+- [ ] Create `InboxService` with DataResult pattern
+- [ ] Create new React Query hooks using service layer
+- [ ] Migrate `use-inbox.ts` from direct `inboxApi.ts` calls
+- [ ] Deprecate `features/inbox/api/inbox-api.ts`
+
+### Transfers Feature: ❌ Legacy
+- [ ] Create `TransferEntity` in domain layer
+- [ ] Create `ITransferRepository` interface + `SupabaseTransferRepository` implementation
+- [ ] Create `TransferService` with DataResult pattern (align with Transaction service)
+- [ ] Migrate `use-transfers.ts` from direct `transfersApi.ts` calls
+- [ ] Ensure `createTransfer` RPC returns structured DataResult
+
+### Accounts Feature: ❌ Legacy
+- [ ] Create `AccountEntity` in domain layer (integer cents for balances)
+- [ ] Create `IAccountRepository` interface + `SupabaseAccountRepository` implementation
+- [ ] Create `AccountService` with DataResult pattern
+- [ ] Migrate `use-accounts.ts` from direct `accountsApi.ts` calls
+- [ ] Deprecate `features/accounts/api/accounts-api.ts`
+
+### Phase 2 - Offline Sync (Future)
+- [ ] Install Local Database: Add WatermelonDB or RxDB to `package.json`
+- [ ] Define Client-Side Schema: Replicate SQL schema into JavaScript/JSON schema
+- [ ] Implement Sync Engine: Build "Pull" (fetch changes) and "Push" (send offline commits) logic
+- [ ] Rewrite Hooks: Subscribe to local database observables instead of React Query
+- [ ] Delta Sync API: Implement `getChangesSince(version)` endpoint
 
 ## General Tasks
 - [ ] **Install Test Runner:** Add `vitest` and `@testing-library/react` immediately. We currently have zero test coverage.
