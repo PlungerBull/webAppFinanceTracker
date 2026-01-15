@@ -2,25 +2,9 @@
 
 ## Repository Pattern Implementation (Transactions)
 
-- [x] **Eject Direct API Calls (Phase 1 - Repository Pattern):** ✅ **COMPLETED** (Days 0-8)
-  - Created domain layer (entities with integer cents, types, constants, errors)
-  - Created repository layer (interface + Supabase implementation with DataResult pattern)
-  - Created service layer (business logic with retry on conflict)
-  - Created React Query hooks using service layer
-  - Database migration (soft deletes, version-based sync, atomic transfer RPC)
-  - Auth provider abstraction (IAuthProvider + Supabase implementation)
-  - **Status:** Ready for component migration (Days 9-10)
-
-- [x] **Complete Repository Pattern Migration (Days 9-10):** ✅ **COMPLETED**
-  - [x] Rename `use-transactions-new.ts` → `use-transactions.ts` (replaced old file)
-  - [x] Update component type imports: `TransactionView` → `TransactionViewEntity` (via alias)
-  - [x] Update component type imports: `CreateTransactionLedgerData` → `CreateTransactionDTO`
-  - [x] Update schemas to use domain constants reference
-  - [x] Deprecate old `transactionsApi` in `features/transactions/api/transactions.ts`
-  - [x] Fix all TypeScript compilation errors (transaction-list, transaction-header)
-  - [x] Integer cents conversion at display boundary
-  - [ ] Full regression testing (CRUD, optimistic updates, version conflicts) - TODO
-  - [ ] Update DB_SCHEMA.md with soft delete documentation - TODO
+- [ ] **Repository Pattern - Remaining Tasks:**
+  - [ ] Full regression testing (CRUD, optimistic updates, version conflicts)
+  - [ ] Update DB_SCHEMA.md with soft delete documentation
 
 - [ ] **Phase 2 - Offline Sync (Future):**
   - [ ] Install Local Database: Add WatermelonDB or RxDB to `package.json`
