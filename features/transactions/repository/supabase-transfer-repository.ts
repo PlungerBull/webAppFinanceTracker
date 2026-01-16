@@ -120,6 +120,11 @@ export class SupabaseTransferRepository implements ITransferRepository {
 
       // Calculate implied exchange rate from amounts
       // This is more accurate than user-entered rates
+      //
+      // CTO NOTE: Exchange rate is a float (receivedCents / sentCents).
+      // RISK: If we reconstruct amounts from this rate later, we may be off by fractions.
+      // MITIGATION: The DB stores actual sent/received integers as source of truth.
+      // The rate is metadata for display only - never used to derive amounts.
       const impliedExchangeRate = data.receivedAmountCents / data.sentAmountCents;
 
       // Convert cents to dollars for RPC (DB uses decimal)
@@ -127,6 +132,8 @@ export class SupabaseTransferRepository implements ITransferRepository {
       const receivedAmount = this.fromCents(data.receivedAmountCents);
 
       // CTO Mandate: Use create_transfer RPC exclusively for atomicity
+      // VERIFIED: The RPC is plpgsql which wraps both INSERTs in an implicit transaction.
+      // If either INSERT fails, the entire operation rolls back automatically.
       const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
         'create_transfer',
         {
