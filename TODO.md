@@ -69,7 +69,11 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 - [x] Add optimistic updates for Zero-Latency UX
 - [x] Enforce integer cents (`sentAmountCents`, `receivedAmountCents`) exclusively
 - [x] Enforce strict ISO 8601 date format (`YYYY-MM-DDTHH:mm:ss.SSSZ`) required by Swift
+- [x] Remove duplicate `createTransfer` from Transaction repository (Single Source of Truth)
 - [ ] Deprecate `features/transactions/api/transfers.ts`
+
+### Technical Debt
+- [ ] **Regenerate Supabase Types:** Run `supabase gen types typescript` to fix nullable RPC parameters (currently using `null as unknown as string` workaround in `supabase-transfer-repository.ts:144`)
 
 ### Accounts Feature: ✅ Migrated
 - [x] Create `AccountEntity` in domain layer (integer cents for balances)

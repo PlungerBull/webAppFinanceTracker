@@ -27,8 +27,6 @@ import type {
   UpdateTransactionDTO,
   BulkUpdateTransactionDTO,
   BulkUpdateResult,
-  CreateTransferDTO,
-  TransferResult,
   TransactionFilters,
   PaginationOptions,
   PaginatedResult,
@@ -66,9 +64,48 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
    * CTO Mandate #3: Sacred Integer Arithmetic
    * - Database: 10.50 (NUMERIC)
    * - Domain: 1050 (INTEGER CENTS)
+   *
+   * CTO Mandate: TRUE string-based parsing - NO binary float multiplication.
+   * Binary float: 1.15 * 100 can yield 114.99999999999999
+   *
+   * This implementation splits the string at the decimal point and
+   * performs pure integer arithmetic to avoid IEEE 754 precision errors.
    */
-  private toCents(decimal: number): number {
-    return Math.round(decimal * 100);
+  private toCents(decimal: number | string | null): number {
+    if (decimal === null || decimal === undefined) {
+      return 0;
+    }
+
+    // Convert to string for parsing
+    const str = typeof decimal === 'string' ? decimal : decimal.toString();
+
+    // Handle negative numbers
+    const isNegative = str.startsWith('-');
+    const absStr = isNegative ? str.slice(1) : str;
+
+    // Split at decimal point
+    const parts = absStr.split('.');
+    const wholePart = parts[0] || '0';
+    let fractionalPart = parts[1] || '00';
+
+    // Normalize fractional part to exactly 2 digits
+    // "5" -> "50", "123" -> "12" (truncate beyond cents)
+    if (fractionalPart.length === 1) {
+      fractionalPart = fractionalPart + '0';
+    } else if (fractionalPart.length > 2) {
+      // Round the third digit
+      const thirdDigit = parseInt(fractionalPart[2], 10);
+      let cents = parseInt(fractionalPart.slice(0, 2), 10);
+      if (thirdDigit >= 5) {
+        cents += 1;
+      }
+      fractionalPart = cents.toString().padStart(2, '0');
+    }
+
+    // Pure integer arithmetic: whole dollars * 100 + cents
+    const cents = parseInt(wholePart, 10) * 100 + parseInt(fractionalPart, 10);
+
+    return isNegative ? -cents : cents;
   }
 
   /**
@@ -691,152 +728,6 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
           data: deletedTransactions,
           currentServerVersion,
           hasMore: false,  // TODO: Implement pagination for large result sets
-        },
-      };
-    } catch (err) {
-      return {
-        success: false,
-        data: null,
-        error: new TransactionRepositoryError(`Unexpected error: ${(err as Error).message}`),
-      };
-    }
-  }
-
-  // ============================================================================
-  // ATOMIC TRANSFER OPERATIONS
-  // ============================================================================
-
-  async createTransfer(
-    userId: string,
-    data: CreateTransferDTO
-  ): Promise<DataResult<TransferResult>> {
-    try {
-      // Validate date format
-      if (!validateISODate(data.date)) {
-        return {
-          success: false,
-          data: null,
-          error: new TransactionValidationError(TRANSACTION_ERRORS.INVALID_DATE_FORMAT),
-        };
-      }
-
-      // Check if same-currency (can use new RPC) or cross-currency (needs old RPC)
-      // For now, use the same-currency RPC which takes a single amount
-      // Cross-currency support will be added when we update the RPC
-
-      // For same-currency: sentAmountCents === receivedAmountCents
-      // For cross-currency: they differ, but we use sentAmountCents for the OUT transaction
-      const isSameCurrency = data.sentAmountCents === data.receivedAmountCents;
-
-      if (isSameCurrency) {
-        // Use atomic transfer RPC (same-currency only)
-        const { data: rpcData, error: rpcError } = await this.supabase.rpc(
-          'create_transfer_transaction',
-          {
-            p_user_id: userId,
-            p_from_account_id: data.fromAccountId,
-            p_to_account_id: data.toAccountId,
-            p_amount_cents: data.sentAmountCents,  // RPC accepts integer cents directly
-            p_date: data.date,
-            p_description: data.description || null,
-            p_notes: data.notes || null,
-          }
-        );
-
-        if (rpcError) {
-          return {
-            success: false,
-            data: null,
-            error: new TransactionRepositoryError(`Failed to create transfer: ${rpcError.message}`),
-          };
-        }
-
-        const result = rpcData as {
-          transferId: string;
-          outTransactionId: string;
-          inTransactionId: string;
-        };
-
-        // Fetch both transactions from view
-        const outResult = await this.getById(userId, result.outTransactionId);
-        const inResult = await this.getById(userId, result.inTransactionId);
-
-        if (!outResult.success || !inResult.success) {
-          return {
-            success: false,
-            data: null,
-            error: new TransactionRepositoryError('Failed to fetch created transfer transactions'),
-          };
-        }
-
-        return {
-          success: true,
-          data: {
-            transferId: result.transferId,
-            outTransactionId: result.outTransactionId,
-            inTransactionId: result.inTransactionId,
-            outTransaction: outResult.data,
-            inTransaction: inResult.data,
-          },
-        };
-      }
-
-      // Cross-currency transfer: use legacy create_transfer RPC
-      // Convert cents back to decimal for the old RPC
-      const sentAmount = data.sentAmountCents / 100;
-      const receivedAmount = data.receivedAmountCents / 100;
-      const impliedExchangeRate = data.receivedAmountCents / data.sentAmountCents;
-
-      const { data: rpcData, error: rpcError } = await this.supabase.rpc(
-        'create_transfer',
-        {
-          p_user_id: userId,
-          p_from_account_id: data.fromAccountId,
-          p_to_account_id: data.toAccountId,
-          p_amount: sentAmount,
-          p_amount_received: receivedAmount,
-          p_exchange_rate: impliedExchangeRate,
-          p_date: data.date,
-          p_description: data.description || 'Transfer',
-          p_category_id: '', // Empty string = no category for transfers
-        }
-      );
-
-      if (rpcError) {
-        return {
-          success: false,
-          data: null,
-          error: new TransactionRepositoryError(`Failed to create transfer: ${rpcError.message}`),
-        };
-      }
-
-      // Legacy RPC returns snake_case keys
-      const result = rpcData as {
-        transfer_id: string;
-        from_transaction_id: string;
-        to_transaction_id: string;
-      };
-
-      // Fetch both transactions from view
-      const outResult = await this.getById(userId, result.from_transaction_id);
-      const inResult = await this.getById(userId, result.to_transaction_id);
-
-      if (!outResult.success || !inResult.success) {
-        return {
-          success: false,
-          data: null,
-          error: new TransactionRepositoryError('Failed to fetch created transfer transactions'),
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          transferId: result.transfer_id,
-          outTransactionId: result.from_transaction_id,
-          inTransactionId: result.to_transaction_id,
-          outTransaction: outResult.data,
-          inTransaction: inResult.data,
         },
       };
     } catch (err) {

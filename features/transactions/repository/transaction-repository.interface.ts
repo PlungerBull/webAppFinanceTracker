@@ -38,8 +38,6 @@ import type {
   UpdateTransactionDTO,
   BulkUpdateTransactionDTO,
   BulkUpdateResult,
-  CreateTransferDTO,
-  TransferResult,
   TransactionFilters,
   PaginationOptions,
   PaginatedResult,
@@ -362,48 +360,12 @@ export interface ITransactionRepository {
   ): Promise<DataResult<SyncResponse<TransactionViewEntity[]>>>;
 
   // ============================================================================
-  // ATOMIC TRANSFER OPERATIONS (CTO Mandate #1)
+  // ATOMIC TRANSFER OPERATIONS - DEPRECATED
   // ============================================================================
-
-  /**
-   * Create atomic transfer (two transactions in one RPC call)
-   *
-   * CTO Mandate #1: Atomic Transfer Protocol
-   * - Single RPC creates BOTH transactions atomically (all-or-nothing)
-   * - Prevents orphaned half-transfers due to network issues
-   * - Database transaction ensures consistency
-   *
-   * Process:
-   * 1. Generate transfer_id, out_txn_id, in_txn_id (server-side)
-   * 2. INSERT OUT transaction (negative amount)
-   * 3. INSERT IN transaction (positive amount)
-   * 4. COMMIT or ROLLBACK (both succeed or both fail)
-   *
-   * @param userId - User ID (UUID)
-   * @param data - Transfer data (fromAccountId, toAccountId, amountCents)
-   * @returns DataResult with transfer result (both transaction IDs + entities)
-   *
-   * @example
-   * ```typescript
-   * const result = await repository.createTransfer(userId, {
-   *   fromAccountId: 'checking-account',
-   *   toAccountId: 'savings-account',
-   *   amountCents: 10000,  // $100.00
-   *   date: '2024-01-12T10:30:00.123Z',
-   *   description: 'Monthly savings'
-   * });
-   *
-   * if (result.success) {
-   *   console.log(`Transfer created: ${result.data.transferId}`);
-   *   console.log(`OUT: ${result.data.outTransactionId}`);
-   *   console.log(`IN: ${result.data.inTransactionId}`);
-   * }
-   * ```
-   */
-  createTransfer(
-    userId: string,
-    data: CreateTransferDTO
-  ): Promise<DataResult<TransferResult>>;
+  // Transfer operations have been moved to ITransferRepository.
+  // Use features/transactions/repository/transfer-repository.interface.ts
+  // and features/transactions/hooks/use-transfers.ts instead.
+  // ============================================================================
 
   // ============================================================================
   // DELTA SYNC OPERATIONS (Future - Phase 2)

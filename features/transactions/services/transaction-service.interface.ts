@@ -33,8 +33,6 @@ import type {
   UpdateTransactionDTO,
   BulkUpdateTransactionDTO,
   BulkUpdateResult,
-  CreateTransferDTO,
-  TransferResult,
   TransactionFilters,
   PaginationOptions,
   PaginatedResult,
@@ -191,25 +189,11 @@ export interface ITransactionService {
   getDeleted(sinceVersion?: number): Promise<SyncResponse<TransactionViewEntity[]>>;
 
   // ============================================================================
-  // ATOMIC TRANSFER OPERATIONS
-  // ============================================================================
-
-  /**
-   * Create atomic transfer (two transactions in one RPC call)
-   *
-   * CTO Mandate #1: Atomic Transfer Protocol
-   * - Single RPC creates BOTH transactions atomically
-   * - All-or-nothing: both succeed or both fail
-   *
-   * @param data - Transfer data (fromAccountId, toAccountId, amountCents)
-   * @returns Transfer result (both transaction IDs + entities)
-   * @throws {TransactionError} On error
-   */
-  createTransfer(data: CreateTransferDTO): Promise<TransferResult>;
-
-  // ============================================================================
   // DELTA SYNC OPERATIONS (Future - Phase 2)
   // ============================================================================
+
+  // NOTE: Transfer operations have been moved to ITransferService.
+  // See features/transactions/services/transfer-service.interface.ts
 
   /**
    * Get all changes since version (for full delta sync)

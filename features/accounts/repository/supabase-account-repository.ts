@@ -44,18 +44,47 @@ export class SupabaseAccountRepository implements IAccountRepository {
   /**
    * Convert decimal to integer cents (floating-point safe)
    *
-   * CTO Mandate: Use string-based parsing to avoid IEEE 754 precision errors.
+   * CTO Mandate: TRUE string-based parsing - NO binary float multiplication.
    * Binary float: 1.15 * 100 can yield 114.99999999999999
+   *
+   * This implementation splits the string at the decimal point and
+   * performs pure integer arithmetic to avoid IEEE 754 precision errors.
    */
   private toCents(decimal: number | string | null): number {
     if (decimal === null || decimal === undefined) {
       return 0;
     }
-    // String conversion prevents floating point precision errors
-    return Math.round(
-      parseFloat(typeof decimal === 'string' ? decimal : decimal.toString()) *
-        100
-    );
+
+    // Convert to string for parsing
+    const str = typeof decimal === 'string' ? decimal : decimal.toString();
+
+    // Handle negative numbers
+    const isNegative = str.startsWith('-');
+    const absStr = isNegative ? str.slice(1) : str;
+
+    // Split at decimal point
+    const parts = absStr.split('.');
+    const wholePart = parts[0] || '0';
+    let fractionalPart = parts[1] || '00';
+
+    // Normalize fractional part to exactly 2 digits
+    // "5" -> "50", "123" -> "12" (truncate beyond cents)
+    if (fractionalPart.length === 1) {
+      fractionalPart = fractionalPart + '0';
+    } else if (fractionalPart.length > 2) {
+      // Round the third digit
+      const thirdDigit = parseInt(fractionalPart[2], 10);
+      let cents = parseInt(fractionalPart.slice(0, 2), 10);
+      if (thirdDigit >= 5) {
+        cents += 1;
+      }
+      fractionalPart = cents.toString().padStart(2, '0');
+    }
+
+    // Pure integer arithmetic: whole dollars * 100 + cents
+    const cents = parseInt(wholePart, 10) * 100 + parseInt(fractionalPart, 10);
+
+    return isNegative ? -cents : cents;
   }
 
   /**

@@ -20,8 +20,6 @@ import type {
   UpdateTransactionDTO,
   BulkUpdateTransactionDTO,
   BulkUpdateResult,
-  CreateTransferDTO,
-  TransferResult,
   TransactionFilters,
   PaginationOptions,
   PaginatedResult,
@@ -242,23 +240,11 @@ export class TransactionService implements ITransactionService {
   }
 
   // ============================================================================
-  // ATOMIC TRANSFER OPERATIONS
-  // ============================================================================
-
-  async createTransfer(data: CreateTransferDTO): Promise<TransferResult> {
-    const userId = await this.getCurrentUserId();
-    const result = await this.repository.createTransfer(userId, data);
-
-    if (!result.success) {
-      throw result.error;
-    }
-
-    return result.data;
-  }
-
-  // ============================================================================
   // DELTA SYNC OPERATIONS (Future - Phase 2)
   // ============================================================================
+
+  // NOTE: Transfer operations have been moved to TransferService.
+  // See features/transactions/services/transfer-service.ts
 
   async getChangesSince(
     sinceVersion: number

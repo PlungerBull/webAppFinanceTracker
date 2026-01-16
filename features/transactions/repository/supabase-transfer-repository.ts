@@ -138,7 +138,10 @@ export class SupabaseTransferRepository implements ITransferRepository {
           p_exchange_rate: impliedExchangeRate,
           p_date: data.date,
           p_description: data.description || 'Transfer',
-          p_category_id: '', // Empty string = no category for transfers
+          // Transfers have no category - pass null
+          // TODO: Regenerate Supabase types to properly mark p_category_id as nullable
+          // See: https://supabase.com/docs/reference/cli/supabase-gen-types-typescript
+          p_category_id: null as unknown as string,
         }
       );
 
