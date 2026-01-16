@@ -18,56 +18,28 @@
  */
 
 import type { TransactionError } from './errors';
-import type { TransactionEntity, TransactionViewEntity } from './entities';
+import type { TransactionViewEntity } from './entities';
+
+// Import shared types from data-patterns module
+import type {
+  DataResult as SharedDataResult,
+  PaginatedResult as SharedPaginatedResult,
+  PaginationOptions as SharedPaginationOptions,
+  SyncResponse as SharedSyncResponse,
+} from '@/lib/data-patterns';
+
+// Re-export shared types for backwards compatibility
+export type { SharedPaginationOptions as PaginationOptions };
+export type { SharedPaginatedResult as PaginatedResult };
+export type { SharedSyncResponse as SyncResponse };
 
 /**
- * DataResult Pattern (Swift Result<T, Error> Mirror)
+ * Transaction-specific DataResult
  *
- * CTO Mandate #1: Explicit Success/Failure Types
- *
- * Problem: TypeScript's try/catch is too loose - iOS team needs explicit contracts
- * Solution: Repository methods return DataResult<T> instead of throwing
- *
- * Benefits:
- * - Forces explicit error handling at service layer
- * - iOS can mirror with Swift's Result<T, DomainError>
- * - Conflict detection is type-safe (conflict?: boolean)
- * - No ambiguity about error states
- *
- * Swift Mirror:
- * ```swift
- * enum DataResult<T> {
- *     case success(T, conflict: Bool?)
- *     case failure(DomainError, conflict: Bool?)
- * }
- * ```
- *
- * Usage Example:
- * ```typescript
- * // Repository layer
- * async getById(userId: string, id: string): Promise<DataResult<TransactionViewEntity>> {
- *   try {
- *     const { data, error } = await supabase.from('transactions_view')...;
- *     if (error) {
- *       return { success: false, data: null, error: new RepositoryError(error.message) };
- *     }
- *     return { success: true, data: transformedData };
- *   } catch (err) {
- *     return { success: false, data: null, error: new UnexpectedError(err) };
- *   }
- * }
- *
- * // Service layer
- * const result = await this.repository.getById(userId, id);
- * if (!result.success) {
- *   throw result.error;  // Propagate domain error
- * }
- * return result.data;
- * ```
+ * Uses TransactionError for the error type.
+ * See @/lib/data-patterns for the base DataResult documentation.
  */
-export type DataResult<T> =
-  | { success: true; data: T; conflict?: boolean }
-  | { success: false; data: null; error: TransactionError; conflict?: boolean };
+export type DataResult<T> = SharedDataResult<T, TransactionError>;
 
 /**
  * Create Transaction DTO
@@ -264,7 +236,8 @@ export interface BulkUpdateResult {
  * struct CreateTransferDTO: Codable {
  *     let fromAccountId: String
  *     let toAccountId: String
- *     let amountCents: Int  // Positive amount
+ *     let sentAmountCents: Int     // Positive amount leaving source
+ *     let receivedAmountCents: Int // Positive amount entering destination
  *     let date: String
  *     let description: String?
  *     let notes: String?
@@ -279,13 +252,22 @@ export interface CreateTransferDTO {
   readonly toAccountId: string;
 
   /**
-   * Amount in INTEGER CENTS (always positive)
-   *
-   * RPC function will:
-   * - Create OUT transaction with -amountCents
-   * - Create IN transaction with +amountCents
+   * Amount SENT in INTEGER CENTS (always positive)
+   * This is the amount leaving the source account.
    */
-  readonly amountCents: number;
+  readonly sentAmountCents: number;
+
+  /**
+   * Amount RECEIVED in INTEGER CENTS (always positive)
+   * This is the amount entering the destination account.
+   *
+   * For same-currency transfers: receivedAmountCents === sentAmountCents
+   * For cross-currency transfers: may differ based on exchange rate
+   *
+   * The implied exchange rate is calculated as:
+   * receivedAmountCents / sentAmountCents
+   */
+  readonly receivedAmountCents: number;
 
   /** Transfer date (YYYY-MM-DDTHH:mm:ss.SSSZ) */
   readonly date: string;
@@ -386,104 +368,9 @@ export interface TransactionFilters {
   readonly includeDeleted?: boolean;
 }
 
-/**
- * Pagination Options
- *
- * Offset/limit pagination for queries.
- *
- * Swift Mirror:
- * ```swift
- * struct PaginationOptions: Codable {
- *     let offset: Int
- *     let limit: Int
- * }
- * ```
- */
-export interface PaginationOptions {
-  /** Number of records to skip */
-  readonly offset: number;
-
-  /** Maximum number of records to return */
-  readonly limit: number;
-}
-
-/**
- * Paginated Result
- *
- * Generic paginated response.
- *
- * Swift Mirror:
- * ```swift
- * struct PaginatedResult<T: Codable>: Codable {
- *     let data: [T]
- *     let total: Int
- *     let offset: Int
- *     let limit: Int
- *     let hasMore: Bool
- * }
- * ```
- */
-export interface PaginatedResult<T> {
-  /** Array of items for current page */
-  readonly data: T[];
-
-  /** Total number of items (across all pages) */
-  readonly total: number;
-
-  /** Current offset */
-  readonly offset: number;
-
-  /** Current limit */
-  readonly limit: number;
-
-  /** Whether there are more pages available */
-  readonly hasMore: boolean;
-}
-
-/**
- * Sync Response (Version-Based Delta Sync)
- *
- * CTO Mandate #2: Version-Based Sync (NOT Timestamps)
- *
- * Problem: Timestamp-based sync is vulnerable to clock drift
- * Solution: Use global monotonic version counter
- *
- * How it works:
- * 1. Client stores last sync version: localStorage.setItem('lastSyncVersion', '12345')
- * 2. Client requests changes: getChangesSince(userId, 12345)
- * 3. Server returns: all transactions where version > 12345 + currentServerVersion
- * 4. Client updates: localStorage.setItem('lastSyncVersion', currentServerVersion)
- *
- * Benefits:
- * - Clock-independent (works even if device clock is wrong)
- * - Deterministic (same version always returns same data)
- * - Gap-proof (missing version ranges are impossible)
- *
- * Swift Mirror:
- * ```swift
- * struct SyncResponse<T: Codable>: Codable {
- *     let data: T
- *     let currentServerVersion: Int
- *     let hasMore: Bool
- * }
- * ```
- */
-export interface SyncResponse<T> {
-  /** Response data (transactions, accounts, etc.) */
-  readonly data: T;
-
-  /**
-   * Current server version (monotonic counter)
-   *
-   * CRITICAL: Client MUST store this value for next sync
-   * - Web: localStorage.setItem('lastSyncVersion', currentServerVersion)
-   * - iOS: UserDefaults.standard.set(currentServerVersion, forKey: "lastSyncVersion")
-   */
-  readonly currentServerVersion: number;
-
-  /** Whether there are more changes available (for pagination) */
-  readonly hasMore: boolean;
-}
+// NOTE: PaginationOptions, PaginatedResult, and SyncResponse are now
+// imported from @/lib/data-patterns and re-exported at the top of this file.
+// See the shared module for full documentation.
 
 /**
  * Transaction Changes (Delta Sync Result)

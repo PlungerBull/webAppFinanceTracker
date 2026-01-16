@@ -138,7 +138,7 @@ export function InboxCard({ item }: InboxCardProps) {
               </SelectTrigger>
               <SelectContent>
                 {accounts?.map((account) => (
-                  <SelectItem key={account.accountId} value={account.accountId || ''}>
+                  <SelectItem key={account.id} value={account.id || ''}>
                     {account.name} ({account.currencyCode})
                   </SelectItem>
                 ))}

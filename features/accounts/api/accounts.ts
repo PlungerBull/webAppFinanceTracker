@@ -1,11 +1,24 @@
+/**
+ * @deprecated Use the new Repository Pattern instead.
+ *
+ * Import from '@/features/accounts' instead:
+ * - useAccounts() hook for queries
+ * - useCreateAccount(), useUpdateAccount(), useDeleteAccount() for mutations
+ *
+ * This file is kept for backwards compatibility during migration.
+ * It will be removed in a future release.
+ */
+
 import { createClient } from '@/lib/supabase/client';
 import { ACCOUNTS } from '@/lib/constants';
-import type { Database } from '@/types/supabase';
 import type { UpdateAccountFormData } from '../schemas/account.schema';
 import {
   dbAccountToDomain,
 } from '@/lib/types/data-transformers';
 
+/**
+ * @deprecated Use the new hooks from '@/features/accounts' instead.
+ */
 export const accountsApi = {
   /**
    * Get all accounts for the current user with live ledger balances.

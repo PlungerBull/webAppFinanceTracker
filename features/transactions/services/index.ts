@@ -1,7 +1,7 @@
 /**
  * Transaction Service Exports
  *
- * Factory function for creating service instances with dependency injection.
+ * Factory functions for creating service instances with dependency injection.
  *
  * CTO Mandate #5: Real Dependency Injection (NOT Singletons)
  * - Factory receives repository and auth provider as parameters
@@ -12,12 +12,15 @@
  */
 
 import { TransactionService } from './transaction-service';
+import { TransferService } from './transfer-service';
 import type { ITransactionService } from './transaction-service.interface';
-import type { ITransactionRepository } from '../repository';
+import type { ITransferService } from './transfer-service.interface';
+import type { ITransactionRepository, ITransferRepository } from '../repository';
 import type { IAuthProvider } from '@/lib/auth';
 
-// Re-export interface
+// Re-export interfaces
 export type { ITransactionService } from './transaction-service.interface';
+export type { ITransferService } from './transfer-service.interface';
 
 /**
  * Creates a new transaction service instance
@@ -58,4 +61,21 @@ export function createTransactionService(
   authProvider: IAuthProvider
 ): ITransactionService {
   return new TransactionService(repository, authProvider);
+}
+
+/**
+ * Creates a new transfer service instance
+ *
+ * Factory pattern with dependency injection.
+ * Hooks (or tests) provide the repository and auth provider.
+ *
+ * @param repository - Transfer repository implementation
+ * @param authProvider - Auth provider implementation
+ * @returns Service implementation
+ */
+export function createTransferService(
+  repository: ITransferRepository,
+  authProvider: IAuthProvider
+): ITransferService {
+  return new TransferService(repository, authProvider);
 }

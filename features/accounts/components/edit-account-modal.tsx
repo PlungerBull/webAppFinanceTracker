@@ -2,39 +2,41 @@
 
 import { useState, useEffect } from 'react';
 import { useFormModal } from '@/hooks/shared/use-form-modal';
-import { useQueryClient } from '@tanstack/react-query';
-import { accountsApi } from '../api/accounts';
+import { useUpdateAccount } from '../hooks/use-account-mutations';
 import { updateAccountSchema, type UpdateAccountFormData } from '../schemas/account.schema';
 import { DashboardModal } from '@/components/shared/dashboard-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Trash2, Loader2, Check, ChevronDown } from 'lucide-react';
-import { ACCOUNT, QUERY_KEYS } from '@/lib/constants';
+import { ACCOUNT } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import type { Account as DomainAccount } from '@/types/domain';
+import type { AccountViewEntity } from '../domain';
 
 interface EditAccountModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  account: DomainAccount | null;
+  account: AccountViewEntity | null;
   onDelete?: (accountId: string) => void;
 }
 
 export function EditAccountModal({ open, onOpenChange, account, onDelete }: EditAccountModalProps) {
-  const queryClient = useQueryClient();
+  const updateAccountMutation = useUpdateAccount();
 
   const [isColorPopoverOpen, setIsColorPopoverOpen] = useState(false);
 
   const onSubmit = async (data: UpdateAccountFormData) => {
     if (!account) return;
 
-    // Update account name and color
-    await accountsApi.update(account.id, data);
-
-    // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL });
+    // Update account name and color via mutation hook (includes optimistic updates)
+    await updateAccountMutation.mutateAsync({
+      id: account.id,
+      data: {
+        name: data.name,
+        color: data.color,
+        version: account.version,
+      },
+    });
 
     onOpenChange(false);
   };

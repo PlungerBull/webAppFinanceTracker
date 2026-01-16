@@ -42,9 +42,11 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   const selectableAccounts: SelectableAccount[] = useMemo(
     () =>
       accountsData
-        .filter((account) => account.accountId && account.name && account.currencyCode)
+        .filter((account): account is typeof account & { id: string; name: string; currencyCode: string } =>
+          Boolean(account.id && account.name && account.currencyCode)
+        )
         .map((account) => ({
-          id: account.accountId,
+          id: account.id,
           name: account.name,
           currencyCode: account.currencyCode,
           color: account.color || '#3b82f6',
@@ -133,7 +135,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     }
 
     // Get selected account for currency check
-    const selectedAccount = accountsData.find(a => a.accountId === accountId);
+    const selectedAccount = accountsData.find(a => a.id === accountId);
     const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== item.currencyOriginal;  // RENAMED
     const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate;
 

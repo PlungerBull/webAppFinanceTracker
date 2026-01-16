@@ -11,14 +11,21 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import { ACCOUNT } from '@/lib/constants';
 import type { FlatAccount } from '@/hooks/use-flat-accounts';
-import type { Account } from '@/types/domain';
 
 interface AccountListItemProps {
   account: FlatAccount;
   isActive: boolean;
   onClick: () => void;
-  onEdit: (account: Account) => void;
-  onDelete: (account: Account) => void;
+  onEdit: (account: FlatAccount) => void;
+  onDelete: (account: FlatAccount) => void;
+}
+
+/**
+ * Format integer cents to display currency
+ * Uses the existing formatCurrency with conversion from cents to dollars
+ */
+function formatBalanceCents(cents: number, currencyCode: string): string {
+  return formatCurrency(cents / 100, currencyCode);
 }
 
 export function AccountListItem({
@@ -28,32 +35,18 @@ export function AccountListItem({
   onEdit,
   onDelete,
 }: AccountListItemProps) {
-  const isNegative = (account.currentBalance ?? 0) < 0;
-
-  // Convert FlatAccount to Account for edit/delete modals
-  const getBankAccount = (): Account => ({
-    id: account.accountId!,
-    groupId: account.groupId!,
-    name: account.name!,
-    color: account.color!,
-    currencyCode: account.currencyCode!,
-    type: account.type!,
-    userId: '', // Not needed by modals
-    isVisible: account.isVisible ?? true,
-    createdAt: account.createdAt ?? '',
-    updatedAt: account.updatedAt ?? '',
-  });
+  const isNegative = account.currentBalanceCents < 0;
 
   const actions = [
     {
       label: 'Edit',
       icon: Pencil,
-      onClick: () => onEdit(getBankAccount()),
+      onClick: () => onEdit(account),
     },
     {
       label: 'Delete',
       icon: Trash2,
-      onClick: () => onDelete(getBankAccount()),
+      onClick: () => onDelete(account),
       className: 'text-red-600',
     },
   ];
@@ -82,7 +75,7 @@ export function AccountListItem({
       {/* Column 3: Currency Code (18px) - FROM DATABASE */}
       {/* CRITICAL: Always use currencyCode (not currencySymbol) for unambiguous display */}
       <span className="text-[9px] font-bold text-right">
-        {account.currencyCode ?? ''}
+        {account.currencyCode}
       </span>
 
       {/* Column 4: Balance (auto, min-60px) */}
@@ -93,7 +86,7 @@ export function AccountListItem({
           isNegative && 'text-red-500'
         )}
       >
-        {formatCurrency(account.currentBalance ?? 0, account.currencyCode ?? 'USD')}
+        {formatBalanceCents(account.currentBalanceCents, account.currencyCode)}
       </span>
 
       {/* Actions Dropdown - ALWAYS RENDERED (every row gets actions) */}

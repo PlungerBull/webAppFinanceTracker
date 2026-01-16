@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useAccounts, type AccountViewEntity } from '@/features/accounts/hooks/use-accounts';
 import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
-import type { AccountBalance } from '@/types/domain';
 
 /**
  * Hook to group account balances by group_id
  * NEW CONTAINER PATTERN: Multiple accounts (one per currency) share the same group_id
+ *
+ * Uses AccountViewEntity internally - the new domain standard.
  *
  * @returns Grouped accounts with balances sorted by currency
  *
@@ -14,7 +15,8 @@ import type { AccountBalance } from '@/types/domain';
  * const { groupedAccounts, isLoading } = useGroupedAccounts();
  *
  * groupedAccounts.forEach(account => {
- *   console.log(account.name, account.balances); // "Chase Visa" -> [{currency: "USD", amount: 100}, {currency: "PEN", amount: 500}]
+ *   console.log(account.name, account.balances);
+ *   // "Chase Visa" -> [{accountId: "uuid", currency: "USD", amountCents: 10050}]
  * });
  * ```
  */
@@ -22,33 +24,26 @@ export function useGroupedAccounts() {
   const { data: accounts = [], isLoading } = useAccounts();
 
   const groupedAccounts = useMemo(() => {
-    const grouped = new Map<string, typeof accounts>();
+    const grouped = new Map<string, AccountViewEntity[]>();
 
-    accounts.forEach((balance) => {
-      // Filter out balances without groupId
-      if (!balance.groupId) return;
-
-      const existing = grouped.get(balance.groupId) || [];
-      grouped.set(balance.groupId, [...existing, balance]);
+    accounts.forEach((account) => {
+      const existing = grouped.get(account.groupId) || [];
+      grouped.set(account.groupId, [...existing, account]);
     });
 
-    return Array.from(grouped.entries()).map(([groupId, balances]) => {
-      const first = balances[0];
-      const name = first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT;
+    return Array.from(grouped.entries()).map(([groupId, groupAccounts]) => {
+      const first = groupAccounts[0];
 
       return {
         groupId,
-        name: name,
-        // NOTE: Color is available in AccountBalance type from bank_accounts table
-        // Using default color for grouped accounts (individual accounts have their own colors)
-        color: ACCOUNT.DEFAULT_COLOR,
-        type: first.type || 'checking',
-        balances: balances
-          .filter((b) => b.accountId) // Only include balances with valid accountId
-          .map((b) => ({
-            accountId: b.accountId,
-            currency: b.currencyCode ?? 'USD',
-            amount: b.currentBalance ?? 0,
+        name: first.name ?? ACCOUNT_UI.LABELS.UNKNOWN_ACCOUNT,
+        color: first.color ?? ACCOUNT.DEFAULT_COLOR,
+        type: first.type,
+        balances: groupAccounts
+          .map((acc) => ({
+            accountId: acc.id,  // Use id, not accountId
+            currency: acc.currencyCode,
+            amountCents: acc.currentBalanceCents,  // Use integer cents, not decimal
           }))
           .sort((a, b) => a.currency.localeCompare(b.currency)),
       };
@@ -56,32 +51,34 @@ export function useGroupedAccounts() {
   }, [accounts]);
 
   return {
-    data: groupedAccounts, // Renamed for consistency with other hooks (React Query pattern)
-    groupedAccounts, // Keep for backward compatibility
+    data: groupedAccounts,
+    groupedAccounts,
     isLoading,
-    accounts, // Also return raw accounts in case needed
+    accounts,
   };
 }
 
 /**
  * Return type for useGroupedAccounts hook
  * NEW CONTAINER PATTERN: Grouped by group_id with simplified structure
+ *
+ * UPDATED: Uses id (not accountId) and amountCents (not amount decimal)
  */
 export type GroupedAccount = {
   groupId: string;
-  name: string; // Clean name without currency suffix
+  name: string;
   color: string;
   type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'loan' | 'cash' | 'other';
   balances: Array<{
-    accountId: string; // Individual account ID (one per currency)
-    currency: string; // e.g., "USD", "PEN"
-    amount: number;
+    accountId: string;  // Individual account ID (one per currency)
+    currency: string;   // e.g., "USD", "PEN"
+    amountCents: number;  // INTEGER CENTS (e.g., 1050 for $10.50)
   }>;
 };
 
 export type UseGroupedAccountsReturn = {
-  data: GroupedAccount[]; // For React Query pattern destructuring
+  data: GroupedAccount[];
   groupedAccounts: GroupedAccount[];
   isLoading: boolean;
-  accounts: AccountBalance[]; // Raw accounts array
+  accounts: AccountViewEntity[];
 };

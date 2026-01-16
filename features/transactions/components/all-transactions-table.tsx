@@ -137,7 +137,7 @@ function TransactionsContent() {
   const accounts = accountsData;
 
   // Determine display names
-  const accountName = accountId ? flatAccounts.find(a => a.accountId === accountId)?.name : null;
+  const accountName = accountId ? flatAccounts.find(a => a.id === accountId)?.name : null;
   const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
   const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
 

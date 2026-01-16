@@ -27,8 +27,8 @@ export function AppearanceSettings() {
         if (accounts.length > 0) {
             const initialVisibility: Record<string, boolean> = {};
             accounts.forEach(acc => {
-                if (acc.accountId) {
-                    initialVisibility[acc.accountId] = acc.isVisible ?? true;
+                if (acc.id) {
+                    initialVisibility[acc.id] = acc.isVisible ?? true;
                 }
             });
             setPendingVisibility(initialVisibility);
@@ -48,7 +48,7 @@ export function AppearanceSettings() {
 
         // Check account visibility changes
         for (const acc of accounts) {
-            if (acc.accountId && pendingVisibility[acc.accountId] !== (acc.isVisible ?? true)) {
+            if (acc.id && pendingVisibility[acc.id] !== (acc.isVisible ?? true)) {
                 changed = true;
                 break;
             }
@@ -79,7 +79,7 @@ export function AppearanceSettings() {
         // Save account visibility changes
         const visibilityUpdates = Object.entries(pendingVisibility)
             .filter(([accountId, isVisible]) => {
-                const account = accounts.find(acc => acc.accountId === accountId);
+                const account = accounts.find(acc => acc.id === accountId);
                 const currentValue = account?.isVisible ?? true;
                 return isVisible !== currentValue;
             })
@@ -162,21 +162,21 @@ export function AppearanceSettings() {
                         ) : (
                             accounts.map((account) => (
                                 <div
-                                    key={account.accountId}
+                                    key={account.id}
                                     className="flex items-center space-x-3 p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
                                 >
                                     <Checkbox
-                                        id={`toggle-${account.accountId}`}
-                                        checked={pendingVisibility[account.accountId!] ?? true}
-                                        onCheckedChange={() => handleToggle(account.accountId!)}
+                                        id={`toggle-${account.id}`}
+                                        checked={pendingVisibility[account.id!] ?? true}
+                                        onCheckedChange={() => handleToggle(account.id!)}
                                         disabled={isSaving}
                                     />
-                                    <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => !isSaving && handleToggle(account.accountId!)}>
+                                    <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => !isSaving && handleToggle(account.id!)}>
                                         <DollarSign
                                             className="h-4 w-4 flex-shrink-0 text-gray-400"
                                         />
                                         <label
-                                            htmlFor={`toggle-${account.accountId}`}
+                                            htmlFor={`toggle-${account.id}`}
                                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                                         >
                                             {account.name}

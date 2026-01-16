@@ -135,11 +135,15 @@ export function ReconciliationFormModal({
                 <SelectValue placeholder="Select account..." />
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((account) => (
-                  <SelectItem key={account.accountId} value={account.accountId}>
-                    {account.name} ({account.currencyCode})
-                  </SelectItem>
-                ))}
+                {accounts
+                  .filter((account): account is typeof account & { id: string; name: string; currencyCode: string } =>
+                    Boolean(account.id && account.name && account.currencyCode)
+                  )
+                  .map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name} ({account.currencyCode})
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             {errors.accountId && (

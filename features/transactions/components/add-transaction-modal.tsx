@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
 interface AddTransactionModalProps {
@@ -72,7 +71,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       const amountVal = parseFloat(transactionData.amount);
       const hasAmount = !isNaN(amountVal) && amountVal !== 0;
       const hasDescription = transactionData.payee && transactionData.payee.trim().length > 0;
-      const hasAccount = transactionData.fromAccountId && flatAccounts.find(a => a.accountId === transactionData.fromAccountId);
+      const hasAccount = transactionData.fromAccountId && flatAccounts.find(a => a.id === transactionData.fromAccountId);
       const hasCategory = transactionData.categoryId;
 
       // Check if ANY data exists
@@ -141,7 +140,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
     try {
       if (mode === 'transaction') {
         // SMART ROUTING LOGIC - Single Save button, internal routing
-        const selectedAccount = flatAccounts.find(a => a.accountId === transactionData.fromAccountId);
+        const selectedAccount = flatAccounts.find(a => a.id === transactionData.fromAccountId);
         const amountVal = parseFloat(transactionData.amount);
         const finalAmount = !isNaN(amountVal) ? amountVal : null;
 
@@ -194,19 +193,17 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
         const isSameCurrency = transferData.fromCurrency === transferData.toCurrency;
         const received = isSameCurrency ? sent : parseFloat(transferData.receivedAmount);
 
-        // Get current user
-        const { data: { user } } = await createClient().auth.getUser();
-        if (!user) throw new Error('User not authenticated');
+        // Repository Pattern: Use CreateTransferDTO with integer cents
+        // String-based conversion for floating-point safety
+        const sentAmountCents = Math.round(parseFloat(sent.toString()) * 100);
+        const receivedAmountCents = Math.round(parseFloat(received.toString()) * 100);
 
         await createTransferMutation.mutateAsync({
-          userId: user.id,
           fromAccountId: transferData.fromAccountId,
           toAccountId: transferData.toAccountId,
-          fromCurrency: transferData.fromCurrency,
-          toCurrency: transferData.toCurrency,
-          sentAmount: sent,
-          receivedAmount: received,
-          date: format(transferData.date, 'yyyy-MM-dd'),
+          sentAmountCents,
+          receivedAmountCents,
+          date: format(transferData.date, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"), // ISO 8601 format
           description: 'Transfer',
         });
       }

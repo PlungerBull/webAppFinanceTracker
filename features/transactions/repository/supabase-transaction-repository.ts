@@ -720,17 +720,85 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         };
       }
 
-      // Use atomic transfer RPC
+      // Check if same-currency (can use new RPC) or cross-currency (needs old RPC)
+      // For now, use the same-currency RPC which takes a single amount
+      // Cross-currency support will be added when we update the RPC
+
+      // For same-currency: sentAmountCents === receivedAmountCents
+      // For cross-currency: they differ, but we use sentAmountCents for the OUT transaction
+      const isSameCurrency = data.sentAmountCents === data.receivedAmountCents;
+
+      if (isSameCurrency) {
+        // Use atomic transfer RPC (same-currency only)
+        const { data: rpcData, error: rpcError } = await this.supabase.rpc(
+          'create_transfer_transaction',
+          {
+            p_user_id: userId,
+            p_from_account_id: data.fromAccountId,
+            p_to_account_id: data.toAccountId,
+            p_amount_cents: data.sentAmountCents,  // RPC accepts integer cents directly
+            p_date: data.date,
+            p_description: data.description || null,
+            p_notes: data.notes || null,
+          }
+        );
+
+        if (rpcError) {
+          return {
+            success: false,
+            data: null,
+            error: new TransactionRepositoryError(`Failed to create transfer: ${rpcError.message}`),
+          };
+        }
+
+        const result = rpcData as {
+          transferId: string;
+          outTransactionId: string;
+          inTransactionId: string;
+        };
+
+        // Fetch both transactions from view
+        const outResult = await this.getById(userId, result.outTransactionId);
+        const inResult = await this.getById(userId, result.inTransactionId);
+
+        if (!outResult.success || !inResult.success) {
+          return {
+            success: false,
+            data: null,
+            error: new TransactionRepositoryError('Failed to fetch created transfer transactions'),
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            transferId: result.transferId,
+            outTransactionId: result.outTransactionId,
+            inTransactionId: result.inTransactionId,
+            outTransaction: outResult.data,
+            inTransaction: inResult.data,
+          },
+        };
+      }
+
+      // Cross-currency transfer: use legacy create_transfer RPC
+      // Convert cents back to decimal for the old RPC
+      const sentAmount = data.sentAmountCents / 100;
+      const receivedAmount = data.receivedAmountCents / 100;
+      const impliedExchangeRate = data.receivedAmountCents / data.sentAmountCents;
+
       const { data: rpcData, error: rpcError } = await this.supabase.rpc(
-        'create_transfer_transaction',
+        'create_transfer',
         {
           p_user_id: userId,
           p_from_account_id: data.fromAccountId,
           p_to_account_id: data.toAccountId,
-          p_amount_cents: data.amountCents,  // RPC accepts integer cents directly
+          p_amount: sentAmount,
+          p_amount_received: receivedAmount,
+          p_exchange_rate: impliedExchangeRate,
           p_date: data.date,
-          p_description: data.description || null,
-          p_notes: data.notes || null,
+          p_description: data.description || 'Transfer',
+          p_category_id: '', // Empty string = no category for transfers
         }
       );
 
@@ -742,15 +810,16 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         };
       }
 
+      // Legacy RPC returns snake_case keys
       const result = rpcData as {
-        transferId: string;
-        outTransactionId: string;
-        inTransactionId: string;
+        transfer_id: string;
+        from_transaction_id: string;
+        to_transaction_id: string;
       };
 
       // Fetch both transactions from view
-      const outResult = await this.getById(userId, result.outTransactionId);
-      const inResult = await this.getById(userId, result.inTransactionId);
+      const outResult = await this.getById(userId, result.from_transaction_id);
+      const inResult = await this.getById(userId, result.to_transaction_id);
 
       if (!outResult.success || !inResult.success) {
         return {
@@ -763,9 +832,9 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: true,
         data: {
-          transferId: result.transferId,
-          outTransactionId: result.outTransactionId,
-          inTransactionId: result.inTransactionId,
+          transferId: result.transfer_id,
+          outTransactionId: result.from_transaction_id,
+          inTransactionId: result.to_transaction_id,
           outTransaction: outResult.data,
           inTransaction: inResult.data,
         },

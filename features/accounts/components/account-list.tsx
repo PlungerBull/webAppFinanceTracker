@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFlatAccounts } from '@/hooks/use-flat-accounts';
+import { useFlatAccounts, type FlatAccount } from '@/hooks/use-flat-accounts';
 import { useAccountNavigation } from '@/hooks/use-account-navigation';
 import { AddAccountModal } from '@/features/accounts/components/add-account-modal';
 import { EditAccountModal } from '@/features/accounts/components/edit-account-modal';
@@ -14,15 +14,15 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { ACCOUNT_UI } from '@/lib/constants';
-import type { Account } from '@/types/domain';
 
 export function AccountList() {
   const { flatAccounts, isLoading } = useFlatAccounts();
   const { handleAccountClick, currentAccountId } = useAccountNavigation();
   const [isAccountsExpanded, setIsAccountsExpanded] = useState(true);
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
+  // Use FlatAccount (AccountViewEntity) for editing/deleting state
+  const [editingAccount, setEditingAccount] = useState<FlatAccount | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<FlatAccount | null>(null);
 
   return (
     <>
@@ -72,10 +72,10 @@ export function AccountList() {
               <div className="space-y-0.5">
                 {flatAccounts.map(account => (
                   <AccountListItem
-                    key={account.accountId}
+                    key={account.id}
                     account={account}
-                    isActive={currentAccountId === account.accountId}
-                    onClick={() => handleAccountClick(account.accountId!)}
+                    isActive={currentAccountId === account.id}
+                    onClick={() => handleAccountClick(account.id)}
                     onEdit={setEditingAccount}
                     onDelete={setDeletingAccount}
                   />

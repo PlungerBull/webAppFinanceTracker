@@ -7,14 +7,15 @@ import type { PanelData, SelectableAccount, SelectableCategory } from '@/feature
 import { useUpdateTransactionBatch, useDeleteTransaction } from '../hooks/use-transactions';
 import { useTransactionSelection } from '@/stores/transaction-selection-store';
 import type { TransactionViewEntity } from '../domain';
-import type { CategoryWithCount, AccountBalance } from '@/types/domain';
+import type { AccountViewEntity } from '@/features/accounts/domain';
+import type { CategoryWithCount } from '@/types/domain';
 import { cn } from '@/lib/utils';
 
 interface TransactionDetailPanelProps {
   transaction: TransactionViewEntity | null;
   accountId: string | null;
   categories: CategoryWithCount[];
-  accounts: AccountBalance[]; // Use AccountBalance which has currencySymbol
+  accounts: AccountViewEntity[]; // Use AccountViewEntity from Repository Pattern
 }
 
 export function TransactionDetailPanel({
@@ -50,11 +51,13 @@ export function TransactionDetailPanel({
   const selectableAccounts: SelectableAccount[] = useMemo(
     () =>
       accounts
-        .filter((account) => account.accountId && account.name && account.currencyCode)
+        .filter((account): account is typeof account & { id: string; name: string; currencyCode: string } =>
+          Boolean(account.id && account.name && account.currencyCode)
+        )
         .map((account) => ({
-          id: account.accountId!,
-          name: account.name!,
-          currencyCode: account.currencyCode!,
+          id: account.id,
+          name: account.name,
+          currencyCode: account.currencyCode,
           color: account.color || undefined,
         })),
     [accounts]

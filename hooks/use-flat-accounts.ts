@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
-import type { AccountBalance } from '@/types/domain';
+import { useAccounts, type AccountViewEntity } from '@/features/accounts/hooks/use-accounts';
 
 /**
  * Flat account hook for sidebar display (one row per currency)
  * Replaces useGroupedAccounts - no grouping, just filtering and sorting
+ *
+ * Returns AccountViewEntity[] - the new domain standard.
+ * Components must use: id (not accountId), currentBalanceCents (not currentBalance)
  */
 export function useFlatAccounts() {
   const { data: accounts, isLoading } = useAccounts();
@@ -21,12 +23,13 @@ export function useFlatAccounts() {
         const typeB = typeOrder.indexOf(b.type ?? 'other');
 
         if (typeA !== typeB) return typeA - typeB;
-        if (a.name !== b.name) return (a.name ?? '').localeCompare(b.name ?? '');
-        return (a.currencyCode ?? '').localeCompare(b.currencyCode ?? '');
+        if (a.name !== b.name) return a.name.localeCompare(b.name);
+        return a.currencyCode.localeCompare(b.currencyCode);
       });
   }, [accounts]);
 
   return { flatAccounts, isLoading };
 }
 
-export type FlatAccount = AccountBalance;
+// Export the new entity type
+export type FlatAccount = AccountViewEntity;

@@ -102,7 +102,7 @@ export function ReconciliationSettings() {
         {!isLoading && reconciliations.length > 0 && (
           <div className="space-y-4 animate-in fade-in">
             {reconciliations.map((reconciliation) => {
-              const account = accounts.find((a) => a.accountId === reconciliation.accountId);
+              const account = accounts.find((a) => a.id === reconciliation.accountId);
               const isDraft = reconciliation.status === 'draft';
 
               return (

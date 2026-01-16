@@ -66,8 +66,8 @@ export function TransferForm({
       const targetAccount = rawAccounts.find(
         (acc) => acc.groupId === data.fromGroupId && acc.currencyCode === data.fromCurrency
       );
-      if (targetAccount && targetAccount.accountId !== data.fromAccountId) {
-        onChange({ fromAccountId: targetAccount.accountId });
+      if (targetAccount && targetAccount.id !== data.fromAccountId) {
+        onChange({ fromAccountId: targetAccount.id });
       }
     }
   }, [data.fromGroupId, data.fromCurrency, rawAccounts, data.fromAccountId, onChange]);
@@ -78,8 +78,8 @@ export function TransferForm({
       const targetAccount = rawAccounts.find(
         (acc) => acc.groupId === data.toGroupId && acc.currencyCode === data.toCurrency
       );
-      if (targetAccount && targetAccount.accountId !== data.toAccountId) {
-        onChange({ toAccountId: targetAccount.accountId });
+      if (targetAccount && targetAccount.id !== data.toAccountId) {
+        onChange({ toAccountId: targetAccount.id });
       }
     }
   }, [data.toGroupId, data.toCurrency, rawAccounts, data.toAccountId, onChange]);

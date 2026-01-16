@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { Category, AccountBalance } from '@/types/domain';
+import type { Category } from '@/types/domain';
+import type { AccountViewEntity } from '@/features/accounts/domain';
 
 export interface TransactionFormData {
   amount: string;
@@ -27,7 +28,7 @@ interface TransactionFormProps {
   data: TransactionFormData;
   onChange: (data: Partial<TransactionFormData>) => void;
   categories: Category[];
-  flatAccounts: AccountBalance[]; // Flat list of all accounts with currencySymbol
+  flatAccounts: AccountViewEntity[]; // Use AccountViewEntity from Repository Pattern
   isSubmitting: boolean;
   hasSubmitted: boolean;
 }
@@ -40,7 +41,7 @@ export function TransactionForm({
   isSubmitting,
   hasSubmitted,
 }: TransactionFormProps) {
-  const selectedAccount = flatAccounts.find((a) => a.accountId === data.fromAccountId);
+  const selectedAccount = flatAccounts.find((a) => a.id === data.fromAccountId);
   const selectedCategory = categories.find((c) => c.id === data.categoryId);
 
   const handleAccountChange = (accountId: string) => {
@@ -131,12 +132,12 @@ export function TransactionForm({
               <div className="w-72 max-h-96 overflow-y-auto p-2">
                 {flatAccounts.map((account) => (
                     <button
-                      key={account.accountId}
+                      key={account.id}
                       type="button"
-                      onClick={() => handleAccountChange(account.accountId!)}
+                      onClick={() => handleAccountChange(account.id)}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                        data.fromAccountId === account.accountId
+                        data.fromAccountId === account.id
                           ? "bg-gray-100 text-gray-900 font-medium"
                           : "text-gray-700 hover:bg-gray-50"
                       )}
