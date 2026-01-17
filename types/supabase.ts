@@ -611,14 +611,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["currency_original"]
+            columns: ["account_currency"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["account_currency"]
+            columns: ["currency_original"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
@@ -718,7 +718,7 @@ export type Database = {
             Args: {
               p_amount: number
               p_amount_received: number
-              p_category_id: string
+              p_category_id?: string
               p_date: string
               p_description: string
               p_exchange_rate: number
@@ -744,6 +744,18 @@ export type Database = {
             }
             Returns: Json
           }
+      create_transfer_transaction: {
+        Args: {
+          p_amount_cents: number
+          p_date: string
+          p_description?: string
+          p_from_account_id: string
+          p_notes?: string
+          p_to_account_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       delete_transaction_with_version: {
         Args: { p_expected_version: number; p_transaction_id: string }
         Returns: Json
@@ -752,25 +764,37 @@ export type Database = {
         Args: { p_transfer_id: string; p_user_id: string }
         Returns: undefined
       }
-      create_transfer_transaction: {
-        Args: {
-          p_user_id: string
-          p_from_account_id: string
-          p_to_account_id: string
-          p_amount_cents: number
-          p_date: string
-          p_description?: string | null
-          p_notes?: string | null
-        }
-        Returns: Json
-      }
-      restore_transaction: {
-        Args: { p_transaction_id: string }
-        Returns: Json
-      }
       get_deleted_transactions: {
-        Args: { p_user_id: string; p_since_version?: number }
-        Returns: Json
+        Args: { p_since_version?: number; p_user_id: string }
+        Returns: {
+          account_color: string
+          account_currency: string
+          account_id: string
+          account_name: string
+          amount_home: number
+          amount_original: number
+          category_color: string
+          category_id: string
+          category_name: string
+          category_type: string
+          cleared: boolean
+          created_at: string
+          currency_original: string
+          date: string
+          deleted_at: string
+          description: string
+          exchange_rate: number
+          id: string
+          inbox_id: string
+          notes: string
+          reconciliation_id: string
+          reconciliation_status: string
+          source_text: string
+          transfer_id: string
+          updated_at: string
+          user_id: string
+          version: number
+        }[]
       }
       get_monthly_spending_by_category:
         | {
@@ -848,6 +872,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      restore_transaction: { Args: { p_transaction_id: string }; Returns: Json }
       unlink_transactions_from_reconciliation: {
         Args: { p_transaction_ids: string[] }
         Returns: Json

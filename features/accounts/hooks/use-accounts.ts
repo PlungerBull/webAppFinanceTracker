@@ -13,7 +13,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useAccountService } from './use-account-service';
-import type { AccountFilters, AccountViewEntity } from '../domain';
+import type { AccountFilters } from '../domain';
 
 // Re-export entity type for consumers
 export type { AccountViewEntity } from '../domain';

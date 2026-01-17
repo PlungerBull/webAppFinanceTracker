@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
+import { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { Currency } from '@/types/domain';
-import { cn } from '@/lib/utils';
 import { CurrencyBalance } from '@/hooks/use-currency-manager';
 
 interface CurrencyManagerProps {
@@ -14,7 +12,6 @@ interface CurrencyManagerProps {
     availableCurrencies: Currency[];
     allCurrencies: Currency[]; // Need all currencies to look up symbols/names for selected items
     disabled?: boolean;
-    renderItemFooter?: (item: CurrencyBalance, index: number) => React.ReactNode;
 }
 
 export function CurrencyManager({
@@ -23,7 +20,6 @@ export function CurrencyManager({
     availableCurrencies,
     allCurrencies,
     disabled = false,
-    renderItemFooter,
 }: CurrencyManagerProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 

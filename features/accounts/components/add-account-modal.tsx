@@ -8,9 +8,8 @@ import { useCreateAccount } from '../hooks/use-account-mutations';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CreditCard, X, Plus, Trash2, Loader2, Pencil, Check, ChevronDown } from 'lucide-react';
+import { X, Loader2, Pencil, Check, ChevronDown } from 'lucide-react';
 import { CurrencyManager } from './currency-manager';
 import { VALIDATION, ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -38,7 +37,7 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
     resetCurrencies,
   } = useCurrencyManager();
 
-  const { data: currencies = [], isLoading: isLoadingCurrencies } = useCurrencies();
+  const { data: currencies = [] } = useCurrencies();
 
   const onSubmit = async (data: AccountFormData) => {
     // Validation: At least one currency must be selected
