@@ -10,6 +10,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useAccountService } from './use-account-service';
 import type {
@@ -130,6 +131,10 @@ export function useUpdateAccount() {
  * Mutation hook for deleting an account.
  * Includes optimistic updates for Zero-Latency UX.
  *
+ * CTO Mandate: Sacred Ledger Lock Handling
+ * - If DB trigger blocks delete (reconciled transactions), show user-friendly toast
+ * - Optimistic delete is rolled back automatically via onError
+ *
  * @example
  * ```typescript
  * const { mutate, isPending } = useDeleteAccount();
@@ -165,10 +170,36 @@ export function useDeleteAccount() {
       return { previousAccounts };
     },
 
-    // Rollback on error
-    onError: (_err, _id, context) => {
+    // Rollback on error with user-friendly toast
+    onError: (err, _id, context) => {
+      // Rollback optimistic update
       if (context?.previousAccounts) {
         queryClient.setQueryData(QUERY_KEYS.ACCOUNTS, context.previousAccounts);
+      }
+
+      // CTO Mandate: Handle Sacred Ledger lock errors with clear user feedback
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // Check for common DB constraint errors
+      if (
+        errorMessage.includes('reconcil') ||
+        errorMessage.includes('foreign key') ||
+        errorMessage.includes('constraint') ||
+        errorMessage.includes('violates')
+      ) {
+        toast.error('Cannot delete account', {
+          description:
+            'This account has reconciled transactions or linked data. Please remove or reassign them first.',
+        });
+      } else if (errorMessage.includes('transaction')) {
+        toast.error('Cannot delete account', {
+          description:
+            'This account has existing transactions. Delete or move them to another account first.',
+        });
+      } else {
+        toast.error('Failed to delete account', {
+          description: errorMessage,
+        });
       }
     },
 

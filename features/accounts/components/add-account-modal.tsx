@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useFormModal } from '@/hooks/shared/use-form-modal';
 import { useCurrencyManager } from '@/hooks/use-currency-manager';
 import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
-import { useQueryClient } from '@tanstack/react-query';
-import { accountsApi } from '../api/accounts';
+import { useCreateAccount } from '../hooks/use-account-mutations';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CreditCard, X, Plus, Trash2, Loader2, Pencil, Check, ChevronDown } from 'lucide-react';
 import { CurrencyManager } from './currency-manager';
-import { VALIDATION, QUERY_KEYS, ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
+import { VALIDATION, ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -32,7 +31,7 @@ const accountSchema = z.object({
 type AccountFormData = z.infer<typeof accountSchema>;
 
 export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
-  const queryClient = useQueryClient();
+  const createAccountMutation = useCreateAccount();
   const {
     selectedCurrencies,
     setSelectedCurrenciesDirectly,
@@ -47,18 +46,15 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
       throw new Error(ACCOUNT_UI.MESSAGES.AT_LEAST_ONE_CURRENCY);
     }
 
-    // NEW CONTAINER PATTERN: Pass account type and currency codes only (no starting balances)
-    await accountsApi.createWithCurrencies(
-      data.name,
-      data.color,
-      'checking', // Default type - TODO: Add account type selector to form
-      selectedCurrencies.map((c) => c.currency_code) // Just currency codes, no balances
-    );
+    // Use the new service-based mutation hook
+    await createAccountMutation.mutateAsync({
+      name: data.name,
+      color: data.color,
+      type: 'checking', // Default type - TODO: Add account type selector to form
+      currencies: selectedCurrencies.map((c) => c.currency_code),
+    });
 
-    // Invalidate accounts query to refresh the list
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
-
-    // Reset currencies and close modal
+    // Reset currencies and close modal (cache invalidation handled by hook)
     resetCurrencies();
     onOpenChange(false);
   };

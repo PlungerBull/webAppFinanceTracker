@@ -1,8 +1,7 @@
 'use client';
 
-import { useDeleteItem } from '@/hooks/shared/use-delete-item';
-import { accountsApi } from '../api/accounts';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useState } from 'react';
+import { useDeleteAccount } from '../hooks/use-account-mutations';
 import { ACCOUNT_UI } from '@/lib/constants';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
 import type { Account } from '@/types/domain';
@@ -14,15 +13,20 @@ interface DeleteAccountDialogProps {
 }
 
 export function DeleteAccountDialog({ open, onOpenChange, account }: DeleteAccountDialogProps) {
-  const { handleDelete, isDeleting, error } = useDeleteItem(
-    accountsApi.delete,
-    [QUERY_KEYS.ACCOUNTS]
-  );
+  const deleteAccountMutation = useDeleteAccount();
+  const [error, setError] = useState<string | null>(null);
 
   const onDelete = async () => {
     if (account?.id) {
-      await handleDelete(account.id);
-      onOpenChange(false);
+      setError(null);
+      try {
+        await deleteAccountMutation.mutateAsync(account.id);
+        onOpenChange(false);
+      } catch (err) {
+        // Error toast is handled by the hook's onError
+        // Set local error for inline display if needed
+        setError(err instanceof Error ? err.message : 'Failed to delete account');
+      }
     }
   };
 
@@ -43,7 +47,7 @@ export function DeleteAccountDialog({ open, onOpenChange, account }: DeleteAccou
         </>
       }
       onConfirm={onDelete}
-      isDeleting={isDeleting}
+      isDeleting={deleteAccountMutation.isPending}
       error={error}
       confirmLabel={ACCOUNT_UI.BUTTONS.DELETE}
       cancelLabel={ACCOUNT_UI.BUTTONS.CANCEL}

@@ -70,7 +70,7 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 - [x] Enforce integer cents (`sentAmountCents`, `receivedAmountCents`) exclusively
 - [x] Enforce strict ISO 8601 date format (`YYYY-MM-DDTHH:mm:ss.SSSZ`) required by Swift
 - [x] Remove duplicate `createTransfer` from Transaction repository (Single Source of Truth)
-- [ ] Deprecate `features/transactions/api/transfers.ts`
+- [x] Delete `features/transactions/api/transfers.ts` (orphaned, no imports)
 
 ### Technical Debt
 - [ ] **Regenerate Supabase Types:** Run `supabase gen types typescript` to fix nullable RPC parameters (currently using `null as unknown as string` workaround in `supabase-transfer-repository.ts:144`)
@@ -81,7 +81,9 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 - [x] Create `AccountService` with DataResult pattern
 - [x] Migrate `use-accounts.ts` from direct `accountsApi.ts` calls
 - [x] Update all UI components to use `AccountViewEntity` (`id`, `currentBalanceCents`)
-- [ ] Deprecate `features/accounts/api/accounts.ts`
+- [x] Migrate `add-account-modal.tsx` to use `useCreateAccount()` hook
+- [x] Migrate `delete-account-dialog.tsx` to use `useDeleteAccount()` hook
+- [x] Delete `features/accounts/api/accounts.ts` (orphaned, no imports)
 
 ### Phase 2 - Offline Sync (Future)
 
