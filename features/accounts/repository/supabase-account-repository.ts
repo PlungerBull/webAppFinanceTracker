@@ -26,6 +26,7 @@ import {
   AccountNotFoundError,
   AccountRepositoryError,
   AccountValidationError,
+  AccountLockedError,
 } from '../domain';
 
 // Database row type from bank_accounts with joined global_currencies
@@ -385,6 +386,30 @@ export class SupabaseAccountRepository implements IAccountRepository {
         .eq('user_id', userId);
 
       if (error) {
+        // CTO Mandate: SQLSTATE-based error mapping for type-safe handling
+        // PostgreSQL SQLSTATE codes: https://www.postgresql.org/docs/current/errcodes-appendix.html
+        const pgError = error as { code?: string };
+
+        // 23503 = foreign_key_violation (FK constraint prevents delete)
+        if (pgError.code === '23503') {
+          return {
+            success: false,
+            data: null,
+            error: new AccountLockedError(id, 'foreign_key'),
+          };
+        }
+
+        // P0001 = raise_exception (Custom exception from Sacred Ledger DB triggers)
+        // Our triggers raise P0001 when attempting to delete accounts with reconciled transactions
+        if (pgError.code === 'P0001') {
+          return {
+            success: false,
+            data: null,
+            error: new AccountLockedError(id, 'reconciled'),
+          };
+        }
+
+        // Fallback for other errors
         return {
           success: false,
           data: null,

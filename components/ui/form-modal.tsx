@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, ReactNode } from 'react';
-import { useForm, FieldValues, UseFormReturn } from 'react-hook-form';
+import { useForm, FieldValues, UseFormReturn, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ZodType } from 'zod';
+import type { ZodSchema } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -17,13 +17,22 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { UI } from '@/lib/constants';
 
+/**
+ * FormModal Props
+ *
+ * CTO Standard: Fully typed generic interface - no `any` types.
+ * The schema generic ensures type safety flows through the entire form.
+ *
+ * @template TFormData - The shape of the form data, inferred from the Zod schema
+ */
 interface FormModalProps<TFormData extends FieldValues> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
   successMessage: string;
-  schema: ZodType<TFormData, any, any>;
+  /** Zod schema for form validation - type inference flows to onSubmit and children */
+  schema: ZodSchema<TFormData>;
   onSubmit: (data: TFormData) => Promise<void>;
   children: (form: UseFormReturn<TFormData>) => ReactNode;
   autoCloseDelay?: number;
@@ -44,7 +53,11 @@ export function FormModal<TFormData extends FieldValues>({
   const [success, setSuccess] = useState(false);
 
   const form = useForm<TFormData>({
-    resolver: zodResolver(schema),
+    // CTO Note: Cast needed due to Zod v4 + react-hook-form resolver type mismatch
+    // @hookform/resolvers types expect Zod v3 but we use Zod v4
+    // The runtime behavior is correct - this is purely a type-level incompatibility
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema as any) as Resolver<TFormData>,
   });
 
   const {

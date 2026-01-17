@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
+import { useIsMounted } from '@/hooks/shared/use-is-mounted';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,11 +25,10 @@ interface UserMenuProps {
 export function UserMenu({ isCollapsed, className }: UserMenuProps) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  // CTO Standard: Use useSyncExternalStore-based hook for hydration-safe client detection
+  // This avoids the react-hooks/set-state-in-effect lint error
+  const isMounted = useIsMounted();
 
   const userDisplayName = useMemo(() => {
     if (!user) return USER_MENU.DEFAULT_NAME;
@@ -72,7 +72,7 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
     </div>
   );
 
-  if (!isClient) {
+  if (!isMounted) {
     // Render a static placeholder on the server to prevent layout shift
     return (
       <Button

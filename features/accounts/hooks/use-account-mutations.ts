@@ -17,7 +17,9 @@ import type {
   CreateAccountDTO,
   UpdateAccountDTO,
   AccountViewEntity,
+  AccountLockReason,
 } from '../domain';
+import { AccountLockedError } from '../domain';
 
 /**
  * Use Create Account
@@ -119,8 +121,9 @@ export function useUpdateAccount() {
     },
 
     // Refetch after success to ensure consistency
+    // Note: Update only affects accounts cache, no need for Promise.all here
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
     },
   });
 }
@@ -171,32 +174,30 @@ export function useDeleteAccount() {
     },
 
     // Rollback on error with user-friendly toast
+    // CTO Mandate: Use instanceof for type-safe error handling (NOT string matching)
     onError: (err, _id, context) => {
       // Rollback optimistic update
       if (context?.previousAccounts) {
         queryClient.setQueryData(QUERY_KEYS.ACCOUNTS, context.previousAccounts);
       }
 
-      // CTO Mandate: Handle Sacred Ledger lock errors with clear user feedback
-      const errorMessage = err instanceof Error ? err.message : String(err);
-
-      // Check for common DB constraint errors
-      if (
-        errorMessage.includes('reconcil') ||
-        errorMessage.includes('foreign key') ||
-        errorMessage.includes('constraint') ||
-        errorMessage.includes('violates')
-      ) {
-        toast.error('Cannot delete account', {
-          description:
-            'This account has reconciled transactions or linked data. Please remove or reassign them first.',
-        });
-      } else if (errorMessage.includes('transaction')) {
-        toast.error('Cannot delete account', {
-          description:
+      // Type-safe error handling via instanceof
+      if (err instanceof AccountLockedError) {
+        // Map lock reasons to user-friendly messages
+        const messages: Record<AccountLockReason, string> = {
+          reconciled:
+            'This account has reconciled transactions. Please remove or reassign them first.',
+          has_transactions:
             'This account has existing transactions. Delete or move them to another account first.',
+          foreign_key:
+            'This account has linked data. Please remove or reassign it first.',
+        };
+        toast.error('Cannot delete account', {
+          description: messages[err.reason],
         });
       } else {
+        // Fallback for unexpected errors
+        const errorMessage = err instanceof Error ? err.message : String(err);
         toast.error('Failed to delete account', {
           description: errorMessage,
         });
@@ -204,12 +205,13 @@ export function useDeleteAccount() {
     },
 
     // Refetch after success to ensure consistency
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
-      // Also invalidate transactions as they may reference deleted account
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.TRANSACTIONS.ALL,
-      });
+    // CTO Mandate: Batch invalidation with Promise.all for performance
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS }),
+        // Also invalidate transactions as they may reference deleted account
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
+      ]);
     },
   });
 }

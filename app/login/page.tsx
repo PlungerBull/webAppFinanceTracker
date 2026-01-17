@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,7 +18,10 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+
+  // CTO Standard: Read URL params directly in render - no useEffect state sync needed
+  // This eliminates the cascading render and ensures instant UI updates on URL changes
+  const message = searchParams.get('message');
 
   const {
     register,
@@ -27,13 +30,6 @@ function LoginForm() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
-
-  useEffect(() => {
-    const msg = searchParams.get('message');
-    if (msg) {
-      setMessage(msg);
-    }
-  }, [searchParams]);
 
   const onSubmit = async (data: LoginFormData) => {
     try {

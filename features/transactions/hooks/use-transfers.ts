@@ -91,9 +91,12 @@ export function useCreateTransfer() {
     },
 
     // Refetch after success to ensure consistency
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
+    // CTO Mandate: Batch invalidation with Promise.all for performance
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS }),
+      ]);
     },
   });
 }

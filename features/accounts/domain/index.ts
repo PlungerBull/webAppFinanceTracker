@@ -31,11 +31,14 @@ export {
   AccountValidationError,
   AccountRepositoryError,
   AccountDuplicateNameError,
+  AccountLockedError,
   isAccountNotFoundError,
   isVersionConflictError,
   isValidationError,
   isDuplicateNameError,
+  isAccountLockedError,
 } from './errors';
+export type { AccountLockReason } from './errors';
 
 // Constants
 export {

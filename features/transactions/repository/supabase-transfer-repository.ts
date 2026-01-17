@@ -61,6 +61,44 @@ export class SupabaseTransferRepository implements ITransferRepository {
     return cents / 100;
   }
 
+  /**
+   * Call create_transfer RPC with type workaround
+   *
+   * @private - Only SupabaseTransferRepository should use this
+   * @deprecated Remove after regenerating Supabase types
+   * @see TODO.md - "Regenerate Supabase Types"
+   *
+   * This wrapper isolates the `null as unknown as string` type assertion
+   * required because Supabase codegen incorrectly marks p_category_id as non-nullable.
+   * Once types are regenerated with proper nullable RPC parameters, this wrapper
+   * can be removed and the RPC called directly.
+   */
+  private callCreateTransferRpc(params: {
+    userId: string;
+    fromAccountId: string;
+    toAccountId: string;
+    sentAmount: number;
+    receivedAmount: number;
+    exchangeRate: number;
+    date: string;
+    description: string;
+  }) {
+    return this.supabase.rpc('create_transfer', {
+      p_user_id: params.userId,
+      p_from_account_id: params.fromAccountId,
+      p_to_account_id: params.toAccountId,
+      p_amount: params.sentAmount,
+      p_amount_received: params.receivedAmount,
+      p_exchange_rate: params.exchangeRate,
+      p_date: params.date,
+      p_description: params.description,
+      // Transfers have no category - pass null
+      // @deprecated - Remove cast after regenerating Supabase types
+      // See: https://supabase.com/docs/reference/cli/supabase-gen-types-typescript
+      p_category_id: null as unknown as string,
+    });
+  }
+
   async create(
     userId: string,
     data: CreateTransferDTO
@@ -134,23 +172,16 @@ export class SupabaseTransferRepository implements ITransferRepository {
       // CTO Mandate: Use create_transfer RPC exclusively for atomicity
       // VERIFIED: The RPC is plpgsql which wraps both INSERTs in an implicit transaction.
       // If either INSERT fails, the entire operation rolls back automatically.
-      const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
-        'create_transfer',
-        {
-          p_user_id: userId,
-          p_from_account_id: data.fromAccountId,
-          p_to_account_id: data.toAccountId,
-          p_amount: sentAmount,
-          p_amount_received: receivedAmount,
-          p_exchange_rate: impliedExchangeRate,
-          p_date: data.date,
-          p_description: data.description || 'Transfer',
-          // Transfers have no category - pass null
-          // TODO: Regenerate Supabase types to properly mark p_category_id as nullable
-          // See: https://supabase.com/docs/reference/cli/supabase-gen-types-typescript
-          p_category_id: null as unknown as string,
-        }
-      );
+      const { data: rpcResult, error: rpcError } = await this.callCreateTransferRpc({
+        userId,
+        fromAccountId: data.fromAccountId,
+        toAccountId: data.toAccountId,
+        sentAmount,
+        receivedAmount,
+        exchangeRate: impliedExchangeRate,
+        date: data.date,
+        description: data.description || 'Transfer',
+      });
 
       if (rpcError) {
         return {
