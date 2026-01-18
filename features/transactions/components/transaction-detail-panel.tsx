@@ -8,13 +8,13 @@ import { useUpdateTransactionBatch, useDeleteTransaction } from '../hooks/use-tr
 import { useTransactionSelection } from '@/stores/transaction-selection-store';
 import type { TransactionViewEntity } from '../domain';
 import type { AccountViewEntity } from '@/features/accounts/domain';
-import type { CategoryWithCount } from '@/types/domain';
+import type { LeafCategoryEntity } from '@/features/categories/domain';
 import { cn } from '@/lib/utils';
 
 interface TransactionDetailPanelProps {
   transaction: TransactionViewEntity | null;
   accountId: string | null;
-  categories: CategoryWithCount[];
+  categories: LeafCategoryEntity[];
   accounts: AccountViewEntity[]; // Use AccountViewEntity from Repository Pattern
 }
 

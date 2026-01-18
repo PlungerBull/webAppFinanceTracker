@@ -1,24 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useFormModal } from '@/hooks/shared/use-form-modal';
 import { z } from 'zod';
 import { useAddSubcategory, useGroupings } from '../hooks/use-groupings';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Archive, ChevronDown, Check, X, Pencil } from 'lucide-react';
+import { ChevronDown, Check, X, Pencil } from 'lucide-react';
 import { VALIDATION, GROUPING } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import type { ParentCategoryWithCount } from '@/types/domain';
+import type { GroupingEntity } from '@/features/categories/domain';
 
 interface AddSubcategoryModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    parentGrouping: ParentCategoryWithCount | null;
+    parentGrouping: GroupingEntity | null;
 }
 
 // Schema for the form
@@ -31,8 +31,14 @@ type SubcategoryFormData = z.infer<typeof subcategorySchema>;
 export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddSubcategoryModalProps) {
     const addSubcategoryMutation = useAddSubcategory();
     const { data: allGroupings = [] } = useGroupings();
-    const [selectedParent, setSelectedParent] = useState<ParentCategoryWithCount | null>(parentGrouping);
+    // Track user's manual parent selection (null means use parentGrouping prop)
+    const [manualParentSelection, setManualParentSelection] = useState<GroupingEntity | null>(null);
     const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
+
+    // Derive selected parent: use manual selection if set, otherwise use prop
+    const selectedParent = useMemo(() => {
+        return manualParentSelection ?? parentGrouping;
+    }, [manualParentSelection, parentGrouping]);
 
     const {
         form,
@@ -64,18 +70,15 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
 
     const handleClose = () => {
         resetForm();
-        setSelectedParent(parentGrouping);
+        setManualParentSelection(null); // Reset to use prop on next open
         setIsParentDropdownOpen(false);
         onOpenChange(false);
     };
 
-    // Reset state when modal opens or parentGrouping changes
-    useEffect(() => {
-        if (open && parentGrouping) {
-            setSelectedParent(parentGrouping);
-            setIsParentDropdownOpen(false);
-        }
-    }, [open, parentGrouping]);
+    const handleParentChange = (parent: GroupingEntity) => {
+        setManualParentSelection(parent);
+        setIsParentDropdownOpen(false);
+    };
 
     if (!parentGrouping) return null;
 
@@ -183,10 +186,7 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
                                                     <button
                                                         key={parent.id}
                                                         type="button"
-                                                        onClick={() => {
-                                                            setSelectedParent(parent);
-                                                            setIsParentDropdownOpen(false);
-                                                        }}
+                                                        onClick={() => handleParentChange(parent)}
                                                         className="w-full px-3 py-2 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors"
                                                     >
                                                         <div

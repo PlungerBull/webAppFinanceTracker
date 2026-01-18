@@ -1,26 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDeleteGrouping, useGroupingChildren } from '../hooks/use-groupings';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { GROUPING } from '@/lib/constants';
-import type { ParentCategoryWithCount } from '@/types/domain';
+import type { GroupingEntity } from '@/features/categories/domain';
 
 interface DeleteGroupingDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    grouping: ParentCategoryWithCount | null;
+    grouping: GroupingEntity | null;
 }
 
-export function DeleteGroupingDialog({ open, onOpenChange, grouping }: DeleteGroupingDialogProps) {
+/**
+ * Inner component that handles the actual dialog logic.
+ * Re-mounts when grouping changes (via key prop from parent).
+ */
+function DeleteGroupingDialogInner({ open, onOpenChange, grouping }: DeleteGroupingDialogProps) {
     const deleteGroupingMutation = useDeleteGrouping();
     const { data: children = [] } = useGroupingChildren(grouping?.id || '');
     const [error, setError] = useState<string | null>(null);
-
-    // Reset error when dialog opens/closes or grouping changes
-    useEffect(() => {
-        setError(null);
-    }, [open, grouping]);
 
     const hasChildren = children.length > 0;
 
@@ -82,6 +81,22 @@ export function DeleteGroupingDialog({ open, onOpenChange, grouping }: DeleteGro
             error={error}
             confirmLabel={hasChildren ? 'Cannot Delete' : GROUPING.UI.BUTTONS.DELETE}
             cancelLabel={GROUPING.UI.BUTTONS.CANCEL}
+        />
+    );
+}
+
+/**
+ * Wrapper component that resets inner state when grouping changes.
+ * Uses key prop to force remount when a different grouping is selected.
+ */
+export function DeleteGroupingDialog({ open, onOpenChange, grouping }: DeleteGroupingDialogProps) {
+    // Key-based remount: when grouping changes, inner component remounts with fresh state
+    return (
+        <DeleteGroupingDialogInner
+            key={grouping?.id ?? 'none'}
+            open={open}
+            onOpenChange={onOpenChange}
+            grouping={grouping}
         />
     );
 }

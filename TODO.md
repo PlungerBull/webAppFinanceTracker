@@ -7,10 +7,6 @@
 ### Auth Provider Injection
 - [ ] Replace direct `supabase.auth.getUser()` calls in all API/Service layers with `IAuthProvider` interface to support Native Apple Auth on iOS
 
-### Legacy Code Removal
-- [ ] Physically delete `features/transactions/api/transactions.ts` to prevent accidental legacy imports
-- [ ] Remove all `.OLD.ts` files from the codebase
-
 ---
 
 ## God Component Refactors (iOS Port Prep)
@@ -49,6 +45,16 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 ---
 
 ## Repository Pattern Implementation
+
+### Categories Feature: ✅ Migrated
+- [x] Create `CategoryEntity`, `GroupingEntity`, `LeafCategoryEntity` in domain layer
+- [x] Create `ICategoryRepository` interface with hierarchy handling
+- [x] Implement `SupabaseCategoryRepository` with SQLSTATE error mapping
+- [x] Create `ICategoryService` interface
+- [x] Implement `CategoryService` with self-parenting prevention (fast-UI check)
+- [x] Scrub all `any` types from categories/groupings components
+- [x] Fix all lint errors (setState-in-effect patterns)
+- [x] Document architectural guardrail: `userId` required in interface even when RLS handles filtering
 
 ### Inbox Feature: ❌ Legacy
 - [ ] Create `InboxEntity` in domain layer (integer cents, typed status)

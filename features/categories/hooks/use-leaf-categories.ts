@@ -1,6 +1,18 @@
-import { useMemo } from 'react';
-import { useCategories } from './use-categories';
-import type { CategoryWithCount } from '@/types/domain';
+/**
+ * Leaf Categories Hook
+ *
+ * Returns only leaf categories (children + orphaned parents) for the "Invisible Grouping" pattern.
+ *
+ * This hook provides categories that can be assigned to transactions:
+ * - Child categories (categories with a parentId)
+ * - Orphaned parents (parents with no children)
+ *
+ * CTO MANDATE: This is the ONLY hook for transaction category selectors.
+ *
+ * @module use-leaf-categories
+ */
+
+import { useLeafCategoriesQuery, type LeafCategoryEntity } from './use-categories';
 
 /**
  * Returns only leaf categories (children + orphaned parents) for the "Invisible Grouping" pattern.
@@ -12,33 +24,9 @@ import type { CategoryWithCount } from '@/types/domain';
  *
  * Categories are sorted with income first, then expense, then alphabetically within each type.
  */
-export function useLeafCategories(): CategoryWithCount[] {
-  const { data: categories = [] } = useCategories();
+export function useLeafCategories(): LeafCategoryEntity[] {
+  const { data: leafCategories = [] } = useLeafCategoriesQuery();
 
-  const leafCategories = useMemo(() => {
-    // Get all parent and child categories
-    const parents = categories.filter((c) => c.parentId === null);
-    const children = categories.filter((c) => c.parentId !== null);
-
-    // Find which parents have children
-    const parentsWithChildren = new Set(
-      children.map((c) => c.parentId).filter(Boolean)
-    );
-
-    // Orphaned parents = parents with no children (should be treated as leaf nodes)
-    const orphanedParents = parents.filter((p) => !parentsWithChildren.has(p.id));
-
-    // Combine children + orphaned parents = all selectable categories
-    const leaves = [...children, ...orphanedParents];
-
-    // Sort: income first, then expense, then alphabetically by name
-    return leaves.sort((a, b) => {
-      if (a.type !== b.type) {
-        return a.type === 'income' ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [categories]);
-
+  // Note: Sorting is handled by the service layer
   return leafCategories;
 }

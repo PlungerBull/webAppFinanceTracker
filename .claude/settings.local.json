@@ -27,7 +27,9 @@
       "Bash(supabase db push:*)",
       "Bash(supabase gen types:*)",
       "Bash(psql:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

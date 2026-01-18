@@ -3,7 +3,7 @@
 import { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch, Controller, Control } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ACCOUNT, CATEGORY } from '@/lib/constants';
+import { CATEGORY } from '@/lib/constants';
 import { ColorPicker } from '@/components/shared/color-picker';
 import {
     Select,
@@ -15,22 +15,33 @@ import {
 import type { Database } from '@/types/supabase';
 
 // Use the view type which includes transaction_count
-type Category = Database['public']['Views']['categories_with_counts']['Row'];
+type ParentCategory = Database['public']['Views']['categories_with_counts']['Row'];
 
+/**
+ * Category Form Data Shape
+ *
+ * CTO Standard: Explicit types for form data - no `any` types.
+ * Uses camelCase to match domain DTOs.
+ */
 export interface CategoryFormData {
     name: string;
     color: string;
-    parent_id?: string | null;
+    parentId?: string | null;
 }
 
+/**
+ * Category Form Props
+ *
+ * Uses typed react-hook-form utilities with CategoryFormData.
+ */
 interface CategoryFormProps {
-    register: UseFormRegister<any>;
-    errors: FieldErrors<any>;
-    setValue: UseFormSetValue<any>;
-    watch: UseFormWatch<any>;
-    control: Control<any>;
+    register: UseFormRegister<CategoryFormData>;
+    errors: FieldErrors<CategoryFormData>;
+    setValue: UseFormSetValue<CategoryFormData>;
+    watch: UseFormWatch<CategoryFormData>;
+    control: Control<CategoryFormData>;
     isSubmitting: boolean;
-    availableParents: Category[];
+    availableParents: ParentCategory[];
 }
 
 export function CategoryForm({
@@ -57,7 +68,7 @@ export function CategoryForm({
                     disabled={isSubmitting}
                 />
                 {errors.name && (
-                    <p className="text-sm text-red-600">{errors.name.message as string}</p>
+                    <p className="text-sm text-red-600">{errors.name.message}</p>
                 )}
             </div>
 
@@ -66,7 +77,7 @@ export function CategoryForm({
                 <Label>{CATEGORY.UI.LABELS.PARENT_CATEGORY || "Parent Category"}</Label>
                 <Controller
                     control={control}
-                    name="parent_id"
+                    name="parentId"
                     render={({ field }) => (
                         <Select
                             onValueChange={(value) => field.onChange(value === "none" ? null : value)}
@@ -89,8 +100,8 @@ export function CategoryForm({
                         </Select>
                     )}
                 />
-                {errors.parent_id && (
-                    <p className="text-sm text-red-600">{errors.parent_id.message as string}</p>
+                {errors.parentId && (
+                    <p className="text-sm text-red-600">{errors.parentId.message}</p>
                 )}
                 <p className="text-xs text-zinc-500">
                     Top-level categories can have subcategories. Transactions can only be assigned to subcategories.
@@ -107,7 +118,7 @@ export function CategoryForm({
                     allowNoColor={false}
                 />
                 {errors.color && (
-                    <p className="text-sm text-red-600">{errors.color.message as string}</p>
+                    <p className="text-sm text-red-600">{errors.color.message}</p>
                 )}
             </div>
         </div>

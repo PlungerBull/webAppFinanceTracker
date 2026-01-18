@@ -1,10 +1,19 @@
+/**
+ * Categorized Categories Hook
+ *
+ * Groups categories by type (income/expense) and organizes them into
+ * parent-child hierarchies.
+ *
+ * @module use-categorized-categories
+ */
+
 import { useMemo } from 'react';
 import { useCategories } from './use-categories';
-import type { CategoryWithCount } from '@/types/domain';
+import type { CategoryEntity } from '../domain';
 
 export interface CategoryGroup {
-  parent: CategoryWithCount;
-  children: CategoryWithCount[];
+  parent: CategoryEntity;
+  children: CategoryEntity[];
 }
 
 export interface CategorizedCategories {

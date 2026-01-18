@@ -4,19 +4,11 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAddCategory } from '../hooks/use-categories';
+import { useAddGrouping } from '@/features/groupings/hooks/use-groupings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-    Archive,
-    X,
-    Loader2,
-    Pencil,
-    Check,
-    ChevronDown
-} from 'lucide-react';
+import { X, Loader2, Pencil, Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACCOUNT, VALIDATION, ACCOUNTS } from '@/lib/constants';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -36,7 +28,7 @@ const categorySchema = z.object({
 type CategoryFormData = z.infer<typeof categorySchema>;
 
 export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) {
-    const addCategoryMutation = useAddCategory();
+    const addGroupingMutation = useAddGrouping();
     const [categoryType, setCategoryType] = useState<'income' | 'expense'>('expense');
     const [isColorPopoverOpen, setIsColorPopoverOpen] = useState(false);
 
@@ -72,11 +64,10 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
 
     const onSubmit = async (data: CategoryFormData) => {
         try {
-            await addCategoryMutation.mutateAsync({
+            await addGroupingMutation.mutateAsync({
                 name: data.name,
                 color: data.color,
-                parent_id: null, // Always null for top-level groupings
-                type: categoryType, // Include type in submission
+                type: categoryType,
             });
             handleClose();
         } catch (error) {

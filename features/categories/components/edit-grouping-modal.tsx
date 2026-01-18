@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useUpdateCategory, useCategories } from '../hooks/use-categories';
+import { useCategories } from '../hooks/use-categories';
+import { useUpdateGrouping, useReassignSubcategory } from '@/features/groupings/hooks/use-groupings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,15 +23,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACCOUNT, VALIDATION, ACCOUNTS } from '@/lib/constants';
-import type { CategoryWithCount } from '@/types/domain';
+import type { GroupingEntity, CategoryEntity, CategoryWithCountEntity } from '../domain';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
-type Category = CategoryWithCount;
+// Accept any category-like type with required properties for editing
+type EditableCategory = GroupingEntity | CategoryWithCountEntity | CategoryEntity;
 
 interface EditGroupingModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    category: Category | null;
+    category: EditableCategory | null;
 }
 
 // Schema for the form
@@ -43,7 +45,8 @@ const categorySchema = z.object({
 type CategoryFormData = z.infer<typeof categorySchema>;
 
 export function EditGroupingModal({ open, onOpenChange, category }: EditGroupingModalProps) {
-    const updateCategoryMutation = useUpdateCategory();
+    const updateGroupingMutation = useUpdateGrouping();
+    const reassignSubcategoryMutation = useReassignSubcategory();
     const { data: allCategories = [] } = useCategories();
 
     // State for subcategory management
@@ -57,7 +60,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
 
     // Filter subcategories for the current category
     const subcategories = useMemo(() =>
-        allCategories.filter(c => c.parentId === category?.id && c.id !== null) as (Category & { id: string })[],
+        allCategories.filter(c => c.parentId === category?.id && c.id !== null) as (CategoryEntity & { id: string })[],
         [allCategories, category?.id]
     );
 
@@ -67,7 +70,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
             c.parentId === null && // Must be a parent
             c.id !== category?.id && // Cannot be the current category
             c.id !== null // Must have an ID
-        ) as (Category & { id: string })[],
+        ) as (CategoryEntity & { id: string })[],
         [allCategories, category?.id]
     );
 
@@ -76,7 +79,6 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         handleSubmit,
         setValue,
         watch,
-        reset,
         formState: { errors, isSubmitting }
     } = useForm<CategoryFormData>({
         resolver: zodResolver(categorySchema),
@@ -129,14 +131,14 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         if (!category?.id) return;
 
         try {
-            // 1. Update the main category
-            const updatePromises: Promise<any>[] = [
-                updateCategoryMutation.mutateAsync({
+            // 1. Update the main grouping (parent category)
+            const updatePromises: Promise<unknown>[] = [
+                updateGroupingMutation.mutateAsync({
                     id: category.id,
                     data: {
                         name: data.name,
                         color: data.color,
-                        type: data.type, // Fix: Include type field in update payload
+                        type: data.type,
                     },
                 })
             ];
@@ -145,9 +147,9 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
             if (selectedSubcategoryIds.length > 0 && migrationTargetId) {
                 selectedSubcategoryIds.forEach(subId => {
                     updatePromises.push(
-                        updateCategoryMutation.mutateAsync({
-                            id: subId,
-                            data: { parent_id: migrationTargetId }
+                        reassignSubcategoryMutation.mutateAsync({
+                            categoryId: subId,
+                            newParentId: migrationTargetId,
                         })
                     );
                 });
@@ -156,7 +158,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
             await Promise.all(updatePromises);
             handleClose();
         } catch (error) {
-            console.error('Failed to update category:', error);
+            console.error('Failed to update grouping:', error);
         }
     };
 
@@ -321,7 +323,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
 
                                         {/* List Container */}
                                         <div className="bg-gray-50/30 border border-gray-100 rounded-xl max-h-48 overflow-y-auto">
-                                            {subcategories.map((sub, index) => (
+                                            {subcategories.map((sub) => (
                                                 <div
                                                     key={sub.id}
                                                     onClick={() => toggleSubcategorySelection(sub.id)}

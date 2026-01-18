@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCategories } from '../hooks/use-categories';
+import { useCategoriesWithCounts } from '../hooks/use-categories';
+import type { CategoryWithCountEntity } from '../domain';
 import { AddCategoryModal } from './add-category-modal';
 import { EditGroupingModal } from './edit-grouping-modal';
 import { DeleteCategoryDialog } from './delete-category-dialog';
@@ -26,10 +27,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY } from '@/lib/constants';
-import type { CategoryWithCount, Category } from '@/types/domain';
 
-type CategoryNode = CategoryWithCount & {
-    children: CategoryWithCount[];
+type CategoryNode = CategoryWithCountEntity & {
+    children: CategoryWithCountEntity[];
 };
 
 export function CategoryList() {
@@ -37,18 +37,41 @@ export function CategoryList() {
     const searchParams = useSearchParams();
     const currentCategoryId = searchParams.get('categoryId');
 
-    const { data: categories = [], isLoading } = useCategories();
+    const { data: categories = [], isLoading } = useCategoriesWithCounts();
     const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true);
-    const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
     const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
-    const [editingCategory, setEditingCategory] = useState<CategoryWithCount | null>(null);
-    const [deletingCategory, setDeletingCategory] = useState<CategoryWithCount | null>(null);
+    const [editingCategory, setEditingCategory] = useState<CategoryWithCountEntity | null>(null);
+    const [deletingCategory, setDeletingCategory] = useState<CategoryWithCountEntity | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    // Track manually toggled expansion states (user interactions only)
+    const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set());
+    const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<string>>(new Set());
+
+    // Compute which parent should be auto-expanded based on current selection
+    const autoExpandedParent = useMemo(() => {
+        if (currentCategoryId && categories.length > 0) {
+            const selectedCat = categories.find(c => c.id === currentCategoryId);
+            return selectedCat?.parentId ?? null;
+        }
+        return null;
+    }, [currentCategoryId, categories]);
+
+    // Derive expanded state from manual toggles + auto-expansion
+    // Auto-expansion takes effect unless user has manually collapsed
+    const expandedParents = useMemo(() => {
+        const expanded = new Set(manuallyExpanded);
+        // Auto-expand parent of selected category unless manually collapsed
+        if (autoExpandedParent && !manuallyCollapsed.has(autoExpandedParent)) {
+            expanded.add(autoExpandedParent);
+        }
+        return expanded;
+    }, [manuallyExpanded, manuallyCollapsed, autoExpandedParent]);
 
     // Group categories into hierarchy
     const categoryTree = useMemo(() => {
         const parents: CategoryNode[] = [];
-        const childrenMap = new Map<string, CategoryWithCount[]>();
+        const childrenMap = new Map<string, CategoryWithCountEntity[]>();
 
         // First pass: identify parents and organize children
         categories.forEach(cat => {
@@ -79,31 +102,27 @@ export function CategoryList() {
         return parents;
     }, [categories]);
 
-    // Auto-expand parent if a child is selected
-    useMemo(() => {
-        if (currentCategoryId && categories.length > 0) {
-            const selectedCat = categories.find(c => c.id === currentCategoryId);
-            if (selectedCat?.parentId) {
-                setExpandedParents(prev => {
-                    const next = new Set(prev);
-                    next.add(selectedCat.parentId!);
-                    return next;
-                });
-            }
-        }
-    }, [currentCategoryId, categories]);
-
     const toggleParent = (parentId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        setExpandedParents(prev => {
-            const next = new Set(prev);
-            if (next.has(parentId)) {
+        const isCurrentlyExpanded = expandedParents.has(parentId);
+
+        if (isCurrentlyExpanded) {
+            // Collapsing: add to collapsed set, remove from expanded set
+            setManuallyCollapsed(prev => new Set([...prev, parentId]));
+            setManuallyExpanded(prev => {
+                const next = new Set(prev);
                 next.delete(parentId);
-            } else {
-                next.add(parentId);
-            }
-            return next;
-        });
+                return next;
+            });
+        } else {
+            // Expanding: add to expanded set, remove from collapsed set
+            setManuallyExpanded(prev => new Set([...prev, parentId]));
+            setManuallyCollapsed(prev => {
+                const next = new Set(prev);
+                next.delete(parentId);
+                return next;
+            });
+        }
     };
 
     const handleCategoryClick = (categoryId: string) => {
@@ -124,19 +143,18 @@ export function CategoryList() {
         router.push(`/transactions?${params.toString()}`);
     };
 
-    const handleEdit = (category: CategoryWithCount, e: React.MouseEvent) => {
+    const handleEdit = (category: CategoryWithCountEntity, e: React.MouseEvent) => {
         e.stopPropagation();
         setEditingCategory(category);
     };
 
-    const handleDelete = (category: CategoryWithCount, e: React.MouseEvent) => {
+    const handleDelete = (category: CategoryWithCountEntity, e: React.MouseEvent) => {
         e.stopPropagation();
         setDeletingCategory(category);
     };
 
-    const renderCategoryItem = (category: CategoryWithCount, isParent: boolean, level: number = 0) => {
+    const renderCategoryItem = (category: CategoryWithCountEntity, isParent: boolean, level: number = 0) => {
         const isExpanded = category.id ? expandedParents.has(category.id) : false;
-        const hasChildren = isParent && (category as CategoryNode).children.length > 0;
 
         return (
             <div

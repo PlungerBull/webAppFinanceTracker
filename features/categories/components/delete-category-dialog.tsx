@@ -1,9 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useDeleteItem } from '@/hooks/shared/use-delete-item';
-import { categoriesApi } from '../api/categories';
-import { QUERY_KEYS } from '@/lib/constants';
+import { useState, useEffect, useCallback } from 'react';
+import { useDeleteCategory } from '../hooks/use-category-mutations';
 import { CATEGORY } from '@/lib/constants';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { canDeleteParent } from '../utils/validation';
@@ -33,22 +31,15 @@ export function DeleteCategoryDialog({
     const [isChecking, setIsChecking] = useState(false);
     const [checkError, setCheckError] = useState<string | null>(null);
 
-    const { handleDelete, isDeleting, error: deleteError } = useDeleteItem(
-        async (id: string) => {
-            return categoriesApi.delete(id);
-        },
-        [QUERY_KEYS.CATEGORIES]
-    );
+    const deleteCategoryMutation = useDeleteCategory();
+    const isDeleting = deleteCategoryMutation.isPending;
+    const deleteError = deleteCategoryMutation.error
+        ? deleteCategoryMutation.error instanceof Error
+            ? deleteCategoryMutation.error.message
+            : String(deleteCategoryMutation.error)
+        : null;
 
-    useEffect(() => {
-        if (open && category) {
-            checkDeletability();
-        } else {
-            setCheckError(null);
-        }
-    }, [open, category]);
-
-    const checkDeletability = async () => {
+    const checkDeletability = useCallback(async () => {
         if (!category) return;
 
         // Only check for parents (parentId is null)
@@ -70,11 +61,19 @@ export function DeleteCategoryDialog({
         } else {
             setCheckError(null);
         }
-    };
+    }, [category]);
+
+    useEffect(() => {
+        if (open && category) {
+            checkDeletability();
+        } else {
+            setCheckError(null);
+        }
+    }, [open, category, checkDeletability]);
 
     const onDelete = async () => {
         if (category?.id) {
-            await handleDelete(category.id);
+            await deleteCategoryMutation.mutateAsync(category.id);
             onOpenChange(false);
         }
     };
