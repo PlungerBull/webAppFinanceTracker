@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -612,14 +611,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["currency_original"]
+            columns: ["account_currency"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["account_currency"]
+            columns: ["currency_original"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
@@ -714,37 +713,20 @@ export type Database = {
         }
         Returns: Json
       }
-      create_transfer:
-        | {
-            Args: {
-              p_amount: number
-              p_amount_received: number
-              p_category_id?: string
-              p_date: string
-              p_description: string
-              p_exchange_rate: number
-              p_from_account_id: string
-              p_to_account_id: string
-              p_user_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_amount: number
-              p_amount_received: number
-              p_category_id: string
-              p_date: string
-              p_description: string
-              p_exchange_rate: number
-              p_from_account_id: string
-              p_from_currency: string
-              p_to_account_id: string
-              p_to_currency: string
-              p_user_id: string
-            }
-            Returns: Json
-          }
+      create_transfer: {
+        Args: {
+          p_amount_cents: number
+          p_amount_received_cents: number
+          p_category_id?: string
+          p_date: string
+          p_description: string
+          p_exchange_rate: number
+          p_from_account_id: string
+          p_to_account_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_transfer_transaction: {
         Args: {
           p_amount_cents: number
@@ -772,8 +754,8 @@ export type Database = {
           account_currency: string
           account_id: string
           account_name: string
-          amount_home: number
-          amount_original: number
+          amount_cents: number
+          amount_home_cents: number
           category_color: string
           category_id: string
           category_name: string
@@ -841,30 +823,18 @@ export type Database = {
         Args: { p_source_ids: string[]; p_target_id: string }
         Returns: Json
       }
-      promote_inbox_item:
-        | {
-            Args: {
-              p_account_id: string
-              p_category_id: string
-              p_final_amount?: number
-              p_final_date?: string
-              p_final_description?: string
-              p_inbox_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_account_id: string
-              p_category_id: string
-              p_exchange_rate?: number
-              p_final_amount?: number
-              p_final_date?: string
-              p_final_description?: string
-              p_inbox_id: string
-            }
-            Returns: Json
-          }
+      promote_inbox_item: {
+        Args: {
+          p_account_id: string
+          p_category_id: string
+          p_exchange_rate?: number
+          p_final_amount_cents?: number
+          p_final_date?: string
+          p_final_description?: string
+          p_inbox_id: string
+        }
+        Returns: Json
+      }
       reconcile_account_balance: {
         Args: { p_account_id: string; p_date?: string; p_new_balance: number }
         Returns: string
@@ -1066,5 +1036,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.72.7 (currently installed v2.65.5)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

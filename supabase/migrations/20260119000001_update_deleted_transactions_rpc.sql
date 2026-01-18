@@ -10,7 +10,11 @@
 -- This migration must run AFTER the main ledger BIGINT migration.
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION get_deleted_transactions(
+-- Drop existing function (PostgreSQL doesn't allow changing return signature with CREATE OR REPLACE)
+DROP FUNCTION IF EXISTS get_deleted_transactions(UUID, INTEGER);
+
+-- Recreate with BIGINT return columns
+CREATE FUNCTION get_deleted_transactions(
   p_user_id UUID,
   p_since_version INTEGER DEFAULT 0
 ) RETURNS TABLE (

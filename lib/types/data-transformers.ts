@@ -177,8 +177,8 @@ export function dbTransactionToDomain(
     userId: dbTransaction.user_id,
     accountId: dbTransaction.account_id,
     categoryId: dbTransaction.category_id,
-    amountOriginal: dbTransaction.amount_original,
-    amountHome: dbTransaction.amount_home,
+    amountOriginal: Number(dbTransaction.amount_cents),     // BIGINT → INTEGER CENTS (direct pass-through)
+    amountHome: Number(dbTransaction.amount_home_cents),    // BIGINT → INTEGER CENTS (direct pass-through)
     // NOTE: currency_original removed from table - now derived from account via transactions_view
     currencyOriginal: undefined as any,  // REMOVED from table schema - use transactions_view instead
     exchangeRate: dbTransaction.exchange_rate,
@@ -318,8 +318,8 @@ export function domainTransactionToDbInsert(data: {
     user_id: data.userId,
     account_id: data.accountId,
     category_id: data.categoryId,
-    amount_original: data.amountOriginal,
-    amount_home: data.amountHome,
+    amount_cents: data.amountOriginal,     // INTEGER CENTS → BIGINT (direct pass-through)
+    amount_home_cents: data.amountHome,    // INTEGER CENTS → BIGINT (direct pass-through)
     // currency_original: REMOVED - now derived from account_id via JOIN in transactions_view
     exchange_rate: data.exchangeRate,
     description: data.description,
@@ -409,8 +409,8 @@ export function domainTransactionToDbUpdate(data: {
 
   if (data.accountId !== undefined) update.account_id = data.accountId;
   if (data.categoryId !== undefined) update.category_id = data.categoryId;
-  if (data.amountOriginal !== undefined) update.amount_original = data.amountOriginal;
-  if (data.amountHome !== undefined) update.amount_home = data.amountHome;
+  if (data.amountOriginal !== undefined) update.amount_cents = data.amountOriginal;       // INTEGER CENTS → BIGINT
+  if (data.amountHome !== undefined) update.amount_home_cents = data.amountHome;         // INTEGER CENTS → BIGINT
   // currency_original: REMOVED - now derived from account_id via JOIN in transactions_view
   if (data.exchangeRate !== undefined) update.exchange_rate = data.exchangeRate;
   if (data.description !== undefined) update.description = data.description;
@@ -499,8 +499,8 @@ export function dbTransactionViewToDomain(
     categoryId: dbTransactionView.category_id,      // FIXED: Now uses actual field
 
     // Amounts and currency
-    amountOriginal: dbTransactionView.amount_original ?? 0,
-    amountHome: dbTransactionView.amount_home ?? 0,
+    amountOriginal: Number(dbTransactionView.amount_cents) ?? 0,      // BIGINT → INTEGER CENTS (direct pass-through)
+    amountHome: Number(dbTransactionView.amount_home_cents) ?? 0,     // BIGINT → INTEGER CENTS (direct pass-through)
     currencyOriginal: dbTransactionView.currency_original || 'USD',
     exchangeRate: dbTransactionView.exchange_rate ?? 1, // FIXED: Now uses actual field
 

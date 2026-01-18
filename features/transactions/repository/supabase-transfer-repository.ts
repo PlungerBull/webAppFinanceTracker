@@ -140,12 +140,12 @@ export class SupabaseTransferRepository implements ITransferRepository {
           p_user_id: userId,
           p_from_account_id: data.fromAccountId,
           p_to_account_id: data.toAccountId,
-          p_amount: sentAmount,
-          p_amount_received: receivedAmount,
+          p_amount_cents: sentAmount,              // BIGINT parameter
+          p_amount_received_cents: receivedAmount, // BIGINT parameter
           p_exchange_rate: impliedExchangeRate,
           p_date: data.date,
           p_description: data.description || 'Transfer',
-          // p_category_id omitted - defaults to NULL for transfers (see migration 20260116000001)
+          // p_category_id is omitted - defaults to NULL for transfers
         }
       );
 
