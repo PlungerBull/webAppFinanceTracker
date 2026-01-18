@@ -55,17 +55,26 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 - [x] Scrub all `any` types from categories/groupings components
 - [x] Fix all lint errors (setState-in-effect patterns)
 - [x] Document architectural guardrail: `userId` required in interface even when RLS handles filtering
+- [x] Delete legacy API files (`features/categories/api/categories.ts`, `features/groupings/api/groupings.ts`)
+- [x] Implement `mergeCategories()` with atomic RPC and version bumping (See ARCHITECTURE.md Section 8)
+- [x] Create `CategoryMergeError` with typed reasons for error handling
+- [x] Create `useMergeCategories()` mutation hook with parallel cache invalidation
 
-### Inbox Feature: ❌ Legacy
+### Inbox Feature: 🔄 In Progress
+> **CTO Note:** The `promote_inbox_item` RPC already exists in the database. Use it to hit the Ledger.
+
 - [ ] Create `InboxEntity` in domain layer (integer cents, typed status)
-- [ ] Create `IInboxRepository` interface + `SupabaseInboxRepository` implementation
+- [ ] Create `IInboxRepository` interface with `promote()` method calling RPC
+- [ ] Implement `SupabaseInboxRepository` with SQLSTATE error mapping
 - [ ] Create `InboxService` with DataResult pattern
-- [ ] Create new React Query hooks using service layer
+- [ ] Create new React Query hooks using service layer (`useInboxItems`, `usePromoteInboxItem`, `useDismissInboxItem`)
 - [ ] Migrate `use-inbox.ts` from direct `inboxApi.ts` calls
 - [ ] Deprecate `features/inbox/api/inbox-api.ts`
 - [ ] Enforce integer cents (`amountCents`) exclusively, eliminating floating-point math
 - [ ] Implement version-checked RPCs to prevent silent data overwrites during multi-device sync
 - [ ] Enforce strict ISO 8601 date format (`YYYY-MM-DDTHH:mm:ss.SSSZ`) required by Swift
+- [ ] **Traceability:** Store raw bank string in `source_text` column for future AI/categorization training
+- [ ] **Validation:** Use `LeafCategoryEntity` type for category selection (CTO MANDATE: only leaf categories assignable)
 
 ### Transfers Feature: ✅ Migrated
 - [x] Update `CreateTransferDTO` in domain layer with `sentAmountCents` and `receivedAmountCents`
@@ -79,7 +88,12 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 - [x] Delete `features/transactions/api/transfers.ts` (orphaned, no imports)
 
 ### Technical Debt
-- [ ] **Regenerate Supabase Types:** Run `supabase gen types typescript` to fix nullable RPC parameters (currently using `null as unknown as string` workaround in `supabase-transfer-repository.ts:144`)
+- [x] **Automate Supabase Type Generation:** Created `scripts/gen-types.sh` with stderr redirection (run via `npm run gen-types`)
+- [ ] **Fix nullable RPC parameters:** Still using `null as unknown as string` workaround in `supabase-transfer-repository.ts:144` - requires Supabase CLI update
+
+### Architectural Decision Records (ADRs)
+- [x] **ADR #001:** Floating Point Rejection - Documents cents-only math mandate (`docs/adr/001-floating-point-rejection.md`)
+- [x] **ADR #002:** SQLSTATE Mapping - Documents repository error mapping pattern (`docs/adr/002-sqlstate-mapping.md`)
 
 ### Accounts Feature: ✅ Migrated
 - [x] Create `AccountEntity` in domain layer (integer cents for balances)
