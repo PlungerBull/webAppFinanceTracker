@@ -9,11 +9,11 @@
  * 3. DataResult<T> for explicit error handling
  * 4. Strict ISO 8601 validation
  *
- * CRITICAL: Database stores NUMERIC (decimals), domain uses INTEGER CENTS
- * - Database: amount_original = 10.50 (NUMERIC)
+ * CRITICAL: Database stores BIGINT (integer cents), domain uses INTEGER CENTS
+ * - Database: amount_cents = 1050 (BIGINT)
  * - Domain: amountCents = 1050 (INTEGER)
- * - Conversion: cents = Math.round(decimal * 100)
- * - Reverse: decimal = cents / 100
+ * - Direct pass-through: Number(bigint)
+ * - After Move 0 migration (20260119000000_ledger_bigint_standardization.sql)
  *
  * @module supabase-transaction-repository
  */
@@ -59,68 +59,29 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
   // ============================================================================
 
   /**
-   * Converts database NUMERIC (decimal) to domain INTEGER CENTS
+   * PITFALL #2 ELIMINATED: No conversion needed - Direct BIGINT pass-through
    *
-   * CTO Mandate #3: Sacred Integer Arithmetic
-   * - Database: 10.50 (NUMERIC)
+   * CTO Mandate #3: Sacred Integer Arithmetic AT DATABASE LEVEL
+   * - Database: 1050 (BIGINT)
    * - Domain: 1050 (INTEGER CENTS)
+   * - No conversion, no float multiplication, no precision loss
    *
-   * CTO Mandate: TRUE string-based parsing - NO binary float multiplication.
-   * Binary float: 1.15 * 100 can yield 114.99999999999999
+   * The "Split Brain" is eliminated - database and domain speak the same language.
+   * After Move 0 migration (20260119000000_ledger_bigint_standardization.sql),
+   * the transactions table stores amounts as BIGINT integer cents directly.
    *
-   * This implementation splits the string at the decimal point and
-   * performs pure integer arithmetic to avoid IEEE 754 precision errors.
+   * All INSERT/UPDATE operations now pass integer cents directly.
+   * All SELECT operations read integer cents directly via Number() cast.
    */
-  private toCents(decimal: number | string | null): number {
-    if (decimal === null || decimal === undefined) {
-      return 0;
-    }
-
-    // Convert to string for parsing
-    const str = typeof decimal === 'string' ? decimal : decimal.toString();
-
-    // Handle negative numbers
-    const isNegative = str.startsWith('-');
-    const absStr = isNegative ? str.slice(1) : str;
-
-    // Split at decimal point
-    const parts = absStr.split('.');
-    const wholePart = parts[0] || '0';
-    let fractionalPart = parts[1] || '00';
-
-    // Normalize fractional part to exactly 2 digits
-    // "5" -> "50", "123" -> "12" (truncate beyond cents)
-    if (fractionalPart.length === 1) {
-      fractionalPart = fractionalPart + '0';
-    } else if (fractionalPart.length > 2) {
-      // Round the third digit
-      const thirdDigit = parseInt(fractionalPart[2], 10);
-      let cents = parseInt(fractionalPart.slice(0, 2), 10);
-      if (thirdDigit >= 5) {
-        cents += 1;
-      }
-      fractionalPart = cents.toString().padStart(2, '0');
-    }
-
-    // Pure integer arithmetic: whole dollars * 100 + cents
-    const cents = parseInt(wholePart, 10) * 100 + parseInt(fractionalPart, 10);
-
-    return isNegative ? -cents : cents;
-  }
-
-  /**
-   * Converts domain INTEGER CENTS to database NUMERIC (decimal)
-   */
-  private fromCents(cents: number): number {
-    return cents / 100;
-  }
 
   /**
    * Transforms database transactions_view row to domain entity
    *
-   * CRITICAL CONVERSIONS:
-   * - amount_original (NUMERIC) → amountCents (INTEGER)
-   * - amount_home (NUMERIC) → amountHomeCents (INTEGER)
+   * CRITICAL: Direct BIGINT pass-through - NO conversion
+   * - Database: amount_cents (BIGINT) → amountCents (number)
+   * - Database: amount_home_cents (BIGINT) → amountHomeCents (number)
+   *
+   * After Move 0 migration, the database stores INTEGER CENTS directly.
    */
   private dbTransactionViewToDomain(
     dbView: Database['public']['Views']['transactions_view']['Row']
@@ -133,9 +94,9 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       accountId: dbView.account_id || '',
       categoryId: dbView.category_id,
 
-      // SACRED INTEGER ARITHMETIC: Convert NUMERIC → INTEGER CENTS
-      amountCents: this.toCents(Number(dbView.amount_original ?? 0)),
-      amountHomeCents: this.toCents(Number(dbView.amount_home ?? 0)),
+      // SACRED INTEGER ARITHMETIC: Direct BIGINT pass-through
+      amountCents: Number(dbView.amount_cents ?? 0),
+      amountHomeCents: Number(dbView.amount_home_cents ?? 0),
 
       // Currency and exchange
       currencyOriginal: dbView.currency_original || 'USD',
@@ -207,10 +168,10 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
 
     // Filter: Amount range (convert cents → decimal for database query)
     if (filters?.minAmountCents !== undefined) {
-      result = result.gte('amount_original', this.fromCents(filters.minAmountCents));
+      result = result.gte('amount_cents', filters.minAmountCents);
     }
     if (filters?.maxAmountCents !== undefined) {
-      result = result.lte('amount_original', this.fromCents(filters.maxAmountCents));
+      result = result.lte('amount_cents', filters.maxAmountCents);
     }
 
     // Filter: Search query (matches description or notes)
@@ -423,7 +384,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
           user_id: userId,
           account_id: data.accountId,
           category_id: data.categoryId || null,
-          amount_original: this.fromCents(data.amountCents),  // Convert to decimal
+          amount_cents: data.amountCents,  // Direct BIGINT insert
           // amount_home calculated by trigger
           exchange_rate: 1,  // Default (trigger may override)
           date: data.date,
@@ -476,7 +437,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
           p_expected_version: data.version,
           p_updates: {
             accountId: data.accountId,
-            amountOriginal: this.fromCents(data.amountCents),  // Convert to decimal
+            amountCents: data.amountCents,  // Direct BIGINT update
             categoryId: data.categoryId || null,
             date: data.date,
             description: data.description || null,

@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -295,8 +296,8 @@ export type Database = {
       transactions: {
         Row: {
           account_id: string
-          amount_home: number
-          amount_original: number
+          amount_cents: number | null
+          amount_home_cents: number | null
           category_id: string | null
           cleared: boolean
           created_at: string
@@ -316,8 +317,8 @@ export type Database = {
         }
         Insert: {
           account_id: string
-          amount_home?: number
-          amount_original: number
+          amount_cents?: number | null
+          amount_home_cents?: number | null
           category_id?: string | null
           cleared?: boolean
           created_at?: string
@@ -337,8 +338,8 @@ export type Database = {
         }
         Update: {
           account_id?: string
-          amount_home?: number
-          amount_original?: number
+          amount_cents?: number | null
+          amount_home_cents?: number | null
           category_id?: string | null
           cleared?: boolean
           created_at?: string
@@ -582,8 +583,8 @@ export type Database = {
           account_currency: string | null
           account_id: string | null
           account_name: string | null
-          amount_home: number | null
-          amount_original: number | null
+          amount_cents: number | null
+          amount_home_cents: number | null
           category_color: string | null
           category_id: string | null
           category_name: string | null
@@ -611,14 +612,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["account_currency"]
+            columns: ["currency_original"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["currency_original"]
+            columns: ["account_currency"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
@@ -1065,3 +1066,5 @@ export const Constants = {
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.72.7 (currently installed v2.65.5)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

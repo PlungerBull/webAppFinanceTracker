@@ -47,18 +47,6 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 ## Repository Pattern Implementation
 
 ### Categories Feature: ✅ Migrated
-- [x] Create `CategoryEntity`, `GroupingEntity`, `LeafCategoryEntity` in domain layer
-- [x] Create `ICategoryRepository` interface with hierarchy handling
-- [x] Implement `SupabaseCategoryRepository` with SQLSTATE error mapping
-- [x] Create `ICategoryService` interface
-- [x] Implement `CategoryService` with self-parenting prevention (fast-UI check)
-- [x] Scrub all `any` types from categories/groupings components
-- [x] Fix all lint errors (setState-in-effect patterns)
-- [x] Document architectural guardrail: `userId` required in interface even when RLS handles filtering
-- [x] Delete legacy API files (`features/categories/api/categories.ts`, `features/groupings/api/groupings.ts`)
-- [x] Implement `mergeCategories()` with atomic RPC and version bumping (See ARCHITECTURE.md Section 8)
-- [x] Create `CategoryMergeError` with typed reasons for error handling
-- [x] Create `useMergeCategories()` mutation hook with parallel cache invalidation
 
 ### Inbox Feature: 🔄 In Progress
 > **CTO Note:** The `promote_inbox_item` RPC already exists in the database. Use it to hit the Ledger.
@@ -77,33 +65,14 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 - [ ] **Validation:** Use `LeafCategoryEntity` type for category selection (CTO MANDATE: only leaf categories assignable)
 
 ### Transfers Feature: ✅ Migrated
-- [x] Update `CreateTransferDTO` in domain layer with `sentAmountCents` and `receivedAmountCents`
-- [x] Create `ITransferRepository` interface + `SupabaseTransferRepository` implementation
-- [x] Create `TransferService` with DataResult pattern (align with Transaction service)
-- [x] Migrate `use-transfers.ts` from direct `transfersApi.ts` calls
-- [x] Add optimistic updates for Zero-Latency UX
-- [x] Enforce integer cents (`sentAmountCents`, `receivedAmountCents`) exclusively
-- [x] Enforce strict ISO 8601 date format (`YYYY-MM-DDTHH:mm:ss.SSSZ`) required by Swift
-- [x] Remove duplicate `createTransfer` from Transaction repository (Single Source of Truth)
-- [x] Delete `features/transactions/api/transfers.ts` (orphaned, no imports)
 
 ### Technical Debt
-- [x] **Automate Supabase Type Generation:** Created `scripts/gen-types.sh` with stderr redirection (run via `npm run gen-types`)
 - [ ] **Fix nullable RPC parameters:** Still using `null as unknown as string` workaround in `supabase-transfer-repository.ts:144` - requires Supabase CLI update
 
-### Architectural Decision Records (ADRs)
-- [x] **ADR #001:** Floating Point Rejection - Documents cents-only math mandate (`docs/adr/001-floating-point-rejection.md`)
-- [x] **ADR #002:** SQLSTATE Mapping - Documents repository error mapping pattern (`docs/adr/002-sqlstate-mapping.md`)
+### Architectural Decision Records (ADRs): ✅ Initialized
+> See `docs/adr/` for ADR #001 (Floating Point Rejection) and ADR #002 (SQLSTATE Mapping)
 
 ### Accounts Feature: ✅ Migrated
-- [x] Create `AccountEntity` in domain layer (integer cents for balances)
-- [x] Create `IAccountRepository` interface + `SupabaseAccountRepository` implementation
-- [x] Create `AccountService` with DataResult pattern
-- [x] Migrate `use-accounts.ts` from direct `accountsApi.ts` calls
-- [x] Update all UI components to use `AccountViewEntity` (`id`, `currentBalanceCents`)
-- [x] Migrate `add-account-modal.tsx` to use `useCreateAccount()` hook
-- [x] Migrate `delete-account-dialog.tsx` to use `useDeleteAccount()` hook
-- [x] Delete `features/accounts/api/accounts.ts` (orphaned, no imports)
 
 ### Phase 2 - Offline Sync (Future)
 

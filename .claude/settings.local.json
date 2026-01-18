@@ -29,7 +29,9 @@
       "Bash(psql:*)",
       "Bash(curl:*)",
       "Bash(npm ls:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(supabase migration repair:*)",
+      "Bash(supabase db execute:*)"
     ],
     "deny": [],
     "ask": []
