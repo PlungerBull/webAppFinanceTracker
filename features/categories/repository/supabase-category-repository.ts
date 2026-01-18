@@ -48,7 +48,9 @@ import {
   CategoryHasChildrenError,
   CategoryRepositoryError,
   CategoryDuplicateNameError,
+  CategoryMergeError,
 } from '../domain';
+import type { MergeCategoriesResult } from './category-repository.interface';
 
 // =============================================================================
 // TYPES
@@ -795,6 +797,87 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
         ),
       };
     }
+  }
+
+  async mergeCategories(
+    _userId: string,
+    sourceIds: string[],
+    targetId: string
+  ): Promise<CategoryDataResult<MergeCategoriesResult>> {
+    try {
+      // Call the merge_categories RPC
+      // CTO MANDATE: This bumps transaction versions for offline sync
+      const { data, error } = await this.supabase.rpc('merge_categories', {
+        p_source_ids: sourceIds,
+        p_target_id: targetId,
+      });
+
+      if (error) {
+        return {
+          success: false,
+          data: null,
+          error: this.mapMergeError(error),
+        };
+      }
+
+      // Parse RPC response
+      const result = data as {
+        success: boolean;
+        affected_transaction_count: number;
+        merged_category_count: number;
+        target_category_id: string;
+      };
+
+      return {
+        success: true,
+        data: {
+          affectedTransactionCount: result.affected_transaction_count,
+          mergedCategoryCount: result.merged_category_count,
+          targetCategoryId: result.target_category_id,
+        },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        data: null,
+        error: new CategoryRepositoryError('Failed to merge categories', err),
+      };
+    }
+  }
+
+  /**
+   * Map merge_categories RPC error to domain error
+   */
+  private mapMergeError(error: {
+    code?: string;
+    message?: string;
+  }): CategoryError {
+    const message = error.message?.toLowerCase() || '';
+
+    // Parse P0001 trigger messages from merge_categories RPC
+    if (error.code === 'P0001') {
+      if (message.includes('empty_source')) {
+        return new CategoryMergeError('empty_source');
+      }
+      if (message.includes('target_not_found')) {
+        return new CategoryMergeError('target_not_found');
+      }
+      if (message.includes('unauthorized')) {
+        return new CategoryMergeError('unauthorized');
+      }
+      if (message.includes('target_in_source')) {
+        return new CategoryMergeError('target_in_source');
+      }
+      if (message.includes('has_children')) {
+        return new CategoryMergeError('has_children');
+      }
+    }
+
+    // Default to generic repository error
+    return new CategoryRepositoryError(
+      error.message || 'Category merge failed',
+      error
+    );
   }
 }
 

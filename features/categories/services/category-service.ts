@@ -19,7 +19,7 @@
 
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import type { ICategoryRepository } from '../repository/category-repository.interface';
-import type { ICategoryService } from './category-service.interface';
+import type { ICategoryService, MergeCategoriesResult } from './category-service.interface';
 import type {
   CreateCategoryDTO,
   CreateGroupingDTO,
@@ -328,20 +328,43 @@ export class CategoryService implements ICategoryService {
   }
 
   async mergeCategories(
-    _sourceCategoryIds: string[],
-    _targetCategoryId: string
-  ): Promise<number> {
-    // This is a placeholder for Phase 3 (Inbox) implementation
-    // Full implementation requires:
-    // 1. Transaction reassignment (UPDATE transactions SET category_id = target WHERE category_id IN sources)
-    // 2. Source category deletion
-    // Both should be in a transaction for atomicity
+    sourceCategoryIds: string[],
+    targetCategoryId: string
+  ): Promise<MergeCategoriesResult> {
+    // CTO MANDATE: This is a Ledger Event - must bump transaction versions
+    // See ARCHITECTURE.md Section 8 - Category Merge Protocol
 
-    // For now, we'll throw a not-implemented error
-    throw new CategoryValidationError(
-      'Category merging is not yet implemented. Coming in Phase 3 (Inbox).',
-      'merge'
+    // Pre-validation: Ensure source array isn't empty
+    if (sourceCategoryIds.length === 0) {
+      throw new CategoryValidationError(
+        'No source categories provided for merge',
+        'sourceCategoryIds'
+      );
+    }
+
+    // Pre-validation: Ensure target isn't in source list
+    if (sourceCategoryIds.includes(targetCategoryId)) {
+      throw new CategoryValidationError(
+        'Target category cannot be one of the source categories',
+        'targetCategoryId'
+      );
+    }
+
+    const userId = await this.getCurrentUserId();
+
+    // Call repository which uses atomic RPC
+    // RPC handles: version bumping, transaction reassignment, category deletion
+    const result = await this.repository.mergeCategories(
+      userId,
+      sourceCategoryIds,
+      targetCategoryId
     );
+
+    if (!result.success) {
+      throw result.error;
+    }
+
+    return result.data;
   }
 }
 

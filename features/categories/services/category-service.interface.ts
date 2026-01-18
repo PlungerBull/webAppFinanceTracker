@@ -184,19 +184,38 @@ export interface ICategoryService {
   /**
    * Merge multiple categories into one.
    *
+   * CTO MANDATE: This is a Ledger Event that bumps transaction versions.
+   * See ARCHITECTURE.md Section 8 - Category Merge Protocol.
+   *
    * Used when user wants to consolidate categories (e.g., merge
    * "Coffee", "Starbucks", "Coffee Shop" into one "Coffee" category).
    *
-   * Implementation:
+   * Implementation (via atomic RPC):
    * 1. Reassign all transactions from source categories to target
-   * 2. Delete source categories
+   * 2. Bump version on all affected transactions (for offline sync)
+   * 3. Delete source categories
    *
-   * @param sourceCategoryIds - Categories to merge from
-   * @param targetCategoryId - Category to merge into
-   * @returns Number of transactions reassigned
+   * @param sourceCategoryIds - Categories to merge from (will be deleted)
+   * @param targetCategoryId - Category to merge into (receives transactions)
+   * @returns Merge result with affected transaction count
+   * @throws CategoryMergeError on failure
    */
   mergeCategories(
     sourceCategoryIds: string[],
     targetCategoryId: string
-  ): Promise<number>;
+  ): Promise<MergeCategoriesResult>;
+}
+
+/**
+ * Result of a category merge operation
+ */
+export interface MergeCategoriesResult {
+  /** Number of transactions reassigned to target category */
+  readonly affectedTransactionCount: number;
+
+  /** Number of source categories deleted */
+  readonly mergedCategoryCount: number;
+
+  /** ID of the target category that received the transactions */
+  readonly targetCategoryId: string;
 }

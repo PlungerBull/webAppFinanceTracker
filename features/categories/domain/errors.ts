@@ -184,6 +184,57 @@ export class CategoryDuplicateNameError extends CategoryError {
   }
 }
 
+/**
+ * Merge Error Reasons
+ *
+ * Maps RPC error messages to typed reasons:
+ * - 'empty_source' -> No source categories provided
+ * - 'target_not_found' -> Target category doesn't exist
+ * - 'unauthorized' -> User doesn't own all categories
+ * - 'target_in_source' -> Target category is in source list
+ * - 'has_children' -> Source category has subcategories
+ */
+export type MergeErrorReason =
+  | 'empty_source'
+  | 'target_not_found'
+  | 'unauthorized'
+  | 'target_in_source'
+  | 'has_children';
+
+/**
+ * Category Merge Error
+ *
+ * Thrown when a category merge operation fails.
+ * Maps to PostgreSQL SQLSTATE P0001 from merge_categories RPC.
+ *
+ * Usage:
+ * ```typescript
+ * if (err instanceof CategoryMergeError) {
+ *   const messages: Record<MergeErrorReason, string> = {
+ *     empty_source: 'No categories selected to merge.',
+ *     target_not_found: 'Target category not found.',
+ *     unauthorized: 'You do not have permission to merge these categories.',
+ *     target_in_source: 'Target category cannot be one of the source categories.',
+ *     has_children: 'Cannot merge categories that have subcategories.',
+ *   };
+ *   toast.error('Merge failed', { description: messages[err.reason] });
+ * }
+ * ```
+ */
+export class CategoryMergeError extends CategoryError {
+  constructor(public readonly reason: MergeErrorReason) {
+    const reasonMessages: Record<MergeErrorReason, string> = {
+      empty_source: 'No source categories provided for merge',
+      target_not_found: 'Target category not found or not owned by user',
+      unauthorized: 'User does not own all source categories',
+      target_in_source: 'Target category cannot be in the source list',
+      has_children:
+        'Cannot merge categories that have subcategories. Reassign or delete subcategories first.',
+    };
+    super(reasonMessages[reason], 'MERGE_ERROR');
+  }
+}
+
 // ============================================================================
 // TYPE GUARDS
 // ============================================================================
@@ -240,4 +291,13 @@ export function isCategoryDuplicateNameError(
   error: unknown
 ): error is CategoryDuplicateNameError {
   return error instanceof CategoryDuplicateNameError;
+}
+
+/**
+ * Type guard for CategoryMergeError
+ */
+export function isCategoryMergeError(
+  error: unknown
+): error is CategoryMergeError {
+  return error instanceof CategoryMergeError;
 }

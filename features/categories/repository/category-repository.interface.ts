@@ -232,4 +232,42 @@ export interface ICategoryRepository {
     categoryIds: string[],
     newParentId: string | null
   ): Promise<CategoryDataResult<number>>;
+
+  /**
+   * Merge multiple source categories into a target category.
+   *
+   * CTO MANDATE: This is a Ledger Event that MUST bump transaction versions.
+   * See ARCHITECTURE.md Section 8 - Category Merge Protocol.
+   *
+   * ATOMIC OPERATION:
+   * 1. Reassigns all transactions from source categories to target
+   * 2. Bumps version on all affected transactions (for offline sync)
+   * 3. Deletes the source categories
+   *
+   * @param userId - User ID (for authorization check)
+   * @param sourceIds - Array of category IDs to merge FROM (will be deleted)
+   * @param targetId - Category ID to merge INTO (will receive transactions)
+   * @returns DataResult with merge result (affected transaction count)
+   *
+   * @throws CategoryMergeError - If merge fails (target not found, unauthorized, etc.)
+   */
+  mergeCategories(
+    userId: string,
+    sourceIds: string[],
+    targetId: string
+  ): Promise<CategoryDataResult<MergeCategoriesResult>>;
+}
+
+/**
+ * Result of a category merge operation
+ */
+export interface MergeCategoriesResult {
+  /** Number of transactions reassigned to target category */
+  readonly affectedTransactionCount: number;
+
+  /** Number of source categories deleted */
+  readonly mergedCategoryCount: number;
+
+  /** ID of the target category that received the transactions */
+  readonly targetCategoryId: string;
 }

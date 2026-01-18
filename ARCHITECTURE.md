@@ -390,3 +390,67 @@ class SupabaseTransactionRepository {
 - ❌ Hard delete transactions (use soft delete via `service.delete()`)
 
 For detailed implementation examples and iOS integration guide, see [AI_CONTEXT.md](./AI_CONTEXT.md) section 4H.
+
+## 7. Performance & Optimization
+
+### React Hook Form & Compiler Compatibility
+
+- **Status:** Known Constraint.
+- **Issue:** The use of `watch()` triggers a "Compilation Skipped" warning in the React Compiler. This occurs because `watch()` subscribes to form state changes in a way that the compiler cannot safely optimize.
+- **Affected Components:** `add-category-modal.tsx`, `edit-grouping-modal.tsx`, and other form components using `watch()` for UI toggle logic.
+- **Current Decision:** For Phase 3, this is acceptable technical debt. The `watch()` pattern is only used for lightweight UI toggles (showing/hiding fields, dynamic labels) and not for heavy data processing.
+- **Mandate:** If performance bottlenecks are detected (especially on low-end mobile devices in Phase 4 Native), evaluate replacing `watch()` with:
+  - `useFormContext` for nested component access
+  - Manual `useState` for simple toggle state
+  - `useWatch` hook for isolated subscriptions
+- **Rule:** Never use `watch()` for expensive computations or heavy data transformations. Keep watched values isolated to UI presentation logic only.
+
+## 8. Category Merge Protocol (Atomic Reassignment)
+
+### Problem Statement
+
+Merging categories is a **Ledger Event**. Simply running `UPDATE transactions SET category_id = ?` breaks offline-first synchronization because:
+1. The `version` column on affected transactions won't change
+2. iOS sync will miss these updates (no version bump = no detection)
+3. Race conditions can orphan transactions mid-operation
+
+### Solution: Atomic RPC with Version Bumping
+
+All category merges MUST go through the `merge_categories` PostgreSQL function which:
+1. Updates all affected transactions AND bumps their version
+2. Deletes the source categories
+3. Executes as a single atomic transaction
+
+```sql
+-- RPC: merge_categories(p_source_ids UUID[], p_target_id UUID)
+-- 1. Update transactions and BUMP VERSION (mandatory for sync)
+UPDATE transactions
+SET
+    category_id = p_target_id,
+    version = version + 1,  -- 🚨 CRITICAL: Enables sync detection
+    updated_at = NOW()
+WHERE category_id = ANY(p_source_ids);
+
+-- 2. Delete orphaned source categories
+DELETE FROM categories
+WHERE id = ANY(p_source_ids);
+```
+
+### Cache Invalidation Mandate
+
+After a merge operation, BOTH query keys must be invalidated:
+```typescript
+await queryClient.invalidateQueries({ queryKey: ['categories'] });
+await queryClient.invalidateQueries({ queryKey: ['transactions'] });
+```
+
+Failure to invalidate `transactions` will cause UI desync where old category names persist.
+
+### Error Handling
+
+The RPC returns structured errors for:
+- **FK Violation:** Target category doesn't exist
+- **Permission Denied:** User doesn't own all categories
+- **Empty Source:** No source categories provided
+
+All errors are mapped to typed domain errors (see ADR #002).

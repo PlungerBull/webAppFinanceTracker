@@ -25,7 +25,9 @@ import {
   isCategoryHasTransactionsError,
   isCategoryHierarchyError,
   isCategoryDuplicateNameError,
+  isCategoryMergeError,
 } from '../domain';
+import type { MergeCategoriesResult } from '../services';
 
 /**
  * Use Add Category
@@ -249,6 +251,83 @@ export function useDeleteCategory() {
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS }),
         // Also invalidate transactions as they may reference deleted category
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
+      ]);
+    },
+  });
+}
+
+/**
+ * Use Merge Categories
+ *
+ * Mutation hook for merging multiple categories into one.
+ *
+ * CTO MANDATE: This is a Ledger Event that bumps transaction versions.
+ * See ARCHITECTURE.md Section 8 - Category Merge Protocol.
+ *
+ * CRITICAL: Must invalidate BOTH categories AND transactions caches
+ * to prevent UI desync after merge.
+ *
+ * @example
+ * ```typescript
+ * const { mutate, isPending } = useMergeCategories();
+ *
+ * mutate({
+ *   sourceIds: ['cat-1', 'cat-2', 'cat-3'],
+ *   targetId: 'cat-target',
+ * });
+ * ```
+ */
+export function useMergeCategories() {
+  const service = useCategoryService();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      sourceIds,
+      targetId,
+    }: {
+      sourceIds: string[];
+      targetId: string;
+    }): Promise<MergeCategoriesResult> =>
+      service.mergeCategories(sourceIds, targetId),
+
+    onSuccess: (result) => {
+      toast.success('Categories merged', {
+        description: `${result.mergedCategoryCount} categories merged. ${result.affectedTransactionCount} transactions reassigned.`,
+      });
+    },
+
+    onError: (err) => {
+      // Type-safe error handling via type guards
+      if (isCategoryMergeError(err)) {
+        const messages: Record<string, string> = {
+          empty_source: 'No categories selected to merge.',
+          target_not_found: 'Target category not found.',
+          unauthorized: 'You do not have permission to merge these categories.',
+          target_in_source:
+            'Target category cannot be one of the source categories.',
+          has_children:
+            'Cannot merge categories that have subcategories. Reassign them first.',
+        };
+        toast.error('Merge failed', {
+          description: messages[err.reason] || err.message,
+        });
+      } else {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        toast.error('Failed to merge categories', {
+          description: errorMessage,
+        });
+      }
+    },
+
+    // CTO MANDATE: MUST invalidate BOTH categories AND transactions
+    // Failure to invalidate transactions causes UI desync
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS }),
+        // CRITICAL: Transactions now point to different category
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
       ]);
     },

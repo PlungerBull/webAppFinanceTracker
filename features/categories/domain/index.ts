@@ -46,14 +46,16 @@ export {
   CategoryValidationError,
   CategoryRepositoryError,
   CategoryDuplicateNameError,
+  CategoryMergeError,
   isCategoryNotFoundError,
   isCategoryHierarchyError,
   isCategoryHasTransactionsError,
   isCategoryHasChildrenError,
   isCategoryValidationError,
   isCategoryDuplicateNameError,
+  isCategoryMergeError,
 } from './errors';
-export type { HierarchyViolationReason } from './errors';
+export type { HierarchyViolationReason, MergeErrorReason } from './errors';
 
 // Constants
 export {

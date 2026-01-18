@@ -20,8 +20,9 @@
 set -e
 
 # Configuration
-OUTPUT_FILE="types/database.types.ts"
-TEMP_FILE="types/database.types.tmp.ts"
+# Note: supabase.ts is the main types file imported by the codebase
+OUTPUT_FILE="types/supabase.ts"
+TEMP_FILE="types/supabase.tmp.ts"
 
 echo "Generating Supabase types..."
 

@@ -5,7 +5,7 @@
  */
 
 // Interface
-export type { ICategoryService } from './category-service.interface';
+export type { ICategoryService, MergeCategoriesResult } from './category-service.interface';
 
 // Implementation
 export {
