@@ -218,7 +218,7 @@ export type Database = {
       transaction_inbox: {
         Row: {
           account_id: string | null
-          amount_original: number | null
+          amount_cents: number | null
           category_id: string | null
           created_at: string
           date: string | null
@@ -233,7 +233,7 @@ export type Database = {
         }
         Insert: {
           account_id?: string | null
-          amount_original?: number | null
+          amount_cents?: number | null
           category_id?: string | null
           created_at?: string
           date?: string | null
@@ -248,7 +248,7 @@ export type Database = {
         }
         Update: {
           account_id?: string | null
-          amount_original?: number | null
+          amount_cents?: number | null
           category_id?: string | null
           created_at?: string
           date?: string | null
@@ -521,7 +521,7 @@ export type Database = {
           account_color: string | null
           account_id: string | null
           account_name: string | null
-          amount_original: number | null
+          amount_cents: number | null
           category_color: string | null
           category_id: string | null
           category_name: string | null

@@ -99,7 +99,7 @@ export function dbInboxItemToDomain(
   return {
     id: dbInboxItem.id,
     userId: dbInboxItem.user_id,
-    amountCents: dbInboxItem.amount_original !== null ? Number(dbInboxItem.amount_original) : undefined,  // TEMPORARY: DB still uses amount_original
+    amountCents: dbInboxItem.amount_cents !== null ? Number(dbInboxItem.amount_cents) : undefined,
     // NOTE: currency_original removed from table - now derived from account via transaction_inbox_view
     // This transformer is for raw table rows only. Use transaction_inbox_view for currency access.
     currencyOriginal: undefined,                               // REMOVED from table schema
@@ -127,7 +127,7 @@ export function dbInboxItemViewToDomain(
   return {
     id: dbInboxItemView.id || '',
     userId: dbInboxItemView.user_id || '',
-    amountCents: dbInboxItemView.amount_original !== null ? Number(dbInboxItemView.amount_original) : undefined,  // TEMPORARY: DB still uses amount_original
+    amountCents: dbInboxItemView.amount_cents !== null ? Number(dbInboxItemView.amount_cents) : undefined,
     currencyOriginal: dbInboxItemView.currency_original || '',  // From view alias (bank_accounts.currency_code)
     description: dbInboxItemView.description ?? undefined,
     date: dbInboxItemView.date ?? undefined,
@@ -266,7 +266,7 @@ export function domainInboxItemToDbInsert(data: {
 }): Database['public']['Tables']['transaction_inbox']['Insert'] {
   return {
     user_id: data.userId,
-    amount_original: data.amountCents ?? null,  // TEMPORARY: DB still uses amount_original (pre-Phase 1 BIGINT migration)
+    amount_cents: data.amountCents ?? null,
     // currency_original: REMOVED - now derived from account_id via JOIN in transaction_inbox_view
     description: data.description ?? null,           // undefined → null for database
     date: data.date ?? null,                         // undefined → null for database

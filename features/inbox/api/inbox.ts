@@ -54,7 +54,7 @@ export const inboxApi = {
     if (updates.accountId !== undefined) dbUpdates.account_id = updates.accountId;
     if (updates.categoryId !== undefined) dbUpdates.category_id = updates.categoryId;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.amountCents !== undefined) dbUpdates.amount_original = updates.amountCents;  // DB still uses amount_original (pre-Phase 1 migration)
+    if (updates.amountCents !== undefined) dbUpdates.amount_cents = updates.amountCents;
     if (updates.date !== undefined) dbUpdates.date = updates.date;
     if (updates.exchangeRate !== undefined) dbUpdates.exchange_rate = updates.exchangeRate;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;  // NEW
