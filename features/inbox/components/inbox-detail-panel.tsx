@@ -28,7 +28,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     return {
       id: item.id,
       description: item.description,
-      amountOriginal: item.amountOriginal,
+      amountOriginal: item.amountCents !== undefined ? item.amountCents / 100 : undefined,  // Convert cents to dollars for display
       currency: item.currencyOriginal,
       accountId: item.accountId,
       categoryId: item.categoryId,
@@ -80,7 +80,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     if (!item) return;
 
     // Extract final values with fallbacks
-    const finalAmount = updates.amount ?? item.amountOriginal;       // RENAMED
+    const finalAmount = updates.amount ?? (item.amountCents !== undefined ? item.amountCents / 100 : undefined);
     const finalDescription = updates.description ?? item.description;
     const accountId = updates.accountId ?? item.accountId;
     const categoryId = updates.categoryId ?? item.categoryId;
@@ -92,7 +92,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
       await updateDraftMutation.mutateAsync({
         id: item.id,
         updates: {
-          amountOriginal: finalAmount ?? null,                       // RENAMED
+          amountCents: finalAmount !== undefined ? Math.round(finalAmount * 100) : null,  // Convert dollars to cents
           description: finalDescription ?? null,
           accountId: accountId ?? null,
           categoryId: categoryId ?? null,
@@ -121,7 +121,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
     if (!item) return;
 
     // Extract final values with fallbacks
-    const finalAmount = updates.amount ?? item.amountOriginal;              // RENAMED
+    const finalAmount = updates.amount ?? (item.amountCents !== undefined ? item.amountCents / 100 : undefined);
     const finalDescription = updates.description ?? item.description;
     const accountId = updates.accountId ?? item.accountId;
     const categoryId = updates.categoryId ?? item.categoryId;

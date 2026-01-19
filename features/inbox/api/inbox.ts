@@ -54,7 +54,7 @@ export const inboxApi = {
     if (updates.accountId !== undefined) dbUpdates.account_id = updates.accountId;
     if (updates.categoryId !== undefined) dbUpdates.category_id = updates.categoryId;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.amountOriginal !== undefined) dbUpdates.amount_original = updates.amountOriginal;  // RENAMED
+    if (updates.amountCents !== undefined) dbUpdates.amount_original = updates.amountCents;  // DB still uses amount_original (pre-Phase 1 migration)
     if (updates.date !== undefined) dbUpdates.date = updates.date;
     if (updates.exchangeRate !== undefined) dbUpdates.exchange_rate = updates.exchangeRate;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;  // NEW
@@ -113,7 +113,7 @@ export const inboxApi = {
       categoryId = params.categoryId || '';
       finalDescription = params.description;
       finalDate = params.date;
-      finalAmount = params.amountOriginal;  // RENAMED field
+      finalAmount = params.amountCents;
       exchangeRate = params.exchangeRate;
     }
 
@@ -177,8 +177,8 @@ export const inboxApi = {
 
     const insertData = domainInboxItemToDbInsert({
       userId: user.id,
-      amountOriginal: params.amountOriginal,       // RENAMED - Transformer converts undefined → null
-      description: params.description,             // Transformer converts undefined → null
+      amountCents: params.amountCents,
+      description: params.description,
       // currencyOriginal: REMOVED - now derived from account_id via transaction_inbox_view
       date: params.date,
       sourceText: params.sourceText,

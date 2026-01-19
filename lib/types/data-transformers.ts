@@ -99,7 +99,7 @@ export function dbInboxItemToDomain(
   return {
     id: dbInboxItem.id,
     userId: dbInboxItem.user_id,
-    amountOriginal: dbInboxItem.amount_original ?? undefined,  // null → undefined (RENAMED)
+    amountCents: dbInboxItem.amount_original !== null ? Number(dbInboxItem.amount_original) : undefined,  // TEMPORARY: DB still uses amount_original
     // NOTE: currency_original removed from table - now derived from account via transaction_inbox_view
     // This transformer is for raw table rows only. Use transaction_inbox_view for currency access.
     currencyOriginal: undefined,                               // REMOVED from table schema
@@ -127,7 +127,7 @@ export function dbInboxItemViewToDomain(
   return {
     id: dbInboxItemView.id || '',
     userId: dbInboxItemView.user_id || '',
-    amountOriginal: dbInboxItemView.amount_original ?? undefined,
+    amountCents: dbInboxItemView.amount_original !== null ? Number(dbInboxItemView.amount_original) : undefined,  // TEMPORARY: DB still uses amount_original
     currencyOriginal: dbInboxItemView.currency_original || '',  // From view alias (bank_accounts.currency_code)
     description: dbInboxItemView.description ?? undefined,
     date: dbInboxItemView.date ?? undefined,
@@ -253,7 +253,7 @@ export function domainCategoryToDbInsert(data: {
  */
 export function domainInboxItemToDbInsert(data: {
   userId: string;
-  amountOriginal?: number;         // Optional for scratchpad mode (RENAMED)
+  amountCents?: number;         // Optional for scratchpad mode - INTEGER CENTS
   // currencyOriginal removed - derived from account via view
   description?: string;            // Optional for scratchpad mode
   date?: string;
@@ -261,12 +261,12 @@ export function domainInboxItemToDbInsert(data: {
   accountId?: string;
   categoryId?: string;
   exchangeRate?: number;
-  notes?: string;                  // NEW
+  notes?: string;
   status?: 'pending' | 'processed' | 'ignored';
 }): Database['public']['Tables']['transaction_inbox']['Insert'] {
   return {
     user_id: data.userId,
-    amount_original: data.amountOriginal ?? null,    // undefined → null for database (RENAMED)
+    amount_original: data.amountCents ?? null,  // TEMPORARY: DB still uses amount_original (pre-Phase 1 BIGINT migration)
     // currency_original: REMOVED - now derived from account_id via JOIN in transaction_inbox_view
     description: data.description ?? null,           // undefined → null for database
     date: data.date ?? null,                         // undefined → null for database

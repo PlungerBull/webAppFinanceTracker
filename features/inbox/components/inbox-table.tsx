@@ -30,9 +30,9 @@ function InboxContent() {
     accountName: item.account?.name || 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
     accountCurrency: item.currencyOriginal || 'USD', // Currency from account
-    // INTEGER CENTS: Convert decimal to integer cents (Repository Pattern requirement)
-    amountCents: item.amountOriginal != null ? Math.round(item.amountOriginal * 100) : 0,
-    amountHomeCents: item.amountOriginal != null ? Math.round(item.amountOriginal * 100) : 0,
+    // INTEGER CENTS: Already in integer cents from domain
+    amountCents: item.amountCents ?? 0,
+    amountHomeCents: item.amountCents ?? 0,
     currencyOriginal: item.currencyOriginal || '',
     exchangeRate: item.exchangeRate ?? 1.0,
     date: item.date || new Date().toISOString(),

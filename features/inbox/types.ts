@@ -15,7 +15,7 @@
 export interface InboxItem {
   id: string;
   userId: string;
-  amountOriginal?: number;      // Optional for scratchpad mode (RENAMED)
+  amountCents?: number;      // Optional for scratchpad mode - INTEGER CENTS
 
   /**
    * Currency code for the inbox item (e.g., "USD", "PEN").
@@ -83,10 +83,10 @@ export interface UpdateInboxItemParams {
   accountId?: string | null;
   categoryId?: string | null;
   description?: string | null;
-  amountOriginal?: number | null;  // RENAMED
+  amountCents?: number | null;  // INTEGER CENTS
   date?: string | null;
   exchangeRate?: number | null;
-  notes?: string | null;           // NEW
+  notes?: string | null;
 }
 
 /**
@@ -96,7 +96,7 @@ export interface UpdateInboxItemParams {
  * NOTE: currencyOriginal removed - now derived from account_id via transaction_inbox_view
  */
 export interface CreateInboxItemParams {
-  amountOriginal?: number;       // RENAMED
+  amountCents?: number;       // INTEGER CENTS
   description?: string;
   // currencyOriginal: REMOVED - now derived from account_id via transaction_inbox_view
   date?: string;

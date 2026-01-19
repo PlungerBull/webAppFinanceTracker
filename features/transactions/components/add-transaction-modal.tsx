@@ -175,7 +175,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           // PATH B: Partial Data → Inbox (Scratchpad Mode)
           // FIX: Pass accountId and categoryId to preserve selections
           await createInboxItemMutation.mutateAsync({
-            amountOriginal: finalAmount ?? undefined,                     // RENAMED
+            amountCents: finalAmount !== undefined && finalAmount !== null ? Math.round(finalAmount * 100) : undefined,  // Convert dollars to cents
             description: transactionData.payee || undefined,
             date: format(transactionData.date, 'yyyy-MM-dd'),
             // currencyOriginal: REMOVED - now derived from accountId via transaction_inbox_view
