@@ -22,7 +22,7 @@
  * CRITICAL FIELDS (guaranteed non-null by transformer):
  * - id, userId, accountId, accountName: Always present
  * - version: Optimistic concurrency control (auto-incremented on UPDATE)
- * - amountOriginal, amountHome: Always present (defaults to 0)
+ * - amountCents, amountHomeCents: Always present (defaults to 0) - INTEGER CENTS
  * - currencyOriginal: Always present (defaults to 'USD')
  * - exchangeRate: Always present (defaults to 1)
  * - date, createdAt, updatedAt: Always present
@@ -39,8 +39,8 @@ export interface TransactionView {
   accountId: string;
   accountName: string;
   accountColor: string | null;   // Added: For UI color indicators
-  amountOriginal: number;
-  amountHome: number;
+  amountCents: number;      // INTEGER CENTS (e.g., $10.50 = 1050)
+  amountHomeCents: number;  // INTEGER CENTS (home currency)
 
   /**
    * Currency code for the transaction (e.g., "USD", "PEN").
@@ -85,8 +85,8 @@ export interface Transaction {
   userId: string;
   accountId: string;
   categoryId: string | null;
-  amountOriginal: number;
-  amountHome: number;
+  amountCents: number;        // INTEGER CENTS (e.g., $10.50 = 1050)
+  amountHomeCents: number;    // INTEGER CENTS (home currency)
   currencyOriginal: string;
   exchangeRate: number;
   description: string | null;
