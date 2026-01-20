@@ -14,7 +14,7 @@
 
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PAGINATION } from '@/lib/constants';
-import { calculateCreateDelta, calculateDeleteDelta, toCents, fromCents } from '@/lib/utils/balance-logic';
+import { calculateBalanceDeltas, calculateCreateDelta, calculateDeleteDelta, toCents, fromCents } from '@/lib/utils/balance-logic';
 import { toast } from 'sonner';
 import { useTransactionService } from './use-transaction-service';
 import type { TransactionViewEntity, CreateTransactionDTO, UpdateTransactionDTO } from '../domain';
@@ -176,10 +176,10 @@ export function useAddTransaction() {
       );
 
       // 6. Optimistically update account balance (add transaction amount)
-      // Convert INTEGER CENTS to match old balance logic
+      // Balance logic now accepts INTEGER CENTS directly
       const balanceDelta = calculateCreateDelta({
         accountId: data.accountId,
-        amountOriginal: fromCents(data.amountCents), // Convert cents → dollars for balance logic
+        amountCents: data.amountCents,
       });
 
       queryClient.setQueryData(['accounts'], (old: any) => {
@@ -251,17 +251,15 @@ export function useUpdateTransaction() {
       // 3. Get current transaction for balance delta calculation
       const current = queryClient.getQueryData<TransactionViewEntity>(['transactions', id]);
 
-      // 4. Calculate balance delta (old amount → new amount)
-      let balanceDeltas: ReturnType<typeof calculateCreateDelta> | null = null;
+      // 4. Calculate balance deltas (old state → new state)
+      // Uses calculateBalanceDeltas for proper handling of account changes
+      let balanceDeltas: ReturnType<typeof calculateBalanceDeltas> | null = null;
       if (current && (current.amountCents !== data.amountCents || current.accountId !== data.accountId)) {
-        // Account or amount changed - need to update balance
-        const oldAmount = fromCents(current.amountCents);
-        const newAmount = fromCents(data.amountCents);
-
-        balanceDeltas = calculateCreateDelta({
-          accountId: data.accountId,
-          amountOriginal: newAmount - oldAmount,
-        });
+        // Account or amount changed - calculate proper deltas
+        balanceDeltas = calculateBalanceDeltas(
+          { accountId: current.accountId, amountCents: current.amountCents },
+          { accountId: data.accountId, amountCents: data.amountCents }
+        );
       }
 
       // 5. Optimistically update transaction in all queries
@@ -306,17 +304,20 @@ export function useUpdateTransaction() {
       });
 
       // 6. Optimistically update account balance if needed
-      if (balanceDeltas) {
+      // balanceDeltas is an array (may have 1 or 2 entries for account changes)
+      if (balanceDeltas && balanceDeltas.length > 0) {
         queryClient.setQueryData(['accounts'], (old: any) => {
           if (!old) return old;
 
           return old.map((account: any) => {
-            if (account.id !== balanceDeltas.accountId) return account;
+            // Find any delta for this account
+            const delta = balanceDeltas.find((d) => d.accountId === account.id);
+            if (!delta) return account;
 
             const currentBalanceCents = toCents(account.currentBalance ?? 0);
             return {
               ...account,
-              currentBalance: fromCents(currentBalanceCents + balanceDeltas.deltaCents),
+              currentBalance: fromCents(currentBalanceCents + delta.deltaCents),
             };
           });
         });
@@ -399,10 +400,11 @@ export function useDeleteTransaction() {
       );
 
       // 5. Optimistically update account balance (subtract transaction amount)
+      // Balance logic now accepts INTEGER CENTS directly
       if (deletedTxn) {
         const balanceDelta = calculateDeleteDelta({
           accountId: deletedTxn.accountId,
-          amountOriginal: fromCents(deletedTxn.amountCents),
+          amountCents: deletedTxn.amountCents,
         });
 
         queryClient.setQueryData(['accounts'], (old: any) => {

@@ -29,8 +29,9 @@ export const createTransactionSchema = z.object({
     .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, VALIDATION.MESSAGES.DESCRIPTION_MAX(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION))
     .nullable()
     .optional(),
-  amount_original: z
+  amount_cents: z
     .number()
+    .int('Amount must be integer cents')
     .refine((val) => val !== 0, VALIDATION.MESSAGES.AMOUNT_ZERO),
   date: z
     .string()
@@ -100,8 +101,9 @@ export const updateTransactionSchema = z.object({
     .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, VALIDATION.MESSAGES.DESCRIPTION_MAX(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION))
     .nullable()
     .optional(),
-  amount_original: z
+  amount_cents: z
     .number()
+    .int('Amount must be integer cents')
     .refine((val) => val !== 0, VALIDATION.MESSAGES.AMOUNT_ZERO)
     .optional(),
   date: z
@@ -149,8 +151,9 @@ export const quickAddTransactionSchema = z.object({
     .string()
     .min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.DESCRIPTION_REQUIRED)
     .max(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION, VALIDATION.MESSAGES.DESCRIPTION_MAX(UI.MAX_LENGTH.TRANSACTION_DESCRIPTION)),
-  amount_original: z
+  amount_cents: z
     .number()
+    .int('Amount must be integer cents')
     .refine((val) => val !== 0, VALIDATION.MESSAGES.AMOUNT_ZERO),
   date: z
     .string()
