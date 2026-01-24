@@ -89,16 +89,25 @@ export interface CreateInboxItemDTO {
  * Input for updating a draft inbox item.
  * Supports partial updates (only specified fields change).
  *
- * Swift Mirror:
+ * PARTIAL UPDATE SEMANTICS (CTO Mandate):
+ * - Field absent (undefined): Don't update this field
+ * - Field present as null: Clear this field (set to NULL in DB)
+ * - Field present with value: Update to this value
+ *
+ * NOTE: The UI layer (EditedFields) uses triple semantics, but the component
+ * MUST flatten these before passing to the service layer. The repository
+ * should never receive "user hasn't touched this" - only "update" or "skip".
+ *
+ * Swift Mirror (uses Optional chaining for partial updates):
  * ```swift
  * struct UpdateInboxItemDTO: Codable {
- *     let amountCents: Int?
- *     let description: String?
- *     let date: String?
- *     let accountId: String?
- *     let categoryId: String?
- *     let exchangeRate: Decimal?
- *     let notes: String?
+ *     let amountCents: Int??      // nil = skip, .some(nil) = clear, .some(value) = update
+ *     let description: String??
+ *     let date: String??
+ *     let accountId: String??
+ *     let categoryId: String??
+ *     let exchangeRate: Decimal??
+ *     let notes: String??
  * }
  * ```
  */

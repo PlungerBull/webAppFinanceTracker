@@ -9,6 +9,7 @@ import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import type { InboxItemViewEntity } from '../domain/entities';
 import { toast } from 'sonner';
 import { INBOX } from '@/lib/constants';
+import { displayAmountToCents } from '@/lib/utils/cents-parser';
 
 interface InboxDetailPanelProps {
   item: InboxItemViewEntity | null;
@@ -89,7 +90,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
       await updateDraftMutation.mutateAsync({
         id: item.id,
         updates: {
-          amountCents: finalDisplayAmount !== null ? Math.round(finalDisplayAmount * 100) : null,
+          amountCents: finalDisplayAmount !== null ? displayAmountToCents(finalDisplayAmount) : null,
           description: finalDescription,
           accountId: finalAccountId,
           categoryId: finalCategoryId,
@@ -158,7 +159,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
         accountId: accountId ?? '',
         categoryId: categoryId ?? '',
         finalDescription: finalDescription ?? '',
-        finalAmountCents: finalDisplayAmount !== null ? Math.round(finalDisplayAmount * 100) : 0,  // Convert dollars to integer cents
+        finalAmountCents: finalDisplayAmount !== null ? displayAmountToCents(finalDisplayAmount) : 0,  // Convert dollars to integer cents
         finalDate,
         exchangeRate: finalExchangeRate,
       });

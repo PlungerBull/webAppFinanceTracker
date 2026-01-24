@@ -10,6 +10,7 @@ import type { TransactionViewEntity } from '../domain';
 import type { AccountViewEntity } from '@/features/accounts/domain';
 import type { LeafCategoryEntity } from '@/features/categories/domain';
 import { cn } from '@/lib/utils';
+import { displayAmountToCents } from '@/lib/utils/cents-parser';
 
 interface TransactionDetailPanelProps {
   transaction: TransactionViewEntity | null;
@@ -93,7 +94,7 @@ export function TransactionDetailPanel({
     if (updates.displayAmount !== undefined) {
       // Convert display amount (dollars) to cents for API
       apiUpdates.amountCents = updates.displayAmount !== null
-        ? Math.round(updates.displayAmount * 100)
+        ? displayAmountToCents(updates.displayAmount)
         : null;
     }
     if (updates.accountId !== undefined) {
