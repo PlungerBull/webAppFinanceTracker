@@ -5,6 +5,7 @@
 
 export type PanelMode = 'inbox' | 'transaction';
 
+
 /**
  * Normalized data structure for the panel
  * Works with both InboxItemViewEntity and TransactionViewEntity
@@ -16,20 +17,35 @@ export type PanelMode = 'inbox' | 'transaction';
  * - displayAmount: Decimal dollars for UI display (converted from amountCents)
  * - amountCents: Integer cents for storage/logic (NOT used here - UI boundary)
  */
-export interface PanelData {
-  id: string;
-  description: string | null;
-  displayAmount: number | null;  // Decimal dollars for UI display (e.g., 10.50)
-  currency: string | null;       // Null when no account selected yet
-  accountId: string | null;
-  categoryId: string | null;
-  date: string | null;
-  notes: string | null;
-  sourceText: string | null;     // Raw source context (OCR, bank import, etc.)
-  exchangeRate: number | null;   // For cross-currency transactions
-  reconciliationId: string | null;  // Links to reconciliation session
-  cleared: boolean;              // Auto-managed flag (TRUE when linked to reconciliation)
+
+// 1. Base interface for fields that exist in both worlds
+export interface BasePanelData {
+  readonly id: string;
+  readonly description: string | null;
+  readonly displayAmount: number | null;  // Decimal dollars for UI display (e.g., 10.50)
+  readonly currency: string | null;       // Null when no account selected yet
+  readonly accountId: string | null;
+  readonly categoryId: string | null;
+  readonly date: string | null;
+  readonly notes: string | null;
+  readonly exchangeRate: number | null;   // For cross-currency transactions
 }
+
+// 2. Specialized interfaces
+export interface InboxPanelData extends BasePanelData {
+  readonly sourceText: string | null;     // Birth certificate metadata
+  readonly reconciliationId: null;        // Inbox items are never reconciled
+  readonly cleared: false;               // Inbox items are never cleared
+}
+
+export interface TransactionPanelData extends BasePanelData {
+  readonly reconciliationId: string | null;
+  readonly cleared: boolean;
+  readonly sourceText: null;             // Explicitly null for ledger
+}
+
+// Union for consumption where mode is checked
+export type PanelData = InboxPanelData | TransactionPanelData;
 
 /**
  * Editable fields tracked in local state
@@ -94,21 +110,32 @@ export type { LedgerReadinessState, ReadinessField } from './utils/readiness';
 /**
  * Props for the main TransactionDetailPanel component
  * Supports both legacy single callback (transaction mode) and dual callbacks (inbox mode)
+ *
+ * CTO MANDATE: Discriminated Union Props (The Steel Gatekeeper)
+ * Forces mode and data to stay in sync at the type level.
  */
-export interface TransactionDetailPanelProps {
-  mode: PanelMode;
-  data: PanelData;
+
+// Common props shared by all modes
+interface CommonDetailPanelProps {
   accounts: SelectableAccount[];
   categories: SelectableCategory[];
-
-  // Legacy single callback (used by transaction mode)
-  onSave?: (updates: EditedFields) => Promise<void>;
-
-  // Inbox dual callbacks (Smart Save pattern)
-  onPartialSave?: (updates: EditedFields) => Promise<void>;  // Draft save
-  onPromote?: (updates: EditedFields) => Promise<void>;      // Ledger promotion
-
   onDelete: () => Promise<void>;
   onClose?: () => void;
   isLoading?: boolean;
 }
+
+export type TransactionDetailPanelProps =
+  | (CommonDetailPanelProps & {
+      mode: 'inbox';
+      data: InboxPanelData;
+      onPartialSave: (updates: EditedFields) => Promise<void>;
+      onPromote: (updates: EditedFields) => Promise<void>;
+      onSave?: never; // Forbidden in inbox mode
+    })
+  | (CommonDetailPanelProps & {
+      mode: 'transaction';
+      data: TransactionPanelData;
+      onSave: (updates: EditedFields) => Promise<void>;
+      onPartialSave?: never;
+      onPromote?: never;
+    });

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { TransactionDetailPanel as SharedPanel } from '@/features/shared/components/transaction-detail-panel';
-import type { PanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/features/shared/components/transaction-detail-panel';
+import type { PanelData, TransactionPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/features/shared/components/transaction-detail-panel';
 import { useUpdateTransactionBatch, useDeleteTransaction } from '../hooks/use-transactions';
 import { useTransactionSelection } from '@/stores/transaction-selection-store';
 import type { TransactionViewEntity } from '../domain';
@@ -28,9 +28,10 @@ export function TransactionDetailPanel({
   const updateMutation = useUpdateTransactionBatch();
   const deleteMutation = useDeleteTransaction();
 
+
   // Transform TransactionViewEntity to PanelData
   // CTO MANDATE: PanelData uses null semantics. No null → undefined conversions.
-  const panelData: PanelData | null = useMemo(() => {
+  const panelData: TransactionPanelData | null = useMemo(() => {
     if (!transaction) return null;
 
     return {
@@ -42,7 +43,7 @@ export function TransactionDetailPanel({
       categoryId: transaction.categoryId,
       date: transaction.date,
       notes: transaction.notes,
-      sourceText: null, // Transactions don't have source text (inbox-only field)
+      sourceText: null, // Explicitly null for ledger (required by TransactionPanelData)
       exchangeRate: transaction.exchangeRate,
       reconciliationId: transaction.reconciliationId,
       cleared: transaction.cleared ?? false,

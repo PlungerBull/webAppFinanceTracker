@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { TransactionDetailPanel as SharedPanel } from '@/features/shared/components/transaction-detail-panel';
-import type { PanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/features/shared/components/transaction-detail-panel';
+import type { PanelData, InboxPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/features/shared/components/transaction-detail-panel';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
@@ -22,9 +22,10 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   const leafCategories = useLeafCategories();
   const { data: accountsData = [] } = useAccounts();
 
+
   // Transform InboxItemViewEntity to PanelData
   // CTO MANDATE: No null → undefined conversions. PanelData uses null semantics.
-  const panelData: PanelData | null = useMemo(() => {
+  const panelData: InboxPanelData | null = useMemo(() => {
     if (!item) return null;
 
     return {

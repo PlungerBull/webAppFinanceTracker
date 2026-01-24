@@ -10,18 +10,18 @@ import { useCurrency } from '@/contexts/currency-context';
 import { useUserSettings } from '@/features/settings/hooks/use-user-settings';
 import type { TransactionDetailPanelProps, EditedFields } from './types';
 
-export function TransactionDetailPanel({
-  mode,
-  data,
-  accounts,
-  categories,
-  onSave,
-  onPartialSave,
-  onPromote,
-  onDelete,
-  onClose,
-  isLoading = false,
-}: TransactionDetailPanelProps) {
+
+export function TransactionDetailPanel(props: TransactionDetailPanelProps) {
+  const {
+    mode,
+    data,
+    accounts,
+    categories,
+    onDelete,
+    onClose,
+    isLoading = false,
+  } = props;
+
   // Local state for pending edits
   const [editedFields, setEditedFields] = useState<EditedFields>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -66,19 +66,19 @@ export function TransactionDetailPanel({
     // Safety check: Don't save if settings still loading
     if (!isSettingsReady) return;
 
-    if (mode === 'inbox' && onPartialSave && onPromote) {
+    if (props.mode === 'inbox') {
       // SMART SAVE ROUTING
       if (ledgerReadiness.isReady) {
         // All fields complete → Promote to ledger
-        await onPromote(editedFields);
+        await props.onPromote(editedFields);
       } else if (ledgerReadiness.canSaveDraft) {
         // Partial data → Save as draft
-        await onPartialSave(editedFields);
+        await props.onPartialSave(editedFields);
       }
       // If nothing edited, do nothing (button should be disabled)
-    } else if (onSave) {
+    } else {
       // TRANSACTION MODE: Use legacy save
-      await onSave(editedFields);
+      await props.onSave(editedFields);
     }
     // Clear edited fields after successful save
     setEditedFields({});
