@@ -33,6 +33,8 @@ import {
   InboxNotFoundError,
   InboxRepositoryError,
   InboxPromotionError,
+  VersionConflictError,
+  InboxDomainError,
 } from '../domain/errors';
 import { dbInboxItemViewToDomain } from '@/lib/types/data-transformers';
 import type { InboxItemViewEntity } from '../domain/entities';
@@ -49,7 +51,7 @@ const DEFAULT_LIMIT = 20;
  * All methods return DataResult<T> (never throw exceptions).
  */
 export class SupabaseInboxRepository implements IInboxRepository {
-  constructor(private readonly supabase: SupabaseClient<Database>) {}
+  constructor(private readonly supabase: SupabaseClient<Database>) { }
 
   // ============================================================================
   // QUERY OPERATIONS
@@ -210,11 +212,19 @@ export class SupabaseInboxRepository implements IInboxRepository {
       if (data.exchangeRate !== undefined) dbUpdates.exchange_rate = data.exchangeRate;
       if (data.notes !== undefined) dbUpdates.notes = data.notes;
 
-      const { error: updateError } = await this.supabase
+      // Optimistic Concurrency Control
+      let query = this.supabase
         .from('transaction_inbox')
         .update(dbUpdates)
         .eq('id', id)
         .eq('user_id', userId);
+
+      // If lastKnownVersion is provided, enforce it
+      if (data.lastKnownVersion !== undefined) {
+        query = query.eq('version', data.lastKnownVersion);
+      }
+
+      const { data: updatedRows, error: updateError } = await query.select();
 
       if (updateError) {
         return {
@@ -224,13 +234,39 @@ export class SupabaseInboxRepository implements IInboxRepository {
         };
       }
 
-      // Read back from view for complete data
+      // If no rows updated, check why
+      if (!updatedRows || updatedRows.length === 0) {
+        // Fetch the item to distinguish between Not Found and Version Conflict
+        const { data: currentItem } = await this.supabase
+          .from('transaction_inbox')
+          .select('version')
+          .eq('id', id)
+          .eq('user_id', userId)
+          .single();
+
+        if (!currentItem) {
+          return {
+            success: false,
+            data: null,
+            error: new InboxNotFoundError(id),
+          };
+        }
+
+        // Item exists, so it must be a version conflict
+        return {
+          success: false,
+          data: null,
+          error: new VersionConflictError(id, data.lastKnownVersion ?? -1, (currentItem as any).version),
+        };
+      }
+
+      // Read back from view for complete data (using ID from updated row)
       return this.getById(userId, id);
     } catch (err) {
       return {
         success: false,
         data: null,
-        error: new InboxRepositoryError(
+        error: err instanceof InboxDomainError ? err : new InboxRepositoryError(
           err instanceof Error ? err.message : 'Unknown error updating inbox item'
         ),
       };
@@ -256,9 +292,21 @@ export class SupabaseInboxRepository implements IInboxRepository {
         p_final_date: data.finalDate ?? undefined,
         p_final_amount_cents: data.finalAmountCents ?? undefined,
         p_exchange_rate: data.exchangeRate ?? undefined,
+        p_expected_version: data.lastKnownVersion ?? undefined, // Pass version for check
       });
 
       if (error) {
+        // Check for custom version conflict code (P0001) or message
+        if (error.code === 'P0001' || error.message.includes('Version conflict')) {
+          // We don't have the actual version here easily without a separate fetch, 
+          // so we pass -1 as actual. The UI should refresh regardless.
+          return {
+            success: false,
+            data: null,
+            error: new VersionConflictError(data.inboxId, data.lastKnownVersion ?? -1, -1)
+          };
+        }
+
         return {
           success: false,
           data: null,
@@ -295,7 +343,10 @@ export class SupabaseInboxRepository implements IInboxRepository {
     try {
       const { error } = await this.supabase
         .from('transaction_inbox')
-        .update({ status: 'ignored' })
+        .update({
+          status: 'ignored',
+          deleted_at: new Date().toISOString() // Tombstone
+        })
         .eq('id', id)
         .eq('user_id', userId);
 

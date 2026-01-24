@@ -37,11 +37,12 @@ export type { SharedPaginatedResult as PaginatedResult };
  */
 export interface InboxError extends SerializableError {
   readonly code:
-    | 'NOT_FOUND'
-    | 'VALIDATION_ERROR'
-    | 'REPOSITORY_ERROR'
-    | 'PROMOTION_FAILED'
-    | 'ALREADY_PROCESSED';
+  | 'NOT_FOUND'
+  | 'VALIDATION_ERROR'
+  | 'REPOSITORY_ERROR'
+  | 'PROMOTION_FAILED'
+  | 'ALREADY_PROCESSED'
+  | 'VERSION_CONFLICT';
 }
 
 /**
@@ -119,6 +120,11 @@ export interface UpdateInboxItemDTO {
   readonly categoryId?: string | null;
   readonly exchangeRate?: number | null;
   readonly notes?: string | null;
+  /**
+   * Optimistic Concurrency Control
+   * The version of the item when it was read
+   */
+  readonly lastKnownVersion?: number;
 }
 
 /**
@@ -148,6 +154,11 @@ export interface PromoteInboxItemDTO {
   readonly finalDate?: string | null;
   readonly finalAmountCents?: number | null;
   readonly exchangeRate?: number | null;
+  /**
+   * Optimistic Concurrency Control
+   * The version of the item when it was read
+   */
+  readonly lastKnownVersion?: number;
 }
 
 /**

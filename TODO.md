@@ -2,8 +2,6 @@
 
 ## Architecture & Logic Portability
 
-### Transactions Feature: ✅ Migrated
-
 ### Auth Provider Injection
 - [ ] Replace direct `supabase.auth.getUser()` calls in all API/Service layers with `IAuthProvider` interface to support Native Apple Auth on iOS
 
@@ -46,8 +44,6 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 
 ## Repository Pattern Implementation
 
-### Categories Feature: ✅ Migrated
-
 ### Inbox Feature: 🔄 In Progress
 > **CTO Note:** The `promote_inbox_item` RPC already exists in the database. Use it to hit the Ledger.
 
@@ -64,15 +60,9 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 - [ ] **Traceability:** Store raw bank string in `source_text` column for future AI/categorization training
 - [ ] **Validation:** Use `LeafCategoryEntity` type for category selection (CTO MANDATE: only leaf categories assignable)
 
-### Transfers Feature: ✅ Migrated
 
 ### Technical Debt
 - [ ] **Fix nullable RPC parameters:** Still using `null as unknown as string` workaround in `supabase-transfer-repository.ts:144` - requires Supabase CLI update
-
-### Architectural Decision Records (ADRs): ✅ Initialized
-> See `docs/adr/` for ADR #001 (Floating Point Rejection) and ADR #002 (SQLSTATE Mapping)
-
-### Accounts Feature: ✅ Migrated
 
 ### Phase 2 - Offline Sync (Future)
 

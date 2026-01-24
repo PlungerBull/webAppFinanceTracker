@@ -84,6 +84,18 @@ export interface InboxItemEntity {
 
   /** Updated timestamp (ISO 8601) */
   readonly updatedAt: string;
+
+  /**
+   * Sync Version (Optimistic Concurrency Control)
+   * Uses global_transaction_version sequence
+   */
+  readonly version: number;
+
+  /**
+   * Soft Delete Timestamp (Tombstone Pattern)
+   * Null = Active, Date = Deleted
+   */
+  readonly deletedAt: string | null;
 }
 
 /**

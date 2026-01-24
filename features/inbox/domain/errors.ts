@@ -71,3 +71,16 @@ export class InboxAlreadyProcessedError extends InboxDomainError {
     this.name = 'InboxAlreadyProcessedError';
   }
 }
+
+/**
+ * Version conflict error (Optimistic Concurrency Control)
+ */
+export class VersionConflictError extends InboxDomainError {
+  constructor(id: string, expected: number, actual: number) {
+    super(
+      'VERSION_CONFLICT',
+      `Version conflict for item ${id}: expected ${expected}, found ${actual}`
+    );
+    this.name = 'VersionConflictError';
+  }
+}

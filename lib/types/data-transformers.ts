@@ -121,6 +121,8 @@ export function dbInboxItemToDomain(
     status: (dbInboxItem.status ?? 'pending') as 'pending' | 'processed' | 'ignored',
     createdAt: dbInboxItem.created_at ?? new Date().toISOString(),
     updatedAt: dbInboxItem.updated_at ?? new Date().toISOString(),
+    version: (dbInboxItem as any).version ?? 1,
+    deletedAt: (dbInboxItem as any).deleted_at ?? null,
   };
 }
 
@@ -160,6 +162,8 @@ export function dbInboxItemViewToDomain(
     status: (dbInboxItemView.status ?? 'pending') as 'pending' | 'processed' | 'ignored',
     createdAt: dbInboxItemView.created_at ?? new Date().toISOString(),  // Fallback to now if missing
     updatedAt: dbInboxItemView.updated_at ?? new Date().toISOString(),  // Fallback to now if missing
+    version: (dbInboxItemView as any).version ?? 1,
+    deletedAt: (dbInboxItemView as any).deleted_at ?? null,
 
     // Joined display data (from view columns) - these use undefined for "not present"
     // This is valid because the entity type declares these as optional

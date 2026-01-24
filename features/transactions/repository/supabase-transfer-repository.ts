@@ -49,7 +49,7 @@ export class TransferValidationError extends Error {
  * Handles atomic transfer creation via RPC.
  */
 export class SupabaseTransferRepository implements ITransferRepository {
-  constructor(private readonly supabase: SupabaseClient<Database>) {}
+  constructor(private readonly supabase: SupabaseClient<Database>) { }
 
   /**
    * Convert integer cents to decimal dollars for RPC
@@ -145,7 +145,7 @@ export class SupabaseTransferRepository implements ITransferRepository {
           p_exchange_rate: impliedExchangeRate,
           p_date: data.date,
           p_description: data.description || 'Transfer',
-          // p_category_id is omitted - defaults to NULL for transfers
+          p_category_id: undefined // Rely on SQL DEFAULT NULL
         }
       );
 
