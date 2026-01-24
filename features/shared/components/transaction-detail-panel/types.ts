@@ -8,7 +8,9 @@ export type PanelMode = 'inbox' | 'transaction';
 /**
  * Normalized data structure for the panel
  * Works with both InboxItemViewEntity and TransactionViewEntity
- * Uses optional properties (undefined) for consistency with domain types
+ *
+ * CTO MANDATE: All optional fields use null (not undefined) for iOS Swift compatibility.
+ * The UI must adapt to the Steel Foundation, not the other way around.
  *
  * NAMING CONVENTION (CTO Mandate):
  * - displayAmount: Decimal dollars for UI display (converted from amountCents)
@@ -16,33 +18,37 @@ export type PanelMode = 'inbox' | 'transaction';
  */
 export interface PanelData {
   id: string;
-  description?: string;
-  displayAmount?: number;  // Decimal dollars for UI display (e.g., 10.50)
-  currency: string;
-  accountId?: string;
-  categoryId?: string;
-  date?: string;
-  notes?: string;
-  sourceText?: string;    // Raw source context (OCR, bank import, etc.)
-  exchangeRate?: number;  // For cross-currency transactions
-  reconciliationId?: string | null;  // Links to reconciliation session
-  cleared?: boolean;  // Auto-managed flag (TRUE when linked to reconciliation)
+  description: string | null;
+  displayAmount: number | null;  // Decimal dollars for UI display (e.g., 10.50)
+  currency: string | null;       // Null when no account selected yet
+  accountId: string | null;
+  categoryId: string | null;
+  date: string | null;
+  notes: string | null;
+  sourceText: string | null;     // Raw source context (OCR, bank import, etc.)
+  exchangeRate: number | null;   // For cross-currency transactions
+  reconciliationId: string | null;  // Links to reconciliation session
+  cleared: boolean;              // Auto-managed flag (TRUE when linked to reconciliation)
 }
 
 /**
  * Editable fields tracked in local state
  *
+ * CTO MANDATE: EditedFields use undefined to mean "not edited yet".
+ * This is the ONLY place undefined is valid - it signals "user hasn't touched this field".
+ * Once edited, the value is either a concrete value or null (to clear).
+ *
  * NAMING CONVENTION (CTO Mandate):
  * - displayAmount: Decimal dollars for UI editing
  */
 export interface EditedFields {
-  description?: string;
-  displayAmount?: number;  // Decimal dollars for UI editing
-  accountId?: string;
-  categoryId?: string;
-  date?: string;
-  notes?: string;
-  exchangeRate?: number;  // For cross-currency transactions
+  description?: string | null;      // undefined = not edited, null = cleared, string = value
+  displayAmount?: number | null;    // undefined = not edited, null = cleared, number = value
+  accountId?: string | null;
+  categoryId?: string | null;
+  date?: string | null;
+  notes?: string | null;
+  exchangeRate?: number | null;
 }
 
 /**

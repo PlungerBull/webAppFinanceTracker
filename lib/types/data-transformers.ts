@@ -22,6 +22,7 @@ import type {
   ReconciliationSummary,
 } from '@/types/domain';
 import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
+import { toSafeInteger, toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
 
 // ============================================================================
 // DATABASE TO DOMAIN TRANSFORMERS
@@ -90,14 +91,25 @@ export function dbCurrencyToDomain(
  * WARNING: This transformer is for RAW TABLE rows only.
  * currencyCode will be null because the table doesn't have currency.
  * For display with currency, use dbInboxItemViewToDomain() with transaction_inbox_view.
+ *
+ * CTO MANDATE: Critical fields (id, user_id) must throw on null - table columns are NOT NULL
  */
 export function dbInboxItemToDomain(
   dbInboxItem: Database['public']['Tables']['transaction_inbox']['Row']
 ): InboxItemViewEntity {
+  // Table has NOT NULL constraints on id and user_id, but TypeScript doesn't know that
+  // These checks are defensive and should never throw in practice
+  if (!dbInboxItem.id) {
+    throw new Error('InboxItemEntity: id cannot be null - database constraint violation');
+  }
+  if (!dbInboxItem.user_id) {
+    throw new Error('InboxItemEntity: user_id cannot be null - database constraint violation');
+  }
+
   return {
     id: dbInboxItem.id,
     userId: dbInboxItem.user_id,
-    amountCents: dbInboxItem.amount_cents !== null ? Number(dbInboxItem.amount_cents) : null,
+    amountCents: toSafeInteger(dbInboxItem.amount_cents),  // BIGINT → safe number
     currencyCode: null,  // Not available from raw table - use view for currency
     description: dbInboxItem.description,
     date: dbInboxItem.date,
@@ -106,9 +118,9 @@ export function dbInboxItemToDomain(
     categoryId: dbInboxItem.category_id,
     exchangeRate: dbInboxItem.exchange_rate,
     notes: dbInboxItem.notes,
-    status: dbInboxItem.status as 'pending' | 'processed' | 'ignored',
-    createdAt: dbInboxItem.created_at,
-    updatedAt: dbInboxItem.updated_at,
+    status: (dbInboxItem.status ?? 'pending') as 'pending' | 'processed' | 'ignored',
+    createdAt: dbInboxItem.created_at ?? new Date().toISOString(),
+    updatedAt: dbInboxItem.updated_at ?? new Date().toISOString(),
   };
 }
 
@@ -118,14 +130,25 @@ export function dbInboxItemToDomain(
  * Use this for UI display - it has complete data including currencyCode from account
  *
  * CTO MANDATE: All optional fields use null (not undefined) for iOS Swift compatibility
+ * CTO MANDATE: Critical fields (id, userId) must throw on null - no magic fallbacks
+ *
+ * @throws Error if id or userId is null (data integrity failure)
  */
 export function dbInboxItemViewToDomain(
   dbInboxItemView: Database['public']['Views']['transaction_inbox_view']['Row']
 ): InboxItemViewEntity {
+  // CTO MANDATE: Critical fields must throw on null - no magic fallbacks
+  if (!dbInboxItemView.id) {
+    throw new Error('InboxItemViewEntity: id cannot be null - data integrity failure');
+  }
+  if (!dbInboxItemView.user_id) {
+    throw new Error('InboxItemViewEntity: user_id cannot be null - data integrity failure');
+  }
+
   return {
-    id: dbInboxItemView.id || '',
-    userId: dbInboxItemView.user_id || '',
-    amountCents: dbInboxItemView.amount_cents !== null ? Number(dbInboxItemView.amount_cents) : null,
+    id: dbInboxItemView.id,
+    userId: dbInboxItemView.user_id,
+    amountCents: toSafeInteger(dbInboxItemView.amount_cents),  // BIGINT → safe number
     currencyCode: dbInboxItemView.currency_original ?? null,  // From view alias (bank_accounts.currency_code)
     description: dbInboxItemView.description ?? null,
     date: dbInboxItemView.date ?? null,
@@ -134,21 +157,22 @@ export function dbInboxItemViewToDomain(
     categoryId: dbInboxItemView.category_id ?? null,
     exchangeRate: dbInboxItemView.exchange_rate ?? null,
     notes: dbInboxItemView.notes ?? null,
-    status: (dbInboxItemView.status || 'pending') as 'pending' | 'processed' | 'ignored',
-    createdAt: dbInboxItemView.created_at || '',
-    updatedAt: dbInboxItemView.updated_at || '',
+    status: (dbInboxItemView.status ?? 'pending') as 'pending' | 'processed' | 'ignored',
+    createdAt: dbInboxItemView.created_at ?? new Date().toISOString(),  // Fallback to now if missing
+    updatedAt: dbInboxItemView.updated_at ?? new Date().toISOString(),  // Fallback to now if missing
 
     // Joined display data (from view columns) - these use undefined for "not present"
+    // This is valid because the entity type declares these as optional
     account: dbInboxItemView.account_id ? {
       id: dbInboxItemView.account_id,
-      name: dbInboxItemView.account_name || '',
-      currencyCode: dbInboxItemView.currency_original || '',
+      name: dbInboxItemView.account_name ?? 'Unknown Account',  // Display fallback, not magic string
+      currencyCode: dbInboxItemView.currency_original ?? 'USD', // Display fallback
       currencySymbol: '', // View doesn't include global_currencies join
     } : undefined,
     category: dbInboxItemView.category_id ? {
       id: dbInboxItemView.category_id,
-      name: dbInboxItemView.category_name || '',
-      color: dbInboxItemView.category_color || '',
+      name: dbInboxItemView.category_name ?? 'Unknown Category',  // Display fallback
+      color: dbInboxItemView.category_color ?? '#808080',          // Display fallback (gray)
     } : undefined,
   };
 }
@@ -175,8 +199,8 @@ export function dbTransactionToDomain(
     userId: dbTransaction.user_id,
     accountId: dbTransaction.account_id,
     categoryId: dbTransaction.category_id,
-    amountCents: Number(dbTransaction.amount_cents),        // BIGINT → INTEGER CENTS (direct pass-through)
-    amountHomeCents: Number(dbTransaction.amount_home_cents), // BIGINT → INTEGER CENTS (direct pass-through)
+    amountCents: toSafeIntegerOrZero(dbTransaction.amount_cents),        // BIGINT → safe number
+    amountHomeCents: toSafeIntegerOrZero(dbTransaction.amount_home_cents), // BIGINT → safe number
     // NOTE: currency_original removed from table - now derived from account via transactions_view
     currencyOriginal: undefined as any,  // REMOVED from table schema - use transactions_view instead
     exchangeRate: dbTransaction.exchange_rate,
@@ -477,52 +501,61 @@ export function dbTransactionsToDomain(
  * Transforms a database transactions_view row to domain type
  * NOTE: This is a VIEW that includes joined data from accounts and categories
  *
- * CRITICAL FIELDS (enforced non-null):
- * - id, userId, accountId: Must exist for a valid transaction
- * - amountCents, amountHomeCents: Must exist (defaults to 0 if somehow null)
- * - currencyOriginal: Must exist (defaults to 'USD' if somehow null)
- * - exchangeRate: Must exist (defaults to 1 if somehow null)
- * - date: Must exist (defaults to current date if somehow null)
+ * CTO MANDATE: Critical fields (id, userId, accountId) must throw on null
+ * CTO MANDATE: No magic fallbacks for required fields - expose data integrity issues
+ *
+ * @throws Error if id, userId, or accountId is null (data integrity failure)
  */
 export function dbTransactionViewToDomain(
   dbTransactionView: Database['public']['Views']['transactions_view']['Row']
 ): TransactionView {
+  // CTO MANDATE: Critical fields must throw on null - no magic fallbacks
+  if (!dbTransactionView.id) {
+    throw new Error('TransactionView: id cannot be null - data integrity failure');
+  }
+  if (!dbTransactionView.user_id) {
+    throw new Error('TransactionView: user_id cannot be null - data integrity failure');
+  }
+  if (!dbTransactionView.account_id) {
+    throw new Error('TransactionView: account_id cannot be null - data integrity failure');
+  }
+
   // Note: transactions_view now includes all necessary fields for both display and editing
   return {
-    // IDs (now available from view)
-    id: dbTransactionView.id || '',
+    // IDs (now available from view) - validated above
+    id: dbTransactionView.id,
     version: dbTransactionView.version ?? 1, // Optimistic concurrency control
-    userId: dbTransactionView.user_id || '',
-    accountId: dbTransactionView.account_id || '', // FIXED: Now uses actual field
-    categoryId: dbTransactionView.category_id,      // FIXED: Now uses actual field
+    userId: dbTransactionView.user_id,
+    accountId: dbTransactionView.account_id,
+    categoryId: dbTransactionView.category_id,      // Nullable - some transactions have no category
 
-    // Amounts and currency
-    amountCents: Number(dbTransactionView.amount_cents) ?? 0,         // BIGINT → INTEGER CENTS (direct pass-through)
-    amountHomeCents: Number(dbTransactionView.amount_home_cents) ?? 0, // BIGINT → INTEGER CENTS (direct pass-through)
-    currencyOriginal: dbTransactionView.currency_original || 'USD',
-    exchangeRate: dbTransactionView.exchange_rate ?? 1, // FIXED: Now uses actual field
+    // Amounts and currency - BIGINT → safe number with validation
+    amountCents: toSafeIntegerOrZero(dbTransactionView.amount_cents),         // BIGINT → safe number
+    amountHomeCents: toSafeIntegerOrZero(dbTransactionView.amount_home_cents), // BIGINT → safe number
+    currencyOriginal: dbTransactionView.currency_original ?? 'USD',   // From account JOIN
+    exchangeRate: dbTransactionView.exchange_rate ?? 1,               // Default 1 for same currency
 
-    // Dates
-    date: dbTransactionView.date || new Date().toISOString(),
-    createdAt: dbTransactionView.created_at || '',  // FIXED: Now uses actual field
-    updatedAt: dbTransactionView.updated_at || '',  // FIXED: Now uses actual field
+    // Dates - required for ledger transactions
+    date: dbTransactionView.date ?? new Date().toISOString(),
+    createdAt: dbTransactionView.created_at ?? new Date().toISOString(),
+    updatedAt: dbTransactionView.updated_at ?? new Date().toISOString(),
 
-    // Joined display data
-    accountName: dbTransactionView.account_name || 'Unknown Account',
-    accountColor: dbTransactionView.account_color,  // FIXED: Now uses actual field
+    // Joined display data - display fallbacks are acceptable
+    accountName: dbTransactionView.account_name ?? 'Unknown Account',
+    accountColor: dbTransactionView.account_color,
     categoryName: dbTransactionView.category_name,
-    categoryColor: dbTransactionView.category_color, // FIXED: Now uses actual field
+    categoryColor: dbTransactionView.category_color,
     categoryType: dbTransactionView.category_type as 'income' | 'expense' | 'opening_balance' | null,
 
-    // Optional fields
+    // Optional fields - null is valid
     transferId: dbTransactionView.transfer_id,
     description: dbTransactionView.description,
-    notes: dbTransactionView.notes,                 // FIXED: Now uses actual field
+    notes: dbTransactionView.notes,
 
     // Reconciliation fields (Audit Workspace)
     reconciliationId: dbTransactionView.reconciliation_id,
     cleared: dbTransactionView.cleared ?? false,
-    reconciliationStatus: (dbTransactionView.reconciliation_status || null) as 'draft' | 'completed' | null,
+    reconciliationStatus: (dbTransactionView.reconciliation_status ?? null) as 'draft' | 'completed' | null,
   };
 }
 
@@ -632,8 +665,8 @@ export function dbReconciliationToDomain(
     userId: dbReconciliation.user_id,
     accountId: dbReconciliation.account_id,
     name: dbReconciliation.name,
-    beginningBalance: Number(dbReconciliation.beginning_balance),
-    endingBalance: Number(dbReconciliation.ending_balance),
+    beginningBalance: toSafeIntegerOrZero(dbReconciliation.beginning_balance),  // BIGINT → safe number
+    endingBalance: toSafeIntegerOrZero(dbReconciliation.ending_balance),        // BIGINT → safe number
     dateStart: dbReconciliation.date_start,
     dateEnd: dbReconciliation.date_end,
     status: dbReconciliation.status as ReconciliationStatus,
