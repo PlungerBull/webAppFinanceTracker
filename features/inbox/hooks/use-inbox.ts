@@ -1,7 +1,26 @@
+/**
+ * Inbox React Query Hooks
+ *
+ * React Query hooks for inbox operations.
+ * Uses InboxService (Repository Pattern) with DataResult error handling.
+ *
+ * @module use-inbox
+ */
+
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { inboxApi } from '../api/inbox';
+import { getInboxService } from '../services/inbox-service';
 import { INBOX, PAGINATION } from '@/lib/constants';
-import type { PromoteInboxItemParams, CreateInboxItemParams, UpdateInboxItemParams, InboxItem } from '../types';
+import type {
+  CreateInboxItemDTO,
+  UpdateInboxItemDTO,
+  PromoteInboxItemDTO,
+} from '../domain/types';
+import type { InboxItemViewEntity } from '../domain/entities';
+
+/**
+ * Get the inbox service instance
+ */
+const inboxService = getInboxService();
 
 /**
  * Hook to fetch all pending inbox items with pagination for infinite scroll
@@ -11,11 +30,21 @@ import type { PromoteInboxItemParams, CreateInboxItemParams, UpdateInboxItemPara
 export function useInboxItems() {
   const query = useInfiniteQuery({
     queryKey: INBOX.QUERY_KEYS.PENDING_INFINITE,
-    queryFn: ({ pageParam = 0 }) =>
-      inboxApi.getPendingPaginated({
+    queryFn: async ({ pageParam = 0 }) => {
+      const result = await inboxService.getPendingPaginated({
         offset: pageParam,
         limit: PAGINATION.DEFAULT_PAGE_SIZE,
-      }),
+      });
+
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+
+      return {
+        data: result.data.data,
+        count: result.data.total,
+      };
+    },
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.data.length < PAGINATION.DEFAULT_PAGE_SIZE) {
         return undefined;
@@ -47,8 +76,15 @@ export function useUpdateInboxDraft() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: UpdateInboxItemParams }) =>
-      inboxApi.updateDraft(id, updates),
+    mutationFn: async ({ id, updates }: { id: string; updates: UpdateInboxItemDTO }) => {
+      const result = await inboxService.update(id, updates);
+
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+
+      return result.data;
+    },
     onSuccess: () => {
       // Invalidate inbox queries to refresh the list with updated data
       queryClient.invalidateQueries({ queryKey: INBOX.QUERY_KEYS.ALL });
@@ -68,13 +104,34 @@ export function useUpdateInboxDraft() {
  * - Creates buttery smooth user experience
  * - Rolls back on error
  *
- * Accepts either PromoteInboxItemParams or InboxItem
+ * Accepts either PromoteInboxItemDTO or InboxItemViewEntity
  */
 export function usePromoteInboxItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: PromoteInboxItemParams | InboxItem) => inboxApi.promote(params),
+    mutationFn: async (params: PromoteInboxItemDTO | InboxItemViewEntity) => {
+      // Convert InboxItemViewEntity to PromoteInboxItemDTO if needed
+      const dto: PromoteInboxItemDTO = 'inboxId' in params
+        ? params as PromoteInboxItemDTO
+        : {
+            inboxId: params.id,
+            accountId: params.accountId ?? '',
+            categoryId: params.categoryId ?? '',
+            finalDescription: params.description,
+            finalDate: params.date,
+            finalAmountCents: params.amountCents,
+            exchangeRate: params.exchangeRate,
+          };
+
+      const result = await inboxService.promote(dto);
+
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+
+      return result.data;
+    },
     onMutate: async (params) => {
       // Extract inbox ID from params
       const inboxId = 'inboxId' in params ? params.inboxId : params.id;
@@ -86,13 +143,13 @@ export function usePromoteInboxItem() {
       const previousInfinite = queryClient.getQueryData(INBOX.QUERY_KEYS.PENDING_INFINITE);
 
       // Optimistically update infinite query (all pages)
-      queryClient.setQueryData(INBOX.QUERY_KEYS.PENDING_INFINITE, (old: any) => {
+      queryClient.setQueryData(INBOX.QUERY_KEYS.PENDING_INFINITE, (old: InfiniteQueryData | undefined) => {
         if (!old) return old;
         return {
           ...old,
-          pages: old.pages.map((page: any) => ({
+          pages: old.pages.map((page) => ({
             ...page,
-            data: page.data.filter((item: InboxItem) => item.id !== inboxId),
+            data: page.data.filter((item: InboxItemViewEntity) => item.id !== inboxId),
             count: page.count ? page.count - 1 : null,
           })),
         };
@@ -123,7 +180,15 @@ export function useDismissInboxItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (inboxId: string) => inboxApi.dismiss(inboxId),
+    mutationFn: async (inboxId: string) => {
+      const result = await inboxService.dismiss(inboxId);
+
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+
+      return undefined;
+    },
     onSuccess: () => {
       // Invalidate inbox queries - item should vanish from pending list
       queryClient.invalidateQueries({ queryKey: INBOX.QUERY_KEYS.ALL });
@@ -139,10 +204,33 @@ export function useCreateInboxItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: CreateInboxItemParams) => inboxApi.create(params),
+    mutationFn: async (params: CreateInboxItemDTO) => {
+      const result = await inboxService.create(params);
+
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+
+      return result.data;
+    },
     onSuccess: () => {
       // Invalidate inbox queries - new item should appear in pending list
       queryClient.invalidateQueries({ queryKey: INBOX.QUERY_KEYS.ALL });
     },
   });
+}
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/**
+ * Type for infinite query data structure
+ */
+interface InfiniteQueryData {
+  pages: Array<{
+    data: InboxItemViewEntity[];
+    count: number | null;
+  }>;
+  pageParams: number[];
 }

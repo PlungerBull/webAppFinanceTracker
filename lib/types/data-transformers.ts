@@ -21,7 +21,7 @@ import type {
   ReconciliationStatus,
   ReconciliationSummary,
 } from '@/types/domain';
-import type { InboxItem } from '@/features/inbox/types';
+import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
 
 // ============================================================================
 // DATABASE TO DOMAIN TRANSFORMERS
@@ -85,62 +85,60 @@ export function dbCurrencyToDomain(
 // If you need account balance data, query bank_accounts directly (see accountsApi.getAll()).
 
 /**
- * Transforms a database transaction_inbox row to domain InboxItem type
- * CENTRALIZED NORMALIZATION: Converts null to undefined for optional fields
- * This ensures components only see string | undefined, not string | null
+ * Transforms a database transaction_inbox row to domain InboxItemViewEntity type
  *
  * WARNING: This transformer is for RAW TABLE rows only.
- * It sets currencyOriginal = undefined because the table doesn't have currency.
+ * currencyCode will be null because the table doesn't have currency.
  * For display with currency, use dbInboxItemViewToDomain() with transaction_inbox_view.
  */
 export function dbInboxItemToDomain(
   dbInboxItem: Database['public']['Tables']['transaction_inbox']['Row']
-) {
+): InboxItemViewEntity {
   return {
     id: dbInboxItem.id,
     userId: dbInboxItem.user_id,
-    amountCents: dbInboxItem.amount_cents !== null ? Number(dbInboxItem.amount_cents) : undefined,
-    // NOTE: currency_original removed from table - now derived from account via transaction_inbox_view
-    // This transformer is for raw table rows only. Use transaction_inbox_view for currency access.
-    currencyOriginal: undefined,                               // REMOVED from table schema
-    description: dbInboxItem.description ?? undefined,         // null → undefined
-    date: dbInboxItem.date ?? undefined,                       // null → undefined
-    sourceText: dbInboxItem.source_text ?? undefined,          // null → undefined
-    accountId: dbInboxItem.account_id ?? undefined,            // null → undefined
-    categoryId: dbInboxItem.category_id ?? undefined,          // null → undefined
-    exchangeRate: dbInboxItem.exchange_rate ?? undefined,      // null → undefined
-    notes: dbInboxItem.notes ?? undefined,                     // NEW: null → undefined
-    status: dbInboxItem.status,
+    amountCents: dbInboxItem.amount_cents !== null ? Number(dbInboxItem.amount_cents) : null,
+    currencyCode: null,  // Not available from raw table - use view for currency
+    description: dbInboxItem.description,
+    date: dbInboxItem.date,
+    sourceText: dbInboxItem.source_text,
+    accountId: dbInboxItem.account_id,
+    categoryId: dbInboxItem.category_id,
+    exchangeRate: dbInboxItem.exchange_rate,
+    notes: dbInboxItem.notes,
+    status: dbInboxItem.status as 'pending' | 'processed' | 'ignored',
     createdAt: dbInboxItem.created_at,
     updatedAt: dbInboxItem.updated_at,
-  } as const;
+  };
 }
 
 /**
- * Transforms a database transaction_inbox_view row to domain InboxItem type
+ * Transforms a database transaction_inbox_view row to domain InboxItemViewEntity type
  * VIEW TRANSFORMER: Includes currency from account JOIN and display fields
- * Use this for UI display - it has complete data including currency_original from account
+ * Use this for UI display - it has complete data including currencyCode from account
+ *
+ * CTO MANDATE: All optional fields use null (not undefined) for iOS Swift compatibility
  */
 export function dbInboxItemViewToDomain(
   dbInboxItemView: Database['public']['Views']['transaction_inbox_view']['Row']
-): InboxItem {
+): InboxItemViewEntity {
   return {
     id: dbInboxItemView.id || '',
     userId: dbInboxItemView.user_id || '',
-    amountCents: dbInboxItemView.amount_cents !== null ? Number(dbInboxItemView.amount_cents) : undefined,
-    currencyOriginal: dbInboxItemView.currency_original || '',  // From view alias (bank_accounts.currency_code)
-    description: dbInboxItemView.description ?? undefined,
-    date: dbInboxItemView.date ?? undefined,
-    sourceText: dbInboxItemView.source_text ?? undefined,
-    accountId: dbInboxItemView.account_id ?? undefined,
-    categoryId: dbInboxItemView.category_id ?? undefined,
-    exchangeRate: dbInboxItemView.exchange_rate ?? undefined,
-    notes: dbInboxItemView.notes ?? undefined,
+    amountCents: dbInboxItemView.amount_cents !== null ? Number(dbInboxItemView.amount_cents) : null,
+    currencyCode: dbInboxItemView.currency_original ?? null,  // From view alias (bank_accounts.currency_code)
+    description: dbInboxItemView.description ?? null,
+    date: dbInboxItemView.date ?? null,
+    sourceText: dbInboxItemView.source_text ?? null,
+    accountId: dbInboxItemView.account_id ?? null,
+    categoryId: dbInboxItemView.category_id ?? null,
+    exchangeRate: dbInboxItemView.exchange_rate ?? null,
+    notes: dbInboxItemView.notes ?? null,
     status: (dbInboxItemView.status || 'pending') as 'pending' | 'processed' | 'ignored',
     createdAt: dbInboxItemView.created_at || '',
     updatedAt: dbInboxItemView.updated_at || '',
 
-    // Joined display data (from view columns)
+    // Joined display data (from view columns) - these use undefined for "not present"
     account: dbInboxItemView.account_id ? {
       id: dbInboxItemView.account_id,
       name: dbInboxItemView.account_name || '',
@@ -160,7 +158,7 @@ export function dbInboxItemViewToDomain(
  */
 export function dbInboxItemViewsToDomain(
   dbInboxItemViews: Database['public']['Views']['transaction_inbox_view']['Row'][]
-): InboxItem[] {
+): InboxItemViewEntity[] {
   return dbInboxItemViews.map(dbInboxItemViewToDomain);
 }
 
@@ -457,7 +455,7 @@ export function dbCurrenciesToDomain(
  */
 export function dbInboxItemsToDomain(
   dbInboxItems: Database['public']['Tables']['transaction_inbox']['Row'][]
-) {
+): InboxItemViewEntity[] {
   return dbInboxItems.map(dbInboxItemToDomain);
 }
 
@@ -481,7 +479,7 @@ export function dbTransactionsToDomain(
  *
  * CRITICAL FIELDS (enforced non-null):
  * - id, userId, accountId: Must exist for a valid transaction
- * - amountOriginal, amountHome: Must exist (defaults to 0 if somehow null)
+ * - amountCents, amountHomeCents: Must exist (defaults to 0 if somehow null)
  * - currencyOriginal: Must exist (defaults to 'USD' if somehow null)
  * - exchangeRate: Must exist (defaults to 1 if somehow null)
  * - date: Must exist (defaults to current date if somehow null)

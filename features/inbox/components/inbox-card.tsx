@@ -10,19 +10,19 @@ import { CategorySelector } from '@/features/transactions/components/category-se
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { INBOX } from '@/lib/constants';
 import { toast } from 'sonner';
-import type { InboxItem } from '../types';
+import type { InboxItemViewEntity } from '../domain/entities';
 import { Check, X, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 interface InboxCardProps {
-  item: InboxItem;
+  item: InboxItemViewEntity;
 }
 
 export function InboxCard({ item }: InboxCardProps) {
   // FIX: Initialize state with existing data (prevents "amnesia" bug)
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(item.accountId || '');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(item.categoryId || '');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(item.accountId ?? '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(item.categoryId ?? '');
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
@@ -106,10 +106,10 @@ export function InboxCard({ item }: InboxCardProps) {
             </div>
             <div className="text-right">
               <p className="font-semibold text-lg">
-                {item.amountCents !== undefined ? (
+                {item.amountCents !== null ? (
                   <>
                     {item.amountCents > 0 ? '+' : ''}
-                    {(item.amountCents / 100).toFixed(2)} {item.currencyOriginal}
+                    {(item.amountCents / 100).toFixed(2)} {item.currencyCode}
                   </>
                 ) : (
                   <span className="text-muted-foreground">—</span>

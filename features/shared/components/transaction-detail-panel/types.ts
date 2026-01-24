@@ -7,30 +7,37 @@ export type PanelMode = 'inbox' | 'transaction';
 
 /**
  * Normalized data structure for the panel
- * Works with both InboxItem and TransactionRow
+ * Works with both InboxItemViewEntity and TransactionViewEntity
  * Uses optional properties (undefined) for consistency with domain types
+ *
+ * NAMING CONVENTION (CTO Mandate):
+ * - displayAmount: Decimal dollars for UI display (converted from amountCents)
+ * - amountCents: Integer cents for storage/logic (NOT used here - UI boundary)
  */
 export interface PanelData {
   id: string;
   description?: string;
-  amountOriginal?: number;
+  displayAmount?: number;  // Decimal dollars for UI display (e.g., 10.50)
   currency: string;
   accountId?: string;
   categoryId?: string;
   date?: string;
   notes?: string;
-  sourceText?: string;    // NEW: Raw source context (OCR, bank import, etc.)
+  sourceText?: string;    // Raw source context (OCR, bank import, etc.)
   exchangeRate?: number;  // For cross-currency transactions
-  reconciliationId?: string | null;  // NEW: Links to reconciliation session
-  cleared?: boolean;  // NEW: Auto-managed flag (TRUE when linked to reconciliation)
+  reconciliationId?: string | null;  // Links to reconciliation session
+  cleared?: boolean;  // Auto-managed flag (TRUE when linked to reconciliation)
 }
 
 /**
  * Editable fields tracked in local state
+ *
+ * NAMING CONVENTION (CTO Mandate):
+ * - displayAmount: Decimal dollars for UI editing
  */
 export interface EditedFields {
   description?: string;
-  amountOriginal?: number;
+  displayAmount?: number;  // Decimal dollars for UI editing
   accountId?: string;
   categoryId?: string;
   date?: string;
@@ -65,7 +72,7 @@ export interface SelectableCategory {
  */
 export interface ValidationErrors {
   description?: string;
-  amountOriginal?: string;
+  displayAmount?: string;
   accountId?: string;
   categoryId?: string;
   date?: string;

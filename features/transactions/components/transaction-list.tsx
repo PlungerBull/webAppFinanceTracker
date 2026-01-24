@@ -24,7 +24,7 @@ import type { TransactionViewEntity } from '../domain';
 // Regular transactions have required amounts, but inbox items can have null amounts (for displaying "--")
 // Repository Pattern: Uses integer cents (amountCents), converted to decimal for display
 type TransactionListRow = Omit<TransactionViewEntity, 'amountCents' | 'amountHomeCents'> & {
-  amountOriginal: number | null; // Display format: decimal (converted from amountCents)
+  displayAmount: number | null; // Display format: decimal (converted from amountCents)
   amountHome: number | null; // Display format: decimal (converted from amountHomeCents)
 };
 
@@ -88,17 +88,17 @@ export function TransactionList({
   const isCompact = variant === 'compact';
 
   // Normalize transactions to ensure decimal amounts for display
-  // Converts TransactionRow (with amountCents) → TransactionListRow (with amountOriginal as decimal)
+  // Converts TransactionRow (with amountCents) → TransactionListRow (with displayAmount as decimal)
   const normalizedTransactions: TransactionListRow[] = transactions.map((t) => {
-    // Check if transaction has amountCents (new format) or amountOriginal (already normalized)
+    // Check if transaction has amountCents (new format) or displayAmount (already normalized)
     const hasAmountCents = 'amountCents' in t;
 
     return {
       ...t,
       // Convert integer cents to decimal for display, or use existing decimal
-      amountOriginal: hasAmountCents
+      displayAmount: hasAmountCents
         ? (t as TransactionViewEntity).amountCents / 100
-        : (t as TransactionListRow).amountOriginal,
+        : (t as TransactionListRow).displayAmount,
       amountHome: hasAmountCents
         ? (t as TransactionViewEntity).amountHomeCents / 100
         : (t as TransactionListRow).amountHome,
@@ -479,16 +479,16 @@ export function TransactionList({
                         <p
                           className={cn(
                             'text-lg font-bold font-mono tabular-nums',
-                            transaction.amountOriginal === null
+                            transaction.displayAmount === null
                               ? 'text-gray-400'
-                              : transaction.amountOriginal >= 0
+                              : transaction.displayAmount >= 0
                               ? 'text-green-600'
                               : 'text-gray-900'
                           )}
                         >
-                          {transaction.amountOriginal === null
+                          {transaction.displayAmount === null
                             ? '--'
-                            : formatCurrency(transaction.amountOriginal, transaction.currencyOriginal).replace(/[A-Z]{3}\s?/, '')
+                            : formatCurrency(transaction.displayAmount, transaction.currencyOriginal).replace(/[A-Z]{3}\s?/, '')
                           }
                         </p>
 

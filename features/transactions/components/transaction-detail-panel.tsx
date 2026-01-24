@@ -35,7 +35,7 @@ export function TransactionDetailPanel({
     return {
       id: transaction.id,
       description: transaction.description ?? undefined,
-      amountOriginal: transaction.amountCents / 100, // Convert integer cents to decimal
+      displayAmount: transaction.amountCents / 100, // Convert integer cents to decimal
       currency: transaction.currencyOriginal,
       accountId: transaction.accountId,
       categoryId: transaction.categoryId ?? undefined,

@@ -6,7 +6,7 @@ import { SidebarProvider } from '@/contexts/sidebar-context';
 import { TransactionList } from '@/features/transactions/components/transaction-list';
 import { InboxDetailPanel } from './inbox-detail-panel';
 import { useInboxItems } from '../hooks/use-inbox';
-import type { InboxItem } from '../types';
+import type { InboxItemViewEntity } from '../domain/entities';
 
 function InboxContent() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -19,32 +19,32 @@ function InboxContent() {
     totalCount,
   } = useInboxItems();
 
-  // Transform InboxItem to match TransactionViewEntity shape expected by TransactionList
+  // Transform InboxItemViewEntity to match TransactionViewEntity shape expected by TransactionList
   // NULL-SAFE: Handle partial drafts with missing amount/description
   // INTEGER CENTS: Convert decimal amounts to integer cents (Repository Pattern)
-  const transactions = inboxItems.map((item) => ({
+  const transactions = inboxItems.map((item: InboxItemViewEntity) => ({
     id: item.id,
     version: 1, // Inbox drafts initialize at version 1
     userId: item.userId,
-    accountId: item.accountId || '',
-    accountName: item.account?.name || 'Unassigned',
+    accountId: item.accountId ?? '',
+    accountName: item.account?.name ?? 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
-    accountCurrency: item.currencyOriginal || 'USD', // Currency from account
+    accountCurrency: item.currencyCode ?? 'USD', // Currency from account
     // INTEGER CENTS: Already in integer cents from domain
     amountCents: item.amountCents ?? 0,
     amountHomeCents: item.amountCents ?? 0,
-    currencyOriginal: item.currencyOriginal || '',
+    currencyOriginal: item.currencyCode ?? '',
     exchangeRate: item.exchangeRate ?? 1.0,
-    date: item.date || new Date().toISOString(),
+    date: item.date ?? new Date().toISOString(),
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     deletedAt: null, // Inbox items are never soft-deleted
-    categoryId: item.categoryId ?? null,
+    categoryId: item.categoryId,
     categoryName: item.category?.name ?? null,
     categoryColor: item.category?.color ?? null,
     categoryType: null, // Inbox items don't have type yet
     transferId: null, // Inbox items are never transfers
-    description: item.description ?? '—', // Show dash if undefined
+    description: item.description ?? '—', // Show dash if null
     notes: null,
     reconciliationId: null, // Inbox items aren't reconciled yet
     cleared: false, // Inbox items aren't cleared
@@ -52,7 +52,7 @@ function InboxContent() {
   }));
 
   const selectedItem = selectedItemId
-    ? inboxItems.find((item) => item.id === selectedItemId) || null
+    ? inboxItems.find((item: InboxItemViewEntity) => item.id === selectedItemId) ?? null
     : null;
 
   return (

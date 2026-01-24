@@ -6,12 +6,12 @@ import type { PanelData, SelectableAccount, SelectableCategory } from '@/feature
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
-import type { InboxItem } from '../types';
+import type { InboxItemViewEntity } from '../domain/entities';
 import { toast } from 'sonner';
 import { INBOX } from '@/lib/constants';
 
 interface InboxDetailPanelProps {
-  item: InboxItem | null;
+  item: InboxItemViewEntity | null;
 }
 
 export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
@@ -21,20 +21,20 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   const leafCategories = useLeafCategories();
   const { data: accountsData = [] } = useAccounts();
 
-  // Transform InboxItem to PanelData
+  // Transform InboxItemViewEntity to PanelData
   const panelData: PanelData | null = useMemo(() => {
     if (!item) return null;
 
     return {
       id: item.id,
-      description: item.description,
-      amountOriginal: item.amountCents !== undefined ? item.amountCents / 100 : undefined,  // Convert cents to dollars for display
-      currency: item.currencyOriginal,
-      accountId: item.accountId,
-      categoryId: item.categoryId,
-      date: item.date,
-      notes: item.notes,
-      sourceText: item.sourceText,
+      description: item.description ?? undefined,
+      displayAmount: item.amountCents !== null ? item.amountCents / 100 : undefined,  // Convert cents to dollars for display
+      currency: item.currencyCode ?? '',  // Required field - empty string if no account selected yet
+      accountId: item.accountId ?? undefined,
+      categoryId: item.categoryId ?? undefined,
+      date: item.date ?? undefined,
+      notes: item.notes ?? undefined,
+      sourceText: item.sourceText ?? undefined,
     };
   }, [item]);
 
@@ -79,14 +79,14 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   }) => {
     if (!item) return;
 
-    // Extract final values with fallbacks
-    const finalAmount = updates.amount ?? (item.amountCents !== undefined ? item.amountCents / 100 : undefined);
-    const finalDescription = updates.description ?? item.description;
-    const accountId = updates.accountId ?? item.accountId;
-    const categoryId = updates.categoryId ?? item.categoryId;
+    // Extract final values with fallbacks (null → undefined conversion at boundary)
+    const finalAmount = updates.amount ?? (item.amountCents !== null ? item.amountCents / 100 : undefined);
+    const finalDescription = updates.description ?? item.description ?? undefined;
+    const accountId = updates.accountId ?? item.accountId ?? undefined;
+    const categoryId = updates.categoryId ?? item.categoryId ?? undefined;
     const finalDate = updates.date ?? item.date ?? new Date().toISOString();
-    const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate;
-    const finalNotes = updates.notes ?? item.notes;                  // NEW
+    const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate ?? undefined;
+    const finalNotes = updates.notes ?? item.notes ?? undefined;
 
     try {
       await updateDraftMutation.mutateAsync({
@@ -120,11 +120,11 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   }) => {
     if (!item) return;
 
-    // Extract final values with fallbacks
-    const finalAmount = updates.amount ?? (item.amountCents !== undefined ? item.amountCents / 100 : undefined);
-    const finalDescription = updates.description ?? item.description;
-    const accountId = updates.accountId ?? item.accountId;
-    const categoryId = updates.categoryId ?? item.categoryId;
+    // Extract final values with fallbacks (null → undefined conversion at boundary)
+    const finalAmount = updates.amount ?? (item.amountCents !== null ? item.amountCents / 100 : undefined);
+    const finalDescription = updates.description ?? item.description ?? undefined;
+    const accountId = updates.accountId ?? item.accountId ?? undefined;
+    const categoryId = updates.categoryId ?? item.categoryId ?? undefined;
     const finalDate = updates.date ?? item.date ?? new Date().toISOString();
 
     // SAFETY CHECK: These should never be null/undefined here
@@ -136,8 +136,8 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
 
     // Get selected account for currency check
     const selectedAccount = accountsData.find(a => a.id === accountId);
-    const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== item.currencyOriginal;  // RENAMED
-    const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate;
+    const requiresExchangeRate = selectedAccount && selectedAccount.currencyCode !== item.currencyCode;
+    const finalExchangeRate = updates.exchangeRate ?? item.exchangeRate ?? undefined;
 
     // MULTI-CURRENCY GATEKEEPER: Block if exchange rate is missing when required
     if (requiresExchangeRate && (!finalExchangeRate || finalExchangeRate === 0)) {
@@ -155,7 +155,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
         accountId: accountId,
         categoryId: categoryId,
         finalDescription: finalDescription ?? '',
-        finalAmount: finalAmount ?? 0,
+        finalAmountCents: finalAmount !== undefined ? Math.round(finalAmount * 100) : 0,  // Convert dollars to integer cents
         finalDate,
         exchangeRate: finalExchangeRate,
       });

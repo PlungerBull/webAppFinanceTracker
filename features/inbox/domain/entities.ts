@@ -5,7 +5,7 @@
  * The Inbox is a "staging area" for incomplete financial data.
  *
  * CTO MANDATES:
- * - Integer cents for all monetary amounts (amountCents not amountOriginal)
+ * - Integer cents for all monetary amounts (amountCents)
  * - DataResult pattern for explicit error handling
  * - Swift-serializable structures
  *
@@ -16,7 +16,7 @@
  * Inbox Item Entity
  *
  * Represents a "dirty" transaction that needs user review before entering the ledger.
- * All optional fields use undefined (not null) for consistency.
+ * All optional fields use null (not undefined) for iOS Swift compatibility.
  *
  * Swift Mirror:
  * ```swift
