@@ -18,7 +18,7 @@ import { calculateBalanceDeltas, calculateCreateDelta, calculateDeleteDelta, toC
 import { toast } from 'sonner';
 import { useTransactionService } from './use-transaction-service';
 import type { TransactionViewEntity, CreateTransactionDTO, UpdateTransactionDTO } from '../domain';
-import type { TransactionFilters } from '../domain/types';
+import type { TransactionFilters, BulkUpdateTransactionDTO, BulkUpdateResult } from '../domain/types';
 
 /**
  * Hook for fetching paginated transactions with infinite scroll
@@ -484,16 +484,93 @@ export function useUpdateTransactionBatch() {
 /**
  * Hook for bulk updating multiple transactions
  *
+ * CTO MANDATE: TRUE OPTIMISTIC UI
+ * Uses TanStack Query onMutate pattern for zero-latency UX.
+ * Updates cache immediately (within 16ms), before Supabase responds.
+ *
  * @returns Mutation for bulk operations
  */
 export function useBulkUpdateTransactions() {
   const service = useTransactionService();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<
+    BulkUpdateResult,
+    Error,
+    BulkUpdateTransactionDTO,
+    { previousQueries: [unknown, unknown][] }
+  >({
     mutationKey: ['bulk-update-transactions'],
-    mutationFn: service.bulkUpdate.bind(service),
+    mutationFn: (data: BulkUpdateTransactionDTO) => service.bulkUpdate(data),
 
+    /**
+     * Optimistic Update: Immediately update the cache before server responds
+     * This gives users zero-latency feedback for their actions.
+     */
+    onMutate: async (newData: BulkUpdateTransactionDTO) => {
+      // 1. Cancel any outgoing refetches to prevent overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+
+      // 2. Snapshot all transaction queries for potential rollback
+      const previousQueries = queryClient.getQueriesData<{
+        pages: Array<{ data: TransactionViewEntity[]; count: number }>;
+        pageParams: number[];
+      }>({ queryKey: ['transactions', 'infinite'] });
+
+      // 3. Optimistically update all matching transactions in cache
+      const { transactionIds, updates } = newData;
+      const idsToUpdate = new Set(transactionIds);
+
+      queryClient.setQueriesData<{
+        pages: Array<{ data: TransactionViewEntity[]; count: number }>;
+        pageParams: number[];
+      }>(
+        { queryKey: ['transactions', 'infinite'] },
+        (old) => {
+          if (!old) return old;
+
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              data: page.data.map((transaction) => {
+                if (idsToUpdate.has(transaction.id)) {
+                  // Apply optimistic updates
+                  return {
+                    ...transaction,
+                    ...updates,
+                    // Increment version optimistically (server will confirm)
+                    version: transaction.version + 1,
+                  };
+                }
+                return transaction;
+              }),
+            })),
+          };
+        }
+      );
+
+      // 4. Return context with snapshot for rollback
+      return { previousQueries };
+    },
+
+    /**
+     * Rollback: Restore cache to previous state on error
+     */
+    onError: (_err, _newData, context) => {
+      // Restore all queries to their previous state
+      if (context?.previousQueries) {
+        context.previousQueries.forEach((entry) => {
+          const [queryKey, data] = entry as [readonly unknown[], unknown];
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+
+    /**
+     * Settlement: Invalidate to ensure server-authoritative data
+     * This runs after success OR error to sync with truth.
+     */
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });

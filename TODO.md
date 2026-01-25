@@ -11,13 +11,18 @@
 
 > **CTO Note:** These files violate the Single Responsibility Principle and must be broken down before scaling to iOS. Smaller components map cleanly to native ViewControllers/SwiftUI Views.
 
-### 1. AllTransactionsTable.tsx (Critical)
+### 1. AllTransactionsTable.tsx - COMPLETED
 
-Currently manages: Filter State, Bulk Selection, Data Fetching, Complex Handlers (Shift+Click range selection, multi-currency linking), and UI Layout.
+Refactored from ~330 lines to ~160 lines using composition pattern.
 
-- [ ] **Extract `TransactionFilterBar`:** Move search, date, and category filter logic into self-contained component
-- [ ] **Extract `BulkSelectionController`:** Move selection modifier logic (Shift/Cmd clicks) and bulk action handlers into custom hook or controller component
-- [ ] **Modularize `TransactionsContent`:** Break the ~200-line main function into sub-sections or smaller functional components
+**Completed:**
+- [x] **Extract `TransactionFilterBar`:** Pure component with no URL knowledge, values/callbacks only
+- [x] **Extract `useBulkSelection` hook:** Domain Controller with callback-based side effects (Swift-portable)
+- [x] **Extract `useTransactionFilters` hook:** Filter state with `filterKey` for stable dependencies
+- [x] **Extract `TransactionRow`:** React.memo with custom comparison for virtualized list performance
+- [x] **True Intersection Logic:** Selection cleanup preserves valid items (48/50 scenario)
+- [x] **Optimistic UI:** TanStack Query `onMutate` pattern for zero-latency bulk updates
+- [x] **Unit Tests:** 26 tests covering selection, intersection, bulk apply, partial success
 
 ### 2. AddTransactionModal.tsx
 
@@ -44,7 +49,7 @@ Growing large handling fetch, update, promote, and dismiss operations in one pla
 
 ## Repository Pattern Implementation
 
-### Inbox Feature: 🔄 In Progress
+### Inbox Feature: In Progress
 > **CTO Note:** The `promote_inbox_item` RPC already exists in the database. Use it to hit the Ledger.
 
 - [ ] Create `InboxEntity` in domain layer (integer cents, typed status)
@@ -137,8 +142,8 @@ Before implementing offline sync, we must clean up these architectural issues:
 
 ## Reliability & Go-Live Readiness
 
-- [ ] **Install Test Runner:** Add `vitest` and `@testing-library/react` immediately. We currently have zero test coverage.
-- [ ] **Unit Test Core Logic:** Implement unit tests for core balance logic and service-layer business rules
+- [x] **Install Test Runner:** Vitest and @testing-library/react installed
+- [x] **Unit Test Core Logic:** 44 tests covering balance logic, inbox repository, and bulk selection
 - [ ] **CI Pipeline:** Create a GitHub Action to block merges that fail type checks or linting.
 - [ ] **Error Boundary:** Wrap the application root in a global Error Boundary (e.g., Sentry) to catch and report runtime crashes.
 - [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports.

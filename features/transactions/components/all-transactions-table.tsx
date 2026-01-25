@@ -1,55 +1,53 @@
 'use client';
 
+/**
+ * AllTransactionsTable Component (Orchestrator)
+ *
+ * Orchestration component that composes domain hooks and UI components.
+ * After refactoring: ~160 lines of composition logic.
+ *
+ * CTO MANDATES IMPLEMENTED:
+ * 1. Domain Hooks as Controllers - useBulkSelection, useTransactionFilters
+ * 2. Side Effects as Callbacks - Toast calls passed to hooks
+ * 3. Composition Pattern - FilterBar and TransactionList as siblings
+ * 4. Dumb Components - TransactionList has no filter UI
+ *
+ * @module all-transactions-table
+ */
+
 import { useState, useMemo, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useSearchParams } from 'next/navigation';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { TransactionList } from '@/features/transactions/components/transaction-list';
+import { TransactionFilterBar } from '@/features/transactions/components/transaction-filter-bar';
 import { TransactionDetailPanel } from '@/features/transactions/components/transaction-detail-panel';
 import { BulkActionBar } from '@/features/transactions/components/bulk-action-bar';
-import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
-import { useTransactions, useCategoryCounts, useBulkUpdateTransactions } from '../hooks/use-transactions';
+import { useTransactions, useCategoryCounts } from '../hooks/use-transactions';
+import { useBulkSelection } from '../hooks/use-bulk-selection';
+import { useTransactionFilters } from '../hooks/use-transaction-filters';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useUserSettings, useUpdateSortPreference } from '@/features/settings/hooks/use-user-settings';
-import { useTransactionSelection } from '@/stores/transaction-selection-store';
-import { useLinkTransactions, useUnlinkTransactions } from '@/features/reconciliations/hooks/use-reconciliations';
 import { toast } from 'sonner';
 import type { TransactionViewEntity } from '../domain';
 import type { TransactionSortMode } from '@/types/domain';
 
 function TransactionsContent() {
+  // === URL State (Orchestrator responsibility) ===
   const searchParams = useSearchParams();
   const accountId = searchParams.get('account');
   const categoryId = searchParams.get('categoryId');
   const groupingId = searchParams.get('grouping');
+
+  // === Detail Panel State ===
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
-  // Bulk selection store
-  const {
-    selectedIds,
-    isBulkMode,
-    stagedUpdates,
-    lastSelectedIndex,
-    toggleSelection,
-    selectRange,
-    clearSelection,
-    setStagedUpdate,
-    clearStagedUpdates,
-    enterBulkMode,
-    exitBulkMode,
-    hasSelection,
-    canApply,
-    getSelectedIds,
-    getSelectedVersions,
-  } = useTransactionSelection();
-
-  // Fetch user settings for sort preference
+  // === Sort Preference ===
   const { data: userSettings, isLoading: isLoadingSettings } = useUserSettings();
   const updateSortPreference = useUpdateSortPreference();
 
-  // Local sort state (synced with user settings)
   const [sortBy, setSortBy] = useState<TransactionSortMode>(
     userSettings?.transactionSortPreference || 'date'
   );
@@ -61,46 +59,15 @@ function TransactionsContent() {
     }
   }, [userSettings?.transactionSortPreference]);
 
-  // Handle sort toggle with persistence
   const handleSortChange = (newSortBy: TransactionSortMode) => {
-    setSortBy(newSortBy); // Immediate UI update
-    updateSortPreference.mutate(newSortBy); // Persist to database
+    setSortBy(newSortBy);
+    updateSortPreference.mutate(newSortBy);
   };
 
-  // Fetch children if grouping is selected
-  const { data: groupingChildren = [] } = useGroupingChildren(groupingId || '');
+  // === Filters (Domain Hook) ===
+  const filters = useTransactionFilters({ groupingId });
 
-  // Filter states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-
-  // Bulk update mutation
-  const bulkUpdateMutation = useBulkUpdateTransactions();
-
-  // Reconciliation mutations
-  const linkTransactionsMutation = useLinkTransactions();
-  const unlinkTransactionsMutation = useUnlinkTransactions();
-
-  // Build category filter for grouping
-  const categoryFilter = useMemo(() => {
-    if (groupingId && groupingChildren.length > 0) {
-      return groupingChildren.map(c => c.id);
-    }
-    return undefined;
-  }, [groupingId, groupingChildren]);
-
-  // Build active category filter by merging grouping and user selection
-  const activeCategoryIds = useMemo(() => {
-    // If user has manually selected categories, use ONLY those (they are specific)
-    if (selectedCategories.length > 0) {
-      return selectedCategories;
-    }
-    // Otherwise, fallback to the grouping filter (if any)
-    return categoryFilter;
-  }, [selectedCategories, categoryFilter]);
-
-  // Use API layer hooks instead of direct database calls (infinite query for virtualization)
+  // === Queries ===
   const {
     data: transactions,
     isLoading: isLoadingTransactions,
@@ -111,178 +78,110 @@ function TransactionsContent() {
   } = useTransactions({
     accountId: accountId || undefined,
     categoryId: categoryId || undefined,
-    categoryIds: activeCategoryIds,
-    // Server-side filtering
-    searchQuery: searchQuery || undefined,
-    date: selectedDate,
-    sortBy, // Pass current sort mode
+    categoryIds: filters.activeCategoryIds,
+    searchQuery: filters.searchQuery || undefined,
+    date: filters.selectedDate,
+    sortBy,
   });
 
   const categories = useLeafCategories();
-  const { data: accountsData = [] } = useGroupedAccounts(); // Still needed for sidebar
-  const { data: flatAccounts = [] } = useAccounts(); // Flat accounts with currencySymbol for detail panel
+  const { data: accountsData = [] } = useGroupedAccounts();
+  const { data: flatAccounts = [] } = useAccounts();
 
-  // Get server-side category counts (accurate even with pagination)
   const { data: categoryCounts = {} } = useCategoryCounts({
     accountId: accountId || undefined,
-    categoryIds: activeCategoryIds,
-    searchQuery: searchQuery || undefined,
-    date: selectedDate,
-    sortBy, // Pass for cache separation
+    categoryIds: filters.activeCategoryIds,
+    searchQuery: filters.searchQuery || undefined,
+    date: filters.selectedDate,
+    sortBy,
   });
 
   const isLoading = isLoadingTransactions || isLoadingSettings;
 
-  // Use grouped accounts directly (each group represents an account)
-  const accounts = accountsData;
+  // === Bulk Selection (Domain Hook) ===
+  // Pass filterKey for stable dependency tracking (no JSON.stringify)
+  const bulk = useBulkSelection({
+    transactions,
+    onFocusTransaction: setSelectedTransactionId,
+    filterKey: filters.filterKey,
+  });
 
-  // Determine display names
-  const accountName = accountId ? flatAccounts.find(a => a.id === accountId)?.name : null;
-  const categoryName = categoryId ? categories.find(c => c.id === categoryId)?.name : null;
-  const groupingName = groupingId && groupingChildren.length > 0 ? groupingChildren[0]?.name : null;
+  // === Side Effect Callbacks (Passed to domain hook) ===
+  const handleBulkApply = () =>
+    bulk.handleBulkApply({
+      onSuccess: (result) => {
+        if (result.failureCount > 0) {
+          toast.error(
+            `Updated ${result.successCount} transactions, ${result.failureCount} failed.`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.success(`Successfully updated ${result.successCount} transactions`);
+        }
+      },
+      onError: (err) => toast.error(err.message),
+      onLargeSelection: (count) =>
+        toast.info(`Processing ${count} transactions. This may take a moment...`),
+    });
 
-  // No client-side filtering needed anymore - API handles it all
-  const filteredTransactions = transactions;
+  // === Derived State ===
+  const accountName = accountId ? flatAccounts.find((a) => a.id === accountId)?.name : null;
+  const categoryName = categoryId ? categories.find((c) => c.id === categoryId)?.name : null;
+  const groupingName =
+    groupingId && filters.groupingChildren.length > 0 ? filters.groupingChildren[0]?.name : null;
 
-  // Determine the title for the transaction list
   const pageTitle = groupingName || categoryName || accountName || 'Transactions';
 
   const selectedTransaction = selectedTransactionId
     ? transactions.find((t: TransactionViewEntity) => t.id === selectedTransactionId) || null
     : null;
 
-  // Clear selections when filters change
-  useEffect(() => {
-    if (isBulkMode && hasSelection()) {
-      clearSelection();
-    }
-  }, [searchQuery, selectedDate, selectedCategories, sortBy]);
-
-  // Handle bulk mode toggle
-  const handleToggleBulkMode = () => {
-    if (isBulkMode) {
-      exitBulkMode();
-    } else {
-      enterBulkMode();
-    }
-  };
-
-  // Handle selection toggle with Shift+Click, Cmd/Ctrl+Click, and normal click support
-  const handleToggleSelection = (id: string, index: number, event: React.MouseEvent) => {
-    const allTransactionIds = transactions.map(t => t.id);
-    const hasModifierKey = event.shiftKey || event.metaKey || event.ctrlKey;
-
-    if (event.shiftKey && lastSelectedIndex !== null) {
-      // Shift+Click: Range selection from last selected to current
-      selectRange(lastSelectedIndex, index, allTransactionIds);
-    } else if (hasModifierKey) {
-      // Cmd/Ctrl+Click: Toggle individual item (additive selection)
-      toggleSelection(id, index);
-    } else {
-      // Normal Click: RESET behavior
-      // Clear all selections, focus this item, start new selection set with only this item
-      clearSelection();
-      toggleSelection(id, index);
-      setSelectedTransactionId(id);
-    }
-  };
-
-  // Handle bulk apply
-  const handleBulkApply = async () => {
-    if (!canApply()) {
-      toast.error('Please select transactions and specify at least one field to update');
-      return;
-    }
-
-    // Show warning for large selections
-    if (selectedIds.size >= 50) {
-      toast.info(`Processing ${selectedIds.size} transactions. This may take a moment...`);
-    }
-
-    try {
-      // Handle reconciliation linking/unlinking separately if reconciliationId is in stagedUpdates
-      if ('reconciliationId' in stagedUpdates) {
-        const reconciliationId = stagedUpdates.reconciliationId;
-
-        if (reconciliationId === undefined) {
-          // Unlink transactions
-          await unlinkTransactionsMutation.mutateAsync(Array.from(selectedIds));
-        } else if (reconciliationId) {
-          // Link transactions to reconciliation
-          await linkTransactionsMutation.mutateAsync({
-            reconciliationId,
-            transactionIds: Array.from(selectedIds),
-          });
-        }
-
-        // Clear selections and staged updates after successful operation
-        clearSelection();
-        clearStagedUpdates();
-        return;
-      }
-
-      // Standard bulk update for other fields
-      // Note: Bulk updates don't support version checking yet (todo: implement optimistic locking for bulk ops)
-      const result = await bulkUpdateMutation.mutateAsync({
-        transactionIds: getSelectedIds(),
-        updates: stagedUpdates,
-      });
-
-      // Show feedback
-      if (result.failureCount > 0) {
-        toast.error(
-          `Updated ${result.successCount} transactions, ${result.failureCount} failed.`,
-          { duration: 5000 }
-        );
-      } else {
-        toast.success(`Successfully updated ${result.successCount} transactions`);
-      }
-
-      // Clear selections and staged updates after successful operation
-      clearSelection();
-      clearStagedUpdates();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update transactions');
-    }
-  };
-
-
+  // === Render (Composition Pattern) ===
+  // FilterBar and TransactionList are siblings, not parent-child
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-zinc-900">
-      {/* Section 1: Sidebar */}
+      {/* Sidebar */}
       <Sidebar />
 
-      {/* Section 2: Transactions List (Virtualized with Infinite Scroll) */}
-      <TransactionList
-        transactions={filteredTransactions}
-        isLoading={isLoading}
-        isFetchingNextPage={isFetchingNextPage}
-        hasNextPage={hasNextPage}
-        fetchNextPage={fetchNextPage}
-        selectedTransactionId={selectedTransactionId}
-        onTransactionSelect={setSelectedTransactionId}
-        title={pageTitle}
-        totalCount={totalCount}
-        // Filter props
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        selectedCategories={selectedCategories}
-        onCategoryChange={setSelectedCategories}
-        categories={categories}
-        categoryCounts={categoryCounts}
-        // Sort props
-        sortBy={sortBy}
-        onSortChange={handleSortChange}
-        // Bulk selection props
-        isBulkMode={isBulkMode}
-        selectedIds={selectedIds}
-        onToggleBulkMode={handleToggleBulkMode}
-        onToggleSelection={handleToggleSelection}
-      />
+      {/* Main Content: Filter Bar + Transaction List (siblings) */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Filter Bar - Pure component, rendered as sibling */}
+        <TransactionFilterBar
+          title={pageTitle}
+          totalCount={totalCount}
+          searchQuery={filters.searchQuery}
+          onSearchChange={filters.setSearchQuery}
+          selectedDate={filters.selectedDate}
+          onDateChange={filters.setSelectedDate}
+          selectedCategories={filters.selectedCategories}
+          onCategoryChange={filters.setSelectedCategories}
+          categories={categories}
+          categoryCounts={categoryCounts}
+          sortBy={sortBy}
+          onSortChange={handleSortChange}
+          isBulkMode={bulk.isBulkMode}
+          onToggleBulkMode={bulk.handleToggleBulkMode}
+          onClearFilters={filters.clearAllFilters}
+        />
 
-      {/* Section 3: Transaction Details Panel */}
+        {/* Transaction List - Dumb virtualizer, no filter UI */}
+        <TransactionList
+          transactions={transactions}
+          isLoading={isLoading}
+          isFetchingNextPage={isFetchingNextPage}
+          hasNextPage={hasNextPage}
+          fetchNextPage={fetchNextPage}
+          selectedTransactionId={selectedTransactionId}
+          onTransactionSelect={setSelectedTransactionId}
+          isBulkMode={bulk.isBulkMode}
+          selectedIds={bulk.selectedIds}
+          onToggleBulkMode={bulk.handleToggleBulkMode}
+          onToggleSelection={bulk.handleToggleSelection}
+          onEnterBulkMode={bulk.enterBulkMode}
+        />
+      </div>
+
+      {/* Transaction Details Panel */}
       <TransactionDetailPanel
         transaction={selectedTransaction}
         accountId={accountId}
@@ -290,29 +189,25 @@ function TransactionsContent() {
         accounts={flatAccounts}
       />
 
-      {/* Bulk Action Bar - show only in bulk mode when selections exist */}
-      {isBulkMode && hasSelection() && (
+      {/* Bulk Action Bar - Conditionally rendered */}
+      {bulk.isBulkMode && bulk.hasSelection && (
         <BulkActionBar
-          selectedCount={selectedIds.size}
-          onClearSelection={clearSelection}
+          selectedCount={bulk.selectedIds.size}
+          onClearSelection={bulk.clearSelection}
           onApply={handleBulkApply}
-          isApplying={
-            bulkUpdateMutation.isPending ||
-            linkTransactionsMutation.isPending ||
-            unlinkTransactionsMutation.isPending
-          }
-          canApply={canApply()}
-          categoryValue={stagedUpdates.categoryId}
-          onCategoryChange={(value) => setStagedUpdate('categoryId', value)}
-          accountValue={stagedUpdates.accountId}
-          onAccountChange={(value) => setStagedUpdate('accountId', value)}
-          dateValue={stagedUpdates.date}
-          onDateChange={(value) => setStagedUpdate('date', value)}
-          notesValue={stagedUpdates.notes}
-          onNotesChange={(value) => setStagedUpdate('notes', value)}
-          reconciliationValue={stagedUpdates.reconciliationId}
-          onReconciliationChange={(value) => setStagedUpdate('reconciliationId', value)}
-          selectedIds={selectedIds}
+          isApplying={bulk.isPendingSync}
+          canApply={bulk.canApply}
+          categoryValue={bulk.stagedUpdates.categoryId}
+          onCategoryChange={(value) => bulk.setStagedUpdate('categoryId', value)}
+          accountValue={bulk.stagedUpdates.accountId}
+          onAccountChange={(value) => bulk.setStagedUpdate('accountId', value)}
+          dateValue={bulk.stagedUpdates.date}
+          onDateChange={(value) => bulk.setStagedUpdate('date', value)}
+          notesValue={bulk.stagedUpdates.notes}
+          onNotesChange={(value) => bulk.setStagedUpdate('notes', value)}
+          reconciliationValue={bulk.stagedUpdates.reconciliationId}
+          onReconciliationChange={(value) => bulk.setStagedUpdate('reconciliationId', value)}
+          selectedIds={bulk.selectedIds}
           transactions={transactions}
         />
       )}
