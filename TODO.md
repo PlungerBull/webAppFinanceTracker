@@ -24,13 +24,23 @@ Refactored from ~330 lines to ~160 lines using composition pattern.
 - [x] **Optimistic UI:** TanStack Query `onMutate` pattern for zero-latency bulk updates
 - [x] **Unit Tests:** 26 tests covering selection, intersection, bulk apply, partial success
 
-### 2. AddTransactionModal.tsx
+### 2. AddTransactionModal.tsx - COMPLETED
 
-Currently handles two domains (Ledger Transactions + Internal Transfers) with separate state blocks, validation logic, and mutation calls. Also contains the "Smart Routing" logic leak.
+Refactored from 296 lines God Component to:
+- **Wrapper (85 lines):** `AddTransactionModal` owns Dialog context, mode switching
+- **Content Components:** `LedgerTransactionModalContent` (React.memo), `TransferModalContent` (React.memo)
+- **Service Layer:** `TransactionRoutingService` (Decision Engine with 39 unit tests)
 
-- [ ] **Split by Mode:** Create separate `LedgerTransactionModal` and `TransferModal` components
-- [ ] **Unified Wrapper:** Create lightweight wrapper that only handles mode-switching tab and Dialog state
-- [ ] **Service Extraction:** Move submission logic into `TransactionService` so modal only handles UI validation
+**Completed:**
+- [x] **Split by Mode:** Created `LedgerTransactionModalContent` and `TransferModalContent` (React.memo'd)
+- [x] **Unified Wrapper:** `AddTransactionModal` handles Dialog context, mode tabs only
+- [x] **Service Extraction:** `TransactionRoutingService` centralizes Smart Routing (Ledger vs Inbox)
+- [x] **iOS Readiness:** Pure `determineRoute()` function mirrors Swift protocol exactly
+- [x] **16 Permutation Tests:** All 4 required fields tested (only 1/16 routes to Ledger)
+- [x] **Sacred Rule Enforced:** `amountCents: 0` treated as MISSING (prevents balance bugs)
+- [x] **Zero-Latency UX:** `SubmissionResult.route` enables correct cache invalidation
+- [x] **Dialog Context Isolation:** Wrapper owns Dialog; Content Components receive `onClose` callback
+- [x] **No State Sync:** Tab switch unmounts component → state resets naturally
 
 ### 3. TransactionForm.tsx & TransferForm.tsx
 
@@ -102,7 +112,7 @@ Building the web app with an "offline-ready" mindset makes the iOS port signific
 
 Before implementing offline sync, we must clean up these architectural issues:
 
-- [ ] **Smart Routing Centralization:** Move transaction routing logic (Ledger vs Inbox) from `AddTransactionModal` into `TransactionService` so iOS can reuse identical routing
+- [x] **Smart Routing Centralization:** Moved to `TransactionRoutingService` - pure `determineRoute()` function with 39 unit tests (16 permutations + edge cases)
 - [ ] **Deprecated API Cleanup:** Remove all direct `transactionsApi.ts` references; force all data through Repository Layer for versioning/sync-readiness
 
 #### Implementation Steps
@@ -143,7 +153,7 @@ Before implementing offline sync, we must clean up these architectural issues:
 ## Reliability & Go-Live Readiness
 
 - [x] **Install Test Runner:** Vitest and @testing-library/react installed
-- [x] **Unit Test Core Logic:** 44 tests covering balance logic, inbox repository, and bulk selection
+- [x] **Unit Test Core Logic:** 83 tests covering balance logic, inbox repository, bulk selection, and transaction routing (39 routing tests with 16 permutation matrix)
 - [ ] **CI Pipeline:** Create a GitHub Action to block merges that fail type checks or linting.
 - [ ] **Error Boundary:** Wrap the application root in a global Error Boundary (e.g., Sentry) to catch and report runtime crashes.
 - [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports.

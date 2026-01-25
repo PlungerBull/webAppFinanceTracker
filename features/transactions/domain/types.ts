@@ -411,3 +411,191 @@ export interface TransactionChanges {
 export interface CategoryCounts {
   [categoryId: string]: number;
 }
+
+// ============================================================================
+// TRANSACTION ROUTING TYPES (Smart Routing Decision Engine)
+// ============================================================================
+
+/**
+ * Transaction Route Destination
+ *
+ * Determines where transaction data should be stored:
+ * - 'ledger': Complete data → transactions table (Sacred Ledger)
+ * - 'inbox': Partial data → transaction_inbox table (Scratchpad)
+ */
+export type TransactionRoute = 'ledger' | 'inbox';
+
+/**
+ * Required field keys for routing decision
+ *
+ * These are the 4 fields that must ALL be present for ledger routing.
+ * Used by RoutingDecision.missingFields for UI highlighting.
+ */
+export type TransactionRequiredField = 'amountCents' | 'description' | 'accountId' | 'categoryId';
+
+/**
+ * Transaction Route Input DTO
+ *
+ * Clean data contract for the routing service.
+ * NEVER pass raw React-Hook-Form objects - convert at component boundary.
+ *
+ * SACRED RULE (AI_CONTEXT.md Section F):
+ * - amountCents: 0 is treated as MISSING (prevents balance bugs)
+ * - amountCents: null is treated as MISSING
+ * - Empty string description is treated as MISSING
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct TransactionRouteInputDTO: Codable {
+ *     let amountCents: Int?        // CRITICAL: 0 == nil (MISSING)
+ *     let description: String?
+ *     let accountId: String?
+ *     let categoryId: String?
+ *     let date: String             // ISO 8601
+ *     let notes: String?
+ *     let exchangeRate: Double?
+ * }
+ * ```
+ */
+export interface TransactionRouteInputDTO {
+  /**
+   * Amount in INTEGER CENTS
+   *
+   * SACRED RULE: Both 0 and null are treated as MISSING
+   * - null → MISSING (no amount entered)
+   * - 0 → MISSING (prevents $0.00 ledger entries that break balance math)
+   * - -100 → VALID expense ($1.00 debit)
+   * - 100 → VALID income ($1.00 credit)
+   */
+  readonly amountCents: number | null;
+
+  /**
+   * Transaction description (payee)
+   *
+   * Empty string or whitespace-only is treated as MISSING.
+   */
+  readonly description: string | null;
+
+  /**
+   * Account ID (UUID)
+   *
+   * null means no account selected.
+   */
+  readonly accountId: string | null;
+
+  /**
+   * Category ID (UUID)
+   *
+   * null means no category selected.
+   */
+  readonly categoryId: string | null;
+
+  /**
+   * Transaction date (ISO 8601 format)
+   *
+   * Format: YYYY-MM-DDTHH:mm:ss.SSSZ
+   * Always required (defaults to current date in UI).
+   */
+  readonly date: string;
+
+  /**
+   * Additional notes (optional)
+   */
+  readonly notes?: string | null;
+
+  /**
+   * Exchange rate (optional)
+   *
+   * Required when account currency differs from main currency.
+   */
+  readonly exchangeRate?: number | null;
+}
+
+/**
+ * Routing Decision
+ *
+ * Result from determineRoute() pure function.
+ * Includes specific missing fields for UI highlighting.
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct RoutingDecision {
+ *     let route: TransactionRoute
+ *     let isComplete: Bool
+ *     let hasAnyData: Bool
+ *     let missingFields: [String]  // Exact keys for UI highlighting
+ * }
+ * ```
+ */
+export interface RoutingDecision {
+  /**
+   * Destination: 'ledger' (complete) or 'inbox' (partial)
+   */
+  readonly route: TransactionRoute;
+
+  /**
+   * True if all 4 required fields are present
+   *
+   * All of these must be true:
+   * - amountCents is non-null AND non-zero
+   * - description is non-null AND non-empty
+   * - accountId is non-null AND non-empty
+   * - categoryId is non-null AND non-empty
+   */
+  readonly isComplete: boolean;
+
+  /**
+   * True if at least one field has data
+   *
+   * Used to determine if form can be submitted at all.
+   */
+  readonly hasAnyData: boolean;
+
+  /**
+   * List of missing required field keys
+   *
+   * Empty array when isComplete is true.
+   * UI uses this to highlight which fields are preventing ledger routing.
+   */
+  readonly missingFields: TransactionRequiredField[];
+}
+
+/**
+ * Submission Result
+ *
+ * Result from submitTransaction() - includes route for cache invalidation.
+ *
+ * UI uses result.route to know which queries to invalidate:
+ * - 'ledger' → ['transactions'], ['accounts']
+ * - 'inbox' → ['inbox']
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct SubmissionResult {
+ *     let route: TransactionRoute
+ *     let id: String
+ *     let success: Bool
+ * }
+ * ```
+ */
+export interface SubmissionResult {
+  /**
+   * Where the data was stored: 'ledger' or 'inbox'
+   *
+   * Critical for Zero-Latency UX: UI uses this to invalidate
+   * the correct query cache immediately.
+   */
+  readonly route: TransactionRoute;
+
+  /**
+   * ID of the created record
+   *
+   * Transaction ID (if ledger) or Inbox Item ID (if inbox).
+   */
+  readonly id: string;
+
+  /**
+   * True if submission succeeded
+   */
+  readonly success: boolean;
+}

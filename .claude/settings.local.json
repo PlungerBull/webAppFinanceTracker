@@ -31,7 +31,10 @@
       "Bash(npm ls:*)",
       "Bash(npx eslint:*)",
       "Bash(supabase migration repair:*)",
-      "Bash(supabase db execute:*)"
+      "Bash(supabase db execute:*)",
+      "Bash(npx vitest:*)",
+      "Bash(wc:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []
