@@ -163,13 +163,17 @@ export interface ICategoryService {
   updateGrouping(id: string, data: UpdateGroupingDTO): Promise<CategoryEntity>;
 
   /**
-   * Delete a category.
+   * Soft delete a category (Tombstone Pattern).
+   *
+   * CTO Mandate: Uses soft delete for distributed sync compatibility.
    *
    * @param id - Category ID
+   * @param version - Expected version for optimistic concurrency control
    * @throws CategoryHasTransactionsError if has transactions
    * @throws CategoryHasChildrenError if has children
+   * @throws CategoryVersionConflictError if version conflict
    */
-  delete(id: string): Promise<void>;
+  delete(id: string, version: number): Promise<void>;
 
   /**
    * Reassign a subcategory to a different parent.

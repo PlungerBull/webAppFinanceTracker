@@ -33,7 +33,7 @@ function DeleteGroupingDialogInner({ open, onOpenChange, grouping }: DeleteGroup
         }
 
         try {
-            await deleteGroupingMutation.mutateAsync(grouping.id);
+            await deleteGroupingMutation.mutateAsync({ id: grouping.id, version: grouping.version });
             onOpenChange(false);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete grouping');

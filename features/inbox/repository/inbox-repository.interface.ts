@@ -23,8 +23,12 @@
  *         async -> Result<InboxItemViewEntity, InboxError>
  *     func create(userId: String, data: CreateInboxItemDTO)
  *         async -> Result<InboxItemViewEntity, InboxError>
+ *     func createBatch(userId: String, items: [CreateInboxItemDTO])
+ *         async -> Result<[InboxItemViewEntity], InboxError>
  *     func update(userId: String, id: String, data: UpdateInboxItemDTO)
  *         async -> Result<InboxItemViewEntity, InboxError>
+ *     func updateBatch(userId: String, updates: [(id: String, data: UpdateInboxItemDTO)])
+ *         async -> Result<[InboxItemViewEntity], InboxError>
  *     func promote(userId: String, data: PromoteInboxItemDTO)
  *         async -> Result<PromoteResult, InboxError>
  *     func dismiss(userId: String, id: String)
@@ -145,6 +149,64 @@ export interface IInboxRepository {
     id: string,
     data: UpdateInboxItemDTO
   ): Promise<DataResult<InboxItemViewEntity>>;
+
+  // ============================================================================
+  // BATCH OPERATIONS (Offline Sync - CTO Mandate)
+  // ============================================================================
+
+  /**
+   * Batch create inbox items (for offline sync push)
+   *
+   * Creates multiple inbox items in a single operation.
+   * Used by sync engine to push offline-created items.
+   *
+   * Implementation Note:
+   * - Initial implementation may loop through create() calls
+   * - Will be replaced with single RPC for atomic batch insert
+   *
+   * @param userId - User ID (UUID)
+   * @param items - Array of inbox items to create
+   * @returns DataResult with array of created inbox items or error
+   *
+   * @example
+   * ```typescript
+   * const result = await repository.createBatch(userId, [
+   *   { amountCents: 1050, description: 'Coffee' },
+   *   { amountCents: 2500, description: 'Lunch' },
+   * ]);
+   * ```
+   */
+  createBatch(
+    userId: string,
+    items: CreateInboxItemDTO[]
+  ): Promise<DataResult<InboxItemViewEntity[]>>;
+
+  /**
+   * Batch update inbox items (for offline sync push)
+   *
+   * Updates multiple inbox items in a single operation.
+   * Used by sync engine to push offline-modified items.
+   *
+   * Implementation Note:
+   * - Initial implementation may loop through update() calls
+   * - Will be replaced with single RPC for atomic batch update
+   *
+   * @param userId - User ID (UUID)
+   * @param updates - Array of {id, data} update pairs
+   * @returns DataResult with array of updated inbox items or error
+   *
+   * @example
+   * ```typescript
+   * const result = await repository.updateBatch(userId, [
+   *   { id: 'inbox-1', data: { categoryId: 'cat-123' } },
+   *   { id: 'inbox-2', data: { accountId: 'acc-456' } },
+   * ]);
+   * ```
+   */
+  updateBatch(
+    userId: string,
+    updates: Array<{ id: string; data: UpdateInboxItemDTO }>
+  ): Promise<DataResult<InboxItemViewEntity[]>>;
 
   // ============================================================================
   // PROMOTION OPERATIONS (Inbox → Ledger)

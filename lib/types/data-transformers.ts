@@ -31,12 +31,23 @@ import { toSafeInteger, toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
 /**
  * Transforms a database bank_accounts row to domain Account type
  * NEW: Includes groupId, currencyCode, and type
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deletedAt: Tombstone pattern for distributed sync
  */
 export function dbAccountToDomain(
   dbAccount: Database['public']['Tables']['bank_accounts']['Row']
 ) {
+  // Type assertion for sync fields added by migration 20260126000000
+  const syncRow = dbAccount as typeof dbAccount & {
+    version?: number;
+    deleted_at?: string | null;
+  };
+
   return {
     id: dbAccount.id,
+    version: syncRow.version ?? 1,
     groupId: dbAccount.group_id,
     name: dbAccount.name,
     color: dbAccount.color,
@@ -46,17 +57,29 @@ export function dbAccountToDomain(
     isVisible: dbAccount.is_visible,
     createdAt: dbAccount.created_at,
     updatedAt: dbAccount.updated_at,
+    deletedAt: syncRow.deleted_at ?? null,
   } as const;
 }
 
 /**
  * Transforms a database category row to domain Category type
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deletedAt: Tombstone pattern for distributed sync
  */
 export function dbCategoryToDomain(
   dbCategory: Database['public']['Tables']['categories']['Row']
 ): Category {
+  // Type assertion for sync fields added by migration 20260126000001
+  const syncRow = dbCategory as typeof dbCategory & {
+    version?: number;
+    deleted_at?: string | null;
+  };
+
   return {
     id: dbCategory.id,
+    version: syncRow.version ?? 1,
     name: dbCategory.name,
     color: dbCategory.color,
     type: dbCategory.type as 'income' | 'expense',
@@ -64,6 +87,7 @@ export function dbCategoryToDomain(
     userId: dbCategory.user_id,
     createdAt: dbCategory.created_at,
     updatedAt: dbCategory.updated_at,
+    deletedAt: syncRow.deleted_at ?? null,
   };
 }
 
@@ -581,12 +605,23 @@ export function dbTransactionViewsToDomain(
 
 /**
  * Transforms a database parent_categories_with_counts view row to domain type
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deletedAt: Tombstone pattern for distributed sync
  */
 export function dbParentCategoryWithCountToDomain(
   dbCategory: Database['public']['Views']['parent_categories_with_counts']['Row']
 ): ParentCategoryWithCount {
+  // Type assertion for sync fields added by migration 20260126000001
+  const syncRow = dbCategory as typeof dbCategory & {
+    version?: number;
+    deleted_at?: string | null;
+  };
+
   return {
     id: dbCategory.id || '',
+    version: syncRow.version ?? 1,
     name: dbCategory.name || 'Unknown Category',
     color: dbCategory.color || '#808080',
     type: (dbCategory.type as 'income' | 'expense') || 'expense',
@@ -595,6 +630,7 @@ export function dbParentCategoryWithCountToDomain(
     userId: dbCategory.user_id,
     createdAt: dbCategory.created_at || new Date().toISOString(),
     updatedAt: dbCategory.updated_at || new Date().toISOString(),
+    deletedAt: syncRow.deleted_at ?? null,
   };
 }
 

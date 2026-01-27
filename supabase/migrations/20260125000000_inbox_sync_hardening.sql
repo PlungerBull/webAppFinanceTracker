@@ -43,7 +43,7 @@ SELECT
   -- Core inbox fields
   i.id,
   i.user_id,
-  i.amount_original,
+  i.amount_cents,
   i.description,
   i.date,
   i.source_text,
@@ -114,7 +114,8 @@ BEGIN
     END IF;
 
     -- 2. Determine final values (Use override if provided, else use inbox value)
-    v_amount_to_use := COALESCE(p_final_amount, v_inbox_record.amount_original);
+    -- Note: p_final_amount is in cents, inbox stores amount_cents
+    v_amount_to_use := COALESCE(p_final_amount, v_inbox_record.amount_cents);
     v_desc_to_use := COALESCE(p_final_description, v_inbox_record.description);
     v_date_to_use := COALESCE(p_final_date, v_inbox_record.date);
 
@@ -136,8 +137,8 @@ BEGIN
         category_id,
         date,
         description,
-        amount_original,
-        amount_home,        -- Placeholder, trigger will recalculate
+        amount_cents,
+        amount_home_cents,  -- Placeholder, trigger will recalculate
         exchange_rate,
         notes,              -- Direct transfer
         source_text,        -- Direct transfer

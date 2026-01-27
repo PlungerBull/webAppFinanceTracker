@@ -134,9 +134,14 @@ export interface AccountBalance {
 /**
  * Basic account from bank_accounts table
  * NEW: Each account has ONE currency and belongs to a group
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deletedAt: Tombstone pattern for distributed sync
  */
 export interface Account {
   id: string;
+  version: number;
   groupId: string;
   name: string;
   color: string;
@@ -146,6 +151,7 @@ export interface Account {
   isVisible: boolean;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 }
 
 /**
@@ -168,8 +174,14 @@ export interface GroupedAccount {
 // CATEGORY TYPES (Frontend camelCase)
 // ============================================================================
 
+/**
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deletedAt: Tombstone pattern for distributed sync
+ */
 export interface Category {
   id: string;
+  version: number;
   name: string;
   color: string;
   type: 'income' | 'expense';
@@ -177,17 +189,20 @@ export interface Category {
   userId: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 }
 
 export interface CategoryWithCount {
   // Critical fields - guaranteed non-null by transformer
   id: string;
+  version: number;
   name: string;
   color: string;
   type: 'income' | 'expense';
   transactionCount: number;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 
   // Optional fields - can be null
   parentId: string | null;
@@ -196,6 +211,7 @@ export interface CategoryWithCount {
 
 export interface ParentCategoryWithCount {
   id: string;
+  version: number;
   name: string;
   color: string;
   type: 'income' | 'expense';
@@ -204,6 +220,7 @@ export interface ParentCategoryWithCount {
   userId: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 }
 
 // ============================================================================

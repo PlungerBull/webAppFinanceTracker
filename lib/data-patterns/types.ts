@@ -67,7 +67,7 @@ export interface SerializableError {
  * ```
  */
 export type DataResult<T, E extends Error | SerializableError = Error> =
-  | { success: true; data: T; conflict?: boolean }
+  | { success: true; data: T; conflict?: boolean; buffered?: boolean; bufferedCount?: number }
   | { success: false; data: null; error: E; conflict?: boolean };
 
 /**

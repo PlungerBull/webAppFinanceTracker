@@ -136,6 +136,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
                 updateGroupingMutation.mutateAsync({
                     id: category.id,
                     data: {
+                        version: category.version,
                         name: data.name,
                         color: data.color,
                         type: data.type,

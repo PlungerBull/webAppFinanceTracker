@@ -47,6 +47,7 @@ export {
   CategoryRepositoryError,
   CategoryDuplicateNameError,
   CategoryMergeError,
+  CategoryVersionConflictError,
   isCategoryNotFoundError,
   isCategoryHierarchyError,
   isCategoryHasTransactionsError,
@@ -54,6 +55,7 @@ export {
   isCategoryValidationError,
   isCategoryDuplicateNameError,
   isCategoryMergeError,
+  isCategoryVersionConflictError,
 } from './errors';
 export type { HierarchyViolationReason, MergeErrorReason } from './errors';
 

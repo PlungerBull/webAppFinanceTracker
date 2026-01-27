@@ -72,8 +72,8 @@ export function DeleteCategoryDialog({
     }, [open, category, checkDeletability]);
 
     const onDelete = async () => {
-        if (category?.id) {
-            await deleteCategoryMutation.mutateAsync(category.id);
+        if (category?.id && category?.version !== undefined) {
+            await deleteCategoryMutation.mutateAsync({ id: category.id, version: category.version });
             onOpenChange(false);
         }
     };

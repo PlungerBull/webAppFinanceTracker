@@ -164,6 +164,45 @@ export class CategoryRepositoryError extends CategoryError {
 }
 
 /**
+ * Category Version Conflict Error
+ *
+ * Thrown when attempting to update/delete a category whose version
+ * has changed (another device modified it).
+ * Maps to 'version_conflict' error from RPC.
+ *
+ * Usage:
+ * ```typescript
+ * if (err instanceof CategoryVersionConflictError) {
+ *   toast.error('Conflict detected', {
+ *     description: `This category was modified. Expected v${err.expectedVersion}, found v${err.currentVersion}.`
+ *   });
+ *   // Optionally: Refresh data and retry
+ * }
+ * ```
+ */
+export class CategoryVersionConflictError extends CategoryError {
+  constructor(
+    public readonly categoryId: string,
+    public readonly expectedVersion: number,
+    public readonly currentVersion: number
+  ) {
+    super(
+      `Category ${categoryId} has been modified. Expected version ${expectedVersion}, found ${currentVersion}.`,
+      'VERSION_CONFLICT'
+    );
+  }
+}
+
+/**
+ * Type guard for CategoryVersionConflictError
+ */
+export function isCategoryVersionConflictError(
+  error: unknown
+): error is CategoryVersionConflictError {
+  return error instanceof CategoryVersionConflictError;
+}
+
+/**
  * Category Duplicate Name Error
  *
  * Thrown when attempting to create a category with a duplicate name

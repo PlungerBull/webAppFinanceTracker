@@ -21,6 +21,8 @@
  *     let parentId: String?
  *     let createdAt: String
  *     let updatedAt: String
+ *     let version: Int           // Sync: Optimistic concurrency control
+ *     let deletedAt: String?     // Sync: Tombstone for distributed sync
  * }
  * ```
  *
@@ -73,6 +75,19 @@ export interface CategoryEntity {
 
   /** Last update timestamp (ISO 8601) */
   readonly updatedAt: string;
+
+  /**
+   * Version counter for optimistic concurrency control.
+   * Uses global_transaction_version sequence for unified sync pulse.
+   */
+  readonly version: number;
+
+  /**
+   * Tombstone timestamp (ISO 8601).
+   * - NULL = active category
+   * - Timestamp = soft-deleted (for distributed sync)
+   */
+  readonly deletedAt: string | null;
 }
 
 /**
@@ -106,6 +121,8 @@ export interface CategoryWithCountEntity extends CategoryEntity {
  *     let type: CategoryType
  *     let createdAt: String
  *     let updatedAt: String
+ *     let version: Int           // Sync: Optimistic concurrency control
+ *     let deletedAt: String?     // Sync: Tombstone for distributed sync
  *     let childCount: Int
  *     let totalTransactionCount: Int
  * }
@@ -132,6 +149,19 @@ export interface GroupingEntity {
 
   /** Last update timestamp (ISO 8601) */
   readonly updatedAt: string;
+
+  /**
+   * Version counter for optimistic concurrency control.
+   * Uses global_transaction_version sequence for unified sync pulse.
+   */
+  readonly version: number;
+
+  /**
+   * Tombstone timestamp (ISO 8601).
+   * - NULL = active grouping
+   * - Timestamp = soft-deleted (for distributed sync)
+   */
+  readonly deletedAt: string | null;
 
   /** Number of child categories under this grouping */
   readonly childCount: number;

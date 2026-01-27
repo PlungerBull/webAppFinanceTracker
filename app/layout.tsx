@@ -1,11 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { AuthProvider } from '@/providers/auth-provider';
-import { QueryProvider } from '@/providers/query-provider';
-import { CurrencyProvider } from '@/contexts/currency-context';
+import { ClientProviders } from '@/providers/client-providers';
 import { APP_METADATA } from '@/lib/constants';
-import { Toaster } from '@/components/ui/sonner';
-import { TransactionModalProvider } from '@/features/transactions/contexts/transaction-modal-context';
 import './globals.css';
 
 const inter = Inter({
@@ -21,27 +17,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-  modal, // <-- ADD THIS
+  modal,
 }: Readonly<{
   children: React.ReactNode;
-  modal: React.ReactNode; // <-- ADD THIS
+  modal: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${inter.variable} antialiased font-sans`}
-      >
-        <QueryProvider>
-          <CurrencyProvider>
-            <AuthProvider>
-              <TransactionModalProvider>
-                {children}
-                {modal}
-                <Toaster />
-              </TransactionModalProvider>
-            </AuthProvider>
-          </CurrencyProvider>
-        </QueryProvider>
+      <body className={`${inter.variable} antialiased font-sans`}>
+        <ClientProviders modal={modal}>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

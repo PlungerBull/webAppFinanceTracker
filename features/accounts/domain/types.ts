@@ -29,6 +29,7 @@ export type AccountDataResult<T> = SharedDataResult<T, AccountError>;
  * Swift Mirror:
  * ```swift
  * struct CreateAccountDTO: Codable {
+ *     let id: String?         // Optional: Client-generated UUID for offline-first
  *     let name: String
  *     let type: AccountType
  *     let color: String
@@ -37,6 +38,14 @@ export type AccountDataResult<T> = SharedDataResult<T, AccountError>;
  * ```
  */
 export interface CreateAccountDTO {
+  /**
+   * Optional client-generated UUID.
+   *
+   * CTO Mandate: For offline-first, clients must generate UUIDs.
+   * If provided, this ID is used; otherwise, server generates one.
+   */
+  readonly id?: string;
+
   /** Account name (e.g., "Main Checking") */
   readonly name: string;
 

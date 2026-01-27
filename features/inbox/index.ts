@@ -34,11 +34,18 @@ export {
   InboxRepositoryError,
   InboxPromotionError,
   InboxAlreadyProcessedError,
+  VersionConflictError, // Required for sync conflict resolution (CTO Mandate)
 } from './domain/errors';
 
 // Repository (for testing/DI)
 export type { IInboxRepository } from './repository/inbox-repository.interface';
-export { SupabaseInboxRepository } from './repository/supabase-inbox-repository';
+export {
+  SupabaseInboxRepository,
+  LocalInboxRepository,
+  HybridInboxRepository,
+  createHybridInboxRepository,
+  createInboxRepository,
+} from './repository';
 
 // Service
 export { InboxService, getInboxService } from './services/inbox-service';
@@ -52,9 +59,11 @@ export {
   useCreateInboxItem,
 } from './hooks/use-inbox';
 
-// Components
+// Components (Main Views for Modular Architecture - CTO Mandate)
 export { InboxCard } from './components/inbox-card';
 export { InboxList } from './components/inbox-list';
+export { InboxTable } from './components/inbox-table';
+export { InboxDetailPanel } from './components/inbox-detail-panel';
 
 // Schemas
 export {

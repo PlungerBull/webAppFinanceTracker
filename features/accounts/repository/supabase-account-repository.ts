@@ -27,6 +27,7 @@ import {
   AccountRepositoryError,
   AccountValidationError,
   AccountLockedError,
+  AccountVersionConflictError,
 } from '../domain';
 
 // Database row type from bank_accounts with joined global_currencies
@@ -99,9 +100,15 @@ export class SupabaseAccountRepository implements IAccountRepository {
    * Transform database row to domain entity
    */
   private dbAccountToEntity(dbRow: DbAccountRow): AccountViewEntity {
+    // Type assertion for sync fields added by migration 20260126000000
+    const syncRow = dbRow as DbAccountRow & {
+      version?: number;
+      deleted_at?: string | null;
+    };
+
     return {
       id: dbRow.id,
-      version: 1, // TODO: Add version column to bank_accounts table
+      version: syncRow.version ?? 1,
       userId: dbRow.user_id,
       groupId: dbRow.group_id,
       name: dbRow.name,
@@ -112,7 +119,7 @@ export class SupabaseAccountRepository implements IAccountRepository {
       isVisible: dbRow.is_visible,
       createdAt: dbRow.created_at,
       updatedAt: dbRow.updated_at,
-      deletedAt: null, // TODO: Add deleted_at column for soft deletes
+      deletedAt: syncRow.deleted_at ?? null,
       currencySymbol: dbRow.global_currencies?.symbol ?? '',
     };
   }
@@ -142,6 +149,11 @@ export class SupabaseAccountRepository implements IAccountRepository {
       }
       if (filters?.groupId) {
         query = query.eq('group_id', filters.groupId);
+      }
+
+      // Tombstone filtering: Only show active accounts unless includeDeleted is set
+      if (!filters?.includeDeleted) {
+        query = query.is('deleted_at', null);
       }
 
       const { data, error } = await query;
@@ -189,6 +201,7 @@ export class SupabaseAccountRepository implements IAccountRepository {
         )
         .eq('id', id)
         .eq('user_id', userId)
+        .is('deleted_at', null) // Tombstone filter: Only return active accounts
         .single();
 
       if (error) {
@@ -316,52 +329,79 @@ export class SupabaseAccountRepository implements IAccountRepository {
     data: UpdateAccountDTO
   ): Promise<AccountDataResult<AccountViewEntity>> {
     try {
-      // Build update object (only include provided fields)
-      const updateData: Record<string, unknown> = {};
-      if (data.name !== undefined) {
-        updateData.name = data.name;
-      }
-      if (data.color !== undefined) {
-        updateData.color = data.color;
-      }
-      if (data.isVisible !== undefined) {
-        updateData.is_visible = data.isVisible;
+      // CTO Mandate: Use version-checked RPC for optimistic concurrency control
+      const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
+        'update_account_with_version',
+        {
+          p_account_id: id,
+          p_expected_version: data.version,
+          p_name: data.name ?? undefined,
+          p_color: data.color ?? undefined,
+          p_is_visible: data.isVisible ?? undefined,
+        }
+      );
+
+      if (rpcError) {
+        return {
+          success: false,
+          data: null,
+          error: new AccountRepositoryError(
+            `Failed to update account: ${rpcError.message}`,
+            rpcError
+          ),
+        };
       }
 
-      const { data: updatedRow, error } = await this.supabase
-        .from('bank_accounts')
-        .update(updateData)
-        .eq('id', id)
-        .eq('user_id', userId)
-        .select(
-          `
-          *,
-          global_currencies(symbol)
-        `
-        )
-        .single();
+      // Parse RPC response
+      const result = rpcResult as {
+        success: boolean;
+        error?: string;
+        expectedVersion?: number;
+        currentVersion?: number;
+      };
 
-      if (error) {
-        if (error.code === 'PGRST116') {
+      if (!result.success) {
+        // Handle version conflict
+        if (result.error === 'version_conflict') {
+          return {
+            success: false,
+            data: null,
+            error: new AccountVersionConflictError(id, data.version),
+            conflict: true,
+          };
+        }
+
+        // Handle not found
+        if (result.error === 'not_found') {
           return {
             success: false,
             data: null,
             error: new AccountNotFoundError(id),
           };
         }
+
+        // Handle concurrent modification
+        if (result.error === 'concurrent_modification') {
+          return {
+            success: false,
+            data: null,
+            error: new AccountVersionConflictError(id, data.version),
+            conflict: true,
+          };
+        }
+
+        // Generic error
         return {
           success: false,
           data: null,
           error: new AccountRepositoryError(
-            `Failed to update account: ${error.message}`,
-            error
+            `Failed to update account: ${result.error}`
           ),
         };
       }
 
-      const entity = this.dbAccountToEntity(updatedRow as DbAccountRow);
-
-      return { success: true, data: entity };
+      // Fetch the updated account to return full entity
+      return this.getById(userId, id);
     } catch (err) {
       return {
         success: false,
@@ -376,19 +416,22 @@ export class SupabaseAccountRepository implements IAccountRepository {
 
   async delete(
     userId: string,
-    id: string
+    id: string,
+    version: number
   ): Promise<AccountDataResult<void>> {
     try {
-      const { error } = await this.supabase
-        .from('bank_accounts')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId);
+      // CTO Mandate: Use version-checked soft delete RPC (Tombstone Pattern)
+      const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
+        'delete_account_with_version',
+        {
+          p_account_id: id,
+          p_expected_version: version,
+        }
+      );
 
-      if (error) {
-        // CTO Mandate: SQLSTATE-based error mapping for type-safe handling
-        // PostgreSQL SQLSTATE codes: https://www.postgresql.org/docs/current/errcodes-appendix.html
-        const pgError = error as { code?: string };
+      if (rpcError) {
+        // Check for SQLSTATE codes for backward compatibility
+        const pgError = rpcError as { code?: string };
 
         // 23503 = foreign_key_violation (FK constraint prevents delete)
         if (pgError.code === '23503') {
@@ -399,8 +442,7 @@ export class SupabaseAccountRepository implements IAccountRepository {
           };
         }
 
-        // P0001 = raise_exception (Custom exception from Sacred Ledger DB triggers)
-        // Our triggers raise P0001 when attempting to delete accounts with reconciled transactions
+        // P0001 = raise_exception
         if (pgError.code === 'P0001') {
           return {
             success: false,
@@ -409,13 +451,60 @@ export class SupabaseAccountRepository implements IAccountRepository {
           };
         }
 
-        // Fallback for other errors
         return {
           success: false,
           data: null,
           error: new AccountRepositoryError(
-            `Failed to delete account: ${error.message}`,
-            error
+            `Failed to delete account: ${rpcError.message}`,
+            rpcError
+          ),
+        };
+      }
+
+      // Parse RPC response
+      const result = rpcResult as {
+        success: boolean;
+        error?: string;
+        expectedVersion?: number;
+        currentVersion?: number;
+      };
+
+      if (!result.success) {
+        // Handle version conflict
+        if (result.error === 'version_conflict') {
+          return {
+            success: false,
+            data: null,
+            error: new AccountVersionConflictError(id, version),
+            conflict: true,
+          };
+        }
+
+        // Handle not found
+        if (result.error === 'not_found') {
+          return {
+            success: false,
+            data: null,
+            error: new AccountNotFoundError(id),
+          };
+        }
+
+        // Handle concurrent modification
+        if (result.error === 'concurrent_modification') {
+          return {
+            success: false,
+            data: null,
+            error: new AccountVersionConflictError(id, version),
+            conflict: true,
+          };
+        }
+
+        // Generic error
+        return {
+          success: false,
+          data: null,
+          error: new AccountRepositoryError(
+            `Failed to delete account: ${result.error}`
           ),
         };
       }

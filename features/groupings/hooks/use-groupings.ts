@@ -4,6 +4,9 @@
  * React Query hooks for grouping (parent category) operations.
  * Uses CategoryService since groupings are parent categories (parentId = null).
  *
+ * CTO MANDATES:
+ * - Orchestrator Rule: Service may be null, queries/mutations must guard
+ *
  * @module use-groupings
  */
 
@@ -20,6 +23,7 @@ import type {
   CategoryWithCountEntity,
 } from '@/features/categories/domain';
 import {
+  CategoryRepositoryError,
   isCategoryHasChildrenError,
   isCategoryHasTransactionsError,
   isCategoryDuplicateNameError,
@@ -33,6 +37,9 @@ export type { GroupingEntity, CategoryWithCountEntity };
  * Use Groupings
  *
  * Query hook for fetching all parent categories (groupings).
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
  *
  * @returns Query result with groupings array
  *
@@ -60,8 +67,14 @@ export function useGroupings() {
 
   return useQuery({
     queryKey: QUERY_KEYS.GROUPINGS,
-    queryFn: () => service.getGroupings(),
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Category service not ready');
+      }
+      return service.getGroupings();
+    },
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -69,6 +82,9 @@ export function useGroupings() {
  * Use Grouping Children
  *
  * Query hook for fetching children of a specific parent.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
  *
  * @param parentId - Parent category ID
  * @returns Query result with child categories array
@@ -78,8 +94,13 @@ export function useGroupingChildren(parentId: string) {
 
   return useQuery({
     queryKey: ['grouping-children', parentId],
-    queryFn: () => service.getByParentId(parentId),
-    enabled: !!parentId,
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Category service not ready');
+      }
+      return service.getByParentId(parentId);
+    },
+    enabled: !!service && !!parentId, // CTO MANDATE: Orchestrator Rule
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
   });
 }
@@ -89,9 +110,15 @@ export function useGroupingChildren(parentId: string) {
  *
  * Mutation hook for creating a new parent category.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useAddGrouping();
+ * const { mutate, isPending, isReady } = useAddGrouping();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({ name: 'Food & Dining', color: '#22c55e', type: 'expense' });
  * ```
@@ -100,8 +127,13 @@ export function useAddGrouping() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: CreateGroupingDTO) => service.createGrouping(data),
+  const mutation = useMutation({
+    mutationFn: (data: CreateGroupingDTO) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.createGrouping(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
@@ -119,6 +151,11 @@ export function useAddGrouping() {
       }
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
@@ -126,9 +163,15 @@ export function useAddGrouping() {
  *
  * Mutation hook for updating a parent category.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useUpdateGrouping();
+ * const { mutate, isPending, isReady } = useUpdateGrouping();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({ id: 'group-uuid', data: { name: 'New Name' } });
  * ```
@@ -137,9 +180,13 @@ export function useUpdateGrouping() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateGroupingDTO }) =>
-      service.updateGrouping(id, data),
+  const mutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateGroupingDTO }) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.updateGrouping(id, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
@@ -157,6 +204,11 @@ export function useUpdateGrouping() {
       }
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
@@ -164,23 +216,31 @@ export function useUpdateGrouping() {
  *
  * Mutation hook for deleting a parent category.
  *
- * CTO Mandate: Type-safe error handling via instanceof.
- * - CategoryHasChildrenError: Parent has child categories
- * - CategoryHasTransactionsError: Has linked transactions
+ * CTO Mandates:
+ * - Type-safe error handling via instanceof
+ * - Orchestrator Rule: Service may be null
  *
  * @example
  * ```typescript
- * const { mutate, isPending } = useDeleteGrouping();
+ * const { mutate, isPending, isReady } = useDeleteGrouping();
  *
- * mutate('group-uuid');
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
+ *
+ * mutate({ id: 'group-uuid', version: 1 });
  * ```
  */
 export function useDeleteGrouping() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: string) => service.delete(id),
+  const mutation = useMutation({
+    mutationFn: ({ id, version }: { id: string; version: number }) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.delete(id, version);
+    },
     onError: (err) => {
       // CTO Mandate: Use instanceof for type-safe error handling
       if (isCategoryHasChildrenError(err)) {
@@ -206,6 +266,11 @@ export function useDeleteGrouping() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
@@ -213,9 +278,15 @@ export function useDeleteGrouping() {
  *
  * Mutation hook for creating a subcategory under a parent.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useAddSubcategory();
+ * const { mutate, isPending, isReady } = useAddSubcategory();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({
  *   name: 'Restaurants',
@@ -228,8 +299,13 @@ export function useAddSubcategory() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: CreateSubcategoryDTO) => service.createSubcategory(data),
+  const mutation = useMutation({
+    mutationFn: (data: CreateSubcategoryDTO) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.createSubcategory(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
@@ -251,6 +327,11 @@ export function useAddSubcategory() {
       }
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
@@ -258,9 +339,15 @@ export function useAddSubcategory() {
  *
  * Mutation hook for moving a subcategory to a different parent.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useReassignSubcategory();
+ * const { mutate, isPending, isReady } = useReassignSubcategory();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({
  *   categoryId: 'subcategory-uuid',
@@ -272,8 +359,13 @@ export function useReassignSubcategory() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: ReassignSubcategoryDTO) => service.reassignSubcategory(data),
+  const mutation = useMutation({
+    mutationFn: (data: ReassignSubcategoryDTO) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.reassignSubcategory(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
@@ -291,4 +383,9 @@ export function useReassignSubcategory() {
       }
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }

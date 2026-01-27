@@ -34,7 +34,10 @@
       "Bash(supabase db execute:*)",
       "Bash(npx vitest:*)",
       "Bash(wc:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(xargs:*)",
+      "Bash(supabase migration list:*)",
+      "Bash(supabase db reset:*)"
     ],
     "deny": [],
     "ask": []

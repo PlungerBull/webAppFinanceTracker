@@ -101,17 +101,19 @@ export interface IAccountRepository {
   ): Promise<AccountDataResult<AccountViewEntity>>;
 
   /**
-   * Delete an account.
+   * Soft delete an account (Tombstone Pattern).
    *
-   * NOTE: Currently uses hard delete. May be changed to soft delete
-   * for offline sync compatibility in the future.
+   * CTO Mandate: Uses soft delete for distributed sync compatibility.
+   * Sets deleted_at timestamp instead of hard-deleting.
    *
    * @param userId - User ID (for RLS verification)
    * @param id - Account ID
-   * @returns DataResult with void on success
+   * @param version - Expected version for optimistic concurrency control
+   * @returns DataResult with void on success, or VERSION_CONFLICT if version mismatch
    */
   delete(
     userId: string,
-    id: string
+    id: string,
+    version: number
   ): Promise<AccountDataResult<void>>;
 }

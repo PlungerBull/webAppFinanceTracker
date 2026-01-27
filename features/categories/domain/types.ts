@@ -29,14 +29,23 @@ export type CategoryDataResult<T> = SharedDataResult<T, CategoryError>;
  * Swift Mirror:
  * ```swift
  * struct CreateCategoryDTO: Codable {
+ *     let id: String?         // Optional: Client-generated UUID for offline-first
  *     let name: String
  *     let color: String
  *     let type: CategoryType
- *     let parentId: String?  // nil = create as grouping
+ *     let parentId: String?   // nil = create as grouping
  * }
  * ```
  */
 export interface CreateCategoryDTO {
+  /**
+   * Optional client-generated UUID.
+   *
+   * CTO Mandate: For offline-first, clients must generate UUIDs.
+   * If provided, this ID is used; otherwise, server generates one.
+   */
+  readonly id?: string;
+
   /** Category name (e.g., "Groceries") */
   readonly name: string;
 
@@ -99,13 +108,22 @@ export interface CreateSubcategoryDTO {
  * Swift Mirror:
  * ```swift
  * struct UpdateCategoryDTO: Codable {
+ *     let version: Int        // Required: For optimistic concurrency control
  *     let name: String?
  *     let color: String?
- *     let parentId: String?  // Can reassign to different parent
+ *     let parentId: String?   // Can reassign to different parent
  * }
  * ```
  */
 export interface UpdateCategoryDTO {
+  /**
+   * Version for optimistic concurrency control.
+   *
+   * CTO Mandate: Required to prevent concurrent modifications.
+   * If version doesn't match, update returns VERSION_CONFLICT.
+   */
+  readonly version: number;
+
   /** Updated category name */
   readonly name?: string;
 
@@ -129,6 +147,13 @@ export interface UpdateCategoryDTO {
  * Note: Changing color/type cascades to all children via DB trigger.
  */
 export interface UpdateGroupingDTO {
+  /**
+   * Version for optimistic concurrency control.
+   *
+   * CTO Mandate: Required to prevent concurrent modifications.
+   */
+  readonly version: number;
+
   /** Updated grouping name */
   readonly name?: string;
 

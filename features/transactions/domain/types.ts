@@ -19,6 +19,7 @@
 
 import type { TransactionError } from './errors';
 import type { TransactionViewEntity } from './entities';
+import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
 
 // Import shared types from data-patterns module
 import type {
@@ -563,11 +564,10 @@ export interface RoutingDecision {
 /**
  * Submission Result
  *
- * Result from submitTransaction() - includes route for cache invalidation.
+ * Result from submitTransaction() - includes route AND entity for cache update.
  *
- * UI uses result.route to know which queries to invalidate:
- * - 'ledger' → ['transactions'], ['accounts']
- * - 'inbox' → ['inbox']
+ * CTO MANDATE: Return entity for optimistic cache prepend (Zero-Latency UX).
+ * UI uses result.entity to immediately prepend to list without waiting for refetch.
  *
  * Swift Mirror:
  * ```swift
@@ -575,6 +575,7 @@ export interface RoutingDecision {
  *     let route: TransactionRoute
  *     let id: String
  *     let success: Bool
+ *     let entity: TransactionViewEntity? // For optimistic UI
  * }
  * ```
  */
@@ -582,8 +583,8 @@ export interface SubmissionResult {
   /**
    * Where the data was stored: 'ledger' or 'inbox'
    *
-   * Critical for Zero-Latency UX: UI uses this to invalidate
-   * the correct query cache immediately.
+   * Critical for Zero-Latency UX: UI uses this to determine
+   * which cache to update (transactions vs inbox).
    */
   readonly route: TransactionRoute;
 
@@ -598,4 +599,136 @@ export interface SubmissionResult {
    * True if submission succeeded
    */
   readonly success: boolean;
+
+  /**
+   * Created entity for optimistic cache prepend
+   *
+   * CTO MANDATE: Required for Zero-Latency UX.
+   * - For 'ledger': TransactionViewEntity (with joined account/category data)
+   * - For 'inbox': InboxItemViewEntity
+   *
+   * UI prepends this to cache immediately instead of waiting for refetch.
+   */
+  readonly entity: TransactionViewEntity | InboxItemViewEntity;
+}
+
+/**
+ * Update Route Input DTO
+ *
+ * Input for updating an existing transaction/inbox item with routing.
+ * Extends TransactionRouteInputDTO with ID and version for updates.
+ *
+ * CTO MANDATE: Version field required for conflict resolution.
+ * Prevents overwriting remote changes during multi-device sync.
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct UpdateRouteInputDTO: Codable {
+ *     let id: String
+ *     let version: Int
+ *     let sourceRoute: TransactionRoute  // Where item currently lives
+ *     // ... all fields from TransactionRouteInputDTO
+ * }
+ * ```
+ */
+export interface UpdateRouteInputDTO extends TransactionRouteInputDTO {
+  /**
+   * ID of the record to update
+   */
+  readonly id: string;
+
+  /**
+   * Version for optimistic concurrency control
+   *
+   * CTO MANDATE: Required for conflict resolution.
+   * Service checks: IF version = expected THEN update ELSE conflict
+   */
+  readonly version: number;
+
+  /**
+   * Source route: where the item currently lives
+   *
+   * Determines which service to call for updates:
+   * - 'ledger' → TransactionService.update()
+   * - 'inbox' → InboxService.update()
+   *
+   * Also used to detect promotion/demotion:
+   * - source: 'inbox', target: 'ledger' → PROMOTION
+   * - source: 'ledger', target: 'inbox' → DEMOTION
+   */
+  readonly sourceRoute: TransactionRoute;
+}
+
+/**
+ * Update Result
+ *
+ * Result from updateTransaction() - includes both source and target routes.
+ *
+ * CTO CRITICAL - Automatic Promotion/Demotion:
+ * - Editing Inbox item + filling all fields → promotes to Ledger
+ * - Editing Ledger item + removing required field → demotes to Inbox
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct UpdateResult {
+ *     let sourceRoute: TransactionRoute  // Where item was
+ *     let targetRoute: TransactionRoute  // Where item is now
+ *     let id: String
+ *     let success: Bool
+ *     let promoted: Bool    // Inbox → Ledger
+ *     let demoted: Bool     // Ledger → Inbox
+ *     let entity: TransactionViewEntity | InboxItemViewEntity
+ * }
+ * ```
+ */
+export interface UpdateResult {
+  /**
+   * Where the item was before update
+   */
+  readonly sourceRoute: TransactionRoute;
+
+  /**
+   * Where the item is after update
+   *
+   * May differ from sourceRoute if promotion/demotion occurred.
+   */
+  readonly targetRoute: TransactionRoute;
+
+  /**
+   * ID of the updated record
+   *
+   * May change if item was promoted (inbox → ledger creates new transaction).
+   */
+  readonly id: string;
+
+  /**
+   * True if update succeeded
+   */
+  readonly success: boolean;
+
+  /**
+   * True if item was promoted (Inbox → Ledger)
+   *
+   * UI should:
+   * - Remove from inbox cache
+   * - Add to transactions cache
+   * - Show "Promoted to Ledger" toast
+   */
+  readonly promoted: boolean;
+
+  /**
+   * True if item was demoted (Ledger → Inbox)
+   *
+   * CTO CRITICAL: Keeps Ledger Sacred and 100% complete.
+   * UI should:
+   * - Remove from transactions cache
+   * - Add to inbox cache
+   * - Show "Moved to Inbox" toast
+   */
+  readonly demoted: boolean;
+
+  /**
+   * Updated entity for optimistic cache update
+   */
+  readonly entity: TransactionViewEntity | InboxItemViewEntity;
 }

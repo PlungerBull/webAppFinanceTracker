@@ -1,15 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import { TransactionDetailPanel as SharedPanel } from '@/features/shared/components/transaction-detail-panel';
 import type { PanelData, TransactionPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/features/shared/components/transaction-detail-panel';
-import { useUpdateTransactionBatch, useDeleteTransaction } from '../hooks/use-transactions';
-import { useTransactionSelection } from '@/stores/transaction-selection-store';
+import { useDeleteTransaction } from '../hooks/use-transactions';
+import { useTransactionUpdate } from '../hooks/use-transaction-update';
 import type { TransactionViewEntity } from '../domain';
+import type { UpdateRouteInputDTO } from '../domain/types';
 import type { AccountViewEntity } from '@/features/accounts/domain';
 import type { LeafCategoryEntity } from '@/features/categories/domain';
-import { cn } from '@/lib/utils';
 import { displayAmountToCents } from '@/lib/utils/cents-parser';
 
 interface TransactionDetailPanelProps {
@@ -25,8 +25,24 @@ export function TransactionDetailPanel({
   categories,
   accounts,
 }: TransactionDetailPanelProps) {
-  const updateMutation = useUpdateTransactionBatch();
   const deleteMutation = useDeleteTransaction();
+
+  /**
+   * CTO MANDATE: Use TransactionRoutingService for all updates.
+   * This enables automatic demotion (Ledger → Inbox) when required fields are removed.
+   */
+  const { update, isUpdating } = useTransactionUpdate({
+    onSuccess: (result) => {
+      if (result.demoted) {
+        toast.success('Moved to Inbox (missing required fields)');
+      } else {
+        toast.success('Transaction updated');
+      }
+    },
+    onError: (error) => {
+      toast.error(`Failed to update: ${error.message}`);
+    },
+  });
 
 
   // Transform TransactionViewEntity to PanelData
@@ -80,46 +96,82 @@ export function TransactionDetailPanel({
     [categories]
   );
 
-  // Handle save (batch update)
-  // CTO MANDATE: EditedFields uses null semantics.
-  // undefined = not edited, null = cleared, value = new value
-  const handleSave = async (updates: EditedFields) => {
-    if (!transaction) return;
+  /**
+   * Handle save via TransactionRoutingService
+   *
+   * CTO MANDATE: Uses Universal Decision Engine for updates.
+   * - Same Sacred Rules as submitTransaction()
+   * - Automatic demotion if required fields are removed
+   * - Keeps Ledger Sacred and 100% complete
+   *
+   * Flow:
+   * 1. Merge EditedFields with current transaction state
+   * 2. Build UpdateRouteInputDTO with full merged state
+   * 3. Call routingService.updateTransaction()
+   * 4. Service determines if update-in-place or demotion
+   */
+  const handleSave = useCallback(
+    async (updates: EditedFields) => {
+      if (!transaction) return;
 
-    // Convert EditedFields to API format (only send defined fields)
-    const apiUpdates: Record<string, unknown> = {};
+      // Merge edited fields with current transaction state
+      // undefined = not edited (use current), null = cleared, value = new value
+      const mergedAmountCents =
+        updates.displayAmount !== undefined
+          ? updates.displayAmount !== null
+            ? displayAmountToCents(updates.displayAmount)
+            : null
+          : transaction.amountCents;
 
-    if (updates.description !== undefined) {
-      apiUpdates.description = updates.description;
-    }
-    if (updates.displayAmount !== undefined) {
-      // Convert display amount (dollars) to cents for API
-      apiUpdates.amountCents = updates.displayAmount !== null
-        ? displayAmountToCents(updates.displayAmount)
-        : null;
-    }
-    if (updates.accountId !== undefined) {
-      apiUpdates.accountId = updates.accountId;
-    }
-    if (updates.categoryId !== undefined) {
-      apiUpdates.categoryId = updates.categoryId;
-    }
-    if (updates.date !== undefined) {
-      apiUpdates.date = updates.date;
-    }
-    if (updates.notes !== undefined) {
-      apiUpdates.notes = updates.notes;
-    }
-    if (updates.exchangeRate !== undefined) {
-      apiUpdates.exchangeRate = updates.exchangeRate;
-    }
+      const mergedDescription =
+        updates.description !== undefined
+          ? updates.description
+          : transaction.description;
 
-    await updateMutation.mutateAsync({
-      id: transaction.id,
-      version: transaction.version,
-      updates: apiUpdates,
-    });
-  };
+      const mergedAccountId =
+        updates.accountId !== undefined
+          ? updates.accountId
+          : transaction.accountId;
+
+      const mergedCategoryId =
+        updates.categoryId !== undefined
+          ? updates.categoryId
+          : transaction.categoryId;
+
+      // Date is required - if cleared (null), fall back to original transaction date
+      const mergedDate =
+        updates.date !== undefined && updates.date !== null
+          ? updates.date
+          : transaction.date;
+
+      const mergedNotes =
+        updates.notes !== undefined
+          ? updates.notes
+          : transaction.notes;
+
+      const mergedExchangeRate =
+        updates.exchangeRate !== undefined
+          ? updates.exchangeRate
+          : transaction.exchangeRate;
+
+      // Build UpdateRouteInputDTO with full merged state
+      const routeInput: UpdateRouteInputDTO = {
+        id: transaction.id,
+        version: transaction.version,
+        sourceRoute: 'ledger', // This panel is for ledger transactions
+        amountCents: mergedAmountCents,
+        description: mergedDescription,
+        accountId: mergedAccountId,
+        categoryId: mergedCategoryId,
+        date: mergedDate,
+        notes: mergedNotes,
+        exchangeRate: mergedExchangeRate,
+      };
+
+      await update(routeInput);
+    },
+    [transaction, update]
+  );
 
   // Handle delete
   const handleDelete = async () => {
@@ -150,7 +202,7 @@ export function TransactionDetailPanel({
       onSave={handleSave}
       onDelete={handleDelete}
       onClose={handleClose}
-      isLoading={updateMutation.isPending || deleteMutation.isPending}
+      isLoading={isUpdating || deleteMutation.isPending}
     />
   );
 }

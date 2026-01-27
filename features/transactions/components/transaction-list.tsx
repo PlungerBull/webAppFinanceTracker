@@ -184,18 +184,14 @@ export function TransactionList({
         onEnterBulkMode?.();
       }
 
-      // If bulk selection handlers are provided, use them
+      // CTO MANDATE: Unified selection logic - no "Mode 2" fallback
+      // All list consumers (Transactions, Inbox) must pass onToggleSelection
+      // The hook handles focus via onFocusTransaction callback
       if (onToggleSelection) {
         onToggleSelection(id, index, event);
-      } else {
-        // Fallback: Simple click-to-focus mode (for InboxTable)
-        // Only focus on normal clicks, not modifier clicks
-        if (!hasModifierKey) {
-          onTransactionSelect?.(id);
-        }
       }
     },
-    [isBulkMode, onEnterBulkMode, onToggleSelection, onTransactionSelect]
+    [isBulkMode, onEnterBulkMode, onToggleSelection]
   );
 
   /**

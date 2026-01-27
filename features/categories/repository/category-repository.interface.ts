@@ -198,20 +198,25 @@ export interface ICategoryRepository {
   ): Promise<CategoryDataResult<CategoryEntity>>;
 
   /**
-   * Delete a category.
+   * Soft delete a category (Tombstone Pattern).
    *
-   * CONSTRAINTS (checked by DB):
+   * CTO Mandate: Uses soft delete for distributed sync compatibility.
+   * Sets deleted_at timestamp instead of hard-deleting.
+   *
+   * CONSTRAINTS (checked by RPC):
    * - Cannot delete if has transactions (FK constraint on transactions.category_id)
    * - Cannot delete if has children (FK constraint on categories.parent_id)
    *
    * @param userId - User ID (for RLS verification)
    * @param id - Category ID
-   * @returns DataResult with void on success
+   * @param version - Expected version for optimistic concurrency control
+   * @returns DataResult with void on success, or VERSION_CONFLICT if version mismatch
    *
    * @throws CategoryHasTransactionsError - If category has transactions
    * @throws CategoryHasChildrenError - If category has child categories
+   * @throws CategoryVersionConflictError - If version doesn't match
    */
-  delete(userId: string, id: string): Promise<CategoryDataResult<void>>;
+  delete(userId: string, id: string, version: number): Promise<CategoryDataResult<void>>;
 
   // ==========================================================================
   // BULK OPERATIONS

@@ -4,7 +4,9 @@
  * React Query mutation hooks for account operations.
  * Includes optimistic updates for Zero-Latency UX.
  *
- * CTO Mandate: ALL mutation hooks must include onMutate for instant cache updates.
+ * CTO Mandates:
+ * - ALL mutation hooks must include onMutate for instant cache updates
+ * - Orchestrator Rule: Service may be null, mutations must guard
  *
  * @module use-account-mutations
  */
@@ -19,7 +21,7 @@ import type {
   AccountViewEntity,
   AccountLockReason,
 } from '../domain';
-import { AccountLockedError } from '../domain';
+import { AccountLockedError, AccountRepositoryError } from '../domain';
 
 /**
  * Use Create Account
@@ -27,9 +29,15 @@ import { AccountLockedError } from '../domain';
  * Mutation hook for creating a new account group.
  * Invalidates accounts cache on success.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useCreateAccount();
+ * const { mutate, isPending, isReady } = useCreateAccount();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({
  *   name: 'Main Checking',
@@ -43,13 +51,23 @@ export function useCreateAccount() {
   const service = useAccountService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: CreateAccountDTO) => service.create(data),
+  const mutation = useMutation({
+    mutationFn: (data: CreateAccountDTO) => {
+      if (!service) {
+        throw new AccountRepositoryError('Account service not ready');
+      }
+      return service.create(data);
+    },
     onSuccess: () => {
       // Invalidate accounts list to refetch with new account
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
@@ -58,9 +76,15 @@ export function useCreateAccount() {
  * Mutation hook for updating an account.
  * Includes optimistic updates for Zero-Latency UX.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useUpdateAccount();
+ * const { mutate, isPending, isReady } = useUpdateAccount();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({
  *   id: 'account-uuid',
@@ -76,9 +100,13 @@ export function useUpdateAccount() {
   const service = useAccountService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateAccountDTO }) =>
-      service.update(id, data),
+  const mutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateAccountDTO }) => {
+      if (!service) {
+        throw new AccountRepositoryError('Account service not ready');
+      }
+      return service.update(id, data);
+    },
 
     // Optimistic update for instant UI feedback
     onMutate: async ({ id, data }) => {
@@ -126,34 +154,47 @@ export function useUpdateAccount() {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
  * Use Delete Account
  *
- * Mutation hook for deleting an account.
+ * Mutation hook for soft-deleting an account (Tombstone Pattern).
  * Includes optimistic updates for Zero-Latency UX.
  *
- * CTO Mandate: Sacred Ledger Lock Handling
- * - If DB trigger blocks delete (reconciled transactions), show user-friendly toast
- * - Optimistic delete is rolled back automatically via onError
+ * CTO Mandates:
+ * - Sacred Ledger Lock Handling
+ * - Orchestrator Rule: Service may be null
  *
  * @example
  * ```typescript
- * const { mutate, isPending } = useDeleteAccount();
+ * const { mutate, isPending, isReady } = useDeleteAccount();
  *
- * mutate('account-uuid');
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
+ *
+ * mutate({ id: 'account-uuid', version: 1 });
  * ```
  */
 export function useDeleteAccount() {
   const service = useAccountService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: string) => service.delete(id),
+  const mutation = useMutation({
+    mutationFn: ({ id, version }: { id: string; version: number }) => {
+      if (!service) {
+        throw new AccountRepositoryError('Account service not ready');
+      }
+      return service.delete(id, version);
+    },
 
     // Optimistic removal for instant UI feedback
-    onMutate: async (id) => {
+    onMutate: async ({ id }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.ACCOUNTS });
 
@@ -175,7 +216,7 @@ export function useDeleteAccount() {
 
     // Rollback on error with user-friendly toast
     // CTO Mandate: Use instanceof for type-safe error handling (NOT string matching)
-    onError: (err, _id, context) => {
+    onError: (err, _variables, context) => {
       // Rollback optimistic update
       if (context?.previousAccounts) {
         queryClient.setQueryData(QUERY_KEYS.ACCOUNTS, context.previousAccounts);
@@ -214,4 +255,9 @@ export function useDeleteAccount() {
       ]);
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }

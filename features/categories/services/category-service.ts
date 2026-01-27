@@ -277,14 +277,15 @@ export class CategoryService implements ICategoryService {
     // Build update DTO from input data
     // Note: type change is handled by DB trigger (cascades to children)
     return this.update(id, {
+      version: data.version,
       name: data.name,
       color: data.color,
     });
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, version: number): Promise<void> {
     const userId = await this.getCurrentUserId();
-    const result = await this.repository.delete(userId, id);
+    const result = await this.repository.delete(userId, id, version);
 
     if (!result.success) {
       throw result.error;
@@ -295,6 +296,16 @@ export class CategoryService implements ICategoryService {
     data: ReassignSubcategoryDTO
   ): Promise<CategoryEntity> {
     const userId = await this.getCurrentUserId();
+
+    // Fetch the category being reassigned to get its current version
+    const categoryResult = await this.repository.getById(
+      userId,
+      data.categoryId
+    );
+    if (!categoryResult.success) {
+      throw new CategoryNotFoundError(data.categoryId);
+    }
+    const category = categoryResult.data;
 
     // Validate the new parent exists and is a valid parent
     const newParentResult = await this.repository.getById(
@@ -315,8 +326,9 @@ export class CategoryService implements ICategoryService {
     // Self-parenting check
     this.validateHierarchyUpdate(data.categoryId, data.newParentId);
 
-    // Perform the reassignment
+    // Perform the reassignment with optimistic locking
     const result = await this.repository.update(userId, data.categoryId, {
+      version: category.version,
       parentId: data.newParentId,
     });
 

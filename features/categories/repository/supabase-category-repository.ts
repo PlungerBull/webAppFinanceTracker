@@ -49,6 +49,7 @@ import {
   CategoryRepositoryError,
   CategoryDuplicateNameError,
   CategoryMergeError,
+  CategoryVersionConflictError,
 } from '../domain';
 import type { MergeCategoriesResult } from './category-repository.interface';
 
@@ -78,6 +79,12 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
    * Transform DB category row to domain entity
    */
   private toCategoryEntity(row: DbCategoryRow): CategoryEntity {
+    // Type assertion for sync fields added by migration 20260126000001
+    const syncRow = row as DbCategoryRow & {
+      version?: number;
+      deleted_at?: string | null;
+    };
+
     return {
       id: row.id,
       userId: row.user_id || '',
@@ -87,6 +94,8 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
       parentId: row.parent_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      version: syncRow.version ?? 1,
+      deletedAt: syncRow.deleted_at ?? null,
     };
   }
 
@@ -112,6 +121,12 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
     row: DbParentCategoryWithCountsRow,
     childCount: number
   ): GroupingEntity {
+    // Type assertion for sync fields added by migration 20260126000001
+    const syncRow = row as DbParentCategoryWithCountsRow & {
+      version?: number;
+      deleted_at?: string | null;
+    };
+
     return {
       id: row.id || '',
       userId: row.user_id || '',
@@ -120,6 +135,8 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
       type: (row.type as CategoryType) || 'expense',
       createdAt: row.created_at || '',
       updatedAt: row.updated_at || '',
+      version: syncRow.version ?? 1,
+      deletedAt: syncRow.deleted_at ?? null,
       childCount,
       totalTransactionCount: row.transaction_count || 0,
     };
@@ -214,6 +231,9 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
         }
       }
 
+      // Tombstone filtering: Only show active categories
+      query = query.is('deleted_at', null);
+
       const { data, error } = await query;
 
       if (error) {
@@ -260,10 +280,11 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
     _userId: string // RLS handles user filtering
   ): Promise<CategoryDataResult<CategoryWithCountEntity[]>> {
     try {
-      // Fetch all categories
+      // Fetch all categories (tombstone filtering: only active)
       const { data: categories, error: catError } = await this.supabase
         .from('categories')
         .select('*')
+        .is('deleted_at', null)
         .order('name', { ascending: true });
 
       if (catError) {
@@ -669,36 +690,94 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
     data: UpdateCategoryDTO
   ): Promise<CategoryDataResult<CategoryEntity>> {
     try {
-      // Build update object (only include defined fields)
-      const updateData: Database['public']['Tables']['categories']['Update'] =
-        {};
-      if (data.name !== undefined) updateData.name = data.name;
-      if (data.color !== undefined) updateData.color = data.color;
-      if (data.parentId !== undefined) updateData.parent_id = data.parentId;
+      // CTO Mandate: Use version-checked RPC for optimistic concurrency control
+      const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
+        'update_category_with_version',
+        {
+          p_category_id: id,
+          p_expected_version: data.version,
+          p_name: data.name ?? undefined,
+          p_color: data.color ?? undefined,
+          p_parent_id: data.parentId ?? undefined,
+          p_type: undefined, // Type changes only for groupings, not exposed in UpdateCategoryDTO
+        }
+      );
 
-      const { data: updated, error } = await this.supabase
-        .from('categories')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
+      if (rpcError) {
+        return {
+          success: false,
+          data: null,
+          error: this.mapDatabaseError(rpcError, {
+            categoryId: id,
+            categoryName: data.name,
+            parentId: data.parentId,
+          }),
+        };
+      }
 
-      if (error) {
-        if (error.code === 'PGRST116') {
+      // Parse RPC response
+      const result = rpcResult as {
+        success: boolean;
+        error?: string;
+        expectedVersion?: number;
+        currentVersion?: number;
+      };
+
+      if (!result.success) {
+        // Handle version conflict
+        if (result.error === 'version_conflict') {
+          return {
+            success: false,
+            data: null,
+            error: new CategoryVersionConflictError(
+              id,
+              data.version,
+              result.currentVersion ?? -1
+            ),
+            conflict: true,
+          };
+        }
+
+        // Handle not found
+        if (result.error === 'not_found') {
           return {
             success: false,
             data: null,
             error: new CategoryNotFoundError(id),
           };
         }
+
+        // Handle concurrent modification
+        if (result.error === 'concurrent_modification') {
+          return {
+            success: false,
+            data: null,
+            error: new CategoryVersionConflictError(id, data.version, -1),
+            conflict: true,
+          };
+        }
+
+        // Generic error
         return {
           success: false,
           data: null,
-          error: this.mapDatabaseError(error, {
-            categoryId: id,
-            categoryName: data.name,
-            parentId: data.parentId,
-          }),
+          error: new CategoryRepositoryError(`Failed to update category: ${result.error}`),
+        };
+      }
+
+      // Fetch the updated category to return full entity
+      const { data: updated, error: fetchError } = await this.supabase
+        .from('categories')
+        .select('*')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .single();
+
+      if (fetchError || !updated) {
+        return {
+          success: false,
+          data: null,
+          error: new CategoryNotFoundError(id),
         };
       }
 
@@ -720,19 +799,89 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
 
   async delete(
     _userId: string,
-    id: string
+    id: string,
+    version: number
   ): Promise<CategoryDataResult<void>> {
     try {
-      const { error } = await this.supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
+      // CTO Mandate: Use version-checked soft delete RPC (Tombstone Pattern)
+      const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
+        'delete_category_with_version',
+        {
+          p_category_id: id,
+          p_expected_version: version,
+        }
+      );
 
-      if (error) {
+      if (rpcError) {
         return {
           success: false,
           data: null,
-          error: this.mapDatabaseError(error, { categoryId: id }),
+          error: this.mapDatabaseError(rpcError, { categoryId: id }),
+        };
+      }
+
+      // Parse RPC response
+      const result = rpcResult as {
+        success: boolean;
+        error?: string;
+        expectedVersion?: number;
+        currentVersion?: number;
+        message?: string;
+      };
+
+      if (!result.success) {
+        // Handle version conflict
+        if (result.error === 'version_conflict') {
+          return {
+            success: false,
+            data: null,
+            error: new CategoryVersionConflictError(id, version, result.currentVersion ?? -1),
+            conflict: true,
+          };
+        }
+
+        // Handle not found
+        if (result.error === 'not_found') {
+          return {
+            success: false,
+            data: null,
+            error: new CategoryNotFoundError(id),
+          };
+        }
+
+        // Handle has children
+        if (result.error === 'has_children') {
+          return {
+            success: false,
+            data: null,
+            error: new CategoryHasChildrenError(id),
+          };
+        }
+
+        // Handle has transactions
+        if (result.error === 'has_transactions') {
+          return {
+            success: false,
+            data: null,
+            error: new CategoryHasTransactionsError(id),
+          };
+        }
+
+        // Handle concurrent modification
+        if (result.error === 'concurrent_modification') {
+          return {
+            success: false,
+            data: null,
+            error: new CategoryVersionConflictError(id, version, -1),
+            conflict: true,
+          };
+        }
+
+        // Generic error
+        return {
+          success: false,
+          data: null,
+          error: new CategoryRepositoryError(`Failed to delete category: ${result.error}`),
         };
       }
 

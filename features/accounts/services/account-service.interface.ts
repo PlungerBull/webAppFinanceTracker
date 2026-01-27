@@ -85,11 +85,15 @@ export interface IAccountService {
   update(id: string, data: UpdateAccountDTO): Promise<AccountViewEntity>;
 
   /**
-   * Delete an account.
+   * Soft delete an account (Tombstone Pattern).
+   *
+   * CTO Mandate: Uses soft delete for distributed sync compatibility.
    *
    * @param id - Account ID
+   * @param version - Expected version for optimistic concurrency control
    * @throws {AccountNotFoundError} If account not found
+   * @throws {AccountVersionConflictError} If version conflict
    * @throws {AccountError} If deletion fails
    */
-  delete(id: string): Promise<void>;
+  delete(id: string, version: number): Promise<void>;
 }

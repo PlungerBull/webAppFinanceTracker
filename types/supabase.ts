@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -45,6 +40,7 @@ export type Database = {
           created_at: string
           currency_code: string
           current_balance: number
+          deleted_at: string | null
           group_id: string
           id: string
           is_visible: boolean
@@ -52,12 +48,14 @@ export type Database = {
           type: Database["public"]["Enums"]["account_type"]
           updated_at: string
           user_id: string
+          version: number
         }
         Insert: {
           color?: string
           created_at?: string
           currency_code?: string
           current_balance?: number
+          deleted_at?: string | null
           group_id?: string
           id?: string
           is_visible?: boolean
@@ -65,12 +63,14 @@ export type Database = {
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string
           user_id: string
+          version?: number
         }
         Update: {
           color?: string
           created_at?: string
           currency_code?: string
           current_balance?: number
+          deleted_at?: string | null
           group_id?: string
           id?: string
           is_visible?: boolean
@@ -78,6 +78,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string
           user_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -93,32 +94,38 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           parent_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string
           user_id: string | null
+          version: number
         }
         Insert: {
           color: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           parent_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
           user_id?: string | null
+          version?: number
         }
         Update: {
           color?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           parent_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
           user_id?: string | null
+          version?: number
         }
         Relationships: [
           {
@@ -222,6 +229,7 @@ export type Database = {
           category_id: string | null
           created_at: string
           date: string | null
+          deleted_at: string | null
           description: string | null
           exchange_rate: number | null
           id: string
@@ -230,6 +238,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          version: number
         }
         Insert: {
           account_id?: string | null
@@ -237,6 +246,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           date?: string | null
+          deleted_at?: string | null
           description?: string | null
           exchange_rate?: number | null
           id?: string
@@ -245,6 +255,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          version?: number
         }
         Update: {
           account_id?: string | null
@@ -252,6 +263,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           date?: string | null
+          deleted_at?: string | null
           description?: string | null
           exchange_rate?: number | null
           id?: string
@@ -260,6 +272,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -450,11 +463,17 @@ export type Database = {
     Views: {
       categories_with_counts: {
         Row: {
+          color: string | null
+          created_at: string | null
+          deleted_at: string | null
           id: string | null
           name: string | null
           parent_id: string | null
           transaction_count: number | null
           type: Database["public"]["Enums"]["transaction_type"] | null
+          updated_at: string | null
+          user_id: string | null
+          version: number | null
         }
         Relationships: [
           {
@@ -529,6 +548,7 @@ export type Database = {
           created_at: string | null
           currency_original: string | null
           date: string | null
+          deleted_at: string | null
           description: string | null
           exchange_rate: number | null
           id: string | null
@@ -537,6 +557,7 @@ export type Database = {
           status: string | null
           updated_at: string | null
           user_id: string | null
+          version: number | null
         }
         Relationships: [
           {
@@ -676,6 +697,22 @@ export type Database = {
       }
     }
     Functions: {
+      batch_upsert_accounts: {
+        Args: { p_records: Json[]; p_user_id: string }
+        Returns: Json
+      }
+      batch_upsert_categories: {
+        Args: { p_records: Json[]; p_user_id: string }
+        Returns: Json
+      }
+      batch_upsert_inbox: {
+        Args: { p_records: Json[]; p_user_id: string }
+        Returns: Json
+      }
+      batch_upsert_transactions: {
+        Args: { p_records: Json[]; p_user_id: string }
+        Returns: Json
+      }
       bulk_update_transactions: {
         Args: {
           p_transaction_ids: string[]
@@ -713,20 +750,35 @@ export type Database = {
         }
         Returns: Json
       }
-      create_transfer: {
-        Args: {
-          p_amount_cents: number
-          p_amount_received_cents: number
-          p_category_id?: string
-          p_date: string
-          p_description: string
-          p_exchange_rate: number
-          p_from_account_id: string
-          p_to_account_id: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
+      create_transfer:
+        | {
+            Args: {
+              p_amount_cents: number
+              p_amount_received_cents: number
+              p_category_id?: string
+              p_date: string
+              p_description: string
+              p_exchange_rate: number
+              p_from_account_id: string
+              p_to_account_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_amount_received: number
+              p_category_id?: string
+              p_date: string
+              p_description: string
+              p_exchange_rate: number
+              p_from_account_id: string
+              p_to_account_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       create_transfer_transaction: {
         Args: {
           p_amount_cents: number
@@ -739,6 +791,14 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_account_with_version: {
+        Args: { p_account_id: string; p_expected_version: number }
+        Returns: Json
+      }
+      delete_category_with_version: {
+        Args: { p_category_id: string; p_expected_version: number }
+        Returns: Json
+      }
       delete_transaction_with_version: {
         Args: { p_expected_version: number; p_transaction_id: string }
         Returns: Json
@@ -747,6 +807,16 @@ export type Database = {
         Args: { p_transfer_id: string; p_user_id: string }
         Returns: undefined
       }
+      get_changes_since: {
+        Args: {
+          p_limit?: number
+          p_since_version: number
+          p_table_name: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      get_current_global_version: { Args: never; Returns: number }
       get_deleted_transactions: {
         Args: { p_since_version?: number; p_user_id: string }
         Returns: {
@@ -779,6 +849,7 @@ export type Database = {
           version: number
         }[]
       }
+      get_max_version_for_user: { Args: { p_user_id: string }; Returns: Json }
       get_monthly_spending_by_category:
         | {
             Args: { p_months_back?: number; p_user_id?: string }
@@ -804,6 +875,14 @@ export type Database = {
         Args: { p_reconciliation_id: string }
         Returns: Json
       }
+      get_sync_changes_summary: {
+        Args: { p_since_version: number; p_user_id: string }
+        Returns: Json
+      }
+      get_sync_changes_summary_v2: {
+        Args: { p_since_version: number; p_user_id: string }
+        Returns: Json
+      }
       import_transactions: {
         Args: {
           p_default_account_color: string
@@ -823,18 +902,44 @@ export type Database = {
         Args: { p_source_ids: string[]; p_target_id: string }
         Returns: Json
       }
-      promote_inbox_item: {
-        Args: {
-          p_account_id: string
-          p_category_id: string
-          p_exchange_rate?: number
-          p_final_amount_cents?: number
-          p_final_date?: string
-          p_final_description?: string
-          p_inbox_id: string
-        }
-        Returns: Json
-      }
+      promote_inbox_item:
+        | {
+            Args: {
+              p_account_id: string
+              p_category_id: string
+              p_exchange_rate?: number
+              p_expected_version?: number
+              p_final_amount?: number
+              p_final_date?: string
+              p_final_description?: string
+              p_inbox_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_account_id: string
+              p_category_id: string
+              p_exchange_rate?: number
+              p_final_amount?: number
+              p_final_date?: string
+              p_final_description?: string
+              p_inbox_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_account_id: string
+              p_category_id: string
+              p_exchange_rate?: number
+              p_final_amount_cents?: number
+              p_final_date?: string
+              p_final_description?: string
+              p_inbox_id: string
+            }
+            Returns: Json
+          }
       reconcile_account_balance: {
         Args: { p_account_id: string; p_date?: string; p_new_balance: number }
         Returns: string
@@ -850,6 +955,27 @@ export type Database = {
       restore_transaction: { Args: { p_transaction_id: string }; Returns: Json }
       unlink_transactions_from_reconciliation: {
         Args: { p_transaction_ids: string[] }
+        Returns: Json
+      }
+      update_account_with_version: {
+        Args: {
+          p_account_id: string
+          p_color?: string
+          p_expected_version: number
+          p_is_visible?: boolean
+          p_name?: string
+        }
+        Returns: Json
+      }
+      update_category_with_version: {
+        Args: {
+          p_category_id: string
+          p_color?: string
+          p_expected_version: number
+          p_name?: string
+          p_parent_id?: string
+          p_type?: string
+        }
         Returns: Json
       }
       update_transaction_with_version: {
@@ -1036,3 +1162,4 @@ export const Constants = {
     },
   },
 } as const
+

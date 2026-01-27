@@ -5,15 +5,16 @@
  *
  * CTO MANDATES:
  * - Pure Service: Side effects (toast, navigation) via onSuccess callback
- * - Zero-Latency UX: Invalidates correct cache based on result.route
+ * - Zero-Latency UX: Optimistic cache prepend (NOT invalidation)
  * - DTO Pattern: Converts form data → TransactionRouteInputDTO at component boundary
+ * - Empty Cache Edge Case: Gracefully bail out if no cached data
  *
  * @module use-transaction-routing
  */
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTransactionService } from './use-transaction-service';
 import { getInboxService } from '@/features/inbox/services/inbox-service';
@@ -25,6 +26,8 @@ import type {
   RoutingDecision,
   SubmissionResult,
 } from '../domain/types';
+import type { TransactionViewEntity } from '../domain/entities';
+import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
 
 /**
  * Options for useTransactionRouting hook
@@ -63,8 +66,9 @@ export interface UseTransactionRoutingResult {
    *
    * Handles:
    * 1. Calling routing service
-   * 2. Invalidating correct queries based on route
+   * 2. Optimistic cache prepend based on route
    * 3. Calling onSuccess/onError callbacks
+   * 4. Rollback on error, invalidate on settle
    */
   submit: (data: TransactionRouteInputDTO) => Promise<void>;
 
@@ -84,9 +88,27 @@ export interface UseTransactionRoutingResult {
   isSubmitting: boolean;
 
   /**
-   * Direct access to routing service (for advanced usage)
+   * Whether the routing service is ready
+   *
+   * CTO MANDATE: Orchestrator Rule
+   * Check isReady before calling submit/determineRoute
    */
-  routingService: ITransactionRoutingService;
+  isReady: boolean;
+
+  /**
+   * Direct access to routing service (for advanced usage)
+   * May be null if not ready (check isReady first)
+   */
+  routingService: ITransactionRoutingService | null;
+}
+
+/**
+ * Snapshot context for rollback
+ */
+interface OptimisticContext {
+  previousTransactions: unknown;
+  previousInbox: unknown;
+  route: 'ledger' | 'inbox';
 }
 
 /**
@@ -127,12 +149,110 @@ export function useTransactionRouting(
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
   const transactionService = useTransactionService();
+  const contextRef = useRef<OptimisticContext | null>(null);
 
-  // Create routing service with dependencies
+  // CTO MANDATE: Orchestrator Rule
+  // Check if transaction service is ready
+  const isReady = transactionService !== null;
+
+  // Create routing service with dependencies (only when service is ready)
   const routingService = useMemo(() => {
+    if (!transactionService) {
+      return null;
+    }
     const inboxService = getInboxService();
     return createTransactionRoutingService(transactionService, inboxService);
   }, [transactionService]);
+
+  /**
+   * Optimistically prepend entity to ledger cache (transactions infinite query)
+   *
+   * CTO MANDATE: Handle pages[0].data for infinite queries
+   */
+  const prependToLedger = useCallback(
+    (entity: TransactionViewEntity): unknown => {
+      // Snapshot for rollback
+      const previous = queryClient.getQueryData(['transactions', 'infinite']);
+
+      // CTO MANDATE: Empty cache edge case - bail out gracefully
+      if (!previous) {
+        return null;
+      }
+
+      // Prepend to first page of infinite query
+      queryClient.setQueryData(['transactions', 'infinite'], (old: any) => {
+        if (!old?.pages?.length) return old;
+
+        const newPages = [...old.pages];
+        newPages[0] = {
+          ...newPages[0],
+          data: [entity, ...newPages[0].data],
+          count: (newPages[0].count ?? 0) + 1,
+        };
+
+        return {
+          ...old,
+          pages: newPages,
+        };
+      });
+
+      return previous;
+    },
+    [queryClient]
+  );
+
+  /**
+   * Optimistically prepend entity to inbox cache
+   *
+   * CTO MANDATE: Handle pages[0].data for infinite queries
+   */
+  const prependToInbox = useCallback(
+    (entity: InboxItemViewEntity): unknown => {
+      // Snapshot for rollback
+      const previous = queryClient.getQueryData([INBOX.QUERY_KEYS.ALL, 'infinite']);
+
+      // CTO MANDATE: Empty cache edge case - bail out gracefully
+      if (!previous) {
+        return null;
+      }
+
+      // Prepend to first page of infinite query
+      queryClient.setQueryData([INBOX.QUERY_KEYS.ALL, 'infinite'], (old: any) => {
+        if (!old?.pages?.length) return old;
+
+        const newPages = [...old.pages];
+        newPages[0] = {
+          ...newPages[0],
+          data: [entity, ...newPages[0].data],
+          count: (newPages[0].count ?? 0) + 1,
+        };
+
+        return {
+          ...old,
+          pages: newPages,
+        };
+      });
+
+      return previous;
+    },
+    [queryClient]
+  );
+
+  /**
+   * Rollback optimistic update on error
+   */
+  const rollback = useCallback(() => {
+    const ctx = contextRef.current;
+    if (!ctx) return;
+
+    if (ctx.route === 'ledger' && ctx.previousTransactions) {
+      queryClient.setQueryData(['transactions', 'infinite'], ctx.previousTransactions);
+    } else if (ctx.route === 'inbox' && ctx.previousInbox) {
+      queryClient.setQueryData([INBOX.QUERY_KEYS.ALL, 'infinite'], ctx.previousInbox);
+    }
+
+    contextRef.current = null;
+  }, [queryClient]);
 
   /**
    * Submit transaction to appropriate destination
@@ -140,44 +260,90 @@ export function useTransactionRouting(
    * Flow:
    * 1. Set isSubmitting = true
    * 2. Call routingService.submitTransaction()
-   * 3. Invalidate queries based on result.route
+   * 3. Optimistically prepend entity to cache
    * 4. Call onSuccess callback
-   * 5. Set isSubmitting = false
+   * 5. Invalidate for consistency (settle)
+   * 6. Set isSubmitting = false
+   *
+   * On error:
+   * - Rollback optimistic update
+   * - Call onError callback
    */
   const submit = useCallback(
     async (data: TransactionRouteInputDTO): Promise<void> => {
+      // CTO MANDATE: Orchestrator Rule
+      if (!routingService) {
+        options.onError?.(new Error('Service not ready. Please wait for initialization.'));
+        return;
+      }
+
       setIsSubmitting(true);
+
       try {
+        // 1. Cancel pending queries to prevent race conditions
+        await queryClient.cancelQueries({ queryKey: ['transactions'] });
+        await queryClient.cancelQueries({ queryKey: [INBOX.QUERY_KEYS.ALL] });
+
+        // 2. Call routing service (includes sanitization)
         const result = await routingService.submitTransaction(data);
 
-        // Invalidate correct queries based on route for Zero-Latency UX
+        // 3. Optimistically prepend entity to cache based on route
         if (result.route === 'ledger') {
-          // Ledger: invalidate transactions and accounts (balance changed)
-          await queryClient.invalidateQueries({ queryKey: ['transactions'] });
-          await queryClient.invalidateQueries({ queryKey: ['accounts'] });
+          const previous = prependToLedger(result.entity as TransactionViewEntity);
+          contextRef.current = {
+            previousTransactions: previous,
+            previousInbox: null,
+            route: 'ledger',
+          };
         } else {
-          // Inbox: invalidate inbox queries
-          await queryClient.invalidateQueries({ queryKey: INBOX.QUERY_KEYS.ALL });
+          const previous = prependToInbox(result.entity as InboxItemViewEntity);
+          contextRef.current = {
+            previousTransactions: null,
+            previousInbox: previous,
+            route: 'inbox',
+          };
         }
 
-        // Side effects via callback (Pure Service pattern)
+        // 4. Side effects via callback (Pure Service pattern)
         options.onSuccess(result);
+
+        // 5. Invalidate for consistency (settle) - happens in background
+        // This ensures server truth is reflected even if optimistic update was slightly off
+        if (result.route === 'ledger') {
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          queryClient.invalidateQueries({ queryKey: ['accounts'] }); // Balance changed
+        } else {
+          queryClient.invalidateQueries({ queryKey: [INBOX.QUERY_KEYS.ALL] });
+        }
       } catch (error) {
+        // Rollback optimistic update on error
+        rollback();
         options.onError?.(error as Error);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [routingService, queryClient, options]
+    [routingService, queryClient, options, prependToLedger, prependToInbox, rollback]
   );
 
   /**
    * Determine routing without submitting (pure function)
    *
    * Delegates to routingService.determineRoute()
+   * Returns 'inbox' route with all fields missing if service not ready
    */
   const determineRoute = useCallback(
     (data: TransactionRouteInputDTO): RoutingDecision => {
+      // CTO MANDATE: Orchestrator Rule
+      if (!routingService) {
+        // Return safe default when not ready
+        return {
+          route: 'inbox',
+          isComplete: false,
+          hasAnyData: false,
+          missingFields: ['amountCents', 'description', 'accountId', 'categoryId'],
+        };
+      }
       return routingService.determineRoute(data);
     },
     [routingService]
@@ -187,6 +353,7 @@ export function useTransactionRouting(
     submit,
     determineRoute,
     isSubmitting,
+    isReady,
     routingService,
   };
 }

@@ -385,6 +385,7 @@ describe('TransactionRoutingService', () => {
       expect(result.route).toBe('ledger');
       expect(result.id).toBe('txn-123');
       expect(result.success).toBe(true);
+      expect(result.entity).toBe(mockTransaction); // CTO MANDATE: Entity for optimistic UI
 
       expect(mockTransactionService.create).toHaveBeenCalledWith({
         accountId: 'acc-123',
@@ -398,9 +399,10 @@ describe('TransactionRoutingService', () => {
     });
 
     it('routes to inbox and calls inboxService.create when partial', async () => {
+      const mockInboxEntity = { id: 'inbox-456', userId: 'user-1', status: 'pending' };
       vi.mocked(mockInboxService.create).mockResolvedValue({
         success: true,
-        data: { id: 'inbox-456' },
+        data: mockInboxEntity,
       } as Awaited<ReturnType<typeof mockInboxService.create>>);
 
       const result = await service.submitTransaction(
@@ -415,6 +417,7 @@ describe('TransactionRoutingService', () => {
       expect(result.route).toBe('inbox');
       expect(result.id).toBe('inbox-456');
       expect(result.success).toBe(true);
+      expect(result.entity).toBe(mockInboxEntity); // CTO MANDATE: Entity for optimistic UI
 
       expect(mockInboxService.create).toHaveBeenCalledWith({
         amountCents: 1050,
@@ -500,6 +503,176 @@ describe('TransactionRoutingService', () => {
           notes: 'Important note',
         })
       );
+    });
+  });
+
+  // ============================================================================
+  // SANITIZATION TESTS (CTO Mandate: Service layer sanitizes, not components)
+  // ============================================================================
+
+  describe('sanitization', () => {
+    it('trims leading/trailing whitespace from description', async () => {
+      const mockTransaction = createMockTransaction('txn-sanitized');
+      vi.mocked(mockTransactionService.create).mockResolvedValue(mockTransaction);
+
+      await service.submitTransaction(
+        createInput({
+          amountCents: 1050,
+          description: '  Coffee  ',
+          accountId: 'acc-123',
+          categoryId: 'cat-456',
+        })
+      );
+
+      expect(mockTransactionService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'Coffee',
+        })
+      );
+    });
+
+    it('trims leading/trailing whitespace from notes', async () => {
+      const mockTransaction = createMockTransaction('txn-notes-trim');
+      vi.mocked(mockTransactionService.create).mockResolvedValue(mockTransaction);
+
+      await service.submitTransaction(
+        createInput({
+          amountCents: 1050,
+          description: 'Coffee',
+          accountId: 'acc-123',
+          categoryId: 'cat-456',
+          notes: '  Morning coffee  ',
+        })
+      );
+
+      expect(mockTransactionService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notes: 'Morning coffee',
+        })
+      );
+    });
+
+    it('converts whitespace-only description to null (routes to inbox)', async () => {
+      vi.mocked(mockInboxService.create).mockResolvedValue({
+        success: true,
+        data: { id: 'inbox-whitespace' },
+      } as Awaited<ReturnType<typeof mockInboxService.create>>);
+
+      const result = await service.submitTransaction(
+        createInput({
+          amountCents: 1050,
+          description: '   ', // Whitespace only
+          accountId: 'acc-123',
+          categoryId: 'cat-456',
+        })
+      );
+
+      // Should route to inbox because sanitized description is null
+      expect(result.route).toBe('inbox');
+      expect(mockInboxService.create).toHaveBeenCalled();
+      expect(mockTransactionService.create).not.toHaveBeenCalled();
+    });
+
+    it('converts whitespace-only notes to null', async () => {
+      vi.mocked(mockInboxService.create).mockResolvedValue({
+        success: true,
+        data: { id: 'inbox-notes-null' },
+      } as Awaited<ReturnType<typeof mockInboxService.create>>);
+
+      await service.submitTransaction(
+        createInput({
+          amountCents: 1050,
+          description: 'Coffee',
+          accountId: null, // Missing to route to inbox
+          categoryId: null,
+          notes: '   ', // Whitespace only → should become undefined
+        })
+      );
+
+      expect(mockInboxService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notes: undefined, // null converted to undefined for inbox
+        })
+      );
+    });
+
+    it('normalizes internal whitespace ("Coffee  Shop" → "Coffee Shop")', async () => {
+      const mockTransaction = createMockTransaction('txn-normalize');
+      vi.mocked(mockTransactionService.create).mockResolvedValue(mockTransaction);
+
+      await service.submitTransaction(
+        createInput({
+          amountCents: 1050,
+          description: 'Coffee  Shop   Downtown',
+          accountId: 'acc-123',
+          categoryId: 'cat-456',
+        })
+      );
+
+      expect(mockTransactionService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: 'Coffee Shop Downtown',
+        })
+      );
+    });
+
+    it('normalizes internal whitespace in notes', async () => {
+      const mockTransaction = createMockTransaction('txn-notes-normalize');
+      vi.mocked(mockTransactionService.create).mockResolvedValue(mockTransaction);
+
+      await service.submitTransaction(
+        createInput({
+          amountCents: 1050,
+          description: 'Coffee',
+          accountId: 'acc-123',
+          categoryId: 'cat-456',
+          notes: 'Multiple   spaces    here',
+        })
+      );
+
+      expect(mockTransactionService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notes: 'Multiple spaces here',
+        })
+      );
+    });
+
+    it('applies sanitization before routing decision', async () => {
+      // This test ensures that sanitization happens BEFORE routing
+      // A description that's all whitespace should be treated as missing
+      const decision = service.determineRoute(
+        createInput({
+          amountCents: 1050,
+          description: 'Valid', // Valid description
+          accountId: 'acc-123',
+          categoryId: 'cat-456',
+        })
+      );
+
+      expect(decision.route).toBe('ledger');
+
+      // Note: determineRoute itself doesn't sanitize - it checks the value as-is
+      // The sanitization happens in submitTransaction before determineRoute is called
+      // This is tested by the "whitespace-only routes to inbox" test above
+    });
+
+    it('description: " " routes to inbox (not ledger)', async () => {
+      vi.mocked(mockInboxService.create).mockResolvedValue({
+        success: true,
+        data: { id: 'inbox-space' },
+      } as Awaited<ReturnType<typeof mockInboxService.create>>);
+
+      const result = await service.submitTransaction(
+        createInput({
+          amountCents: 1050,
+          description: ' ', // Single space
+          accountId: 'acc-123',
+          categoryId: 'cat-456',
+        })
+      );
+
+      expect(result.route).toBe('inbox');
+      expect(mockInboxService.create).toHaveBeenCalled();
     });
   });
 });

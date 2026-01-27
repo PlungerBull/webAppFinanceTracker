@@ -27,8 +27,10 @@
 
 import type {
   TransactionRouteInputDTO,
+  UpdateRouteInputDTO,
   RoutingDecision,
   SubmissionResult,
+  UpdateResult,
 } from '../domain/types';
 
 /**
@@ -134,4 +136,69 @@ export interface ITransactionRoutingService {
    * ```
    */
   submitTransaction(data: TransactionRouteInputDTO): Promise<SubmissionResult>;
+
+  /**
+   * Update existing transaction with routing logic
+   *
+   * CTO CRITICAL - Universal Decision Engine:
+   * Uses the SAME Sacred Rules as submitTransaction().
+   * This ensures one source of truth for routing logic.
+   *
+   * Automatic Promotion/Demotion:
+   * - Inbox item + all 4 fields filled → PROMOTE to Ledger
+   * - Ledger item + required field removed → DEMOTE to Inbox
+   *
+   * Flow:
+   * 1. Sanitize input
+   * 2. Determine target route via determineRoute()
+   * 3. Compare sourceRoute vs targetRoute
+   * 4. If same: update in place
+   * 5. If different: promote or demote (delete + create)
+   * 6. Return UpdateResult with promotion/demotion flags
+   *
+   * Version Conflict Resolution:
+   * - Includes version in update DTO
+   * - Throws on version mismatch (optimistic locking)
+   *
+   * @param data - Update route input DTO (includes id, version, sourceRoute)
+   * @returns Promise resolving to UpdateResult
+   * @throws Error on version conflict or other failures
+   *
+   * @example Promotion (Inbox → Ledger)
+   * ```typescript
+   * const result = await routingService.updateTransaction({
+   *   id: 'inbox-123',
+   *   version: 1,
+   *   sourceRoute: 'inbox',
+   *   amountCents: 1050,
+   *   description: 'Coffee',
+   *   accountId: 'acc-123',    // Now filled!
+   *   categoryId: 'cat-456',   // Now filled!
+   *   date: '2024-01-12T10:00:00.000Z',
+   * });
+   * // result.sourceRoute === 'inbox'
+   * // result.targetRoute === 'ledger'
+   * // result.promoted === true
+   * // result.id === 'txn-789' (NEW ledger transaction ID)
+   * ```
+   *
+   * @example Demotion (Ledger → Inbox)
+   * ```typescript
+   * const result = await routingService.updateTransaction({
+   *   id: 'txn-789',
+   *   version: 2,
+   *   sourceRoute: 'ledger',
+   *   amountCents: 1050,
+   *   description: 'Coffee',
+   *   accountId: 'acc-123',
+   *   categoryId: null,        // Removed! → Incomplete
+   *   date: '2024-01-12T10:00:00.000Z',
+   * });
+   * // result.sourceRoute === 'ledger'
+   * // result.targetRoute === 'inbox'
+   * // result.demoted === true
+   * // result.id === 'inbox-456' (NEW inbox item ID)
+   * ```
+   */
+  updateTransaction(data: UpdateRouteInputDTO): Promise<UpdateResult>;
 }

@@ -4,7 +4,10 @@
  * React Query hooks for fetching account data.
  * Uses the new service layer with Repository Pattern.
  *
- * Returns AccountViewEntity - the new domain entity standard.
+ * CTO MANDATES:
+ * - Orchestrator Rule: Service may be null, queries use enabled flag
+ * - Returns AccountViewEntity - the new domain entity standard
+ *
  * UI components must use: id (not accountId), currentBalanceCents (not currentBalance)
  *
  * @module use-accounts
@@ -23,6 +26,9 @@ export type { AccountViewEntity } from '../domain';
  *
  * Query hook for fetching all accounts.
  * Returns AccountViewEntity[] - the new domain standard.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
  *
  * @param filters - Optional filters
  * @returns Query result with accounts array
@@ -52,7 +58,13 @@ export function useAccounts(filters?: AccountFilters) {
 
   return useQuery({
     queryKey: QUERY_KEYS.ACCOUNTS,
-    queryFn: () => service.getAll(filters),
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Account service not ready');
+      }
+      return service.getAll(filters);
+    },
+    enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -60,6 +72,9 @@ export function useAccounts(filters?: AccountFilters) {
  * Use Account
  *
  * Query hook for fetching a single account by ID.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
  *
  * @param id - Account ID
  * @returns Query result with account entity
@@ -81,8 +96,13 @@ export function useAccount(id: string) {
 
   return useQuery({
     queryKey: [...QUERY_KEYS.ACCOUNTS, id],
-    queryFn: () => service.getById(id),
-    enabled: !!id,
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Account service not ready');
+      }
+      return service.getById(id);
+    },
+    enabled: !!service && !!id, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -90,6 +110,9 @@ export function useAccount(id: string) {
  * Use Accounts By Group
  *
  * Query hook for fetching accounts in a specific group.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
  *
  * @param groupId - Account group ID
  * @returns Query result with accounts array
@@ -99,7 +122,12 @@ export function useAccountsByGroup(groupId: string) {
 
   return useQuery({
     queryKey: [...QUERY_KEYS.ACCOUNTS, 'group', groupId],
-    queryFn: () => service.getByGroupId(groupId),
-    enabled: !!groupId,
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Account service not ready');
+      }
+      return service.getByGroupId(groupId);
+    },
+    enabled: !!service && !!groupId, // CTO MANDATE: Orchestrator Rule
   });
 }

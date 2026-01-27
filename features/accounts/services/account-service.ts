@@ -160,9 +160,9 @@ export class AccountService implements IAccountService {
     return result.data;
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, version: number): Promise<void> {
     const userId = await this.getCurrentUserId();
-    const result = await this.repository.delete(userId, id);
+    const result = await this.repository.delete(userId, id, version);
 
     if (!result.success) {
       throw result.error;

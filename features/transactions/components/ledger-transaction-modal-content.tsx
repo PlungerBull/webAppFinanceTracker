@@ -69,6 +69,10 @@ const INITIAL_FORM_DATA: TransactionFormData = {
  *
  * DTO Pattern: Clean data contract at component boundary.
  * NEVER pass raw React form objects to service.
+ *
+ * CTO MANDATE: Components collect raw input, services sanitize.
+ * - NO .trim() here - service layer handles sanitization
+ * - Empty strings passed as-is, service converts to null after trimming
  */
 function formDataToDTO(data: TransactionFormData): TransactionRouteInputDTO {
   const amountVal = parseFloat(data.amount);
@@ -77,11 +81,13 @@ function formDataToDTO(data: TransactionFormData): TransactionRouteInputDTO {
 
   return {
     amountCents,
-    description: data.payee.trim() || null,
+    // Pass raw string - service sanitizes (trim + normalize whitespace)
+    description: data.payee || null,
     accountId: data.fromAccountId,
     categoryId: data.categoryId,
     date: format(data.date, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"),
-    notes: data.notes.trim() || null,
+    // Pass raw string - service sanitizes (trim + normalize whitespace)
+    notes: data.notes || null,
     exchangeRate: data.exchangeRate ? parseFloat(data.exchangeRate) : null,
   };
 }

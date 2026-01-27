@@ -274,6 +274,114 @@ export class SupabaseInboxRepository implements IInboxRepository {
   }
 
   // ============================================================================
+  // BATCH OPERATIONS (Offline Sync - CTO Mandate)
+  // ============================================================================
+
+  /**
+   * Batch create inbox items (for offline sync push)
+   *
+   * Implementation Note:
+   * Current implementation loops through individual create() calls.
+   * TODO: Replace with single RPC for atomic batch insert when sync engine is ready.
+   *
+   * @param userId - User ID (UUID)
+   * @param items - Array of inbox items to create
+   * @returns DataResult with array of created inbox items or first error encountered
+   */
+  async createBatch(
+    userId: string,
+    items: CreateInboxItemDTO[]
+  ): Promise<DataResult<InboxItemViewEntity[]>> {
+    try {
+      const createdItems: InboxItemViewEntity[] = [];
+
+      for (const item of items) {
+        const result = await this.create(userId, item);
+
+        if (!result.success) {
+          // Return first error encountered
+          // Future RPC will handle atomicity (all-or-nothing)
+          return {
+            success: false,
+            data: null,
+            error: new InboxRepositoryError(
+              `Batch create failed at item ${createdItems.length + 1}: ${result.error.message}`
+            ),
+          };
+        }
+
+        createdItems.push(result.data);
+      }
+
+      return {
+        success: true,
+        data: createdItems,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        data: null,
+        error: new InboxRepositoryError(
+          err instanceof Error ? err.message : 'Unknown error in batch create'
+        ),
+      };
+    }
+  }
+
+  /**
+   * Batch update inbox items (for offline sync push)
+   *
+   * Implementation Note:
+   * Current implementation loops through individual update() calls.
+   * TODO: Replace with single RPC for atomic batch update when sync engine is ready.
+   *
+   * @param userId - User ID (UUID)
+   * @param updates - Array of {id, data} update pairs
+   * @returns DataResult with array of updated inbox items or first error encountered
+   */
+  async updateBatch(
+    userId: string,
+    updates: Array<{ id: string; data: UpdateInboxItemDTO }>
+  ): Promise<DataResult<InboxItemViewEntity[]>> {
+    try {
+      const updatedItems: InboxItemViewEntity[] = [];
+
+      for (const { id, data } of updates) {
+        const result = await this.update(userId, id, data);
+
+        if (!result.success) {
+          // Return first error encountered
+          // Future RPC will handle atomicity (all-or-nothing)
+          return {
+            success: false,
+            data: null,
+            error: result.error instanceof VersionConflictError
+              ? result.error // Preserve version conflict errors
+              : new InboxRepositoryError(
+                  `Batch update failed at item ${updatedItems.length + 1} (${id}): ${result.error.message}`
+                ),
+          };
+        }
+
+        updatedItems.push(result.data);
+      }
+
+      return {
+        success: true,
+        data: updatedItems,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        data: null,
+        error: new InboxRepositoryError(
+          err instanceof Error ? err.message : 'Unknown error in batch update'
+        ),
+      };
+    }
+  }
+
+  // ============================================================================
   // PROMOTION OPERATIONS
   // ============================================================================
 

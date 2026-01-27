@@ -26,6 +26,9 @@ import type { TransactionFilters, BulkUpdateTransactionDTO, BulkUpdateResult } f
  * Uses service layer for data fetching.
  * Preserves optimistic updates for zero-latency UX.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready (local database initialized).
+ *
  * @param filters - Optional transaction filters
  * @returns Infinite query result with flattened data
  */
@@ -35,7 +38,8 @@ export function useTransactions(filters?: TransactionFilters) {
   const query = useInfiniteQuery({
     queryKey: ['transactions', 'infinite', filters],
     queryFn: async ({ pageParam = 0 }) => {
-      const result = await service.getAllPaginated(filters, {
+      // CTO MANDATE: Orchestrator Rule - service checked by enabled
+      const result = await service!.getAllPaginated(filters, {
         offset: pageParam,
         limit: PAGINATION.DEFAULT_PAGE_SIZE,
       });
@@ -55,6 +59,8 @@ export function useTransactions(filters?: TransactionFilters) {
     },
     initialPageParam: 0,
     placeholderData: (previousData) => previousData,
+    // CTO MANDATE: Orchestrator Rule - wait for service
+    enabled: !!service,
   });
 
   // Flatten pages for UI consumption
@@ -71,6 +77,9 @@ export function useTransactions(filters?: TransactionFilters) {
 /**
  * Hook for fetching single transaction by ID
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
+ *
  * @param id - Transaction ID (UUID)
  * @returns Query result with transaction data
  */
@@ -79,8 +88,9 @@ export function useTransaction(id: string) {
 
   return useQuery({
     queryKey: ['transactions', id],
-    queryFn: () => service.getById(id),
-    enabled: !!id,
+    queryFn: () => service!.getById(id),
+    // CTO MANDATE: Orchestrator Rule - wait for service AND id
+    enabled: !!id && !!service,
   });
 }
 
@@ -94,6 +104,9 @@ export function useTransaction(id: string) {
  * - UI should convert dollars → cents before calling
  * - Service/repository expect amountCents (integer)
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Throws if service not ready - callers should guard with isReady check.
+ *
  * @returns Mutation with optimistic updates
  */
 export function useAddTransaction() {
@@ -102,7 +115,12 @@ export function useAddTransaction() {
 
   return useMutation({
     mutationKey: ['add-transaction'],
-    mutationFn: (data: CreateTransactionDTO) => service.create(data),
+    mutationFn: (data: CreateTransactionDTO) => {
+      if (!service) {
+        throw new Error('Service not ready. Please wait for initialization.');
+      }
+      return service.create(data);
+    },
 
     onMutate: async (data) => {
       // 1. Cancel outgoing refetches to prevent race conditions
@@ -225,6 +243,9 @@ export function useAddTransaction() {
  * Auto-retry on version conflicts handled by service layer.
  * Implements optimistic updates for zero-latency UX.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Throws if service not ready - callers should guard with isReady check.
+ *
  * @returns Mutation with optimistic updates and conflict handling
  */
 export function useUpdateTransaction() {
@@ -234,6 +255,9 @@ export function useUpdateTransaction() {
   return useMutation({
     mutationKey: ['update-transaction'],
     mutationFn: async ({ id, data }: { id: string; data: UpdateTransactionDTO }) => {
+      if (!service) {
+        throw new Error('Service not ready. Please wait for initialization.');
+      }
       // Service layer handles retry logic automatically
       return service.update(id, data);
     },
@@ -354,6 +378,9 @@ export function useUpdateTransaction() {
  *
  * Implements soft delete with optimistic updates.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Throws if service not ready - callers should guard with isReady check.
+ *
  * @returns Mutation with optimistic updates
  */
 export function useDeleteTransaction() {
@@ -363,6 +390,9 @@ export function useDeleteTransaction() {
   return useMutation({
     mutationKey: ['delete-transaction'],
     mutationFn: async ({ id, version }: { id: string; version: number }) => {
+      if (!service) {
+        throw new Error('Service not ready. Please wait for initialization.');
+      }
       return service.delete(id, version);
     },
 
@@ -454,6 +484,9 @@ export function useDeleteTransaction() {
  *
  * Used by unified detail panel for partial updates.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Throws if service not ready - callers should guard with isReady check.
+ *
  * @returns Mutation for batch updates
  */
 export function useUpdateTransactionBatch() {
@@ -471,6 +504,9 @@ export function useUpdateTransactionBatch() {
       updates: Partial<CreateTransactionDTO>;
       version: number;
     }) => {
+      if (!service) {
+        throw new Error('Service not ready. Please wait for initialization.');
+      }
       return service.updateBatch(id, updates, version);
     },
 
@@ -501,7 +537,12 @@ export function useBulkUpdateTransactions() {
     { previousQueries: [unknown, unknown][] }
   >({
     mutationKey: ['bulk-update-transactions'],
-    mutationFn: (data: BulkUpdateTransactionDTO) => service.bulkUpdate(data),
+    mutationFn: (data: BulkUpdateTransactionDTO) => {
+      if (!service) {
+        throw new Error('Service not ready. Please wait for initialization.');
+      }
+      return service.bulkUpdate(data);
+    },
 
     /**
      * Optimistic Update: Immediately update the cache before server responds
@@ -581,6 +622,9 @@ export function useBulkUpdateTransactions() {
 /**
  * Hook for fetching category counts
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
+ *
  * @param filters - Optional transaction filters
  * @returns Query result with category counts
  */
@@ -589,6 +633,8 @@ export function useCategoryCounts(filters?: TransactionFilters) {
 
   return useQuery({
     queryKey: ['transactions', 'category-counts', filters],
-    queryFn: () => service.getCategoryCounts(filters),
+    queryFn: () => service!.getCategoryCounts(filters),
+    // CTO MANDATE: Orchestrator Rule - wait for service
+    enabled: !!service,
   });
 }

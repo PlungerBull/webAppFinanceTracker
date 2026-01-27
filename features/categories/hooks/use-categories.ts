@@ -4,6 +4,9 @@
  * React Query hooks for fetching category data.
  * Uses the new service layer with Repository Pattern.
  *
+ * CTO MANDATES:
+ * - Orchestrator Rule: Service may be null, queries use enabled flag
+ *
  * @module use-categories
  */
 
@@ -26,6 +29,9 @@ export { useAddCategory, useUpdateCategory, useDeleteCategory } from './use-cate
  * Use Categories
  *
  * Query hook for fetching all categories.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
  *
  * @param filters - Optional filters
  * @returns Query result with categories array
@@ -53,8 +59,14 @@ export function useCategories(filters?: CategoryFilters) {
 
   return useQuery({
     queryKey: QUERY_KEYS.CATEGORIES,
-    queryFn: () => service.getAll(filters),
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Category service not ready');
+      }
+      return service.getAll(filters);
+    },
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -63,6 +75,9 @@ export function useCategories(filters?: CategoryFilters) {
  *
  * Query hook for fetching categories with transaction counts.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
+ *
  * @returns Query result with categories including transactionCount
  */
 export function useCategoriesWithCounts() {
@@ -70,8 +85,14 @@ export function useCategoriesWithCounts() {
 
   return useQuery({
     queryKey: [...QUERY_KEYS.CATEGORIES, 'with-counts'],
-    queryFn: () => service.getAllWithCounts(),
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Category service not ready');
+      }
+      return service.getAllWithCounts();
+    },
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -79,6 +100,9 @@ export function useCategoriesWithCounts() {
  * Use Category
  *
  * Query hook for fetching a single category by ID.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
  *
  * @param id - Category ID
  * @returns Query result with category entity
@@ -100,8 +124,13 @@ export function useCategory(id: string) {
 
   return useQuery({
     queryKey: [...QUERY_KEYS.CATEGORIES, id],
-    queryFn: () => service.getById(id),
-    enabled: !!id,
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Category service not ready');
+      }
+      return service.getById(id);
+    },
+    enabled: !!service && !!id, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -115,6 +144,9 @@ export function useCategory(id: string) {
  * - Child categories (have a parent)
  * - Orphaned parents (parents with no children)
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
+ *
  * @returns Query result with leaf categories array
  */
 export function useLeafCategoriesQuery() {
@@ -122,8 +154,14 @@ export function useLeafCategoriesQuery() {
 
   return useQuery({
     queryKey: [...QUERY_KEYS.CATEGORIES, 'leaf'],
-    queryFn: () => service.getLeafCategories(),
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Category service not ready');
+      }
+      return service.getLeafCategories();
+    },
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -132,6 +170,9 @@ export function useLeafCategoriesQuery() {
  *
  * Query hook for fetching categories organized by type (income/expense).
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Query is disabled until service is ready.
+ *
  * @returns Query result with categorized structure
  */
 export function useCategorizedCategories() {
@@ -139,7 +180,13 @@ export function useCategorizedCategories() {
 
   return useQuery({
     queryKey: [...QUERY_KEYS.CATEGORIES, 'categorized'],
-    queryFn: () => service.getCategorizedCategories(),
+    queryFn: () => {
+      if (!service) {
+        throw new Error('Category service not ready');
+      }
+      return service.getCategorizedCategories();
+    },
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }

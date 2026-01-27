@@ -17,10 +17,10 @@ export function DeleteAccountDialog({ open, onOpenChange, account }: DeleteAccou
   const [error, setError] = useState<string | null>(null);
 
   const onDelete = async () => {
-    if (account?.id) {
+    if (account?.id && account?.version !== undefined) {
       setError(null);
       try {
-        await deleteAccountMutation.mutateAsync(account.id);
+        await deleteAccountMutation.mutateAsync({ id: account.id, version: account.version });
         onOpenChange(false);
       } catch (err) {
         // Error toast is handled by the hook's onError

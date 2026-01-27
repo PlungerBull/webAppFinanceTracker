@@ -4,7 +4,9 @@
  * React Query mutation hooks for category operations.
  * Includes optimistic updates for Zero-Latency UX.
  *
- * CTO Mandate: ALL mutation hooks must include onMutate for instant cache updates.
+ * CTO Mandates:
+ * - ALL mutation hooks must include onMutate for instant cache updates
+ * - Orchestrator Rule: Service may be null, mutations must guard
  *
  * @module use-category-mutations
  */
@@ -21,6 +23,7 @@ import type {
   HierarchyViolationReason,
 } from '../domain';
 import {
+  CategoryRepositoryError,
   isCategoryHasChildrenError,
   isCategoryHasTransactionsError,
   isCategoryHierarchyError,
@@ -35,9 +38,15 @@ import type { MergeCategoriesResult } from '../services';
  * Mutation hook for creating a new category.
  * Invalidates categories and groupings cache on success.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useAddCategory();
+ * const { mutate, isPending, isReady } = useAddCategory();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({
  *   name: 'Groceries',
@@ -51,8 +60,13 @@ export function useAddCategory() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (data: CreateCategoryDTO) => service.create(data),
+  const mutation = useMutation({
+    mutationFn: (data: CreateCategoryDTO) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
@@ -74,6 +88,11 @@ export function useAddCategory() {
       }
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
@@ -82,9 +101,15 @@ export function useAddCategory() {
  * Mutation hook for updating an existing category.
  * Includes optimistic updates for Zero-Latency UX.
  *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if service is available.
+ *
  * @example
  * ```typescript
- * const { mutate, isPending } = useUpdateCategory();
+ * const { mutate, isPending, isReady } = useUpdateCategory();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({
  *   id: 'category-uuid',
@@ -96,9 +121,13 @@ export function useUpdateCategory() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateCategoryDTO }) =>
-      service.update(id, data),
+  const mutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateCategoryDTO }) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.update(id, data);
+    },
 
     // Optimistic update for instant UI feedback
     onMutate: async ({ id, data }) => {
@@ -166,34 +195,47 @@ export function useUpdateCategory() {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
  * Use Delete Category
  *
- * Mutation hook for deleting a category.
+ * Mutation hook for soft-deleting a category (Tombstone Pattern).
  * Includes optimistic updates for Zero-Latency UX.
  *
- * CTO Mandate: Type-safe error handling via instanceof.
- * - CategoryHasTransactionsError: Category has linked transactions
- * - CategoryHasChildrenError: Parent has child categories
+ * CTO Mandates:
+ * - Type-safe error handling via instanceof
+ * - Orchestrator Rule: Service may be null
  *
  * @example
  * ```typescript
- * const { mutate, isPending } = useDeleteCategory();
+ * const { mutate, isPending, isReady } = useDeleteCategory();
  *
- * mutate('category-uuid');
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
+ *
+ * mutate({ id: 'category-uuid', version: 1 });
  * ```
  */
 export function useDeleteCategory() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: string) => service.delete(id),
+  const mutation = useMutation({
+    mutationFn: ({ id, version }: { id: string; version: number }) => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.delete(id, version);
+    },
 
     // Optimistic removal for instant UI feedback
-    onMutate: async (id) => {
+    onMutate: async ({ id }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.CATEGORIES });
 
@@ -215,7 +257,7 @@ export function useDeleteCategory() {
 
     // Rollback on error with user-friendly toast
     // CTO Mandate: Use instanceof for type-safe error handling (NOT string matching)
-    onError: (err, _id, context) => {
+    onError: (err, _variables, context) => {
       // Rollback optimistic update
       if (context?.previousCategories) {
         queryClient.setQueryData(QUERY_KEYS.CATEGORIES, context.previousCategories);
@@ -255,6 +297,11 @@ export function useDeleteCategory() {
       ]);
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
 
 /**
@@ -262,15 +309,19 @@ export function useDeleteCategory() {
  *
  * Mutation hook for merging multiple categories into one.
  *
- * CTO MANDATE: This is a Ledger Event that bumps transaction versions.
- * See ARCHITECTURE.md Section 8 - Category Merge Protocol.
+ * CTO MANDATES:
+ * - This is a Ledger Event that bumps transaction versions
+ * - Orchestrator Rule: Service may be null
  *
  * CRITICAL: Must invalidate BOTH categories AND transactions caches
  * to prevent UI desync after merge.
  *
  * @example
  * ```typescript
- * const { mutate, isPending } = useMergeCategories();
+ * const { mutate, isPending, isReady } = useMergeCategories();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
  *
  * mutate({
  *   sourceIds: ['cat-1', 'cat-2', 'cat-3'],
@@ -282,15 +333,19 @@ export function useMergeCategories() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: ({
       sourceIds,
       targetId,
     }: {
       sourceIds: string[];
       targetId: string;
-    }): Promise<MergeCategoriesResult> =>
-      service.mergeCategories(sourceIds, targetId),
+    }): Promise<MergeCategoriesResult> => {
+      if (!service) {
+        throw new CategoryRepositoryError('Category service not ready');
+      }
+      return service.mergeCategories(sourceIds, targetId);
+    },
 
     onSuccess: (result) => {
       toast.success('Categories merged', {
@@ -332,4 +387,9 @@ export function useMergeCategories() {
       ]);
     },
   });
+
+  return {
+    ...mutation,
+    isReady: !!service,
+  };
 }
