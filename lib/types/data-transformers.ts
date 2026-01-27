@@ -15,7 +15,7 @@ import type {
   Category,
   CategoryWithCount,
   ParentCategoryWithCount,
-  TransactionView,
+
   UserSettings,
   Reconciliation,
   ReconciliationStatus,
@@ -524,77 +524,6 @@ export function dbTransactionsToDomain(
 // VIEW TRANSFORMERS
 // ============================================================================
 
-
-/**
- * Transforms a database transactions_view row to domain type
- * NOTE: This is a VIEW that includes joined data from accounts and categories
- *
- * CTO MANDATE: Critical fields (id, userId, accountId) must throw on null
- * CTO MANDATE: No magic fallbacks for required fields - expose data integrity issues
- *
- * @throws Error if id, userId, or accountId is null (data integrity failure)
- */
-export function dbTransactionViewToDomain(
-  dbTransactionView: Database['public']['Views']['transactions_view']['Row']
-): TransactionView {
-  // CTO MANDATE: Critical fields must throw on null - no magic fallbacks
-  if (!dbTransactionView.id) {
-    throw new Error('TransactionView: id cannot be null - data integrity failure');
-  }
-  if (!dbTransactionView.user_id) {
-    throw new Error('TransactionView: user_id cannot be null - data integrity failure');
-  }
-  if (!dbTransactionView.account_id) {
-    throw new Error('TransactionView: account_id cannot be null - data integrity failure');
-  }
-
-  // Note: transactions_view now includes all necessary fields for both display and editing
-  return {
-    // IDs (now available from view) - validated above
-    id: dbTransactionView.id,
-    version: dbTransactionView.version ?? 1, // Optimistic concurrency control
-    userId: dbTransactionView.user_id,
-    accountId: dbTransactionView.account_id,
-    categoryId: dbTransactionView.category_id,      // Nullable - some transactions have no category
-
-    // Amounts and currency - BIGINT → safe number with validation
-    amountCents: toSafeIntegerOrZero(dbTransactionView.amount_cents),         // BIGINT → safe number
-    amountHomeCents: toSafeIntegerOrZero(dbTransactionView.amount_home_cents), // BIGINT → safe number
-    currencyOriginal: dbTransactionView.currency_original ?? 'USD',   // From account JOIN
-    exchangeRate: dbTransactionView.exchange_rate ?? 1,               // Default 1 for same currency
-
-    // Dates - required for ledger transactions
-    date: dbTransactionView.date ?? new Date().toISOString(),
-    createdAt: dbTransactionView.created_at ?? new Date().toISOString(),
-    updatedAt: dbTransactionView.updated_at ?? new Date().toISOString(),
-
-    // Joined display data - display fallbacks are acceptable
-    accountName: dbTransactionView.account_name ?? 'Unknown Account',
-    accountColor: dbTransactionView.account_color,
-    categoryName: dbTransactionView.category_name,
-    categoryColor: dbTransactionView.category_color,
-    categoryType: dbTransactionView.category_type as 'income' | 'expense' | 'opening_balance' | null,
-
-    // Optional fields - null is valid
-    transferId: dbTransactionView.transfer_id,
-    description: dbTransactionView.description,
-    notes: dbTransactionView.notes,
-
-    // Reconciliation fields (Audit Workspace)
-    reconciliationId: dbTransactionView.reconciliation_id,
-    cleared: dbTransactionView.cleared ?? false,
-    reconciliationStatus: (dbTransactionView.reconciliation_status ?? null) as 'draft' | 'completed' | null,
-  };
-}
-
-/**
- * Transforms an array of transactions_view rows
- */
-export function dbTransactionViewsToDomain(
-  dbTransactionViews: Database['public']['Views']['transactions_view']['Row'][]
-) {
-  return dbTransactionViews.map(dbTransactionViewToDomain);
-}
 
 /**
  * NOTE: categories_with_counts view is incomplete (missing color, userId, createdAt, updatedAt)

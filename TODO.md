@@ -6,24 +6,9 @@
 - [ ] Replace direct `supabase.auth.getUser()` calls in all API/Service layers with `IAuthProvider` interface to support Native Apple Auth on iOS
 
 ---
-### Remaining
-
-**Phase 2e - Testing & Hardening:** ✅ COMPLETE
-- [x] Unit tests for pull-engine pagination (12 tests)
-- [x] Unit tests for sync-lock-manager (12 tests)
-- [x] Unit tests for push-engine (30 tests including Chain Failure Isolation)
-- [x] Unit tests for delta-sync-engine (28 tests including TABLE_DEPENDENCIES)
-- [x] Test offline scenarios (13 tests: add while offline, sync on reconnect)
-- [x] Test conflict scenarios (19 tests including Temporal Invariance)
-- [x] Performance testing with large datasets (14 tests: 1000+ transactions)
-
-**Total: 128 tests across 7 test files**
-
----
 
 ## Frontend & Type Safety
 
-- [ ] **Complete Type Migration:** Finish updating all remaining UI components to use `TransactionViewEntity` instead of deprecated `TransactionView` types
 - [ ] **Normalization Consistency:** Verify that all data entry points correctly utilize the transformer layer for null/undefined normalization
 
 ---
@@ -42,6 +27,7 @@
 - [ ] **Main Currency Fix:** Resolve the bug where changing the "Main Currency" breaks existing balance calculations
 - [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates
 - [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers
+- [ ] **Inbox Service Test:** Fix `inbox-service.test.ts:81` — constructor call expects 2 arguments but receives 0 (pre-existing)
 
 ---
 

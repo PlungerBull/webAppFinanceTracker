@@ -16,68 +16,8 @@
 // ============================================================================
 
 /**
- * Transaction from transactions_view (most commonly used in UI)
- * This includes joined data from accounts and categories
- *
- * CRITICAL FIELDS (guaranteed non-null by transformer):
- * - id, userId, accountId, accountName: Always present
- * - version: Optimistic concurrency control (auto-incremented on UPDATE)
- * - amountCents, amountHomeCents: Always present (defaults to 0) - INTEGER CENTS
- * - currencyOriginal: Always present (defaults to 'USD')
- * - exchangeRate: Always present (defaults to 1)
- * - date, createdAt, updatedAt: Always present
- *
- * OPTIONAL FIELDS (can be null):
- * - categoryId, categoryName, categoryColor: Transaction may not have a category
- * - description, notes: Optional user-provided fields
- */
-export interface TransactionView {
-  // Critical fields - guaranteed non-null
-  id: string;
-  version: number; // NEW: Optimistic concurrency control
-  userId: string;
-  accountId: string;
-  accountName: string;
-  accountColor: string | null;   // Added: For UI color indicators
-  amountCents: number;      // INTEGER CENTS (e.g., $10.50 = 1050)
-  amountHomeCents: number;  // INTEGER CENTS (home currency)
-
-  /**
-   * Currency code for the transaction (e.g., "USD", "PEN").
-   *
-   * **Architecture Note:** This field is NOT stored in the transactions table.
-   * It is derived from the parent account's currency via JOIN with bank_accounts.
-   *
-   * Database source: `bank_accounts.currency_code` (via account_id foreign key)
-   * View alias: `currency_original` (aliased in transactions_view)
-   *
-   * See: Normalized Currency Architecture in AI_CONTEXT.md
-   */
-  currencyOriginal: string;
-
-  exchangeRate: number;
-  date: string;
-  createdAt: string;
-  updatedAt: string;
-
-  // Optional fields - can be null
-  categoryId: string | null;
-  categoryName: string | null;
-  categoryColor: string | null;
-  categoryType: 'income' | 'expense' | 'opening_balance' | null; // From transactions_view JOIN
-  transferId: string | null; // Identifies transfer transactions
-  description: string | null;
-  notes: string | null;
-
-  // Reconciliation fields (Audit Workspace)
-  reconciliationId: string | null; // Links to reconciliation session
-  cleared: boolean; // Auto-managed: TRUE when linked to reconciliation
-  reconciliationStatus: 'draft' | 'completed' | null; // Status of linked reconciliation (for UI icons)
-}
-
-/**
  * Raw transaction from transactions table
- * Use TransactionView instead when displaying in UI
+ * Use TransactionViewEntity instead when displaying in UI
  */
 export interface Transaction {
   id: string;

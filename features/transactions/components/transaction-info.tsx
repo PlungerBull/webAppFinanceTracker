@@ -23,10 +23,11 @@ import {
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
-import type { TransactionRow, Category, Account } from '../types';
+import type { TransactionViewEntity } from '../domain';
+import type { Category, Account } from '@/types/domain';
 
 interface TransactionInfoProps {
-    transaction: TransactionRow;
+    transaction: TransactionViewEntity;
     categories: Category[];
     accounts: Account[];
     editingField: EditingField | null;

@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/hooks/use-formatted-balance';
 import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
-import type { TransactionRow } from '../types';
+import type { TransactionViewEntity } from '../domain';
 
 interface TransactionHeaderProps {
-    transaction: TransactionRow;
+    transaction: TransactionViewEntity;
     editingField: EditingField | null;
     editedValue: TransactionValue;
     setEditedValue: (value: TransactionValue) => void;
