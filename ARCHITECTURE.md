@@ -168,7 +168,7 @@ export default async function YourPage() {
 
 The transactions feature implements a **Repository Pattern with Todoist-style offline-first architecture** to support dual-platform development (Web TypeScript + iOS Swift/SwiftUI). This pattern creates platform-agnostic contracts that prevent "Logic Drift" between platforms.
 
-**Status:** ✅ **IMPLEMENTED** (Days 0-8 Complete, Component Migration Pending)
+**Status:** ✅ **IMPLEMENTED** (All layers complete, type migration finalized)
 
 ### Strategic Vision
 
@@ -355,20 +355,15 @@ class SupabaseTransactionRepository {
 
 ### Migration Status
 
-**✅ Completed (Days 0-8):**
+**✅ Complete:**
 - Database migration (soft deletes, version sequence, atomic transfer RPC)
 - Domain layer (entities with integer cents, types, constants, errors)
 - Repository layer (interface + Supabase implementation with DataResult pattern)
 - Service layer (business logic with retry on conflict)
 - Hook layer (React Query hooks using service)
 - Auth provider abstraction (IAuthProvider + Supabase implementation)
-
-**⏳ Pending (Days 9-11):**
-- Component type migration (`TransactionView` → `TransactionViewEntity`)
-- Hook file renaming (`use-transactions-new.ts` → `use-transactions.ts`)
-- Deprecate old API (`features/transactions/api/transactions.ts`)
-- Full regression testing
-- Update DB_SCHEMA.md documentation
+- Component type migration (`TransactionViewEntity` used across all UI)
+- Deprecated `TransactionView` interface and legacy transformer functions removed
 
 ### Critical Rules for Using Repository Pattern
 
@@ -383,7 +378,7 @@ class SupabaseTransactionRepository {
 **DON'T:**
 - ❌ Call `supabase.from('transactions')` directly from components/hooks
 - ❌ Use old `transactionsApi` functions (deprecated, will be removed)
-- ❌ Use old types like `TransactionView` (use `TransactionViewEntity` instead)
+- ❌ Use legacy types from `types/domain.ts` for transactions (use `TransactionViewEntity` from `features/transactions/domain`)
 - ❌ Use decimal amounts in domain layer (always use integer cents)
 - ❌ Throw errors from repository methods (return `DataResult<T>` instead)
 - ❌ Skip version field in update operations (required for optimistic concurrency)
@@ -410,9 +405,9 @@ In a distributed system (Web + iOS), divergent transformation logic causes **Dir
 | Category | Responsibility | Pattern |
 |---|---|---|
 | **Raw Table Transformers** | Map 1:1 with DB tables | `dbAccountToDomain()`, `dbCategoryToDomain()`, `dbTransactionToDomain()` |
-| **View Transformers** | Map SQL JOINs to enriched entities | `dbAccountViewToDomain()`, `dbTransactionViewToDomain()`, `dbInboxItemViewToDomain()` |
+| **View Transformers** | Map SQL JOINs to enriched entities | `dbAccountViewToDomain()`, `dbInboxItemViewToDomain()` |
 | **Insert/Update Transformers** | Domain → DB write format | `domainTransactionToDbInsert()`, `domainCategoryToDbUpdate()` |
-| **Batch Transformers** | Array wrappers | `dbAccountViewsToDomain()`, `dbTransactionViewsToDomain()` |
+| **Batch Transformers** | Array wrappers | `dbAccountViewsToDomain()` |
 
 ### Strict Integrity Rules
 
