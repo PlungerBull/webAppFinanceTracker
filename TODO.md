@@ -9,7 +9,7 @@
 
 ## Frontend & Type Safety
 
-- [ ] **Normalization Consistency:** Verify that all data entry points correctly utilize the transformer layer for null/undefined normalization
+- [x] **Normalization Consistency:** Verify that all data entry points correctly utilize the transformer layer for null/undefined normalization
 
 ---
 
@@ -19,6 +19,13 @@
 - [ ] **Error Boundary:** Wrap the application root in a global Error Boundary (e.g., Sentry) to catch and report runtime crashes
 - [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports
 - [ ] **Import Optimization:** Fix timeouts on large Excel/CSV imports
+
+---
+
+## Post-Phase 2 Cleanup
+
+- [ ] **Inbox Magic Strings:** Purge `'Unknown Account'` / `'Unknown Category'` display fallbacks from `dbInboxItemViewToDomain()` in `data-transformers.ts` — return `null` and move display logic to UI components (matches CTO mandate applied to transactions/accounts)
+- [ ] **WatermelonDB Transformer Alignment:** Audit local repositories (`local-*-repository.ts`) to ensure they use shared transformers from `data-transformers.ts` — critical for iOS port data parity
 
 ---
 

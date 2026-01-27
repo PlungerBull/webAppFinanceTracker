@@ -44,6 +44,10 @@ import {
 } from '../domain/errors';
 import { validateISODate } from '@/lib/utils/date-validation';
 import { TRANSACTION_VALIDATION, TRANSACTION_ERRORS } from '../domain/constants';
+import {
+  dbTransactionViewToDomain as sharedDbTransactionViewToDomain,
+  dbTransactionViewsToDomain as sharedDbTransactionViewsToDomain,
+} from '@/lib/types/data-transformers';
 
 /**
  * Supabase Transaction Repository
@@ -74,70 +78,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
    * All SELECT operations read integer cents directly via Number() cast.
    */
 
-  /**
-   * Transforms database transactions_view row to domain entity
-   *
-   * CRITICAL: Direct BIGINT pass-through - NO conversion
-   * - Database: amount_cents (BIGINT) → amountCents (number)
-   * - Database: amount_home_cents (BIGINT) → amountHomeCents (number)
-   *
-   * After Move 0 migration, the database stores INTEGER CENTS directly.
-   */
-  private dbTransactionViewToDomain(
-    dbView: Database['public']['Views']['transactions_view']['Row']
-  ): TransactionViewEntity {
-    return {
-      // IDs
-      id: dbView.id || '',
-      version: dbView.version ?? 1,
-      userId: dbView.user_id || '',
-      accountId: dbView.account_id || '',
-      categoryId: dbView.category_id,
-
-      // SACRED INTEGER ARITHMETIC: Direct BIGINT pass-through
-      amountCents: Number(dbView.amount_cents ?? 0),
-      amountHomeCents: Number(dbView.amount_home_cents ?? 0),
-
-      // Currency and exchange
-      currencyOriginal: dbView.currency_original || 'USD',
-      exchangeRate: Number(dbView.exchange_rate ?? 1),
-
-      // Transfer and reconciliation
-      transferId: dbView.transfer_id,
-      reconciliationId: dbView.reconciliation_id,
-      cleared: dbView.cleared ?? false,
-
-      // Dates (strict ISO 8601)
-      date: dbView.date || new Date().toISOString(),
-      createdAt: dbView.created_at || new Date().toISOString(),
-      updatedAt: dbView.updated_at || new Date().toISOString(),
-      deletedAt: dbView.deleted_at,
-
-      // Text fields
-      description: dbView.description,
-      notes: dbView.notes,
-      sourceText: dbView.source_text,
-      inboxId: dbView.inbox_id,
-
-      // Joined data from view
-      accountName: dbView.account_name || 'Unknown Account',
-      accountCurrency: dbView.account_currency || 'USD',
-      accountColor: dbView.account_color,
-      categoryName: dbView.category_name,
-      categoryColor: dbView.category_color,
-      categoryType: dbView.category_type as 'income' | 'expense' | 'opening_balance' | null,
-      reconciliationStatus: dbView.reconciliation_status as 'draft' | 'completed' | null,
-    };
-  }
-
-  /**
-   * Batch transformer for arrays
-   */
-  private dbTransactionViewsToDomain(
-    dbViews: Database['public']['Views']['transactions_view']['Row'][]
-  ): TransactionViewEntity[] {
-    return dbViews.map((view) => this.dbTransactionViewToDomain(view));
-  }
+  // Transformer logic moved to shared data-transformers.ts (dbTransactionViewToDomain)
 
   /**
    * Applies transaction filters to Supabase query
@@ -241,7 +182,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: true,
         data: {
-          data: this.dbTransactionViewsToDomain(data || []),
+          data: sharedDbTransactionViewsToDomain(data || []),
           total: count || 0,
           offset,
           limit,
@@ -286,7 +227,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
 
       return {
         success: true,
-        data: this.dbTransactionViewToDomain(data),
+        data: sharedDbTransactionViewToDomain(data),
       };
     } catch (err) {
       return {
@@ -673,7 +614,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       }
 
       // Transform to domain entities
-      const deletedTransactions = this.dbTransactionViewsToDomain(
+      const deletedTransactions = sharedDbTransactionViewsToDomain(
         (rpcData as Database['public']['Views']['transactions_view']['Row'][]) || []
       );
 

@@ -29,6 +29,7 @@ import {
   AccountLockedError,
   AccountVersionConflictError,
 } from '../domain';
+import { dbAccountViewToDomain } from '@/lib/types/data-transformers';
 
 // Database row type from bank_accounts with joined global_currencies
 type DbAccountRow = Database['public']['Tables']['bank_accounts']['Row'] & {
@@ -43,86 +44,7 @@ type DbAccountRow = Database['public']['Tables']['bank_accounts']['Row'] & {
 export class SupabaseAccountRepository implements IAccountRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
 
-  /**
-   * Convert decimal to integer cents (floating-point safe)
-   *
-   * CTO Mandate: TRUE string-based parsing - NO binary float multiplication.
-   * Binary float: 1.15 * 100 can yield 114.99999999999999
-   *
-   * This implementation splits the string at the decimal point and
-   * performs pure integer arithmetic to avoid IEEE 754 precision errors.
-   */
-  private toCents(decimal: number | string | null): number {
-    if (decimal === null || decimal === undefined) {
-      return 0;
-    }
-
-    // Convert to string for parsing
-    const str = typeof decimal === 'string' ? decimal : decimal.toString();
-
-    // Handle negative numbers
-    const isNegative = str.startsWith('-');
-    const absStr = isNegative ? str.slice(1) : str;
-
-    // Split at decimal point
-    const parts = absStr.split('.');
-    const wholePart = parts[0] || '0';
-    let fractionalPart = parts[1] || '00';
-
-    // Normalize fractional part to exactly 2 digits
-    // "5" -> "50", "123" -> "12" (truncate beyond cents)
-    if (fractionalPart.length === 1) {
-      fractionalPart = fractionalPart + '0';
-    } else if (fractionalPart.length > 2) {
-      // Round the third digit
-      const thirdDigit = parseInt(fractionalPart[2], 10);
-      let cents = parseInt(fractionalPart.slice(0, 2), 10);
-      if (thirdDigit >= 5) {
-        cents += 1;
-      }
-      fractionalPart = cents.toString().padStart(2, '0');
-    }
-
-    // Pure integer arithmetic: whole dollars * 100 + cents
-    const cents = parseInt(wholePart, 10) * 100 + parseInt(fractionalPart, 10);
-
-    return isNegative ? -cents : cents;
-  }
-
-  /**
-   * Convert integer cents to decimal dollars
-   */
-  private fromCents(cents: number): number {
-    return cents / 100;
-  }
-
-  /**
-   * Transform database row to domain entity
-   */
-  private dbAccountToEntity(dbRow: DbAccountRow): AccountViewEntity {
-    // Type assertion for sync fields added by migration 20260126000000
-    const syncRow = dbRow as DbAccountRow & {
-      version?: number;
-      deleted_at?: string | null;
-    };
-
-    return {
-      id: dbRow.id,
-      version: syncRow.version ?? 1,
-      userId: dbRow.user_id,
-      groupId: dbRow.group_id,
-      name: dbRow.name,
-      type: dbRow.type as AccountViewEntity['type'],
-      currencyCode: dbRow.currency_code,
-      color: dbRow.color,
-      currentBalanceCents: this.toCents(dbRow.current_balance),
-      isVisible: dbRow.is_visible,
-      createdAt: dbRow.created_at,
-      updatedAt: dbRow.updated_at,
-      deletedAt: syncRow.deleted_at ?? null,
-      currencySymbol: dbRow.global_currencies?.symbol ?? '',
-    };
-  }
+  // Transformer logic moved to shared data-transformers.ts (dbAccountViewToDomain)
 
   async getAll(
     userId: string,
@@ -170,7 +92,7 @@ export class SupabaseAccountRepository implements IAccountRepository {
       }
 
       const entities = (data ?? []).map((row) =>
-        this.dbAccountToEntity(row as DbAccountRow)
+        dbAccountViewToDomain(row as DbAccountRow)
       );
 
       return { success: true, data: entities };
@@ -222,7 +144,7 @@ export class SupabaseAccountRepository implements IAccountRepository {
         };
       }
 
-      const entity = this.dbAccountToEntity(data as DbAccountRow);
+      const entity = dbAccountViewToDomain(data as DbAccountRow);
 
       return { success: true, data: entity };
     } catch (err) {

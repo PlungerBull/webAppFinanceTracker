@@ -22,7 +22,10 @@ import type {
   ReconciliationSummary,
 } from '@/types/domain';
 import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
+import type { AccountViewEntity } from '@/features/accounts/domain/entities';
+import type { TransactionViewEntity } from '@/features/transactions/domain/entities';
 import { toSafeInteger, toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
+import { toCents } from '@/lib/utils/cents-conversion';
 
 // ============================================================================
 // DATABASE TO DOMAIN TRANSFORMERS
@@ -249,6 +252,135 @@ export function dbTransactionToDomain(
  * which creates linked transactions with a shared transfer_id.
  * To work with transfers, use the transactions table and filter by transfer_id.
  */
+
+// ============================================================================
+// VIEW TRANSFORMERS (Joined Data)
+// ============================================================================
+
+/**
+ * Database row type for bank_accounts with joined global_currencies
+ */
+type DbAccountViewRow = Database['public']['Tables']['bank_accounts']['Row'] & {
+  global_currencies: { symbol: string } | null;
+};
+
+/**
+ * Transforms a database bank_accounts row (with global_currencies JOIN) to AccountViewEntity
+ *
+ * CTO MANDATE: No magic display defaults in data layer.
+ * - currencySymbol: null if JOIN failed (not '' or '$')
+ * - id, userId, groupId: pass through (NOT NULL in schema)
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control
+ * - deletedAt: Tombstone pattern
+ */
+export function dbAccountViewToDomain(
+  dbRow: DbAccountViewRow
+): AccountViewEntity {
+  const syncRow = dbRow as DbAccountViewRow & {
+    version?: number;
+    deleted_at?: string | null;
+  };
+
+  return {
+    id: dbRow.id,
+    version: syncRow.version ?? 1,
+    userId: dbRow.user_id,
+    groupId: dbRow.group_id,
+    name: dbRow.name,
+    type: dbRow.type as AccountViewEntity['type'],
+    currencyCode: dbRow.currency_code,
+    color: dbRow.color,
+    currentBalanceCents: toCents(dbRow.current_balance),
+    isVisible: dbRow.is_visible,
+    createdAt: dbRow.created_at,
+    updatedAt: dbRow.updated_at,
+    deletedAt: syncRow.deleted_at ?? null,
+    currencySymbol: dbRow.global_currencies?.symbol ?? null,
+  };
+}
+
+/**
+ * Transforms an array of bank_accounts rows (with JOIN) to AccountViewEntity[]
+ */
+export function dbAccountViewsToDomain(
+  dbRows: DbAccountViewRow[]
+): AccountViewEntity[] {
+  return dbRows.map(dbAccountViewToDomain);
+}
+
+/**
+ * Transforms a database transactions_view row to TransactionViewEntity
+ *
+ * CTO MANDATE: Strict integrity on critical fields.
+ * - id, userId: THROW if null (data integrity failure, matches inbox pattern)
+ * - Joined display fields: null (NOT magic strings like 'Unknown Account')
+ * - Amounts: Direct BIGINT pass-through via Number()
+ *
+ * @throws Error if id or userId is null
+ */
+export function dbTransactionViewToDomain(
+  dbView: Database['public']['Views']['transactions_view']['Row']
+): TransactionViewEntity {
+  if (!dbView.id) {
+    throw new Error('TransactionViewEntity: id cannot be null - data integrity failure');
+  }
+  if (!dbView.user_id) {
+    throw new Error('TransactionViewEntity: user_id cannot be null - data integrity failure');
+  }
+
+  return {
+    id: dbView.id,
+    version: dbView.version ?? 1,
+    userId: dbView.user_id,
+    accountId: dbView.account_id ?? '',
+    categoryId: dbView.category_id ?? null,
+
+    // SACRED INTEGER ARITHMETIC: Direct BIGINT pass-through
+    amountCents: Number(dbView.amount_cents ?? 0),
+    amountHomeCents: Number(dbView.amount_home_cents ?? 0),
+
+    // Currency and exchange
+    currencyOriginal: dbView.currency_original ?? null as any,
+    exchangeRate: Number(dbView.exchange_rate ?? 1),
+
+    // Transfer and reconciliation
+    transferId: dbView.transfer_id ?? null,
+    reconciliationId: dbView.reconciliation_id ?? null,
+    cleared: dbView.cleared ?? false,
+
+    // Dates
+    date: dbView.date ?? new Date().toISOString(),
+    createdAt: dbView.created_at ?? new Date().toISOString(),
+    updatedAt: dbView.updated_at ?? new Date().toISOString(),
+    deletedAt: dbView.deleted_at ?? null,
+
+    // Text fields
+    description: dbView.description ?? null,
+    notes: dbView.notes ?? null,
+    sourceText: dbView.source_text ?? null,
+    inboxId: dbView.inbox_id ?? null,
+
+    // Joined display fields — null, NOT magic strings
+    accountName: dbView.account_name ?? null,
+    accountCurrency: dbView.account_currency ?? null,
+    accountColor: dbView.account_color ?? null,
+    categoryName: dbView.category_name ?? null,
+    categoryColor: dbView.category_color ?? null,
+    categoryType: (dbView.category_type as 'income' | 'expense' | 'opening_balance' | null) ?? null,
+    reconciliationStatus: (dbView.reconciliation_status as 'draft' | 'completed' | null) ?? null,
+  };
+}
+
+/**
+ * Transforms an array of transactions_view rows
+ */
+export function dbTransactionViewsToDomain(
+  dbViews: Database['public']['Views']['transactions_view']['Row'][]
+): TransactionViewEntity[] {
+  return dbViews.map(dbTransactionViewToDomain);
+}
 
 // ============================================================================
 // DOMAIN TO DATABASE INSERT TRANSFORMERS

@@ -391,7 +391,71 @@ class SupabaseTransactionRepository {
 
 For detailed implementation examples and iOS integration guide, see [AI_CONTEXT.md](./AI_CONTEXT.md) section 4H.
 
-## 7. Performance & Optimization
+## 7. Transformer Registry (Data Border Control)
+
+### Overview
+
+All data entering the domain layer from Supabase passes through a centralized **Transformer Registry** in `lib/types/data-transformers.ts`. This file is the single source of truth for converting between database types (snake_case, nullable) and domain types (camelCase, strict).
+
+### Why Centralized Transformers
+
+In a distributed system (Web + iOS), divergent transformation logic causes **Dirty Data Drift** — where the local database state depends on which device last touched the record. Centralizing ensures:
+
+- Schema changes update in one place (not per-repository)
+- Null handling is consistent (`?? null` for optional, throw for critical)
+- No "magic strings" leak into the data layer
+
+### Transformer Categories
+
+| Category | Responsibility | Pattern |
+|---|---|---|
+| **Raw Table Transformers** | Map 1:1 with DB tables | `dbAccountToDomain()`, `dbCategoryToDomain()`, `dbTransactionToDomain()` |
+| **View Transformers** | Map SQL JOINs to enriched entities | `dbAccountViewToDomain()`, `dbTransactionViewToDomain()`, `dbInboxItemViewToDomain()` |
+| **Insert/Update Transformers** | Domain → DB write format | `domainTransactionToDbInsert()`, `domainCategoryToDbUpdate()` |
+| **Batch Transformers** | Array wrappers | `dbAccountViewsToDomain()`, `dbTransactionViewsToDomain()` |
+
+### Strict Integrity Rules
+
+1. **Critical fields (`id`, `userId`) throw on null** — matches CTO mandate. If these are null, it's a data integrity failure that must be caught immediately, not masked.
+2. **Optional fields use `?? null`** — never `|| ''` or `|| 'USD'`. Empty string is a valid value in a distributed system; null signals absence.
+3. **Display defaults belong in UI components** — transformers return `null` for missing joined data (e.g., `accountName`). React components apply `?? 'Deleted Account'` at render time.
+4. **Financial arithmetic uses `lib/utils/cents-conversion.ts`** — string-based parsing avoids IEEE 754 float errors (`1.15 * 100 !== 115`).
+
+### Data Flow
+
+```
+Database (Supabase)
+    │
+    ▼
+Shared Transformers (data-transformers.ts)    ← Single Source of Truth
+    │   - Null normalization
+    │   - BIGINT safety (bigint-safety.ts)
+    │   - Float-safe cents (cents-conversion.ts)
+    │   - Throw on critical null fields
+    ▼
+Domain Entities (feature/domain/entities.ts)
+    │
+    ▼
+UI Components (React)                         ← Display Defaults Here
+    - ?? 'Deleted Account'
+    - ?? 'USD'
+    - ?? ''
+```
+
+### Rules for Repository Authors
+
+**DO:**
+- ✅ Import transformers from `@/lib/types/data-transformers`
+- ✅ Use `toCents()` from `@/lib/utils/cents-conversion` for decimal→integer conversion
+- ✅ Create specialized transformers (e.g., `toCategoryWithCountEntity`) that **call the shared base transformer internally** then spread additional fields
+
+**DON'T:**
+- ❌ Write inline transformation logic in repository files
+- ❌ Use `|| ''` or `|| 'Unknown'` in transformers — return `null`
+- ❌ Use `|| 'USD'` for missing currency — return `null`
+- ❌ Duplicate null-handling logic that already exists in shared transformers
+
+## 8. Performance & Optimization
 
 ### React Hook Form & Compiler Compatibility
 
@@ -405,7 +469,7 @@ For detailed implementation examples and iOS integration guide, see [AI_CONTEXT.
   - `useWatch` hook for isolated subscriptions
 - **Rule:** Never use `watch()` for expensive computations or heavy data transformations. Keep watched values isolated to UI presentation logic only.
 
-## 8. Category Merge Protocol (Atomic Reassignment)
+## 9. Category Merge Protocol (Atomic Reassignment)
 
 ### Problem Statement
 

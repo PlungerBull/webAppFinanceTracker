@@ -282,15 +282,17 @@ export interface TransactionEntity {
 export interface TransactionViewEntity extends TransactionEntity {
   /**
    * Account name (from bank_accounts table)
+   * Null if JOIN failed (data integrity issue).
    * Example: "Chase Checking", "Savings Account"
    */
-  readonly accountName: string;
+  readonly accountName: string | null;
 
   /**
    * Account currency code (from bank_accounts table)
+   * Null if JOIN failed (data integrity issue).
    * Same as currencyOriginal - included for convenience
    */
-  readonly accountCurrency: string;
+  readonly accountCurrency: string | null;
 
   /**
    * Account color (from bank_accounts table)

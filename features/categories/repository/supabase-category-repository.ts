@@ -52,6 +52,7 @@ import {
   CategoryVersionConflictError,
 } from '../domain';
 import type { MergeCategoriesResult } from './category-repository.interface';
+import { dbCategoryToDomain, dbParentCategoryWithCountToDomain } from '@/lib/types/data-transformers';
 
 // =============================================================================
 // TYPES
@@ -77,32 +78,16 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
 
   /**
    * Transform DB category row to domain entity
+   * Delegates to shared dbCategoryToDomain, casts to CategoryEntity
    */
   private toCategoryEntity(row: DbCategoryRow): CategoryEntity {
-    // Type assertion for sync fields added by migration 20260126000001
-    const syncRow = row as DbCategoryRow & {
-      version?: number;
-      deleted_at?: string | null;
-    };
-
-    return {
-      id: row.id,
-      userId: row.user_id || '',
-      name: row.name,
-      color: row.color,
-      type: row.type as CategoryType,
-      parentId: row.parent_id,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      version: syncRow.version ?? 1,
-      deletedAt: syncRow.deleted_at ?? null,
-    };
+    const base = dbCategoryToDomain(row);
+    return base as CategoryEntity;
   }
 
   /**
    * Transform DB category row to entity with transaction count
-   *
-   * Note: Count comes from a separate query or is provided externally
+   * DRY: Calls shared transformer internally
    */
   private toCategoryWithCountEntity(
     row: DbCategoryRow,
@@ -116,29 +101,25 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
 
   /**
    * Transform DB parent_categories_with_counts view row to GroupingEntity
+   * DRY: Calls shared dbParentCategoryWithCountToDomain for base fields
    */
   private toGroupingEntity(
     row: DbParentCategoryWithCountsRow,
     childCount: number
   ): GroupingEntity {
-    // Type assertion for sync fields added by migration 20260126000001
-    const syncRow = row as DbParentCategoryWithCountsRow & {
-      version?: number;
-      deleted_at?: string | null;
-    };
-
+    const base = dbParentCategoryWithCountToDomain(row);
     return {
-      id: row.id || '',
-      userId: row.user_id || '',
-      name: row.name || '',
-      color: row.color || '#6b7280',
-      type: (row.type as CategoryType) || 'expense',
-      createdAt: row.created_at || '',
-      updatedAt: row.updated_at || '',
-      version: syncRow.version ?? 1,
-      deletedAt: syncRow.deleted_at ?? null,
+      id: base.id,
+      userId: base.userId ?? '',
+      name: base.name,
+      color: base.color,
+      type: base.type as CategoryType,
+      createdAt: base.createdAt,
+      updatedAt: base.updatedAt,
+      version: base.version,
+      deletedAt: base.deletedAt,
       childCount,
-      totalTransactionCount: row.transaction_count || 0,
+      totalTransactionCount: base.transactionCount,
     };
   }
 

@@ -111,8 +111,8 @@ export interface AccountEntity {
  * ```
  */
 export interface AccountViewEntity extends AccountEntity {
-  /** Currency symbol from global_currencies (e.g., "$", "S/", "EUR") */
-  readonly currencySymbol: string;
+  /** Currency symbol from global_currencies (e.g., "$", "S/", "EUR"). Null if JOIN failed. */
+  readonly currencySymbol: string | null;
 }
 
 /**
