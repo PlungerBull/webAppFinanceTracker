@@ -46,6 +46,22 @@ export function SyncStatusProvider({ children }: SyncStatusProviderProps) {
   useDeltaSync({
     userId,
     onSyncComplete: (result) => {
+      // 🛡️ Capture silent sync failures (success:false without a thrown exception)
+      if (!result.success) {
+        Sentry.captureMessage('Sync cycle completed with failures', {
+          level: 'warning',
+          tags: {
+            domain: 'sync',
+            'sync.outcome': 'silent_failure',
+          },
+          extra: {
+            durationMs: result.durationMs,
+            pushSuccess: result.pushResult?.success ?? null,
+            pullSuccess: result.pullResult?.success ?? null,
+          },
+        });
+      }
+
       const currentConflictIds = collectConflictIds(result.pushResult?.results);
 
       // Check if ANY new conflict IDs exist that we haven't notified about

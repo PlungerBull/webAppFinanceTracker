@@ -10,7 +10,7 @@
  * @module sentry/scrubber
  */
 
-import type { Event, Breadcrumb, EventHint } from '@sentry/nextjs';
+import type { ErrorEvent, Breadcrumb, EventHint } from '@sentry/nextjs';
 
 /**
  * Fields that contain PII or sensitive financial data.
@@ -162,7 +162,7 @@ function scrubMonetaryValues(text: string): string {
  * Scrubs all PII from events before they leave the client.
  * For SchemaValidationError, only sends keys (not values) of rawData.
  */
-export function beforeSend(event: Event, hint: EventHint): Event | null {
+export function beforeSend(event: ErrorEvent, hint: EventHint): ErrorEvent | null {
   // Scrub breadcrumbs
   if (event.breadcrumbs) {
     event.breadcrumbs = event.breadcrumbs.map(scrubBreadcrumb);

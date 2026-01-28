@@ -798,9 +798,10 @@ For `SchemaValidationError`, only the **keys** of `rawData` are sent — never t
 
 | File | Purpose |
 |------|---------|
-| `sentry.client.config.ts` | Browser SDK init — PII scrubber, offline buffer (30 events), network error ignoring |
-| `sentry.server.config.ts` | Server SDK init |
-| `sentry.edge.config.ts` | Edge runtime SDK init |
+| `sentry.client.config.ts` | Browser SDK init — imports `beforeSend`/`beforeBreadcrumb` from `scrubber.ts` for allowlist-based PII filtering |
+| `sentry.server.config.ts` | Server SDK init (`sendDefaultPii: false`, DSN via `process.env.SENTRY_DSN`) |
+| `sentry.edge.config.ts` | Edge runtime SDK init (`sendDefaultPii: false`, DSN via `process.env.SENTRY_DSN`) |
+| `instrumentation-client.ts` | Client instrumentation hooks (router transition tracking only — no `Sentry.init`, that lives in `sentry.client.config.ts`) |
 | `lib/sentry/scrubber.ts` | `beforeSend` / `beforeBreadcrumb` — PII allowlist filter |
 | `lib/sentry/reporter.ts` | `reportError()` / `reportServiceFailure()` — DomainError.code → severity mapper. Accepts `Error \| SerializableError` so domain DataResult errors (e.g., `InboxError`) work without forced `extends Error` |
 | `providers/sentry-provider.tsx` | Sets `Sentry.setUser({ id })` on auth (ID only — no email, no username) |
@@ -837,6 +838,7 @@ The sync engine (runs every 30s) is the highest-ROI instrumentation target. All 
 |-----|--------|---------|
 | `domain` | `'sync'` | Filter all sync-related errors |
 | `sync.phase` | `'push'`, `'pull'`, `'error'` | Identify which sync phase failed |
+| `sync.outcome` | `'silent_failure'` | Non-throwing `SyncCycleResult.success === false` (captured in `SyncStatusProvider`) |
 | `errorType` | `'schema_validation'` | Flag SchemaValidationError specifically |
 | `build_version` | `NEXT_PUBLIC_BUILD_VERSION` | Correlate schema mismatches with stale bundles |
 

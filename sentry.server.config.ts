@@ -5,12 +5,11 @@
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: "https://12bfb59118b032c67c10c99279935ee0@o4510785685815296.ingest.us.sentry.io/4510785697349632",
+  dsn: process.env.SENTRY_DSN,
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,
 
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  // 🛡️ CTO MANDATE: Never send PII by default in a financial app
+  sendDefaultPii: false,
 });

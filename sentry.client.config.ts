@@ -1,25 +1,12 @@
 import * as Sentry from "@sentry/nextjs";
+import { beforeSend, beforeBreadcrumb } from "@/lib/sentry/scrubber";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  
-  // 🛡️ CTO PRIVACY SHIELD
-  beforeSend(event) {
-    // 1. Scrub Request Data (where transaction descriptions live)
-    if (event.request?.data) {
-      delete event.request.data;
-    }
 
-    // 2. Scrub Breadcrumbs (removes typed notes/descriptions from the "trail")
-    event.breadcrumbs = event.breadcrumbs?.map((breadcrumb) => {
-      if (breadcrumb.category === "ui.input" || breadcrumb.category === "console") {
-        return { ...breadcrumb, message: "[SCRUBBED_FINANCIAL_DATA]" };
-      }
-      return breadcrumb;
-    });
-
-    return event;
-  },
+  // 🛡️ CTO PRIVACY SHIELD — Allowlist-based PII scrubber
+  beforeSend,
+  beforeBreadcrumb,
 
   tracesSampleRate: 1.0, // Development; we will lower this for Production.
   replaysSessionSampleRate: 0.1,
