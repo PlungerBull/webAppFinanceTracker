@@ -152,8 +152,8 @@ export interface CategoryWithCount {
 export interface ParentCategoryWithCount {
   id: string;
   version: number;
-  name: string;
-  color: string;
+  name: string | null;
+  color: string | null;
   type: 'income' | 'expense';
   parentId: string | null;
   transactionCount: number;

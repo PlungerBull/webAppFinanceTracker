@@ -12,7 +12,7 @@
 
 ## Post-Phase 2 Cleanup
 
-- [ ] **Inbox Magic Strings:** Purge `'Unknown Account'` / `'Unknown Category'` display fallbacks from `dbInboxItemViewToDomain()` in `data-transformers.ts` — return `null` and move display logic to UI components (matches CTO mandate applied to transactions/accounts)
+- [x] **Inbox Magic Strings:** Purge `'Unknown Account'` / `'Unknown Category'` display fallbacks from `dbInboxItemViewToDomain()` in `data-transformers.ts` — return `null` and move display logic to UI components (matches CTO mandate applied to transactions/accounts)
 - [ ] **WatermelonDB Transformer Alignment:** Audit local repositories (`local-*-repository.ts`) to ensure they use shared transformers from `data-transformers.ts` — critical for iOS port data parity
 
 ---

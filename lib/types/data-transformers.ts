@@ -196,14 +196,14 @@ export function dbInboxItemViewToDomain(
     // This is valid because the entity type declares these as optional
     account: dbInboxItemView.account_id ? {
       id: dbInboxItemView.account_id,
-      name: dbInboxItemView.account_name ?? 'Unknown Account',  // Display fallback, not magic string
-      currencyCode: dbInboxItemView.currency_original ?? 'USD', // Display fallback
-      currencySymbol: '', // View doesn't include global_currencies join
+      name: dbInboxItemView.account_name ?? null,
+      currencyCode: dbInboxItemView.currency_original ?? null,
+      currencySymbol: null,
     } : undefined,
     category: dbInboxItemView.category_id ? {
       id: dbInboxItemView.category_id,
-      name: dbInboxItemView.category_name ?? 'Unknown Category',  // Display fallback
-      color: dbInboxItemView.category_color ?? '#808080',          // Display fallback (gray)
+      name: dbInboxItemView.category_name ?? null,
+      color: dbInboxItemView.category_color ?? null,
     } : undefined,
   };
 }
@@ -683,8 +683,8 @@ export function dbParentCategoryWithCountToDomain(
   return {
     id: dbCategory.id || '',
     version: syncRow.version ?? 1,
-    name: dbCategory.name || 'Unknown Category',
-    color: dbCategory.color || '#808080',
+    name: dbCategory.name || null,
+    color: dbCategory.color || null,
     type: (dbCategory.type as 'income' | 'expense') || 'expense',
     parentId: dbCategory.parent_id,
     transactionCount: dbCategory.transaction_count ?? 0,

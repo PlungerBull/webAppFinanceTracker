@@ -113,8 +113,8 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
     return {
       id: base.id,
       userId: base.userId ?? '',
-      name: base.name,
-      color: base.color,
+      name: base.name ?? '',
+      color: base.color ?? '',
       type: base.type as CategoryType,
       createdAt: base.createdAt,
       updatedAt: base.updatedAt,
