@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "echo \"NEXT_PUBLIC_BUILD_VERSION=$(date +'%Y.%m.%d.%H%M')\" > .env.production.local",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

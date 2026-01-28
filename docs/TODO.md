@@ -1,12 +1,5 @@
 # Project Roadmap & Tasks
 
-## Architecture & Logic Portability
-
-### Auth Provider Injection
-- [ ] Replace direct `supabase.auth.getUser()` calls in all API/Service layers with `IAuthProvider` interface to support Native Apple Auth on iOS
-
----
-
 ## Reliability & Go-Live Readiness
 
 - [ ] **Observability (Sentry):** Integrate Sentry (or LogRocket) before leaving Phase 2 — capture `SyncCycleResult` failures and runtime errors in real-time so we can "see" what breaks in production (e.g., sync failing on a subway in London)
@@ -29,7 +22,17 @@
 - [ ] **Main Currency Fix:** Resolve the bug where changing the "Main Currency" breaks existing balance calculations
 - [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates
 - [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers
-- [ ] **Inbox Service Test:** Fix `inbox-service.test.ts:81` — constructor call expects 2 arguments but receives 0 (pre-existing)
+- [x] **Inbox Service Test:** Fix `inbox-service.test.ts:81` — constructor call expects 2 arguments but receives 0 (pre-existing)
+
+---
+
+## Implementation Steps (Go-Live Countdown)
+
+- [ ] **Hard-Gate Auth:** Finish replacing all direct `supabase.auth.getUser()` calls with the `IAuthProvider` injection to ensure the iOS app can use Native Apple Auth.
+- [ ] **Infrastructure Hardening:** Create a GitHub Action to block merges that fail Vitest unit tests or Zod schema validation.
+- [ ] **Global Error Boundary:** Wrap the application root in a Sentry boundary to catch and report runtime crashes.
+- [ ] **Performance Audit:** Replace `watch()` in react-hook-form with `useWatch` or `useFormContext` to ensure compatibility with the React Compiler and prevent UI lag on low-end devices.
+- [ ] **Beta Release:** Once the "Main Currency" bug is resolved, move to a private Beta with 5 users to stress-test the Delta Sync Engine under high-latency conditions.
 
 ---
 
