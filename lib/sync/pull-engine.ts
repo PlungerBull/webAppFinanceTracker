@@ -38,6 +38,12 @@ import {
   DEFAULT_SYNC_CONFIG,
   type SyncableTableName,
 } from './constants';
+import { validateOrThrow } from '@/lib/types/validate';
+import {
+  SyncChangesSummarySchema,
+  ChangesResponseSchema,
+  SyncRecordSchemas,
+} from '@/lib/types/db-row-schemas';
 
 /**
  * Internal result with pagination metadata
@@ -225,7 +231,7 @@ export class PullEngine {
       };
     }
 
-    return data as unknown as SyncChangesSummary;
+    return validateOrThrow(SyncChangesSummarySchema, data, 'SyncChangesSummary');
   }
 
   // ===========================================================================
@@ -269,7 +275,7 @@ export class PullEngine {
         );
       }
 
-      const result = data as unknown as ChangesResponse;
+      const result = validateOrThrow(ChangesResponseSchema, data, `ChangesResponse[${tableName}]`);
       const records = result.records || [];
 
       // No records = done
@@ -282,6 +288,12 @@ export class PullEngine {
       let batchMaxVersion = cursor;
 
       for (const record of records) {
+        // Validate individual record against table-specific schema
+        const syncSchema = SyncRecordSchemas[tableName as keyof typeof SyncRecordSchemas];
+        if (syncSchema) {
+          validateOrThrow(syncSchema, record, `SyncRecord[${tableName}]`);
+        }
+
         const serverRecord: ServerChangeRecord = {
           id: record.id as string,
           version: record.version as number,

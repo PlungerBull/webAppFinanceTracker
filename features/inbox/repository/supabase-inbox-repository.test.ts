@@ -98,9 +98,24 @@ describe('SupabaseInboxRepository', () => {
                     data: {
                         id: inboxId,
                         user_id: userId,
-                        amount_cents: 1000,
+                        amount_original: 1000,
+                        currency_original: null,
+                        description: 'Success',
+                        date: null,
+                        source_text: null,
+                        account_id: null,
+                        account_name: null,
+                        account_color: null,
+                        category_id: null,
+                        category_name: null,
+                        category_color: null,
+                        category_type: null,
+                        exchange_rate: null,
+                        notes: null,
                         version: lastKnownVersion + 1,
-                        status: 'pending'
+                        status: 'pending',
+                        created_at: '2026-01-27T00:00:00.000Z',
+                        updated_at: '2026-01-27T00:00:00.000Z',
                     },
                     error: null
                 })

@@ -53,6 +53,8 @@ import {
 } from '../domain';
 import type { MergeCategoriesResult } from './category-repository.interface';
 import { dbCategoryToDomain, dbParentCategoryWithCountToDomain } from '@/lib/types/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
+import { CategoryRowSchema, ParentCategoryWithCountRowSchema } from '@/lib/types/db-row-schemas';
 
 // =============================================================================
 // TYPES
@@ -225,8 +227,11 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
         };
       }
 
+      // Validate at boundary before any processing
+      const validatedData = validateArrayOrThrow(CategoryRowSchema, data || [], 'CategoryRow');
+
       // Filter for leaf-only if requested
-      let categories = data || [];
+      let categories = validatedData;
       if (filters?.leafOnly) {
         // Get all parent IDs to determine which categories have children
         const parentIds = new Set(
@@ -347,9 +352,10 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
         };
       }
 
+      const validated = validateOrThrow(CategoryRowSchema, data, 'CategoryRow');
       return {
         success: true,
-        data: this.toCategoryEntity(data),
+        data: this.toCategoryEntity(validated),
       };
     } catch (err) {
       return {
@@ -537,9 +543,12 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
         }
       }
 
+      const validatedParents = validateArrayOrThrow(
+        ParentCategoryWithCountRowSchema, parents || [], 'ParentCategoryWithCountRow'
+      );
       return {
         success: true,
-        data: (parents || []).map((row) =>
+        data: validatedParents.map((row) =>
           this.toGroupingEntity(row, childCountMap.get(row.id || '') || 0)
         ),
       };

@@ -37,6 +37,8 @@ import {
   InboxDomainError,
 } from '../domain/errors';
 import { dbInboxItemViewToDomain } from '@/lib/types/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
+import { TransactionInboxViewRowSchema } from '@/lib/types/db-row-schemas';
 import type { InboxItemViewEntity } from '../domain/entities';
 
 /**
@@ -83,7 +85,8 @@ export class SupabaseInboxRepository implements IInboxRepository {
       }
 
       const total = count ?? 0;
-      const items = (data ?? []).map(row => this.dbViewToEntity(row));
+      const validatedData = validateArrayOrThrow(TransactionInboxViewRowSchema, data ?? [], 'TransactionInboxViewRow');
+      const items = validatedData.map(row => this.dbViewToEntity(row));
 
       return {
         success: true,
@@ -133,9 +136,10 @@ export class SupabaseInboxRepository implements IInboxRepository {
         };
       }
 
+      const validated = validateOrThrow(TransactionInboxViewRowSchema, data, 'TransactionInboxViewRow');
       return {
         success: true,
-        data: this.dbViewToEntity(data),
+        data: this.dbViewToEntity(validated),
       };
     } catch (err) {
       return {

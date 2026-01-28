@@ -626,3 +626,104 @@ These locations are **exempt** — they legitimately need direct Supabase auth a
 - ❌ Pass raw `userId` strings between methods — inject `IAuthProvider` and let the service decide when to fetch
 - ❌ Return `null` from `getCurrentUserId()` — throw `AuthenticationError`
 - ❌ Put raw Supabase auth logic in `.tsx` files — use hooks or `createSupabaseAuthProvider` via `useMemo`
+
+## 11. Zod Network Boundary Validation (Schema Contracts)
+
+### Overview
+
+Every Supabase response is validated with Zod schemas **before** reaching `data-transformers.ts`. If the server sends malformed data, the app crashes at the network boundary — not deep inside a React component. This is the "Silent Guard" pattern: Contract-Verified data integrity at the edge.
+
+**Status:** ✅ **IMPLEMENTED** — All repository, API, and sync engine boundaries covered.
+
+### Why This Exists
+
+1. **Early Crash Principle:** A renamed Postgres column causes `SchemaValidationError` at the boundary instead of `undefined` rendering in React or a Swift crash on iOS.
+2. **iOS Bridge:** Zod schemas serve as executable documentation of what Supabase returns. The iOS developer reads the schema and knows `accountName` is `string | null` and `amountCents` is an integer.
+3. **Frozen API Contract:** The schemas lock the server's output shape. Backend changes that break the contract are caught immediately on the web, before the iOS app ever sees the bad data.
+
+### Architecture
+
+```
+Supabase RPC / .from() Query
+    │
+    ▼
+Zod Schema Validation (db-row-schemas.ts)    ← "Filtering Membrane"
+    │   - validateOrThrow() / validateArrayOrThrow()
+    │   - SchemaValidationError with schemaName for error boundaries
+    │   - Rejects floats on integer cents fields
+    │   - Enforces nullable vs optional distinction
+    ▼
+Shared Transformers (data-transformers.ts)    ← Existing (unchanged)
+    │
+    ▼
+Domain Entities
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `lib/types/db-row-schemas.ts` | Centralized Zod schemas — table rows, view rows, RPC responses, sync records |
+| `lib/types/validate.ts` | `validateOrThrow<T>()`, `validateArrayOrThrow<T>()`, `SchemaValidationError` |
+| `lib/types/__tests__/db-row-schemas.test.ts` | Schema contract tests |
+| `lib/types/__tests__/validate.test.ts` | Helper tests |
+
+### Two Schema Sets (Critical Design Decision)
+
+The codebase has two paths from Supabase to domain:
+
+1. **Repository/API path** — uses `.from('table').select()` → column names match `database.types.ts` (e.g., `amount_original`, `amount_home`, `current_balance`)
+2. **Sync pull-engine path** — uses `.rpc('get_changes_since')` → RPC renames columns (e.g., `amount_cents`, `amount_home_cents`, `current_balance_cents`)
+
+Therefore `db-row-schemas.ts` contains **two separate schema sets**:
+- **Table Row Schemas** — for repositories (`BankAccountRowSchema`, `TransactionRowSchema`, etc.)
+- **Sync Record Schemas** — for pull-engine (`SyncRecordSchemas.bank_accounts`, etc.) with `.passthrough()` to tolerate new DB columns
+
+### Schema Design Rules
+
+| Rule | Rationale |
+|------|-----------|
+| `z.number().int()` on all `_cents` fields | Rejects `100.5` — protects Sacred Integer Arithmetic |
+| `.nullable()` for Postgres NULL | Matches domain null semantics for iOS Swift compatibility |
+| `.optional()` only for migration-pending fields | Sync fields on `bank_accounts`/`categories`/`transaction_inbox` aren't in auto-generated types yet |
+| `.passthrough()` on sync schemas | New DB columns from migrations don't break the web app |
+| `BaseSyncFields` shared object | DRY — `version` and `deleted_at` defined once, spread into each schema |
+| `z.record(z.string(), z.unknown())` | Zod v4 requires explicit key type for record schemas |
+
+### Wiring Points
+
+**Sync Engine (3 points in `lib/sync/pull-engine.ts`):**
+- After `get_sync_changes_summary_v2()` RPC → `SyncChangesSummarySchema`
+- After `get_changes_since()` RPC → `ChangesResponseSchema`
+- Per-record in fetch loop → `SyncRecordSchemas[tableName]`
+
+**Repositories/APIs (6 files):**
+- `features/accounts/repository/supabase-account-repository.ts` → `BankAccountViewRowSchema`
+- `features/categories/repository/supabase-category-repository.ts` → `CategoryRowSchema`, `ParentCategoryWithCountRowSchema`
+- `features/transactions/repository/supabase-transaction-repository.ts` → `TransactionsViewRowSchema`
+- `features/inbox/repository/supabase-inbox-repository.ts` → `TransactionInboxViewRowSchema`
+- `features/reconciliations/api/reconciliations.ts` → `ReconciliationRowSchema`, `ReconciliationSummaryRpcSchema`, `LinkUnlinkRpcSchema`
+- `features/settings/api/user-settings.ts` → `UserSettingsRowSchema`
+
+### Error Handling
+
+`SchemaValidationError` carries:
+- `schemaName` — identifies which table/RPC failed (e.g., `SyncRecord[transactions]`, `BankAccountViewRow[3]`)
+- `issues` — Zod issue array for debugging
+- `rawData` — the malformed payload
+
+This is caught by existing `try/catch` blocks in repositories (DataResult pattern) and propagates to global error boundaries with full context.
+
+### Rules for Adding New Schemas
+
+**DO:**
+- ✅ Add a schema in `db-row-schemas.ts` for every new Supabase query or RPC
+- ✅ Validate before transforming — `validateOrThrow(schema, data, 'Name')` then pass to transformer
+- ✅ Use `BaseSyncFields` spread for syncable tables
+- ✅ Use `.passthrough()` for sync record schemas
+
+**DON'T:**
+- ❌ Skip validation on any Supabase response ("naked data")
+- ❌ Use `as any` or `as unknown as T` to bypass type checking on RPC responses
+- ❌ Define schemas inline in repository files — centralize in `db-row-schemas.ts`
+- ❌ Use `.optional()` where `.nullable()` is correct (Postgres NULL = nullable)

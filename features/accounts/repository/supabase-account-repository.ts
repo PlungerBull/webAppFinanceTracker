@@ -30,6 +30,8 @@ import {
   AccountVersionConflictError,
 } from '../domain';
 import { dbAccountViewToDomain } from '@/lib/types/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
+import { BankAccountViewRowSchema } from '@/lib/types/db-row-schemas';
 
 // Database row type from bank_accounts with joined global_currencies
 type DbAccountRow = Database['public']['Tables']['bank_accounts']['Row'] & {
@@ -91,7 +93,8 @@ export class SupabaseAccountRepository implements IAccountRepository {
         };
       }
 
-      const entities = (data ?? []).map((row) =>
+      const validated = validateArrayOrThrow(BankAccountViewRowSchema, data ?? [], 'BankAccountViewRow');
+      const entities = validated.map((row) =>
         dbAccountViewToDomain(row as DbAccountRow)
       );
 
@@ -144,7 +147,8 @@ export class SupabaseAccountRepository implements IAccountRepository {
         };
       }
 
-      const entity = dbAccountViewToDomain(data as DbAccountRow);
+      const validated = validateOrThrow(BankAccountViewRowSchema, data, 'BankAccountViewRow');
+      const entity = dbAccountViewToDomain(validated as DbAccountRow);
 
       return { success: true, data: entity };
     } catch (err) {

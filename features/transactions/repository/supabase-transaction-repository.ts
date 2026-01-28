@@ -48,6 +48,8 @@ import {
   dbTransactionViewToDomain as sharedDbTransactionViewToDomain,
   dbTransactionViewsToDomain as sharedDbTransactionViewsToDomain,
 } from '@/lib/types/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
+import { TransactionsViewRowSchema } from '@/lib/types/db-row-schemas';
 
 /**
  * Supabase Transaction Repository
@@ -182,7 +184,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
       return {
         success: true,
         data: {
-          data: sharedDbTransactionViewsToDomain(data || []),
+          data: sharedDbTransactionViewsToDomain(validateArrayOrThrow(TransactionsViewRowSchema, data || [], 'TransactionsViewRow')),
           total: count || 0,
           offset,
           limit,
@@ -227,7 +229,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
 
       return {
         success: true,
-        data: sharedDbTransactionViewToDomain(data),
+        data: sharedDbTransactionViewToDomain(validateOrThrow(TransactionsViewRowSchema, data, 'TransactionsViewRow')),
       };
     } catch (err) {
       return {

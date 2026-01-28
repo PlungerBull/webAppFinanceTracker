@@ -9,6 +9,12 @@ import {
   domainReconciliationToDbUpdate,
   dbReconciliationSummaryToDomain,
 } from '@/lib/types/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
+import {
+  ReconciliationRowSchema,
+  ReconciliationSummaryRpcSchema,
+  LinkUnlinkRpcSchema,
+} from '@/lib/types/db-row-schemas';
 
 export class ReconciliationsService {
   constructor(
@@ -40,7 +46,8 @@ export class ReconciliationsService {
       throw new Error(error.message || 'Failed to fetch reconciliations');
     }
 
-    return dbReconciliationsToDomain(data);
+    const validated = validateArrayOrThrow(ReconciliationRowSchema, data, 'ReconciliationRow');
+    return dbReconciliationsToDomain(validated);
   }
 
   /**
@@ -58,7 +65,8 @@ export class ReconciliationsService {
       throw new Error(error.message || 'Failed to fetch reconciliation');
     }
 
-    return dbReconciliationToDomain(data);
+    const validated = validateOrThrow(ReconciliationRowSchema, data, 'ReconciliationRow');
+    return dbReconciliationToDomain(validated);
   }
 
   /**
@@ -96,7 +104,8 @@ export class ReconciliationsService {
       throw new Error(error.message || 'Failed to create reconciliation');
     }
 
-    return dbReconciliationToDomain(result);
+    const validated = validateOrThrow(ReconciliationRowSchema, result, 'ReconciliationRow');
+    return dbReconciliationToDomain(validated);
   }
 
   /**
@@ -164,7 +173,7 @@ export class ReconciliationsService {
       throw new Error(error?.message || 'Failed to link transactions');
     }
 
-    return data as any;
+    return validateOrThrow(LinkUnlinkRpcSchema, data, 'LinkTransactionsRpc');
   }
 
   /**
@@ -188,7 +197,7 @@ export class ReconciliationsService {
       throw new Error(error?.message || 'Failed to unlink transactions');
     }
 
-    return data as any;
+    return validateOrThrow(LinkUnlinkRpcSchema, data, 'UnlinkTransactionsRpc');
   }
 
   /**
@@ -205,7 +214,8 @@ export class ReconciliationsService {
       throw new Error(error?.message || 'Failed to get reconciliation summary');
     }
 
-    return dbReconciliationSummaryToDomain(data);
+    const validated = validateOrThrow(ReconciliationSummaryRpcSchema, data, 'ReconciliationSummaryRpc');
+    return dbReconciliationSummaryToDomain(validated);
   }
 }
 

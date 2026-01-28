@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import { dbUserSettingsToDomain } from '@/lib/types/data-transformers';
+import { validateOrThrow } from '@/lib/types/validate';
+import { UserSettingsRowSchema } from '@/lib/types/db-row-schemas';
 
 export class UserSettingsService {
     constructor(
@@ -27,7 +29,7 @@ export class UserSettingsService {
             throw new Error(error.message || 'Failed to fetch user settings');
         }
 
-        return dbUserSettingsToDomain(data);
+        return dbUserSettingsToDomain(validateOrThrow(UserSettingsRowSchema, data, 'UserSettingsRow'));
     }
 
     /**
@@ -48,7 +50,7 @@ export class UserSettingsService {
             throw new Error(error.message || 'Failed to update main currency');
         }
 
-        return dbUserSettingsToDomain(data);
+        return dbUserSettingsToDomain(validateOrThrow(UserSettingsRowSchema, data, 'UserSettingsRow'));
     }
 
     /**
@@ -69,7 +71,7 @@ export class UserSettingsService {
             throw new Error(error.message || 'Failed to update sort preference');
         }
 
-        return dbUserSettingsToDomain(data);
+        return dbUserSettingsToDomain(validateOrThrow(UserSettingsRowSchema, data, 'UserSettingsRow'));
     }
 }
 
