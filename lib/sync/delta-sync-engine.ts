@@ -42,6 +42,7 @@ import {
 } from './sync-lock-manager';
 import { DEFAULT_SYNC_CONFIG, SYNCABLE_TABLES } from './constants';
 import { pendingSyncFilter, conflictFilter } from '@/lib/local-db';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Delta Sync Engine Interface
@@ -147,7 +148,12 @@ export class DeltaSyncEngine implements IDeltaSyncEngine {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.lastError = message;
-      console.error('[DeltaSyncEngine] Push error:', error);
+      Sentry.captureException(error, {
+        tags: {
+          'sync.phase': 'push',
+          domain: 'sync',
+        },
+      });
 
       return {
         success: false,
@@ -208,7 +214,12 @@ export class DeltaSyncEngine implements IDeltaSyncEngine {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.lastError = message;
-      console.error('[DeltaSyncEngine] Pull error:', error);
+      Sentry.captureException(error, {
+        tags: {
+          'sync.phase': 'pull',
+          domain: 'sync',
+        },
+      });
 
       return {
         success: false,
@@ -297,6 +308,16 @@ export class DeltaSyncEngine implements IDeltaSyncEngine {
       const message = error instanceof Error ? error.message : String(error);
       this.lastError = message;
       this.currentPhase = 'error';
+
+      Sentry.captureException(error, {
+        tags: {
+          'sync.phase': this.currentPhase,
+          domain: 'sync',
+        },
+        extra: {
+          durationMs: Date.now() - startTime,
+        },
+      });
 
       return {
         success: false,

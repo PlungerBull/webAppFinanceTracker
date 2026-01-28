@@ -19,6 +19,7 @@
 
 import type { IInboxRepository } from '../repository/inbox-repository.interface';
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
+import { reportServiceFailure } from '@/lib/sentry/reporter';
 import type {
   DataResult,
   PaginatedResult,
@@ -69,6 +70,16 @@ export class InboxService implements IInboxService {
     private readonly repository: IInboxRepository,
     private readonly authProvider: IAuthProvider
   ) {}
+
+  /**
+   * Report DataResult failures to Sentry
+   */
+  private reportIfFailed<T>(result: DataResult<T>, operation: string): DataResult<T> {
+    if (!result.success) {
+      reportServiceFailure(result.error, 'inbox', operation);
+    }
+    return result;
+  }
 
   /**
    * Get current user ID from auth provider
@@ -155,7 +166,10 @@ export class InboxService implements IInboxService {
       };
     }
 
-    return this.repository.create(userResult.data, data);
+    return this.reportIfFailed(
+      await this.repository.create(userResult.data, data),
+      'create'
+    );
   }
 
   /**
@@ -234,7 +248,10 @@ export class InboxService implements IInboxService {
       };
     }
 
-    return this.repository.promote(userResult.data, data);
+    return this.reportIfFailed(
+      await this.repository.promote(userResult.data, data),
+      'promote'
+    );
   }
 
   // ============================================================================
@@ -254,7 +271,10 @@ export class InboxService implements IInboxService {
       };
     }
 
-    return this.repository.dismiss(userResult.data, id);
+    return this.reportIfFailed(
+      await this.repository.dismiss(userResult.data, id),
+      'dismiss'
+    );
   }
 }
 

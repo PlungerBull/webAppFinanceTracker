@@ -15,6 +15,7 @@
  */
 
 import dynamic from 'next/dynamic';
+import { SentryProvider } from '@/providers/sentry-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { AuthProvider } from '@/providers/auth-provider';
 import { SyncStatusProvider } from '@/providers/sync-status-provider';
@@ -43,6 +44,7 @@ interface ClientProvidersProps {
  * Client Providers Component
  *
  * Wraps children with all client-side providers in the correct order:
+ * 0. SentryProvider - Error tracking & user context (outermost)
  * 1. QueryProvider - React Query for server state
  * 2. LocalDbProvider - WatermelonDB for local state (SSR disabled)
  * 3. CurrencyProvider - Currency context
@@ -52,20 +54,22 @@ interface ClientProvidersProps {
  */
 export function ClientProviders({ children, modal }: ClientProvidersProps) {
   return (
-    <QueryProvider>
-      <LocalDbProvider>
-        <CurrencyProvider>
-          <AuthProvider>
-            <SyncStatusProvider>
-              <TransactionModalProvider>
-                {children}
-                {modal}
-                <Toaster />
-              </TransactionModalProvider>
-            </SyncStatusProvider>
-          </AuthProvider>
-        </CurrencyProvider>
-      </LocalDbProvider>
-    </QueryProvider>
+    <SentryProvider>
+      <QueryProvider>
+        <LocalDbProvider>
+          <CurrencyProvider>
+            <AuthProvider>
+              <SyncStatusProvider>
+                <TransactionModalProvider>
+                  {children}
+                  {modal}
+                  <Toaster />
+                </TransactionModalProvider>
+              </SyncStatusProvider>
+            </AuthProvider>
+          </CurrencyProvider>
+        </LocalDbProvider>
+      </QueryProvider>
+    </SentryProvider>
   );
 }

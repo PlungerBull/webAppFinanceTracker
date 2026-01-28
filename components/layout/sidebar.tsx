@@ -9,6 +9,7 @@ import { UserMenu } from '@/components/layout/user-menu';
 import { MainNavigation } from '@/components/layout/main-navigation';
 import { AccountList } from '@/features/accounts/components/account-list';
 import { GroupingList } from '@/features/groupings/components/grouping-list';
+import { SentryErrorBoundary } from '@/components/sentry-error-boundary';
 
 
 interface SidebarProps {
@@ -80,7 +81,9 @@ export function Sidebar({ className }: SidebarProps) {
           <nav className="flex-1 overflow-y-auto p-2 custom-scrollbar">
             {!isCollapsed && (
               <>
-                <AccountList />
+                <SentryErrorBoundary domain="accounts" fallbackMessage="Could not load accounts.">
+                  <AccountList />
+                </SentryErrorBoundary>
                 <GroupingList />
               </>
             )}

@@ -17,6 +17,7 @@
 
 import { useRef } from 'react';
 import { toast } from 'sonner';
+import * as Sentry from '@sentry/nextjs';
 import { useAuthStore } from '@/stores/auth-store';
 import { useDeltaSync } from '@/lib/sync';
 import type { ReactNode } from 'react';
@@ -65,6 +66,11 @@ export function SyncStatusProvider({ children }: SyncStatusProviderProps) {
       }
     },
     onSyncError: (error) => {
+      // Report all sync errors to Sentry (PII scrubbed by beforeSend)
+      Sentry.captureException(error, {
+        tags: { domain: 'sync' },
+      });
+
       // CTO Mandate: Do NOT toast for standard network loss
       // Only toast for persistent auth/data errors
       const message = error.message.toLowerCase();

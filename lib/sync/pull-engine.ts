@@ -39,11 +39,13 @@ import {
   type SyncableTableName,
 } from './constants';
 import { validateOrThrow } from '@/lib/types/validate';
+import { SchemaValidationError } from '@/lib/types/validate';
 import {
   SyncChangesSummarySchema,
   ChangesResponseSchema,
   SyncRecordSchemas,
 } from '@/lib/types/db-row-schemas';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Internal result with pagination metadata
@@ -189,7 +191,39 @@ export class PullEngine {
         hasMore: anyTableHitLimit,
       };
     } catch (error) {
-      console.error('[PullEngine] Pull failed:', error);
+      // Version Mismatch Guard: if SchemaValidationError, the server schema
+      // has changed but the client bundle is stale. Force a reload to prevent
+      // data corruption from mapping unknown fields.
+      if (error instanceof SchemaValidationError) {
+        Sentry.captureMessage('Schema Mismatch Detected - Forcing Reload', {
+          level: 'warning',
+          tags: {
+            'sync.phase': 'pull',
+            domain: 'sync',
+            errorType: 'schema_validation',
+            build_version: process.env.NEXT_PUBLIC_BUILD_VERSION ?? 'unknown',
+          },
+          extra: {
+            schemaName: error.schemaName,
+            rawDataKeys: error.rawData && typeof error.rawData === 'object'
+              ? Object.keys(error.rawData as Record<string, unknown>)
+              : [],
+            issueCount: error.issues.length,
+          },
+        });
+
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      } else {
+        Sentry.captureException(error, {
+          tags: {
+            'sync.phase': 'pull',
+            domain: 'sync',
+          },
+        });
+      }
+
       return {
         success: false,
         tableStats,
