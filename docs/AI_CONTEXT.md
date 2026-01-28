@@ -143,7 +143,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
 #### B1. Core Transformation Pattern
 * **Never return raw DB rows to components.**
 * **API Layer Responsibility:** Fetch data from Supabase → Transform snake_case to camelCase → Return Domain Type.
-* **Transformer Pattern:** Use helper functions in `@/lib/types/data-transformers`.
+* **Transformer Pattern:** Use helper functions in `@/lib/data/data-transformers`.
     * *Bad:* `return data` (frontend receives `user_id`)
     * *Good:* `return dbTransactionToDomain(data)` (frontend receives `userId`)
 
@@ -181,7 +181,7 @@ We use a **Feature-Based Architecture**. Do not group files by type; group them 
     * Single source of truth for conversion logic
     * Type safety without dual null/undefined checks
 * **Implementation:**
-    * Transformer: `lib/types/data-transformers.ts`
+    * Transformer: `lib/data/data-transformers.ts`
     * Domain Types: `features/inbox/types.ts`, `features/shared/components/transaction-detail-panel/types.ts`
     * API Layer: Uses transformer for all database operations
 

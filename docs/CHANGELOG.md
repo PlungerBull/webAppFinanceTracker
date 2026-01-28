@@ -14,6 +14,47 @@
 
 ---
 
+## 2026-01-27: Rename `lib/types/` to `lib/data/` (Semantic Alignment)
+
+### Problem: Misleading Directory Name
+
+`lib/types/` contained runtime code (Zod schemas, data transformers, validation logic), not pure type definitions. This created confusion about which `types` directory to use — `types/` (root) or `lib/types/`.
+
+### Solution: Rename to `lib/data/`
+
+Renamed `lib/types/` to `lib/data/` to accurately reflect its role as the data validation and transformation layer.
+
+### What Changed
+
+| Before | After |
+|--------|-------|
+| `lib/types/data-transformers.ts` | `lib/data/data-transformers.ts` |
+| `lib/types/local-data-transformers.ts` | `lib/data/local-data-transformers.ts` |
+| `lib/types/db-row-schemas.ts` | `lib/data/db-row-schemas.ts` |
+| `lib/types/validate.ts` | `lib/data/validate.ts` |
+| `lib/types/__tests__/*` | `lib/data/__tests__/*` |
+
+### Directory Roles (Clarified)
+
+| Directory | Content | Build Behavior |
+|-----------|---------|----------------|
+| `types/` | Pure type definitions (interfaces, type aliases, database schema) | Stripped at build time |
+| `lib/data/` | Zod schemas, data transformers, validation helpers | Runtime code (shipped to bundle) |
+
+### Files Modified
+
+- 6 files renamed via `git mv`
+- 12 importing files updated (`@/lib/types/` → `@/lib/data/`)
+- 3 doc files updated (ARCHITECTURE.md, AI_CONTEXT.md, CHANGELOG.md)
+
+### Impact
+
+- Zero logic changes — pure rename
+- Git history preserved via `git mv`
+- Build passes clean (`tsc --noEmit`)
+
+---
+
 ## 2026-01-09: Security Hardening - Search Path Hijacking Mitigation
 
 ### Problem: Supabase Security Advisor Warnings for Mutable Search Paths
@@ -844,7 +885,7 @@ END IF;
 
 **Problem:** Database uses `null` for missing values, but TypeScript optional properties use `undefined`.
 
-**Solution:** Bidirectional conversion in `lib/types/data-transformers.ts`:
+**Solution:** Bidirectional conversion in `lib/data/data-transformers.ts`:
 
 ```typescript
 // Database → Domain: Converts null → undefined
@@ -1377,5 +1418,6 @@ No schema changes - fully backward compatible.
 
 ---
 
-**Last Updated:** 2025-12-28
+**Last Updated:** 2026-01-27
 **Total Migrations Documented:** 12
+**Total Refactors Documented:** 1

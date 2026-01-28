@@ -25,7 +25,8 @@ We use a hybrid approach that combines Feature-Sliced Design for business logic 
 * `features/`: Contains domain-specific business logic. Each folder here represents a distinct business domain.
 * `components/`: Shared "dumb" UI components (e.g., Button, Modal, DataTable) that are agnostic to business logic (Design System).
 * `lib/`: Shared utilities, including cross-feature hooks (`lib/hooks/`), and general-purpose modules.
-* `types/`: Shared TypeScript types used across the application.
+* `lib/data/`: Runtime data layer — Zod validation schemas (`db-row-schemas.ts`), data transformers (`data-transformers.ts`, `local-data-transformers.ts`), and validation helpers (`validate.ts`).
+* `types/`: Shared pure TypeScript types (interfaces, type aliases, database schema) — stripped at build time.
 * `providers/` & `stores/`: Global state management and context providers.
 * `supabase/`: Database definitions and client configuration.
 
@@ -392,7 +393,7 @@ For detailed implementation examples and iOS integration guide, see [AI_CONTEXT.
 
 ### Overview
 
-All data entering the domain layer from Supabase passes through a centralized **Transformer Registry** in `lib/types/data-transformers.ts`. This file is the single source of truth for converting between database types (snake_case, nullable) and domain types (camelCase, strict).
+All data entering the domain layer from Supabase passes through a centralized **Transformer Registry** in `lib/data/data-transformers.ts`. This file is the single source of truth for converting between database types (snake_case, nullable) and domain types (camelCase, strict).
 
 ### Why Centralized Transformers
 
@@ -441,7 +442,7 @@ UI Components (React)                         ← Display Defaults Here
 
 ### Local Data Transformers (WatermelonDB Bridge)
 
-**Status:** ✅ **IMPLEMENTED** — `lib/types/local-data-transformers.ts`
+**Status:** ✅ **IMPLEMENTED** — `lib/data/local-data-transformers.ts`
 
 The remote transformers in `data-transformers.ts` accept **Supabase row shapes** (snake_case, from Postgres). The local repositories use **WatermelonDB models** (camelCase JS objects). To maintain the Single Interface Rule — both paths producing identical domain entity types — a dedicated bridge layer was created.
 
@@ -462,8 +463,8 @@ Each local repository delegates its enrichment method to these shared transforme
 ### Rules for Repository Authors
 
 **DO:**
-- ✅ Import remote transformers from `@/lib/types/data-transformers` (for Supabase repositories)
-- ✅ Import local transformers from `@/lib/types/local-data-transformers` (for WatermelonDB repositories)
+- ✅ Import remote transformers from `@/lib/data/data-transformers` (for Supabase repositories)
+- ✅ Import local transformers from `@/lib/data/local-data-transformers` (for WatermelonDB repositories)
 - ✅ Use `toCents()` from `@/lib/utils/cents-conversion` for decimal→integer conversion
 - ✅ Create specialized transformers (e.g., `toCategoryWithCountEntity`) that **call the shared base transformer internally** then spread additional fields
 
@@ -685,10 +686,10 @@ Domain Entities
 
 | File | Purpose |
 |------|---------|
-| `lib/types/db-row-schemas.ts` | Centralized Zod schemas — table rows, view rows, RPC responses, sync records |
-| `lib/types/validate.ts` | `validateOrThrow<T>()`, `validateArrayOrThrow<T>()`, `SchemaValidationError` |
-| `lib/types/__tests__/db-row-schemas.test.ts` | Schema contract tests |
-| `lib/types/__tests__/validate.test.ts` | Helper tests |
+| `lib/data/db-row-schemas.ts` | Centralized Zod schemas — table rows, view rows, RPC responses, sync records |
+| `lib/data/validate.ts` | `validateOrThrow<T>()`, `validateArrayOrThrow<T>()`, `SchemaValidationError` |
+| `lib/data/__tests__/db-row-schemas.test.ts` | Schema contract tests |
+| `lib/data/__tests__/validate.test.ts` | Helper tests |
 
 ### Two Schema Sets (Critical Design Decision)
 
