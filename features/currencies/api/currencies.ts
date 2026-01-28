@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCY } from '@/lib/constants';
-import { dbCurrenciesToDomain } from '@/lib/types/data-transformers';
+import { dbCurrenciesToDomain } from '@/lib/data/data-transformers';
 
 export const currenciesApi = {
   /**

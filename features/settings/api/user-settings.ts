@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
-import { dbUserSettingsToDomain } from '@/lib/types/data-transformers';
-import { validateOrThrow } from '@/lib/types/validate';
-import { UserSettingsRowSchema } from '@/lib/types/db-row-schemas';
+import { dbUserSettingsToDomain } from '@/lib/data/data-transformers';
+import { validateOrThrow } from '@/lib/data/validate';
+import { UserSettingsRowSchema } from '@/lib/data/db-row-schemas';
 
 export class UserSettingsService {
     constructor(

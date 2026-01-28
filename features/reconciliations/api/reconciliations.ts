@@ -8,13 +8,13 @@ import {
   domainReconciliationToDbInsert,
   domainReconciliationToDbUpdate,
   dbReconciliationSummaryToDomain,
-} from '@/lib/types/data-transformers';
-import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
+} from '@/lib/data/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/data/validate';
 import {
   ReconciliationRowSchema,
   ReconciliationSummaryRpcSchema,
   LinkUnlinkRpcSchema,
-} from '@/lib/types/db-row-schemas';
+} from '@/lib/data/db-row-schemas';
 
 export class ReconciliationsService {
   constructor(

@@ -53,7 +53,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked } from '@/lib/sync/sync-lock-manager';
-import { localTransactionViewsToDomain } from '@/lib/types/local-data-transformers';
+import { localTransactionViewsToDomain } from '@/lib/data/local-data-transformers';
 
 /**
  * Local Transaction Repository

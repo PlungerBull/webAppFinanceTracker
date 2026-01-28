@@ -47,9 +47,9 @@ import { TRANSACTION_VALIDATION, TRANSACTION_ERRORS } from '../domain/constants'
 import {
   dbTransactionViewToDomain as sharedDbTransactionViewToDomain,
   dbTransactionViewsToDomain as sharedDbTransactionViewsToDomain,
-} from '@/lib/types/data-transformers';
-import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
-import { TransactionsViewRowSchema } from '@/lib/types/db-row-schemas';
+} from '@/lib/data/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/data/validate';
+import { TransactionsViewRowSchema } from '@/lib/data/db-row-schemas';
 
 /**
  * Supabase Transaction Repository

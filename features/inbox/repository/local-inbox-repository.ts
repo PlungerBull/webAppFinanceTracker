@@ -46,7 +46,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked, getSyncLockManager } from '@/lib/sync/sync-lock-manager';
-import { localInboxItemViewsToDomain } from '@/lib/types/local-data-transformers';
+import { localInboxItemViewsToDomain } from '@/lib/data/local-data-transformers';
 
 /**
  * Local Inbox Repository

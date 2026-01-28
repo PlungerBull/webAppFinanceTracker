@@ -29,9 +29,9 @@ import {
   AccountLockedError,
   AccountVersionConflictError,
 } from '../domain';
-import { dbAccountViewToDomain } from '@/lib/types/data-transformers';
-import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
-import { BankAccountViewRowSchema } from '@/lib/types/db-row-schemas';
+import { dbAccountViewToDomain } from '@/lib/data/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/data/validate';
+import { BankAccountViewRowSchema } from '@/lib/data/db-row-schemas';
 
 // Database row type from bank_accounts with joined global_currencies
 type DbAccountRow = Database['public']['Tables']['bank_accounts']['Row'] & {

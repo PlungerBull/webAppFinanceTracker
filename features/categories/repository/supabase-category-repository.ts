@@ -52,9 +52,9 @@ import {
   CategoryVersionConflictError,
 } from '../domain';
 import type { MergeCategoriesResult } from './category-repository.interface';
-import { dbCategoryToDomain, dbParentCategoryWithCountToDomain } from '@/lib/types/data-transformers';
-import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
-import { CategoryRowSchema, ParentCategoryWithCountRowSchema } from '@/lib/types/db-row-schemas';
+import { dbCategoryToDomain, dbParentCategoryWithCountToDomain } from '@/lib/data/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/data/validate';
+import { CategoryRowSchema, ParentCategoryWithCountRowSchema } from '@/lib/data/db-row-schemas';
 
 // =============================================================================
 // TYPES

@@ -38,13 +38,13 @@ import {
   DEFAULT_SYNC_CONFIG,
   type SyncableTableName,
 } from './constants';
-import { validateOrThrow } from '@/lib/types/validate';
-import { SchemaValidationError } from '@/lib/types/validate';
+import { validateOrThrow } from '@/lib/data/validate';
+import { SchemaValidationError } from '@/lib/data/validate';
 import {
   SyncChangesSummarySchema,
   ChangesResponseSchema,
   SyncRecordSchemas,
-} from '@/lib/types/db-row-schemas';
+} from '@/lib/data/db-row-schemas';
 import * as Sentry from '@sentry/nextjs';
 
 /**

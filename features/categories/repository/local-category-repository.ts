@@ -49,7 +49,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked, getSyncLockManager } from '@/lib/sync/sync-lock-manager';
-import { localCategoryToDomain } from '@/lib/types/local-data-transformers';
+import { localCategoryToDomain } from '@/lib/data/local-data-transformers';
 
 /**
  * Local Category Repository

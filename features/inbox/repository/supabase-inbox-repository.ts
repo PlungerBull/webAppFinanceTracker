@@ -36,9 +36,9 @@ import {
   VersionConflictError,
   InboxDomainError,
 } from '../domain/errors';
-import { dbInboxItemViewToDomain } from '@/lib/types/data-transformers';
-import { validateOrThrow, validateArrayOrThrow } from '@/lib/types/validate';
-import { TransactionInboxViewRowSchema } from '@/lib/types/db-row-schemas';
+import { dbInboxItemViewToDomain } from '@/lib/data/data-transformers';
+import { validateOrThrow, validateArrayOrThrow } from '@/lib/data/validate';
+import { TransactionInboxViewRowSchema } from '@/lib/data/db-row-schemas';
 import type { InboxItemViewEntity } from '../domain/entities';
 
 /**

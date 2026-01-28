@@ -43,7 +43,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked } from '@/lib/sync/sync-lock-manager';
-import { localAccountViewsToDomain } from '@/lib/types/local-data-transformers';
+import { localAccountViewsToDomain } from '@/lib/data/local-data-transformers';
 
 /**
  * Local Account Repository
