@@ -438,10 +438,31 @@ UI Components (React)                         ← Display Defaults Here
     - ?? ''
 ```
 
+### Local Data Transformers (WatermelonDB Bridge)
+
+**Status:** ✅ **IMPLEMENTED** — `lib/types/local-data-transformers.ts`
+
+The remote transformers in `data-transformers.ts` accept **Supabase row shapes** (snake_case, from Postgres). The local repositories use **WatermelonDB models** (camelCase JS objects). To maintain the Single Interface Rule — both paths producing identical domain entity types — a dedicated bridge layer was created.
+
+| Function | Input | Output (identical to remote) |
+|---|---|---|
+| `localAccountViewToDomain()` | `AccountModel` + `Map<string, CurrencyModel>` | `AccountViewEntity` |
+| `localCategoryToDomain()` | `CategoryModel` | `CategoryEntity` |
+| `localTransactionViewToDomain()` | `TransactionModel` + account/category maps | `TransactionViewEntity` |
+| `localInboxItemViewToDomain()` | `InboxModel` + account/category/currency maps | `InboxItemViewEntity` |
+
+Each local repository delegates its enrichment method to these shared transformers. The batch-fetching logic (No N+1 mandate) remains in the repository; the mapping logic lives in `local-data-transformers.ts`.
+
+**Null handling is identical to remote transformers:**
+- Missing joined data → `null` (never `'Unknown Account'` or `'USD'`)
+- Missing optional fields → `null` (never `''`)
+- `currencySymbol` → `null` when JOIN fails (not empty string)
+
 ### Rules for Repository Authors
 
 **DO:**
-- ✅ Import transformers from `@/lib/types/data-transformers`
+- ✅ Import remote transformers from `@/lib/types/data-transformers` (for Supabase repositories)
+- ✅ Import local transformers from `@/lib/types/local-data-transformers` (for WatermelonDB repositories)
 - ✅ Use `toCents()` from `@/lib/utils/cents-conversion` for decimal→integer conversion
 - ✅ Create specialized transformers (e.g., `toCategoryWithCountEntity`) that **call the shared base transformer internally** then spread additional fields
 

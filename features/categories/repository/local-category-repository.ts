@@ -49,6 +49,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked, getSyncLockManager } from '@/lib/sync/sync-lock-manager';
+import { localCategoryToDomain } from '@/lib/types/local-data-transformers';
 
 /**
  * Local Category Repository
@@ -68,20 +69,10 @@ export class LocalCategoryRepository implements ICategoryRepository {
 
   /**
    * Transform CategoryModel to CategoryEntity
+   * Delegates to shared local-data-transformers (CTO: Single Interface Rule)
    */
   private toEntity(model: CategoryModel): CategoryEntity {
-    return {
-      id: model.id,
-      userId: model.userId || '',
-      name: model.name,
-      color: model.color,
-      type: model.type,
-      parentId: model.parentId,
-      createdAt: model.createdAt.toISOString(),
-      updatedAt: model.updatedAt.toISOString(),
-      version: model.version,
-      deletedAt: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
-    };
+    return localCategoryToDomain(model);
   }
 
   /**
@@ -395,16 +386,17 @@ export class LocalCategoryRepository implements ICategoryRepository {
             totalTransactionCount += await this.getTransactionCount(g.id);
           }
 
+          const base = localCategoryToDomain(g);
           return {
-            id: g.id,
-            userId: g.userId || '',
-            name: g.name,
-            color: g.color,
-            type: g.type,
-            createdAt: g.createdAt.toISOString(),
-            updatedAt: g.updatedAt.toISOString(),
-            version: g.version,
-            deletedAt: g.deletedAt ? new Date(g.deletedAt).toISOString() : null,
+            id: base.id,
+            userId: base.userId,
+            name: base.name,
+            color: base.color,
+            type: base.type,
+            createdAt: base.createdAt,
+            updatedAt: base.updatedAt,
+            version: base.version,
+            deletedAt: base.deletedAt,
             childCount,
             totalTransactionCount,
           } as GroupingEntity;

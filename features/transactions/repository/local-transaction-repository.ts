@@ -53,6 +53,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked } from '@/lib/sync/sync-lock-manager';
+import { localTransactionViewsToDomain } from '@/lib/types/local-data-transformers';
 
 /**
  * Local Transaction Repository
@@ -75,7 +76,7 @@ export class LocalTransactionRepository implements ITransactionRepository {
    *
    * CTO MANDATE: No N+1 Queries
    * Batch-fetches all accounts and categories in ONE query each,
-   * then maps them to transactions in memory.
+   * then delegates to shared local-data-transformers.
    *
    * @param transactions - Array of TransactionModel instances
    * @returns Array of TransactionViewEntity with joined data
@@ -114,44 +115,8 @@ export class LocalTransactionRepository implements ITransactionRepository {
     const accountMap = new Map(accounts.map((a) => [a.id, a]));
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-    // Transform to view entities
-    return transactions.map((t) => {
-      const account = accountMap.get(t.accountId);
-      const category = t.categoryId ? categoryMap.get(t.categoryId) : null;
-
-      return {
-        // Base entity fields from TransactionModel.toDomainEntity()
-        id: t.id,
-        version: t.version,
-        userId: t.userId,
-        accountId: t.accountId,
-        categoryId: t.categoryId,
-        amountCents: Math.round(t.amountCents), // CTO: Integer cents
-        amountHomeCents: Math.round(t.amountHomeCents), // CTO: Integer cents
-        currencyOriginal: account?.currencyCode || 'USD',
-        exchangeRate: t.exchangeRate,
-        transferId: t.transferId,
-        reconciliationId: t.reconciliationId,
-        cleared: t.cleared,
-        date: t.date.toISOString(),
-        createdAt: t.createdAt.toISOString(),
-        updatedAt: t.updatedAt.toISOString(),
-        deletedAt: t.deletedAt ? new Date(t.deletedAt).toISOString() : null,
-        description: t.description,
-        notes: t.notes,
-        sourceText: t.sourceText ?? undefined,
-        inboxId: t.inboxId ?? undefined,
-
-        // Joined fields
-        accountName: account?.name || 'Unknown Account',
-        accountCurrency: account?.currencyCode || 'USD',
-        accountColor: account?.color || null,
-        categoryName: category?.name || null,
-        categoryColor: category?.color || null,
-        categoryType: (category?.type as 'income' | 'expense' | 'opening_balance') || null,
-        reconciliationStatus: null, // TODO: Join reconciliation in Phase 3
-      };
-    });
+    // Delegate to shared transformer (CTO: Single Interface Rule)
+    return localTransactionViewsToDomain(transactions, accountMap, categoryMap);
   }
 
   /**

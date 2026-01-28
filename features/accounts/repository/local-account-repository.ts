@@ -43,6 +43,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked } from '@/lib/sync/sync-lock-manager';
+import { localAccountViewsToDomain } from '@/lib/types/local-data-transformers';
 
 /**
  * Local Account Repository
@@ -65,7 +66,7 @@ export class LocalAccountRepository implements IAccountRepository {
    *
    * CTO MANDATE: No N+1 Queries
    * Batch-fetches all currencies in ONE query,
-   * then maps them to accounts in memory.
+   * then delegates to shared local-data-transformers.
    *
    * @param accounts - Array of AccountModel instances
    * @returns Array of AccountViewEntity with joined data
@@ -89,28 +90,8 @@ export class LocalAccountRepository implements IAccountRepository {
     // Create lookup map for O(1) access
     const currencyMap = new Map(currencies.map((c) => [c.code, c]));
 
-    // Transform to view entities
-    return accounts.map((a) => {
-      const currency = currencyMap.get(a.currencyCode);
-
-      return {
-        id: a.id,
-        version: a.version,
-        userId: a.userId,
-        groupId: a.groupId,
-        name: a.name,
-        type: a.type,
-        currencyCode: a.currencyCode,
-        color: a.color,
-        currentBalanceCents: Math.round(a.currentBalanceCents), // CTO: Integer cents
-        isVisible: a.isVisible,
-        createdAt: a.createdAt.toISOString(),
-        updatedAt: a.updatedAt.toISOString(),
-        deletedAt: a.deletedAt ? new Date(a.deletedAt).toISOString() : null,
-        // Joined field
-        currencySymbol: currency?.symbol ?? '',
-      };
-    });
+    // Delegate to shared transformer (CTO: Single Interface Rule)
+    return localAccountViewsToDomain(accounts, currencyMap);
   }
 
   /**

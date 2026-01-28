@@ -46,6 +46,7 @@ import {
 } from '@/lib/local-db';
 import type { SyncStatus } from '@/lib/local-db';
 import { checkAndBufferIfLocked, getSyncLockManager } from '@/lib/sync/sync-lock-manager';
+import { localInboxItemViewsToDomain } from '@/lib/types/local-data-transformers';
 
 /**
  * Local Inbox Repository
@@ -67,7 +68,8 @@ export class LocalInboxRepository implements IInboxRepository {
    * Enrich inbox items with joined account/category data
    *
    * CTO MANDATE: No N+1 Queries
-   * Batch-fetches all related data in ONE query each.
+   * Batch-fetches all related data in ONE query each,
+   * then delegates to shared local-data-transformers.
    */
   private async enrichWithJoinedData(
     items: InboxModel[]
@@ -117,51 +119,8 @@ export class LocalInboxRepository implements IInboxRepository {
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
     const currencyMap = new Map(currencies.map((c) => [c.code, c]));
 
-    // Transform to view entities
-    return items.map((i) => {
-      const account = i.accountId ? accountMap.get(i.accountId) : null;
-      const category = i.categoryId ? categoryMap.get(i.categoryId) : null;
-      const currency = account ? currencyMap.get(account.currencyCode) : null;
-
-      const entity: InboxItemViewEntity = {
-        id: i.id,
-        userId: i.userId,
-        amountCents: i.amountCents !== null ? Math.round(i.amountCents) : null,
-        currencyCode: account?.currencyCode ?? null,
-        description: i.description,
-        date: i.date?.toISOString() ?? null,
-        sourceText: i.sourceText,
-        accountId: i.accountId,
-        categoryId: i.categoryId,
-        exchangeRate: i.exchangeRate,
-        notes: i.notes,
-        status: i.status,
-        createdAt: i.createdAt.toISOString(),
-        updatedAt: i.updatedAt.toISOString(),
-        version: i.version,
-        deletedAt: i.deletedAt ? new Date(i.deletedAt).toISOString() : null,
-      };
-
-      // Add joined data if available
-      if (account) {
-        (entity as any).account = {
-          id: account.id,
-          name: account.name,
-          currencyCode: account.currencyCode,
-          currencySymbol: currency?.symbol ?? '',
-        };
-      }
-
-      if (category) {
-        (entity as any).category = {
-          id: category.id,
-          name: category.name,
-          color: category.color,
-        };
-      }
-
-      return entity;
-    });
+    // Delegate to shared transformer (CTO: Single Interface Rule)
+    return localInboxItemViewsToDomain(items, accountMap, categoryMap, currencyMap);
   }
 
   // ============================================================================
