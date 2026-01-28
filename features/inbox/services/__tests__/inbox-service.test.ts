@@ -2,21 +2,32 @@
  * InboxService Unit Tests
  *
  * Tests the service layer responsibilities:
- * 1. Auth flow handling (getUserId extraction)
+ * 1. Auth flow handling (getUserId extraction via IAuthProvider)
  * 2. Error propagation from auth to caller
  * 3. Delegation to repository methods
  * 4. All methods return DataResult<T>
  *
+ * Pattern: Pure constructor injection — no vi.mock(), no singleton, no module patching.
+ *
  * @module inbox-service-test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { IInboxRepository } from '../../repository/inbox-repository.interface';
+import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import type { InboxItemViewEntity } from '../../domain/entities';
 import { InboxRepositoryError, VersionConflictError } from '../../domain/errors';
+import { InboxService } from '../inbox-service';
 
-// Create mock instances that will be shared
-const mockGetUser = vi.fn();
+// ---------------------------------------------------------------------------
+// Mock Dependencies (injected via constructor — no vi.mock needed)
+// ---------------------------------------------------------------------------
+
+const mockAuthProvider: IAuthProvider = {
+  getCurrentUserId: vi.fn(),
+  isAuthenticated: vi.fn(),
+  signOut: vi.fn(),
+};
 
 const mockRepository = {
   getPendingPaginated: vi.fn(),
@@ -29,28 +40,12 @@ const mockRepository = {
   dismiss: vi.fn(),
 } as unknown as IInboxRepository;
 
-// Mock modules BEFORE importing the service
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getUser: mockGetUser,
-    },
-  }),
-}));
+// ---------------------------------------------------------------------------
+// Test Fixtures (aligned with TransactionInboxViewRowSchema — all 19 fields)
+// ---------------------------------------------------------------------------
 
-vi.mock('../../repository/supabase-inbox-repository', () => ({
-  SupabaseInboxRepository: class MockSupabaseInboxRepository {
-    constructor() {
-      return mockRepository;
-    }
-  },
-}));
-
-// NOW import the service after mocks are set up
-import { InboxService, resetInboxServiceInstance } from '../inbox-service';
-
-// Sample test data
 const testUserId = 'user-123';
+
 const testInboxItem: InboxItemViewEntity = {
   id: 'inbox-1',
   userId: testUserId,
@@ -77,24 +72,16 @@ describe('InboxService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    resetInboxServiceInstance();
-    service = new InboxService();
+    service = new InboxService(mockRepository, mockAuthProvider);
   });
 
-  afterEach(() => {
-    resetInboxServiceInstance();
-  });
-
-  // ============================================================================
+  // ==========================================================================
   // AUTH FLOW TESTS
-  // ============================================================================
+  // ==========================================================================
 
   describe('Authentication Flow', () => {
     it('should return error when user is not authenticated', async () => {
-      mockGetUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      });
+      (mockAuthProvider.getCurrentUserId as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       const result = await service.getPendingPaginated();
 
@@ -103,12 +90,13 @@ describe('InboxService', () => {
         expect(result.error).toBeInstanceOf(InboxRepositoryError);
         expect(result.error.message).toBe('Not authenticated');
       }
-      // Repository should NOT be called when auth fails
       expect(mockRepository.getPendingPaginated).not.toHaveBeenCalled();
     });
 
     it('should return error when auth throws an exception', async () => {
-      mockGetUser.mockRejectedValue(new Error('Network error'));
+      (mockAuthProvider.getCurrentUserId as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Network error')
+      );
 
       const result = await service.getById('inbox-1');
 
@@ -119,11 +107,8 @@ describe('InboxService', () => {
       }
     });
 
-    it('should return error when Supabase auth returns an error', async () => {
-      mockGetUser.mockResolvedValue({
-        data: { user: null },
-        error: { message: 'Invalid token' },
-      });
+    it('should return error when auth provider returns empty string', async () => {
+      (mockAuthProvider.getCurrentUserId as ReturnType<typeof vi.fn>).mockResolvedValue('');
 
       const result = await service.create({ amountCents: 1000 });
 
@@ -134,10 +119,7 @@ describe('InboxService', () => {
     });
 
     it('should extract userId and call repository when authenticated', async () => {
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: testUserId } },
-        error: null,
-      });
+      (mockAuthProvider.getCurrentUserId as ReturnType<typeof vi.fn>).mockResolvedValue(testUserId);
       (mockRepository.getPendingPaginated as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,
         data: { data: [], total: 0, offset: 0, limit: 20, hasMore: false },
@@ -153,17 +135,13 @@ describe('InboxService', () => {
     });
   });
 
-  // ============================================================================
+  // ==========================================================================
   // DELEGATION TESTS
-  // ============================================================================
+  // ==========================================================================
 
   describe('Repository Delegation', () => {
     beforeEach(() => {
-      // Set up successful auth for all delegation tests
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: testUserId } },
-        error: null,
-      });
+      (mockAuthProvider.getCurrentUserId as ReturnType<typeof vi.fn>).mockResolvedValue(testUserId);
     });
 
     describe('getPendingPaginated', () => {
@@ -318,16 +296,13 @@ describe('InboxService', () => {
     });
   });
 
-  // ============================================================================
+  // ==========================================================================
   // ERROR PROPAGATION TESTS
-  // ============================================================================
+  // ==========================================================================
 
   describe('Error Propagation', () => {
     beforeEach(() => {
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: testUserId } },
-        error: null,
-      });
+      (mockAuthProvider.getCurrentUserId as ReturnType<typeof vi.fn>).mockResolvedValue(testUserId);
     });
 
     it('should propagate repository errors unchanged', async () => {
@@ -386,16 +361,13 @@ describe('InboxService', () => {
     });
   });
 
-  // ============================================================================
+  // ==========================================================================
   // DATA TRANSFORMATION TESTS
-  // ============================================================================
+  // ==========================================================================
 
   describe('PromoteInboxItemDTO Transformation', () => {
     beforeEach(() => {
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: testUserId } },
-        error: null,
-      });
+      (mockAuthProvider.getCurrentUserId as ReturnType<typeof vi.fn>).mockResolvedValue(testUserId);
     });
 
     it('should pass finalAmountCents (integer cents) to repository', async () => {
@@ -408,13 +380,12 @@ describe('InboxService', () => {
         inboxId: 'inbox-1',
         accountId: 'acc-1',
         categoryId: 'cat-1',
-        finalAmountCents: 1050, // $10.50 as integer cents
+        finalAmountCents: 1050,
         lastKnownVersion: 1,
       });
 
       const call = (mockRepository.promote as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(call[1].finalAmountCents).toBe(1050);
-      // Verify it's an integer
       expect(Number.isInteger(call[1].finalAmountCents)).toBe(true);
     });
 
@@ -434,7 +405,6 @@ describe('InboxService', () => {
 
       const call = (mockRepository.promote as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(call[1].finalDate).toBe(isoDate);
-      // Verify ISO 8601 format
       expect(call[1].finalDate).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
   });
