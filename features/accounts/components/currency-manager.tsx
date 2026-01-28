@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus, X } from 'lucide-react';
 import { Currency } from '@/types/domain';
-import { CurrencyBalance } from '@/hooks/use-currency-manager';
+import { CurrencyBalance } from '@/lib/hooks/use-currency-manager';
 
 interface CurrencyManagerProps {
     value: CurrencyBalance[];

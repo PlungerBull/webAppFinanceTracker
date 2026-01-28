@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useFormModal } from '@/hooks/shared/use-form-modal';
+import { useFormModal } from '@/lib/hooks/use-form-modal';
 import { z } from 'zod';
 import { useAddSubcategory, useGroupings } from '../hooks/use-groupings';
 import { Input } from '@/components/ui/input';

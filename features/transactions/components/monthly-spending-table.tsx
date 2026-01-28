@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatCurrencyShort } from '@/hooks/use-formatted-balance';
+import { formatCurrencyShort } from '@/lib/hooks/use-formatted-balance';
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useMonthlySpending } from '../hooks/use-monthly-spending';

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useFlatAccounts, type FlatAccount } from '@/hooks/use-flat-accounts';
-import { useAccountNavigation } from '@/hooks/use-account-navigation';
+import { useFlatAccounts, type FlatAccount } from '@/lib/hooks/use-flat-accounts';
+import { useAccountNavigation } from '@/lib/hooks/use-account-navigation';
 import { AddAccountModal } from '@/features/accounts/components/add-account-modal';
 import { EditAccountModal } from '@/features/accounts/components/edit-account-modal';
 import { DeleteAccountDialog } from '@/features/accounts/components/delete-account-dialog';

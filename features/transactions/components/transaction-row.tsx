@@ -17,7 +17,7 @@ import React from 'react';
 import { format, isToday } from 'date-fns';
 import { Lock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/hooks/use-formatted-balance';
+import { formatCurrency } from '@/lib/hooks/use-formatted-balance';
 import { Checkbox } from '@/components/ui/checkbox';
 
 /**

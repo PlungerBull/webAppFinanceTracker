@@ -8,9 +8,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/hooks/use-formatted-balance';
+import { formatCurrency } from '@/lib/hooks/use-formatted-balance';
 import { ACCOUNT } from '@/lib/constants';
-import type { FlatAccount } from '@/hooks/use-flat-accounts';
+import type { FlatAccount } from '@/lib/hooks/use-flat-accounts';
 
 interface AccountListItemProps {
   account: FlatAccount;

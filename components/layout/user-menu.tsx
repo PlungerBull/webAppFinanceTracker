@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
-import { useIsMounted } from '@/hooks/shared/use-is-mounted';
+import { useIsMounted } from '@/lib/hooks/use-is-mounted';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

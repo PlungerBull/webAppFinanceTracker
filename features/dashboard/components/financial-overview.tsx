@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { Loader2, ChevronDown, ChevronRight, ArrowRightLeft } from 'lucide-react';
 import { useFinancialOverview, type CategoryMonthlyData } from '../hooks/use-financial-overview';
-import { formatCurrencyShort } from '@/hooks/use-formatted-balance';
+import { formatCurrencyShort } from '@/lib/hooks/use-formatted-balance';
 import { UI } from '@/lib/constants';
 import { startOfMonth, subMonths } from 'date-fns';
 import { cn } from '@/lib/utils';

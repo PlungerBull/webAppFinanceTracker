@@ -6,7 +6,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { SmartSelector } from './smart-selector';
 import { CategorySelector } from './category-selector';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
-import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
 import { useReconciliations, useReconciliationSummary } from '@/features/reconciliations/hooks/use-reconciliations';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';

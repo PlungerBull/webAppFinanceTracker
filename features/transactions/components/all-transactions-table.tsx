@@ -27,7 +27,7 @@ import { useTransactions, useCategoryCounts } from '../hooks/use-transactions';
 import { useBulkSelection } from '../hooks/use-bulk-selection';
 import { useTransactionFilters } from '../hooks/use-transaction-filters';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
-import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useUserSettings, useUpdateSortPreference } from '@/features/settings/hooks/use-user-settings';
 import { toast } from 'sonner';

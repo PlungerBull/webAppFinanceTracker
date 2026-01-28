@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils';
 import { TRANSACTIONS } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/hooks/use-formatted-balance';
-import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
+import { formatCurrency } from '@/lib/hooks/use-formatted-balance';
+import type { EditingField, TransactionValue } from '@/lib/hooks/use-transaction-editor';
 import type { TransactionViewEntity } from '../domain';
 
 interface TransactionHeaderProps {

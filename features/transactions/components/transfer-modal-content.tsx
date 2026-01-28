@@ -28,7 +28,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { TransferForm, type TransferFormData } from './transfer-form';
 import { useCreateTransfer } from '../hooks/use-transfers';
-import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 

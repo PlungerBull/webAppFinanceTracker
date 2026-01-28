@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import type { EditingField, TransactionValue } from '@/hooks/use-transaction-editor';
+import type { EditingField, TransactionValue } from '@/lib/hooks/use-transaction-editor';
 import type { TransactionViewEntity } from '../domain';
 import type { Category, Account } from '@/types/domain';
 

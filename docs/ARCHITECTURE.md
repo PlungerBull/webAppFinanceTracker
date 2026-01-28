@@ -24,7 +24,8 @@ We use a hybrid approach that combines Feature-Sliced Design for business logic 
 * `app/`: Contains the route definitions and page entry points (Next.js App Router).
 * `features/`: Contains domain-specific business logic. Each folder here represents a distinct business domain.
 * `components/`: Shared "dumb" UI components (e.g., Button, Modal, DataTable) that are agnostic to business logic (Design System).
-* `hooks/`, `lib/`, `types/`: Shared utilities, global hooks, and types used across the application.
+* `lib/`: Shared utilities, including cross-feature hooks (`lib/hooks/`), and general-purpose modules.
+* `types/`: Shared TypeScript types used across the application.
 * `providers/` & `stores/`: Global state management and context providers.
 * `supabase/`: Database definitions and client configuration.
 

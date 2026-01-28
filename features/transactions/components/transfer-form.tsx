@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useTransferResolution, type TransferResolutionOutput } from '../hooks/use-transfer-resolution';
-import type { GroupedAccount } from '@/hooks/use-grouped-accounts';
+import type { GroupedAccount } from '@/lib/hooks/use-grouped-accounts';
 import type { AccountViewEntity } from '@/features/accounts/hooks/use-accounts';
 
 export interface TransferFormData {

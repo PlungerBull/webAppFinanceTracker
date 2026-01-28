@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormModal } from '@/hooks/shared/use-form-modal';
-import { useCurrencyManager } from '@/hooks/use-currency-manager';
+import { useFormModal } from '@/lib/hooks/use-form-modal';
+import { useCurrencyManager } from '@/lib/hooks/use-currency-manager';
 import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
 import { useCreateAccount } from '../hooks/use-account-mutations';
 import { z } from 'zod';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFormModal } from '@/hooks/shared/use-form-modal';
+import { useFormModal } from '@/lib/hooks/use-form-modal';
 import { useUpdateAccount } from '../hooks/use-account-mutations';
 import { updateAccountSchema, type UpdateAccountFormData } from '../schemas/account.schema';
 import { DashboardModal } from '@/components/shared/dashboard-modal';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useGroupedAccounts } from '@/hooks/use-grouped-accounts';
+import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
 import { cn } from '@/lib/utils';
 import { Check, CreditCard } from 'lucide-react';
 
