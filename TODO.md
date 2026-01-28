@@ -9,6 +9,7 @@
 
 ## Reliability & Go-Live Readiness
 
+- [ ] **Observability (Sentry):** Integrate Sentry (or LogRocket) before leaving Phase 2 — capture `SyncCycleResult` failures and runtime errors in real-time so we can "see" what breaks in production (e.g., sync failing on a subway in London)
 - [ ] **CI Pipeline:** Create a GitHub Action to block merges that fail type checks or linting
 - [ ] **Error Boundary:** Wrap the application root in a global Error Boundary (e.g., Sentry) to catch and report runtime crashes
 - [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports
