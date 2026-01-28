@@ -195,7 +195,9 @@ export function beforeSend(event: Event, hint: EventHint): Event | null {
     event.extra.rawDataKeys = extractKeysOnly(
       (originalError as { rawData: unknown }).rawData
     );
-    event.extra.schemaName = (originalError as { schemaName: string }).schemaName;
+    event.extra.schemaName = 'schemaName' in originalError
+      ? (originalError as Record<string, unknown>).schemaName
+      : undefined;
     // Ensure rawData itself is never sent
     delete event.extra.rawData;
   }

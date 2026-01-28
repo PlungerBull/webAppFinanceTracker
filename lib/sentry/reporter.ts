@@ -12,6 +12,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import type { SeverityLevel } from '@sentry/nextjs';
+import type { SerializableError } from '@/lib/data-patterns';
 
 /**
  * Map of error codes to Sentry severity levels.
@@ -71,9 +72,13 @@ export function reportError(
  * @param operation - The operation that failed (e.g., 'create', 'update', 'delete')
  */
 export function reportServiceFailure(
-  error: Error,
+  error: Error | SerializableError,
   domain: string,
   operation: string
 ): void {
-  reportError(error, domain, { operation });
+  // SerializableError may not be an Error instance; wrap if needed for Sentry
+  const reportable = error instanceof Error
+    ? error
+    : Object.assign(new Error(error.message), { code: error.code });
+  reportError(reportable, domain, { operation });
 }

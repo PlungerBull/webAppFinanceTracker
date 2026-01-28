@@ -125,9 +125,8 @@ export const CategoryRowSchema = z.object({
   parent_id: uuid.nullable(),
   created_at: timestamptz,
   updated_at: timestamptz,
-  // Sync fields — optional because not in auto-generated types yet
-  version: z.number().int().min(0).optional(),
-  deleted_at: z.string().nullable().optional(),
+  // Sync fields — required at boundary (Delta Sync Engine needs defined values)
+  ...BaseSyncFields,
 });
 
 /**
@@ -176,6 +175,9 @@ export const TransactionInboxViewRowSchema = z.object({
   status: z.string().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  amount_cents: z.number().int().nullable(),
+  version: z.number().int().nullable(),
+  deleted_at: z.string().nullable(),
 });
 
 /**
@@ -209,6 +211,8 @@ export const TransactionsViewRowSchema = z.object({
   updated_at: z.string().nullable(),
   deleted_at: z.string().nullable(),
   version: z.number().nullable(),
+  amount_cents: z.number().int().nullable(),
+  amount_home_cents: z.number().int().nullable(),
 });
 
 /**

@@ -685,7 +685,7 @@ Therefore `db-row-schemas.ts` contains **two separate schema sets**:
 |------|-----------|
 | `z.number().int()` on all `_cents` fields | Rejects `100.5` — protects Sacred Integer Arithmetic |
 | `.nullable()` for Postgres NULL | Matches domain null semantics for iOS Swift compatibility |
-| `.optional()` only for migration-pending fields | Sync fields on `bank_accounts`/`categories`/`transaction_inbox` aren't in auto-generated types yet |
+| `.optional()` only for migration-pending fields | Sync fields on `bank_accounts`/`transaction_inbox` aren't in auto-generated types yet (`categories` now uses required `BaseSyncFields`) |
 | `.passthrough()` on sync schemas | New DB columns from migrations don't break the web app |
 | `BaseSyncFields` shared object | DRY — `version` and `deleted_at` defined once, spread into each schema |
 | `z.record(z.string(), z.unknown())` | Zod v4 requires explicit key type for record schemas |
@@ -802,7 +802,7 @@ For `SchemaValidationError`, only the **keys** of `rawData` are sent — never t
 | `sentry.server.config.ts` | Server SDK init |
 | `sentry.edge.config.ts` | Edge runtime SDK init |
 | `lib/sentry/scrubber.ts` | `beforeSend` / `beforeBreadcrumb` — PII allowlist filter |
-| `lib/sentry/reporter.ts` | `reportError()` / `reportServiceFailure()` — DomainError.code → severity mapper |
+| `lib/sentry/reporter.ts` | `reportError()` / `reportServiceFailure()` — DomainError.code → severity mapper. Accepts `Error \| SerializableError` so domain DataResult errors (e.g., `InboxError`) work without forced `extends Error` |
 | `providers/sentry-provider.tsx` | Sets `Sentry.setUser({ id })` on auth (ID only — no email, no username) |
 | `components/sentry-error-boundary.tsx` | Reusable feature-level React error boundary with domain tagging |
 | `app/error.tsx` | Next.js error page — catches unhandled errors within layout |
