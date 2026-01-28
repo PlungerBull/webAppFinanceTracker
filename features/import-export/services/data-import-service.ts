@@ -1,5 +1,6 @@
 import { read, utils } from 'xlsx';
-import { createClient } from '@/lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import { ACCOUNT, CATEGORY, IMPORT_EXPORT } from '@/lib/constants';
 
 export interface ImportResult {
@@ -21,7 +22,10 @@ interface ImportRow {
 }
 
 export class DataImportService {
-    private supabase = createClient();
+    constructor(
+        private readonly supabase: SupabaseClient,
+        private readonly authProvider: IAuthProvider
+    ) {}
 
     async importFromExcel(file: File): Promise<ImportResult> {
         const result: ImportResult = {
@@ -76,20 +80,15 @@ export class DataImportService {
                         Date: dateStr
                     };
                 } catch (e) {
-                    // If date parsing fails here, we can't send it to RPC easily as a valid date
-                    // We'll let the RPC or this map fail?
-                    // Better to filter out invalid rows or handle them?
-                    // For now, let's just return the row and let RPC fail or validation fail
                     return { ...row, Date: String(row.Date) };
                 }
             });
 
-            const { data: { user } } = await this.supabase.auth.getUser();
-            if (!user) throw new Error(IMPORT_EXPORT.ERRORS.USER_NOT_AUTHENTICATED);
+            const userId = await this.authProvider.getCurrentUserId();
 
             // Call RPC
             const { data, error } = await this.supabase.rpc(IMPORT_EXPORT.RPC.IMPORT_TRANSACTIONS, {
-                [IMPORT_EXPORT.RPC.PARAMS.USER_ID]: user.id,
+                [IMPORT_EXPORT.RPC.PARAMS.USER_ID]: userId,
                 [IMPORT_EXPORT.RPC.PARAMS.TRANSACTIONS]: processedRows,
                 [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_ACCOUNT_COLOR]: ACCOUNT.DEFAULT_COLOR,
                 [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_CATEGORY_COLOR]: CATEGORY.DEFAULT_COLOR,

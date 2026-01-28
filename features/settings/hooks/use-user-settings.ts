@@ -1,14 +1,25 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userSettingsApi } from '../api/user-settings';
+import { createClient } from '@/lib/supabase/client';
+import { createUserSettingsService } from '../api/user-settings';
 import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
+
+function useUserSettingsService() {
+    return useMemo(() => {
+        const supabase = createClient();
+        return createUserSettingsService(supabase);
+    }, []);
+}
 
 /**
  * Hook to fetch user settings
  */
 export function useUserSettings() {
+    const service = useUserSettingsService();
+
     return useQuery({
         queryKey: QUERY_KEYS.USER_SETTINGS,
-        queryFn: userSettingsApi.getSettings,
+        queryFn: () => service.getSettings(),
         staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
     });
 }
@@ -18,9 +29,10 @@ export function useUserSettings() {
  */
 export function useUpdateMainCurrency() {
     const queryClient = useQueryClient();
+    const service = useUserSettingsService();
 
     return useMutation({
-        mutationFn: userSettingsApi.updateMainCurrency,
+        mutationFn: (currencyCode: string) => service.updateMainCurrency(currencyCode),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_SETTINGS });
         },
@@ -32,9 +44,10 @@ export function useUpdateMainCurrency() {
  */
 export function useUpdateSortPreference() {
     const queryClient = useQueryClient();
+    const service = useUserSettingsService();
 
     return useMutation({
-        mutationFn: userSettingsApi.updateSortPreference,
+        mutationFn: (sortBy: 'date' | 'created_at') => service.updateSortPreference(sortBy),
         onSuccess: () => {
             // Invalidate settings to update cached preference
             queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_SETTINGS });

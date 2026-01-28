@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
+import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import type { Reconciliation, ReconciliationSummary } from '@/types/domain';
 import {
   dbReconciliationToDomain,
@@ -8,14 +10,21 @@ import {
   dbReconciliationSummaryToDomain,
 } from '@/lib/types/data-transformers';
 
-export const reconciliationsApi = {
+export class ReconciliationsService {
+  constructor(
+    private readonly supabase: SupabaseClient,
+    private readonly authProvider: IAuthProvider
+  ) {}
+
+  private async getCurrentUserId(): Promise<string> {
+    return this.authProvider.getCurrentUserId();
+  }
+
   /**
    * Get all reconciliations for current user (optionally filtered by account)
    */
-  getAll: async (accountId?: string): Promise<Reconciliation[]> => {
-    const supabase = createClient();
-
-    let query = supabase
+  async getAll(accountId?: string): Promise<Reconciliation[]> {
+    let query = this.supabase
       .from('reconciliations')
       .select('*')
       .order('created_at', { ascending: false });
@@ -32,15 +41,13 @@ export const reconciliationsApi = {
     }
 
     return dbReconciliationsToDomain(data);
-  },
+  }
 
   /**
    * Get single reconciliation by ID
    */
-  getById: async (id: string): Promise<Reconciliation> => {
-    const supabase = createClient();
-
-    const { data, error } = await supabase
+  async getById(id: string): Promise<Reconciliation> {
+    const { data, error } = await this.supabase
       .from('reconciliations')
       .select('*')
       .eq('id', id)
@@ -52,29 +59,23 @@ export const reconciliationsApi = {
     }
 
     return dbReconciliationToDomain(data);
-  },
+  }
 
   /**
    * Create new reconciliation
    */
-  create: async (data: {
+  async create(data: {
     accountId: string;
     name: string;
     beginningBalance: number;
     endingBalance: number;
     dateStart?: string | null;
     dateEnd?: string | null;
-  }): Promise<Reconciliation> => {
-    const supabase = createClient();
-
-    // Get user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
+  }): Promise<Reconciliation> {
+    const userId = await this.getCurrentUserId();
 
     const insertData = domainReconciliationToDbInsert({
-      userId: user.id,
+      userId,
       accountId: data.accountId,
       name: data.name,
       beginningBalance: data.beginningBalance,
@@ -84,7 +85,7 @@ export const reconciliationsApi = {
       status: 'draft',
     });
 
-    const { data: result, error } = await supabase
+    const { data: result, error } = await this.supabase
       .from('reconciliations')
       .insert(insertData)
       .select()
@@ -96,24 +97,22 @@ export const reconciliationsApi = {
     }
 
     return dbReconciliationToDomain(result);
-  },
+  }
 
   /**
    * Update reconciliation
    */
-  update: async (id: string, updates: {
+  async update(id: string, updates: {
     name?: string;
     beginningBalance?: number;
     endingBalance?: number;
     dateStart?: string | null;
     dateEnd?: string | null;
     status?: 'draft' | 'completed';
-  }): Promise<Reconciliation> => {
-    const supabase = createClient();
-
+  }): Promise<Reconciliation> {
     const updateData = domainReconciliationToDbUpdate(updates);
 
-    const { error } = await supabase
+    const { error } = await this.supabase
       .from('reconciliations')
       .update(updateData)
       .eq('id', id);
@@ -124,16 +123,14 @@ export const reconciliationsApi = {
     }
 
     // Fetch updated record
-    return reconciliationsApi.getById(id);
-  },
+    return this.getById(id);
+  }
 
   /**
    * Delete reconciliation
    */
-  delete: async (id: string): Promise<void> => {
-    const supabase = createClient();
-
-    const { error } = await supabase
+  async delete(id: string): Promise<void> {
+    const { error } = await this.supabase
       .from('reconciliations')
       .delete()
       .eq('id', id);
@@ -142,13 +139,13 @@ export const reconciliationsApi = {
       console.error('Failed to delete reconciliation:', error);
       throw new Error(error.message || 'Failed to delete reconciliation');
     }
-  },
+  }
 
   /**
    * Link transactions to reconciliation (bulk)
    * Uses RPC function for atomic operation with validation
    */
-  linkTransactions: async (
+  async linkTransactions(
     reconciliationId: string,
     transactionIds: string[]
   ): Promise<{
@@ -156,10 +153,8 @@ export const reconciliationsApi = {
     successCount: number;
     errorCount: number;
     errors: Array<{ transactionId: string; error: string }>;
-  }> => {
-    const supabase = createClient();
-
-    const { data, error } = await supabase.rpc('link_transactions_to_reconciliation', {
+  }> {
+    const { data, error } = await this.supabase.rpc('link_transactions_to_reconciliation', {
       p_reconciliation_id: reconciliationId,
       p_transaction_ids: transactionIds,
     });
@@ -170,23 +165,21 @@ export const reconciliationsApi = {
     }
 
     return data as any;
-  },
+  }
 
   /**
    * Unlink transactions from reconciliation (bulk)
    * Uses RPC function for atomic operation with validation
    */
-  unlinkTransactions: async (
+  async unlinkTransactions(
     transactionIds: string[]
   ): Promise<{
     success: boolean;
     successCount: number;
     errorCount: number;
     errors: Array<{ transactionId: string; error: string }>;
-  }> => {
-    const supabase = createClient();
-
-    const { data, error } = await supabase.rpc('unlink_transactions_from_reconciliation', {
+  }> {
+    const { data, error } = await this.supabase.rpc('unlink_transactions_from_reconciliation', {
       p_transaction_ids: transactionIds,
     });
 
@@ -196,16 +189,14 @@ export const reconciliationsApi = {
     }
 
     return data as any;
-  },
+  }
 
   /**
    * Get reconciliation summary (real-time math)
    * Formula: Difference = Ending Balance - (Beginning Balance + Linked Sum)
    */
-  getSummary: async (reconciliationId: string): Promise<ReconciliationSummary> => {
-    const supabase = createClient();
-
-    const { data, error } = await supabase.rpc('get_reconciliation_summary', {
+  async getSummary(reconciliationId: string): Promise<ReconciliationSummary> {
+    const { data, error } = await this.supabase.rpc('get_reconciliation_summary', {
       p_reconciliation_id: reconciliationId,
     });
 
@@ -215,5 +206,13 @@ export const reconciliationsApi = {
     }
 
     return dbReconciliationSummaryToDomain(data);
-  },
-};
+  }
+}
+
+/**
+ * Factory function to create ReconciliationsService with proper DI.
+ */
+export function createReconciliationsService(supabase: SupabaseClient): ReconciliationsService {
+  const authProvider = createSupabaseAuthProvider(supabase);
+  return new ReconciliationsService(supabase, authProvider);
+}

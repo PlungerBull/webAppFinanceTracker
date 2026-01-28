@@ -1,5 +1,6 @@
 import { utils, writeFile } from 'xlsx';
-import { createClient } from '@/lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import { createTransactionRepository } from '@/features/transactions/repository';
 
 /**
@@ -9,15 +10,17 @@ import { createTransactionRepository } from '@/features/transactions/repository'
  * Converts integer cents back to decimal amounts for Excel export.
  */
 export class DataExportService {
-    private supabase = createClient();
+    constructor(
+        private readonly supabase: SupabaseClient,
+        private readonly authProvider: IAuthProvider
+    ) {}
 
     async exportToExcel() {
-        const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
+        const userId = await this.authProvider.getCurrentUserId();
 
         // Use repository to fetch transactions (Repository Pattern)
         const repository = createTransactionRepository(this.supabase);
-        const result = await repository.getAllPaginated(user.id, {}, { offset: 0, limit: 10000 });
+        const result = await repository.getAllPaginated(userId, {}, { offset: 0, limit: 10000 });
 
         if (!result.success) {
             throw new Error(`Failed to fetch data: ${result.error.message}`);

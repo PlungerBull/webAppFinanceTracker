@@ -207,6 +207,7 @@ This architecture enables **Todoist-style offline sync** capabilities:
 **Problem:** Service layer calling `supabase.auth.getUser()` won't work with iOS Native Apple Auth.
 **Solution:** `IAuthProvider` interface with platform-specific implementations.
 **Impact:** iOS can use Native Apple Sign-In while Web uses Supabase Auth.
+**Status:** ✅ **COMPLETE** — All API/Service layers migrated. See [Section 10: Auth Provider Architecture](#10-auth-provider-architecture-iautprovider) for full details.
 
 #### 7. Strict ISO 8601 Enforcement
 **Problem:** JavaScript's `new Date()` is forgiving - Swift's `ISO8601DateFormatter` crashes on malformed dates.
@@ -361,7 +362,7 @@ class SupabaseTransactionRepository {
 - Repository layer (interface + Supabase implementation with DataResult pattern)
 - Service layer (business logic with retry on conflict)
 - Hook layer (React Query hooks using service)
-- Auth provider abstraction (IAuthProvider + Supabase implementation)
+- Auth provider abstraction (IAuthProvider + SupabaseAuthProvider — **all** API/Service layers migrated)
 - Component type migration (`TransactionViewEntity` used across all UI)
 - Deprecated `TransactionView` interface and legacy transformer functions removed
 
@@ -513,3 +514,115 @@ The RPC returns structured errors for:
 - **Empty Source:** No source categories provided
 
 All errors are mapped to typed domain errors (see ADR #002).
+
+## 10. Auth Provider Architecture (IAuthProvider)
+
+### Overview
+
+All service-layer authentication is routed through the `IAuthProvider` interface, enabling platform-agnostic auth. No service, API module, or component in `features/` (except `features/auth/`) calls `supabase.auth.getUser()` directly.
+
+**Status:** ✅ **COMPLETE** — Zero direct `supabase.auth.getUser()` calls remain in `features/` (excluding `features/auth/`).
+
+### Interface Contract
+
+```typescript
+// lib/auth/auth-provider.interface.ts
+interface IAuthProvider {
+  getCurrentUserId(): Promise<string>;   // throws AuthenticationError
+  isAuthenticated(): Promise<boolean>;
+  signOut?(): Promise<void>;
+}
+```
+
+```swift
+// iOS Mirror
+protocol AuthProviderProtocol {
+    func getCurrentUserId() async throws -> String
+    func isAuthenticated() async throws -> Bool
+    func signOut() async throws
+}
+```
+
+### Implementations
+
+| Platform | Class | Location |
+|----------|-------|----------|
+| Web (Supabase) | `SupabaseAuthProvider` | `lib/auth/supabase-auth-provider.ts` |
+| iOS (Future) | `AppleAuthProvider` | Native Apple Sign-In via `ASAuthorizationAppleIDProvider` |
+
+### Unauthorized Guard
+
+`SupabaseAuthProvider.getCurrentUserId()` throws `AuthenticationError` (never returns `null`). Services assume the user must be logged in — if they aren't, the provider screams so the UI can redirect to `/login`.
+
+### Injection Pattern
+
+Every service uses **constructor injection** of `IAuthProvider`:
+
+```typescript
+class XService {
+  constructor(
+    private readonly supabase: SupabaseClient,
+    private readonly authProvider: IAuthProvider
+  ) {}
+
+  private async getCurrentUserId(): Promise<string> {
+    return this.authProvider.getCurrentUserId();
+  }
+}
+
+// Factory encapsulates provider creation
+export function createXService(supabase: SupabaseClient): XService {
+  const authProvider = createSupabaseAuthProvider(supabase);
+  return new XService(supabase, authProvider);
+}
+```
+
+React hooks wire DI via `useMemo`:
+
+```typescript
+function useXService() {
+  return useMemo(() => {
+    const supabase = createClient();
+    return createXService(supabase);
+  }, []);
+}
+```
+
+### Migrated Services (Complete Inventory)
+
+| Service | File | Injection Method |
+|---------|------|-----------------|
+| AccountService | `features/accounts/services/account-service.ts` | Constructor (repository + authProvider) |
+| CategoryService | `features/categories/services/category-service.ts` | Constructor (repository + authProvider) |
+| TransactionService | `features/transactions/services/transaction-service.ts` | Constructor (repository + authProvider) |
+| TransferService | `features/transactions/services/transfer-service.ts` | Constructor (repository + authProvider) |
+| InboxService | `features/inbox/services/inbox-service.ts` | Constructor (repository + authProvider) |
+| TransactionRoutingService | `features/transactions/services/transaction-routing-service.ts` | Constructor (repository + authProvider) |
+| UserSettingsService | `features/settings/api/user-settings.ts` | Constructor (supabase + authProvider) |
+| ReconciliationsService | `features/reconciliations/api/reconciliations.ts` | Constructor (supabase + authProvider) |
+| DataImportService | `features/import-export/services/data-import-service.ts` | Constructor (supabase + authProvider) |
+| DataExportService | `features/import-export/services/data-export-service.ts` | Constructor (supabase + authProvider) |
+
+### Allowed Direct `supabase.auth.getUser()` Calls
+
+These locations are **exempt** — they legitimately need direct Supabase auth access:
+
+| Location | Reason |
+|----------|--------|
+| `features/auth/api/auth.ts` | Auth module itself (login, signup, getUser) |
+| `app/*/page.tsx` (server components) | Server-side route protection — redirects unauthenticated users |
+| `lib/supabase/middleware.ts` | Next.js middleware route guard |
+
+### Rules for New Services
+
+**DO:**
+- ✅ Accept `IAuthProvider` via constructor injection
+- ✅ Use `authProvider.getCurrentUserId()` for user identity
+- ✅ Export a factory function that creates the auth provider internally
+- ✅ Wire hooks via `useMemo` with `createSupabaseAuthProvider`
+
+**DON'T:**
+- ❌ Call `supabase.auth.getUser()` from any service or component in `features/` (except `features/auth/`)
+- ❌ Pass raw `userId` strings between methods — inject `IAuthProvider` and let the service decide when to fetch
+- ❌ Return `null` from `getCurrentUserId()` — throw `AuthenticationError`
+- ❌ Put raw Supabase auth logic in `.tsx` files — use hooks or `createSupabaseAuthProvider` via `useMemo`

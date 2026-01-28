@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { reconciliationsApi } from '../api/reconciliations';
+import { createClient } from '@/lib/supabase/client';
+import { createReconciliationsService } from '../api/reconciliations';
 import { toast } from 'sonner';
 
 const QUERY_KEYS = {
@@ -11,15 +13,24 @@ const QUERY_KEYS = {
   },
 };
 
+function useReconciliationsService() {
+  return useMemo(() => {
+    const supabase = createClient();
+    return createReconciliationsService(supabase);
+  }, []);
+}
+
 /**
  * Fetch all reconciliations (optionally filtered by account)
  */
 export function useReconciliations(accountId?: string) {
+  const service = useReconciliationsService();
+
   return useQuery({
     queryKey: accountId
       ? QUERY_KEYS.RECONCILIATIONS.BY_ACCOUNT(accountId)
       : QUERY_KEYS.RECONCILIATIONS.ALL,
-    queryFn: () => reconciliationsApi.getAll(accountId),
+    queryFn: () => service.getAll(accountId),
   });
 }
 
@@ -27,9 +38,11 @@ export function useReconciliations(accountId?: string) {
  * Fetch single reconciliation
  */
 export function useReconciliation(id: string | null | undefined) {
+  const service = useReconciliationsService();
+
   return useQuery({
     queryKey: QUERY_KEYS.RECONCILIATIONS.BY_ID(id || 'none'),
-    queryFn: () => reconciliationsApi.getById(id!),
+    queryFn: () => service.getById(id!),
     enabled: !!id,
   });
 }
@@ -42,9 +55,11 @@ export function useReconciliation(id: string | null | undefined) {
  * (link/unlink mutations invalidate this query for instant updates)
  */
 export function useReconciliationSummary(reconciliationId: string | null | undefined) {
+  const service = useReconciliationsService();
+
   return useQuery({
     queryKey: QUERY_KEYS.RECONCILIATIONS.SUMMARY(reconciliationId || 'none'),
-    queryFn: () => reconciliationsApi.getSummary(reconciliationId!),
+    queryFn: () => service.getSummary(reconciliationId!),
     enabled: !!reconciliationId,
     // NO refetchInterval - invalidation handles updates
   });
@@ -55,9 +70,10 @@ export function useReconciliationSummary(reconciliationId: string | null | undef
  */
 export function useCreateReconciliation() {
   const queryClient = useQueryClient();
+  const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: reconciliationsApi.create,
+    mutationFn: (data: Parameters<typeof service.create>[0]) => service.create(data),
     onSuccess: (data) => {
       // Invalidate reconciliation lists
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
@@ -77,12 +93,13 @@ export function useCreateReconciliation() {
  */
 export function useUpdateReconciliation() {
   const queryClient = useQueryClient();
+  const service = useReconciliationsService();
 
   return useMutation({
     mutationFn: ({ id, updates }: {
       id: string;
-      updates: Parameters<typeof reconciliationsApi.update>[1]
-    }) => reconciliationsApi.update(id, updates),
+      updates: Parameters<typeof service.update>[1]
+    }) => service.update(id, updates),
     onSuccess: (data) => {
       // Invalidate reconciliation lists and specific reconciliation
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
@@ -109,9 +126,10 @@ export function useUpdateReconciliation() {
  */
 export function useDeleteReconciliation() {
   const queryClient = useQueryClient();
+  const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: reconciliationsApi.delete,
+    mutationFn: (id: string) => service.delete(id),
     onSuccess: () => {
       // Invalidate all reconciliation queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
@@ -130,12 +148,13 @@ export function useDeleteReconciliation() {
  */
 export function useLinkTransactions() {
   const queryClient = useQueryClient();
+  const service = useReconciliationsService();
 
   return useMutation({
     mutationFn: ({ reconciliationId, transactionIds }: {
       reconciliationId: string;
       transactionIds: string[];
-    }) => reconciliationsApi.linkTransactions(reconciliationId, transactionIds),
+    }) => service.linkTransactions(reconciliationId, transactionIds),
     onSuccess: (result, { reconciliationId }) => {
       // CRITICAL: Invalidate transactions query (to refresh cleared flags)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -177,9 +196,10 @@ export function useLinkTransactions() {
  */
 export function useUnlinkTransactions() {
   const queryClient = useQueryClient();
+  const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: reconciliationsApi.unlinkTransactions,
+    mutationFn: (transactionIds: string[]) => service.unlinkTransactions(transactionIds),
     onSuccess: (result) => {
       // CRITICAL: Invalidate transactions query (to refresh cleared flags)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });

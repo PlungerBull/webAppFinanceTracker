@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, Trash2, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,15 +24,18 @@ export function DataManagement() {
     const router = useRouter();
     const [importError, setImportError] = useState<string | null>(null);
     const [importSuccess, setImportSuccess] = useState<string | null>(null);
-    const supabase = createClient();
     const queryClient = useQueryClient();
+
+    const { supabase, authProvider } = useMemo(() => {
+        const sb = createClient();
+        return { supabase: sb, authProvider: createSupabaseAuthProvider(sb) };
+    }, []);
 
     const handleClearData = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const userId = await authProvider.getCurrentUserId();
 
-            const { error } = await supabase.rpc('clear_user_data', { p_user_id: user.id });
+            const { error } = await supabase.rpc('clear_user_data', { p_user_id: userId });
             if (error) throw error;
 
             alert(SETTINGS.MESSAGES.SUCCESS.DATA_CLEARED);
@@ -88,7 +92,7 @@ export function DataManagement() {
                                         setImportSuccess(null);
                                         setImportError(null);
                                         const { DataImportService } = await import('@/features/import-export/services/data-import-service');
-                                        const service = new DataImportService();
+                                        const service = new DataImportService(supabase, authProvider);
                                         const result = await service.importFromExcel(file);
 
                                         if (result.failed > 0) {
@@ -172,7 +176,7 @@ export function DataManagement() {
                             onClick={async () => {
                                 try {
                                     const { DataExportService } = await import('@/features/import-export/services/data-export-service');
-                                    const service = new DataExportService();
+                                    const service = new DataExportService(supabase, authProvider);
                                     await service.exportToExcel();
                                 } catch (err) {
                                     alert(SETTINGS.MESSAGES.ERROR.EXPORT_FAILED);

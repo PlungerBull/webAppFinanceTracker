@@ -1,14 +1,23 @@
-import { createClient } from '@/lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
+import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import { dbUserSettingsToDomain } from '@/lib/types/data-transformers';
 
-export const userSettingsApi = {
+export class UserSettingsService {
+    constructor(
+        private readonly supabase: SupabaseClient,
+        private readonly authProvider: IAuthProvider
+    ) {}
+
+    private async getCurrentUserId(): Promise<string> {
+        return this.authProvider.getCurrentUserId();
+    }
+
     /**
      * Get user settings for the current user (RLS handles user filtering)
      */
-    getSettings: async () => {
-        const supabase = createClient();
-
-        const { data, error } = await supabase
+    async getSettings() {
+        const { data, error } = await this.supabase
             .from('user_settings')
             .select('*')
             .single();
@@ -19,26 +28,18 @@ export const userSettingsApi = {
         }
 
         return dbUserSettingsToDomain(data);
-    },
+    }
 
     /**
      * Update the main currency preference for the current user
      */
-    updateMainCurrency: async (currencyCode: string) => {
-        const supabase = createClient();
+    async updateMainCurrency(currencyCode: string) {
+        const userId = await this.getCurrentUserId();
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-            throw new Error('User not authenticated');
-        }
-
-        const { data, error } = await supabase
+        const { data, error } = await this.supabase
             .from('user_settings')
             .update({ main_currency: currencyCode.toUpperCase() })
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .select()
             .single();
 
@@ -48,26 +49,18 @@ export const userSettingsApi = {
         }
 
         return dbUserSettingsToDomain(data);
-    },
+    }
 
     /**
      * Update the transaction sort preference for the current user
      */
-    updateSortPreference: async (sortBy: 'date' | 'created_at') => {
-        const supabase = createClient();
+    async updateSortPreference(sortBy: 'date' | 'created_at') {
+        const userId = await this.getCurrentUserId();
 
-        const {
-            data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-            throw new Error('User not authenticated');
-        }
-
-        const { data, error } = await supabase
+        const { data, error } = await this.supabase
             .from('user_settings')
             .update({ transaction_sort_preference: sortBy })
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .select()
             .single();
 
@@ -77,5 +70,13 @@ export const userSettingsApi = {
         }
 
         return dbUserSettingsToDomain(data);
-    },
-};
+    }
+}
+
+/**
+ * Factory function to create UserSettingsService with proper DI.
+ */
+export function createUserSettingsService(supabase: SupabaseClient): UserSettingsService {
+    const authProvider = createSupabaseAuthProvider(supabase);
+    return new UserSettingsService(supabase, authProvider);
+}

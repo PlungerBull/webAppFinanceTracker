@@ -7,12 +7,6 @@
 
 ---
 
-## Frontend & Type Safety
-
-- [x] **Normalization Consistency:** Verify that all data entry points correctly utilize the transformer layer for null/undefined normalization
-
----
-
 ## Reliability & Go-Live Readiness
 
 - [ ] **CI Pipeline:** Create a GitHub Action to block merges that fail type checks or linting
