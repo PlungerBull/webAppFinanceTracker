@@ -1,16 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { isServerAuthenticated } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { ReconciliationSettings } from '@/features/settings/components/reconciliation-settings';
 
 export default async function ReconciliationsPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!(await isServerAuthenticated())) {
     redirect('/login');
   }
 

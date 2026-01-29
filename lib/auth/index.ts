@@ -8,3 +8,4 @@
 
 export * from './auth-provider.interface';
 export * from './supabase-auth-provider';
+export * from './server-auth';

@@ -1,17 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { isServerAuthenticated } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { DashboardContent } from '@/features/dashboard/components/dashboard-content';
 import { SentryErrorBoundary } from '@/components/sentry-error-boundary';
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!(await isServerAuthenticated())) {
     redirect('/login');
   }
 

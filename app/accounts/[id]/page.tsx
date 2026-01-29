@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { isServerAuthenticated } from '@/lib/auth';
 
 interface AccountPageProps {
   params: Promise<{
@@ -9,13 +9,8 @@ interface AccountPageProps {
 
 export default async function AccountPage({ params }: AccountPageProps) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!(await isServerAuthenticated())) {
     redirect('/login');
   }
 

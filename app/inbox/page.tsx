@@ -1,16 +1,10 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { isServerAuthenticated } from '@/lib/auth';
 import { InboxTable } from '@/features/inbox/components/inbox-table';
 import { SentryErrorBoundary } from '@/components/sentry-error-boundary';
 
 export default async function InboxPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!(await isServerAuthenticated())) {
     redirect('/login');
   }
 

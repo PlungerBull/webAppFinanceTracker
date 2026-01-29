@@ -1,19 +1,13 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { isServerAuthenticated } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Shield, Zap, Globe } from 'lucide-react';
 import { LANDING } from '@/lib/constants';
 
 export default async function Home() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   // If user is logged in, redirect to dashboard
-  if (user) {
+  if (await isServerAuthenticated()) {
     redirect('/dashboard');
   }
 
