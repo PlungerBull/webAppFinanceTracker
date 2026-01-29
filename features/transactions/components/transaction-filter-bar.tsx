@@ -134,10 +134,10 @@ export const TransactionFilterBar = React.memo(function TransactionFilterBar({
     selectedCategories.length > 0 || selectedDate !== undefined || searchQuery !== '';
 
   return (
-    <div className="z-20 pt-6 pb-2 px-6 bg-white border-b border-gray-100">
-      {/* Title with Sort Toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900">
+    <div className="z-20 pt-4 md:pt-6 pb-2 px-4 md:px-6 bg-white border-b border-gray-100">
+      {/* Title with Sort Toggle - stacked on mobile */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <h1 className="text-lg md:text-xl font-bold text-gray-900">
           {title || TRANSACTIONS.UI.LABELS.TRANSACTIONS}
         </h1>
 
@@ -159,23 +159,37 @@ export const TransactionFilterBar = React.memo(function TransactionFilterBar({
         </Tabs>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="flex items-center gap-2">
+      {/* Mobile: Search at top, full width */}
+      <div className="md:hidden mb-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search transactions..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9 h-10 text-sm bg-gray-100/50 border-transparent hover:bg-gray-100 focus:bg-white focus:ring-1 focus:ring-gray-300 placeholder:text-gray-500"
+          />
+        </div>
+      </div>
+
+      {/* Filter Toolbar - horizontal scroll on mobile, fixed height to prevent CLS */}
+      <div className="min-h-[44px] flex items-center">
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
         {/* Bulk Mode Toggle */}
         <Button
           variant={isBulkMode ? 'default' : 'ghost'}
           size="sm"
           onClick={onToggleBulkMode}
-          className="h-8 px-2"
+          className="h-8 px-2 flex-shrink-0"
         >
           <ListChecks className="h-4 w-4" />
         </Button>
 
         {/* Vertical Divider */}
-        <div className="h-5 w-px bg-gray-200" />
+        <div className="h-5 w-px bg-gray-200 flex-shrink-0" />
 
-        {/* Search Input (Collapsible) */}
-        <div className="relative">
+        {/* Desktop: Search Input (Collapsible) */}
+        <div className="relative hidden md:block">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-[15px] w-[15px] text-gray-400" />
           <Input
             placeholder="Search..."
@@ -190,8 +204,8 @@ export const TransactionFilterBar = React.memo(function TransactionFilterBar({
           />
         </div>
 
-        {/* Vertical Divider */}
-        <div className="h-5 w-px bg-gray-200" />
+        {/* Vertical Divider - desktop only */}
+        <div className="h-5 w-px bg-gray-200 hidden md:block" />
 
         {/* Date Filter */}
         <Popover>
@@ -199,7 +213,7 @@ export const TransactionFilterBar = React.memo(function TransactionFilterBar({
             <Button
               variant="ghost"
               className={cn(
-                'px-2.5 py-1.5 h-8 rounded-md text-sm border border-transparent font-normal',
+                'px-2.5 py-1.5 h-8 rounded-md text-sm border border-transparent font-normal flex-shrink-0',
                 selectedDate
                   ? 'bg-orange-50 text-orange-700 border-orange-200'
                   : 'text-gray-600 hover:bg-gray-100'
@@ -229,7 +243,7 @@ export const TransactionFilterBar = React.memo(function TransactionFilterBar({
             <Button
               variant="ghost"
               className={cn(
-                'px-2.5 py-1.5 h-8 rounded-md text-sm border border-transparent font-normal',
+                'px-2.5 py-1.5 h-8 rounded-md text-sm border border-transparent font-normal flex-shrink-0',
                 selectedCategories.length > 0
                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                   : 'text-gray-600 hover:bg-gray-100'
@@ -283,12 +297,13 @@ export const TransactionFilterBar = React.memo(function TransactionFilterBar({
             variant="ghost"
             size="sm"
             onClick={onClearFilters}
-            className="text-gray-500 hover:text-gray-700 h-8 py-1.5 px-2.5"
+            className="text-gray-500 hover:text-gray-700 h-8 py-1.5 px-2.5 flex-shrink-0"
           >
             <X className="mr-1 h-[15px] w-[15px]" />
             Clear
           </Button>
         )}
+      </div>
       </div>
     </div>
   );

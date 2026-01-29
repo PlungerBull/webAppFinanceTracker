@@ -2,7 +2,6 @@
 
 ## Reliability & Go-Live Readiness
 
-- [ ] **Mobile Responsiveness:** Audit `transaction-table` and `sidebar` for mobile viewports
 - [ ] **Import Optimization:** Fix timeouts on large Excel/CSV imports
 
 
@@ -14,11 +13,7 @@
 - [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates
 - [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers
 
----
 
-## Implementation Steps (Go-Live Countdown)
-
-- [ ] **Beta Release:** Once the "Main Currency" bug is resolved, move to a private Beta with 5 users to stress-test the Delta Sync Engine under high-latency conditions.
 
 ---
 

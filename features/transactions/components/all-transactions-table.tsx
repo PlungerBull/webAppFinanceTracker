@@ -15,8 +15,9 @@
  * @module all-transactions-table
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
+import { MobileHeader } from '@/components/layout/mobile-header';
 import { useSearchParams } from 'next/navigation';
 import { SidebarProvider } from '@/contexts/sidebar-context';
 import { TransactionList } from '@/features/transactions/components/transaction-list';
@@ -30,6 +31,7 @@ import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categori
 import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
 import { useAccounts } from '@/features/accounts/hooks/use-accounts';
 import { useUserSettings, useUpdateSortPreference } from '@/features/settings/hooks/use-user-settings';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { toast } from 'sonner';
 import type { TransactionViewEntity } from '../domain';
 import type { TransactionSortMode } from '@/types/domain';
@@ -98,6 +100,9 @@ function TransactionsContent() {
 
   const isLoading = isLoadingTransactions || isLoadingSettings;
 
+  // === Mobile Detection ===
+  const isMobile = useIsMobile();
+
   // === Bulk Selection (Domain Hook) ===
   // Pass filterKey for stable dependency tracking (no JSON.stringify)
   const bulk = useBulkSelection({
@@ -136,11 +141,19 @@ function TransactionsContent() {
     ? transactions.find((t: TransactionViewEntity) => t.id === selectedTransactionId) || null
     : null;
 
+  // === Panel Close Handler ===
+  const handleDetailPanelClose = useCallback(() => {
+    setSelectedTransactionId(null);
+  }, []);
+
   // === Render (Composition Pattern) ===
   // FilterBar and TransactionList are siblings, not parent-child
   return (
-    <div className="flex h-screen overflow-hidden bg-white dark:bg-zinc-900">
-      {/* Sidebar */}
+    <div className="flex flex-col md:flex-row h-dvh overflow-hidden bg-white dark:bg-zinc-900">
+      {/* Mobile Header - only visible on mobile */}
+      <MobileHeader />
+
+      {/* Sidebar - handles its own responsive behavior */}
       <Sidebar />
 
       {/* Main Content: Filter Bar + Transaction List (siblings) */}
@@ -181,13 +194,25 @@ function TransactionsContent() {
         />
       </div>
 
-      {/* Transaction Details Panel */}
-      <TransactionDetailPanel
-        transaction={selectedTransaction}
-        accountId={accountId}
-        categories={categories}
-        accounts={flatAccounts}
-      />
+      {/* Transaction Details Panel - Desktop: right sidebar, Mobile: bottom sheet */}
+      {isMobile ? (
+        <TransactionDetailPanel
+          transaction={selectedTransaction}
+          accountId={accountId}
+          categories={categories}
+          accounts={flatAccounts}
+          variant="mobile"
+          onClose={handleDetailPanelClose}
+        />
+      ) : (
+        <TransactionDetailPanel
+          transaction={selectedTransaction}
+          accountId={accountId}
+          categories={categories}
+          accounts={flatAccounts}
+          variant="desktop"
+        />
+      )}
 
       {/* Bulk Action Bar - Conditionally rendered */}
       {bulk.isBulkMode && bulk.hasSelection && (

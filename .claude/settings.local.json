@@ -37,7 +37,13 @@
       "Bash(npm test:*)",
       "Bash(xargs:*)",
       "Bash(supabase migration list:*)",
-      "Bash(supabase db reset:*)"
+      "Bash(supabase db reset:*)",
+      "Bash(git stash:*)",
+      "Bash(git -C /Users/ternero/Documents/webAppFinanceTracker status -s)",
+      "Bash(npx next build)",
+      "Bash(npx jest --passWithNoTests)",
+      "Bash(git status:*)",
+      "Bash(git mv:*)"
     ],
     "deny": [],
     "ask": []

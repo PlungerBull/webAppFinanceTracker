@@ -118,7 +118,7 @@ export function TransactionDetailPanel(props: TransactionDetailPanelProps) {
   const canPromote = mode === 'inbox' && !!selectedAccountId && !!selectedCategoryId;
 
   return (
-    <div className="h-full w-[400px] bg-white border-l border-gray-200 flex flex-col">
+    <div className="h-full w-full md:w-[400px] bg-white border-t md:border-t-0 md:border-l border-gray-200 flex flex-col">
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         {/* Identity Header */}

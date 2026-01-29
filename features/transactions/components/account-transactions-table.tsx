@@ -14,7 +14,7 @@ export function AccountTransactionsTable({ accountId }: AccountTransactionsTable
   });
 
   return (
-    <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden h-[600px] flex flex-col">
+    <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden h-[400px] md:h-[600px] flex flex-col">
       <TransactionList
         transactions={transactions}
         isLoading={isLoading}

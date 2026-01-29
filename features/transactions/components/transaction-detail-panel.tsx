@@ -4,6 +4,7 @@ import { useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { TransactionDetailPanel as SharedPanel } from '@/features/shared/components/transaction-detail-panel';
 import type { PanelData, TransactionPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/features/shared/components/transaction-detail-panel';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useDeleteTransaction } from '../hooks/use-transactions';
 import { useTransactionUpdate } from '../hooks/use-transaction-update';
 import type { TransactionViewEntity } from '../domain';
@@ -17,6 +18,10 @@ interface TransactionDetailPanelProps {
   accountId: string | null;
   categories: LeafCategoryEntity[];
   accounts: AccountViewEntity[]; // Use AccountViewEntity from Repository Pattern
+  /** Render variant: 'desktop' = right sidebar, 'mobile' = bottom sheet */
+  variant?: 'desktop' | 'mobile';
+  /** Callback when panel is closed (for mobile sheet) */
+  onClose?: () => void;
 }
 
 export function TransactionDetailPanel({
@@ -24,6 +29,8 @@ export function TransactionDetailPanel({
   accountId,
   categories,
   accounts,
+  variant = 'desktop',
+  onClose,
 }: TransactionDetailPanelProps) {
   const deleteMutation = useDeleteTransaction();
 
@@ -179,12 +186,39 @@ export function TransactionDetailPanel({
     await deleteMutation.mutateAsync({ id: transaction.id, version: transaction.version });
   };
 
-  // Handle close (no-op, panel is always visible)
-  const handleClose = () => {
-    // In the current implementation, the panel is always visible when a transaction is selected
-    // We don't have a close mechanism, but this satisfies the shared panel interface
+  // Handle close - calls onClose prop for mobile sheet
+  const handleClose = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
+
+  // Shared panel props
+  const sharedPanelProps = {
+    mode: 'transaction' as const,
+    data: panelData!,
+    accounts: selectableAccounts,
+    categories: selectableCategories,
+    onSave: handleSave,
+    onDelete: handleDelete,
+    onClose: handleClose,
+    isLoading: isUpdating || deleteMutation.isPending,
   };
 
+  // Mobile: Render as bottom sheet
+  if (variant === 'mobile') {
+    return (
+      <Sheet open={!!panelData} onOpenChange={(open) => !open && handleClose()}>
+        <SheetContent
+          side="bottom"
+          className="h-[85vh] rounded-t-2xl p-0"
+          style={{ zIndex: 'var(--z-detail-sheet)' }}
+        >
+          {panelData && <SharedPanel {...sharedPanelProps} />}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: Render as right sidebar
   if (!panelData) {
     return (
       <div className="w-[400px] bg-white border-l border-gray-200 flex items-center justify-center text-gray-500">
@@ -193,16 +227,5 @@ export function TransactionDetailPanel({
     );
   }
 
-  return (
-    <SharedPanel
-      mode="transaction"
-      data={panelData}
-      accounts={selectableAccounts}
-      categories={selectableCategories}
-      onSave={handleSave}
-      onDelete={handleDelete}
-      onClose={handleClose}
-      isLoading={isUpdating || deleteMutation.isPending}
-    />
-  );
+  return <SharedPanel {...sharedPanelProps} />;
 }

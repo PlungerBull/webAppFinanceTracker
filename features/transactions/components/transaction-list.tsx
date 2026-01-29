@@ -18,6 +18,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2 } from 'lucide-react';
 import { TRANSACTIONS, PAGINATION } from '@/lib/constants';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { TransactionRow, type TransactionRowData } from './transaction-row';
 import type { TransactionViewEntity } from '../domain';
 
@@ -136,6 +137,9 @@ export function TransactionList({
   // Parent ref for virtualizer
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // Detect mobile viewport for virtualizer recalculation
+  const isMobile = useIsMobile();
+
   // Initialize virtualizer
   const virtualizer = useVirtualizer({
     count: normalizedTransactions.length,
@@ -143,6 +147,11 @@ export function TransactionList({
     estimateSize: () => PAGINATION.VIRTUAL_ITEM_SIZE_ESTIMATE,
     overscan: PAGINATION.OVERSCAN,
   });
+
+  // Trigger virtualizer recalculation when viewport changes (mobile header appears/disappears)
+  useEffect(() => {
+    virtualizer.measure();
+  }, [isMobile, virtualizer]);
 
   // Infinite scroll trigger
   const virtualItems = virtualizer.getVirtualItems();
@@ -216,8 +225,8 @@ export function TransactionList({
     <div className="flex-1 flex flex-col h-full bg-white overflow-hidden border-r border-gray-200">
       {/* Simple Header - shown when title provided and not compact (for standalone use) */}
       {title && !isCompact && (
-        <div className="z-20 pt-6 pb-4 px-6 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-gray-900">{title}</h1>
+        <div className="z-20 pt-4 md:pt-6 pb-4 px-4 md:px-6 border-b border-gray-100">
+          <h1 className="text-lg md:text-xl font-bold text-gray-900">{title}</h1>
           {totalCount != null && (
             <p className="text-sm text-gray-500 mt-1">{totalCount} items</p>
           )}
@@ -227,7 +236,7 @@ export function TransactionList({
       {/* Virtualized List Container */}
       <div
         ref={parentRef}
-        className="flex-1 overflow-y-auto px-6 py-4"
+        className="flex-1 overflow-y-auto px-4 md:px-6 py-4"
         style={{ contain: 'strict' }}
       >
         {isLoading ? (

@@ -122,7 +122,7 @@ export const TransactionRow = React.memo(
       <div
         onClick={handleClick}
         className={cn(
-          'relative bg-white rounded-xl border border-gray-100 px-4 py-3',
+          'relative bg-white rounded-xl border border-gray-100 px-4 py-4 md:py-3',
           'transition-all duration-200 cursor-pointer',
           'hover:shadow-sm hover:border-gray-200',
           // Focus state (right panel) - subtle blue ring
@@ -134,9 +134,9 @@ export const TransactionRow = React.memo(
           !isBulkMode && 'cursor-default hover:shadow-none'
         )}
       >
-        {/* Checkbox - only visible in bulk mode */}
+        {/* Checkbox - only visible in bulk mode, wrapped for 44px touch target */}
         {isBulkMode && (
-          <div className="absolute top-3 left-3 z-10">
+          <div className="absolute top-2 left-2 z-10 p-2 -m-1" onClick={handleCheckboxClick}>
             <Checkbox
               checked={isSelected}
               onClick={handleCheckboxClick}
@@ -155,7 +155,7 @@ export const TransactionRow = React.memo(
             {/* Category Pill + Date */}
             <div className="flex items-center gap-2">
               <span
-                className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md"
+                className="text-xs md:text-[10px] font-semibold uppercase tracking-wide px-2 py-1 md:py-0.5 rounded-md"
                 style={{
                   backgroundColor: transaction.categoryColor
                     ? `${transaction.categoryColor}20`
@@ -171,7 +171,7 @@ export const TransactionRow = React.memo(
                 {transaction.categoryName || 'Uncategorized'}
               </span>
               {/* Date */}
-              <p className="text-[10px] text-gray-400">
+              <p className="text-xs md:text-[10px] text-gray-400">
                 {formatDateDisplay(transaction.date)}
               </p>
             </div>
@@ -214,7 +214,7 @@ export const TransactionRow = React.memo(
             </p>
 
             {/* Currency Label */}
-            <p className="text-[10px] text-gray-400 mt-0.5">
+            <p className="text-xs md:text-[10px] text-gray-400 mt-0.5">
               {transaction.accountId ? transaction.currencyOriginal : 'SELECT ACCOUNT'}
             </p>
           </div>
