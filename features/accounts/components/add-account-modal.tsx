@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useWatch } from 'react-hook-form';
 import { useFormModal } from '@/lib/hooks/use-form-modal';
 import { useCurrencyManager } from '@/lib/hooks/use-currency-manager';
 import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
@@ -79,11 +80,19 @@ export function AddAccountModal({ open, onOpenChange }: AddAccountModalProps) {
     register,
     formState: { errors, isSubmitting },
     setValue,
-    watch,
+    control,
   } = form;
 
-  const selectedColor = watch('color');
-  const accountName = watch('name');
+  const selectedColor = useWatch({
+    control,
+    name: 'color',
+    defaultValue: ACCOUNT.DEFAULT_COLOR,
+  });
+  const accountName = useWatch({
+    control,
+    name: 'name',
+    defaultValue: '',
+  });
 
   // State for color popover
   const [isColorPopoverOpen, setIsColorPopoverOpen] = useState(false);

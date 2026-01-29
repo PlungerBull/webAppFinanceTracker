@@ -1,6 +1,6 @@
 'use client';
 
-import { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from 'react-hook-form';
+import { UseFormRegister, FieldErrors, UseFormSetValue, Control, useWatch } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ACCOUNTS } from '@/lib/constants';
@@ -25,7 +25,7 @@ interface AccountFormProps {
   register: UseFormRegister<AccountFormData>;
   errors: FieldErrors<AccountFormData>;
   setValue: UseFormSetValue<AccountFormData>;
-  watch: UseFormWatch<AccountFormData>;
+  control: Control<AccountFormData>;
   isSubmitting: boolean;
 }
 
@@ -33,10 +33,14 @@ export function AccountForm({
   register,
   errors,
   setValue,
-  watch,
+  control,
   isSubmitting,
 }: AccountFormProps) {
-  const selectedColor = watch('color');
+  const selectedColor = useWatch({
+    control,
+    name: 'color',
+    defaultValue: '#3b82f6',
+  });
 
   return (
     <div className="space-y-4">

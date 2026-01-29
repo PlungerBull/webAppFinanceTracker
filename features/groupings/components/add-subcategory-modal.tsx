@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useWatch } from 'react-hook-form';
 import { useFormModal } from '@/lib/hooks/use-form-modal';
 import { z } from 'zod';
 import { useAddSubcategory, useGroupings } from '../hooks/use-groupings';
@@ -63,10 +64,14 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
     const {
         register,
         formState: { errors, isSubmitting },
-        watch,
+        control,
     } = form;
 
-    const subcategoryName = watch('name');
+    const subcategoryName = useWatch({
+        control,
+        name: 'name',
+        defaultValue: '',
+    });
 
     const handleClose = () => {
         resetForm();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -67,13 +67,26 @@ export function ReconciliationFormModal({
     formState: { errors, isSubmitting },
     reset,
     setValue,
-    watch,
+    control,
   } = useForm<ReconciliationFormData>({
     resolver: zodResolver(reconciliationSchema),
   });
 
-  const dateStart = watch('dateStart');
-  const dateEnd = watch('dateEnd');
+  const dateStart = useWatch({
+    control,
+    name: 'dateStart',
+    defaultValue: null,
+  });
+  const dateEnd = useWatch({
+    control,
+    name: 'dateEnd',
+    defaultValue: null,
+  });
+  const accountId = useWatch({
+    control,
+    name: 'accountId',
+    defaultValue: '',
+  });
 
   // Populate form when editing
   useEffect(() => {
@@ -122,7 +135,7 @@ export function ReconciliationFormModal({
               Account
             </label>
             <Select
-              value={watch('accountId')}
+              value={accountId}
               onValueChange={(value) => setValue('accountId', value)}
               disabled={isEditing} // Cannot change account for existing reconciliation
             >

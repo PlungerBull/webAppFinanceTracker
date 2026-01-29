@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAddGrouping } from '@/features/groupings/hooks/use-groupings';
@@ -36,7 +36,7 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
         register,
         handleSubmit,
         setValue,
-        watch,
+        control,
         reset,
         formState: { errors, isSubmitting }
     } = useForm<CategoryFormData>({
@@ -47,8 +47,16 @@ export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) 
         }
     });
 
-    const selectedColor = watch('color');
-    const groupingName = watch('name');
+    const selectedColor = useWatch({
+        control,
+        name: 'color',
+        defaultValue: ACCOUNT.DEFAULT_COLOR,
+    });
+    const groupingName = useWatch({
+        control,
+        name: 'name',
+        defaultValue: '',
+    });
 
     // Get first letter for icon
     const getInitial = () => {

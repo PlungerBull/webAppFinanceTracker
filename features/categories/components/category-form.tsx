@@ -1,6 +1,6 @@
 'use client';
 
-import { UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch, Controller, Control } from 'react-hook-form';
+import { UseFormRegister, FieldErrors, UseFormSetValue, Controller, Control, useWatch } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CATEGORY } from '@/lib/constants';
@@ -38,7 +38,6 @@ interface CategoryFormProps {
     register: UseFormRegister<CategoryFormData>;
     errors: FieldErrors<CategoryFormData>;
     setValue: UseFormSetValue<CategoryFormData>;
-    watch: UseFormWatch<CategoryFormData>;
     control: Control<CategoryFormData>;
     isSubmitting: boolean;
     availableParents: ParentCategory[];
@@ -48,12 +47,15 @@ export function CategoryForm({
     register,
     errors,
     setValue,
-    watch,
     control,
     isSubmitting,
     availableParents,
 }: CategoryFormProps) {
-    const selectedColor = watch('color');
+    const selectedColor = useWatch({
+        control,
+        name: 'color',
+        defaultValue: CATEGORY.DEFAULT_COLOR,
+    });
 
     return (
         <div className="space-y-4">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useWatch } from 'react-hook-form';
 import { useFormModal } from '@/lib/hooks/use-form-modal';
 import { useUpdateAccount } from '../hooks/use-account-mutations';
 import { updateAccountSchema, type UpdateAccountFormData } from '../schemas/account.schema';
@@ -58,12 +59,20 @@ export function EditAccountModal({ open, onOpenChange, account, onDelete }: Edit
     register,
     formState: { errors, isSubmitting },
     reset,
-    watch,
+    control,
     setValue,
   } = form;
 
-  const selectedColor = watch('color');
-  const accountName = watch('name');
+  const selectedColor = useWatch({
+    control,
+    name: 'color',
+    defaultValue: ACCOUNT.DEFAULT_COLOR,
+  });
+  const accountName = useWatch({
+    control,
+    name: 'name',
+    defaultValue: '',
+  });
 
   // Initialize form
   useEffect(() => {

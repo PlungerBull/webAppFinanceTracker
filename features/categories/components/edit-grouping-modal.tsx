@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCategories } from '../hooks/use-categories';
@@ -78,7 +78,7 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         register,
         handleSubmit,
         setValue,
-        watch,
+        control,
         formState: { errors, isSubmitting }
     } = useForm<CategoryFormData>({
         resolver: zodResolver(categorySchema),
@@ -94,9 +94,21 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         }
     });
 
-    const selectedColor = watch('color');
-    const selectedType = watch('type');
-    const categoryName = watch('name');
+    const selectedColor = useWatch({
+        control,
+        name: 'color',
+        defaultValue: ACCOUNT.DEFAULT_COLOR,
+    });
+    const selectedType = useWatch({
+        control,
+        name: 'type',
+        defaultValue: 'expense' as const,
+    });
+    const categoryName = useWatch({
+        control,
+        name: 'name',
+        defaultValue: '',
+    });
 
     useEffect(() => {
         if (open && category) {
