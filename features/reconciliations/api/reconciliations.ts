@@ -28,11 +28,13 @@ export class ReconciliationsService {
 
   /**
    * Get all reconciliations for current user (optionally filtered by account)
+   * Filters out soft-deleted reconciliations (tombstone pattern)
    */
   async getAll(accountId?: string): Promise<Reconciliation[]> {
     let query = this.supabase
       .from('reconciliations')
       .select('*')
+      .is('deleted_at', null)  // Tombstone filter: only active reconciliations
       .order('created_at', { ascending: false });
 
     if (accountId) {
@@ -52,12 +54,14 @@ export class ReconciliationsService {
 
   /**
    * Get single reconciliation by ID
+   * Returns null if soft-deleted (tombstone pattern)
    */
   async getById(id: string): Promise<Reconciliation> {
     const { data, error } = await this.supabase
       .from('reconciliations')
       .select('*')
       .eq('id', id)
+      .is('deleted_at', null)  // Tombstone filter: only active reconciliations
       .single();
 
     if (error) {
@@ -136,18 +140,40 @@ export class ReconciliationsService {
   }
 
   /**
-   * Delete reconciliation
+   * Delete reconciliation (soft delete with version check)
+   *
+   * CTO Mandate: Use version-checked soft delete RPC (Tombstone Pattern)
+   * - Prevents concurrent modification conflicts
+   * - Enables distributed sync propagation
+   * - Automatically unlinks transactions
    */
-  async delete(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from('reconciliations')
-      .delete()
-      .eq('id', id);
+  async delete(id: string, version: number): Promise<{ success: boolean; error?: string }> {
+    const { data, error } = await this.supabase.rpc('delete_reconciliation_with_version', {
+      p_reconciliation_id: id,
+      p_expected_version: version,
+    });
 
     if (error) {
       console.error('Failed to delete reconciliation:', error);
       throw new Error(error.message || 'Failed to delete reconciliation');
     }
+
+    const result = data as {
+      success: boolean;
+      error?: string;
+      currentVersion?: number;
+      currentData?: Record<string, unknown>;
+      message?: string;
+    };
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error,
+      };
+    }
+
+    return { success: true };
   }
 
   /**

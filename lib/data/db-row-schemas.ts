@@ -230,6 +230,10 @@ export const UserSettingsRowSchema = z.object({
 
 /**
  * reconciliations table Row
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deleted_at: Tombstone pattern for distributed sync
  */
 export const ReconciliationRowSchema = z.object({
   id: uuid,
@@ -243,6 +247,7 @@ export const ReconciliationRowSchema = z.object({
   status: ReconciliationStatusEnum,
   created_at: timestamptz,
   updated_at: timestamptz,
+  ...BaseSyncFields,
 });
 
 /**

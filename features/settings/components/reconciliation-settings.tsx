@@ -22,9 +22,9 @@ export function ReconciliationSettings() {
   const deleteMutation = useDeleteReconciliation();
   const updateMutation = useUpdateReconciliation();
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, version: number) => {
     if (!confirm('Delete this audit? Linked transactions will be unlinked.')) return;
-    await deleteMutation.mutateAsync(id);
+    await deleteMutation.mutateAsync({ id, version });
   };
 
   const handleFinalize = async (id: string) => {
@@ -192,7 +192,7 @@ export function ReconciliationSettings() {
                       <div className="flex items-center gap-2">
                         {/* Delete */}
                         <button
-                          onClick={() => handleDelete(reconciliation.id)}
+                          onClick={() => handleDelete(reconciliation.id, reconciliation.version)}
                           className="text-gray-300 hover:text-red-500 transition-colors"
                           title="Delete audit"
                         >

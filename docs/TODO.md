@@ -11,14 +11,20 @@
 
 Production readiness and iOS native port preparation tasks identified from comprehensive feature audits.
 
-### 1. Sync Integrity Hardening (Reconciliations)
+### ~~1. Sync Integrity Hardening (Reconciliations)~~ ✅ COMPLETED
 
 **Problem:** The reconciliations module is a "sync blocker" because it lacks the necessary metadata for the Delta Sync Engine. It uses hard deletes instead of the Tombstone Pattern and is missing the optimistic concurrency versioning used by the rest of the system.
 
-**Files to Modify:**
-- [ ] `supabase/migrations/`: Create a new migration to add `version` (INT) and `deleted_at` (TIMESTAMPTZ) columns to the reconciliations table
-- [ ] `api/reconciliations.ts`: Update the delete method to perform a soft update of `deleted_at` instead of a physical `.delete()`
-- [ ] `lib/data/db-row-schemas.ts`: Update `ReconciliationRowSchema` to include the new sync fields
+**Files Modified:**
+- [x] `supabase/migrations/20260129030000_reconciliations_sync_hardening.sql`: Added `version` and `deleted_at` columns with auto-increment trigger
+- [x] `supabase/migrations/20260129030001_reconciliation_version_ops.sql`: Created `delete_reconciliation_with_version` RPC
+- [x] `supabase/migrations/20260129030002_reconciliations_tombstone_indexes.sql`: Added partial indexes for performance
+- [x] `features/reconciliations/api/reconciliations.ts`: Updated delete to use version-checked soft delete RPC, added tombstone filters
+- [x] `lib/data/db-row-schemas.ts`: Added `...BaseSyncFields` to `ReconciliationRowSchema`
+- [x] `types/domain.ts`: Added `version` and `deletedAt` to `Reconciliation` interface
+- [x] `lib/data/data-transformers.ts`: Updated transformer for sync fields
+- [x] `features/reconciliations/hooks/use-reconciliations.ts`: Updated delete mutation for version parameter
+- [x] `features/settings/components/reconciliation-settings.tsx`: Updated UI to pass version on delete
 
 ### 2. Feature Bleed Remediation (The "Spaghetti" Fix)
 

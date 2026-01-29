@@ -213,9 +213,14 @@ export type ReconciliationStatus = 'draft' | 'completed';
 
 /**
  * Reconciliation session tracking the "Contract of Truth" between bank statements and ledger
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deletedAt: Tombstone pattern for distributed sync
  */
 export interface Reconciliation {
   id: string;
+  version: number;
   userId: string;
   accountId: string;
   name: string;
@@ -226,6 +231,7 @@ export interface Reconciliation {
   status: ReconciliationStatus;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 }
 
 /**

@@ -122,18 +122,37 @@ export function useUpdateReconciliation() {
 }
 
 /**
- * Delete reconciliation
+ * Delete reconciliation (version-checked soft delete)
+ *
+ * CTO Mandate: Optimistic concurrency control prevents data loss from
+ * concurrent modifications across devices.
  */
 export function useDeleteReconciliation() {
   const queryClient = useQueryClient();
   const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: (id: string) => service.delete(id),
-    onSuccess: () => {
-      // Invalidate all reconciliation queries
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
-      toast.success('Reconciliation deleted successfully');
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      service.delete(id, version),
+    onSuccess: (result) => {
+      if (result.success) {
+        // Invalidate all reconciliation queries
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
+        // Invalidate transactions (they may have been unlinked)
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        toast.success('Reconciliation deleted successfully');
+      } else {
+        // Handle specific errors
+        if (result.error === 'version_conflict') {
+          toast.error('This reconciliation was modified. Please refresh and try again.');
+        } else if (result.error === 'reconciliation_completed') {
+          toast.error('Cannot delete a completed reconciliation. Change status to draft first.');
+        } else if (result.error === 'not_found') {
+          toast.error('Reconciliation not found or already deleted.');
+        } else {
+          toast.error(`Failed to delete reconciliation: ${result.error}`);
+        }
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to delete reconciliation: ${error.message}`);

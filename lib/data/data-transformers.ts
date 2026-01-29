@@ -757,12 +757,23 @@ export function dbUserSettingsToDomain(
 
 /**
  * Transforms a database reconciliations row to domain Reconciliation type
+ *
+ * SYNC FIELDS (Phase 2a):
+ * - version: Optimistic concurrency control via global_transaction_version
+ * - deletedAt: Tombstone pattern for distributed sync
  */
 export function dbReconciliationToDomain(
   dbReconciliation: Database['public']['Tables']['reconciliations']['Row']
 ): Reconciliation {
+  // Type assertion for sync fields added by migration
+  const syncRow = dbReconciliation as typeof dbReconciliation & {
+    version?: number;
+    deleted_at?: string | null;
+  };
+
   return {
     id: dbReconciliation.id,
+    version: syncRow.version ?? 1,
     userId: dbReconciliation.user_id,
     accountId: dbReconciliation.account_id,
     name: dbReconciliation.name,
@@ -773,6 +784,7 @@ export function dbReconciliationToDomain(
     status: dbReconciliation.status as ReconciliationStatus,
     createdAt: dbReconciliation.created_at,
     updatedAt: dbReconciliation.updated_at,
+    deletedAt: syncRow.deleted_at ?? null,
   };
 }
 
