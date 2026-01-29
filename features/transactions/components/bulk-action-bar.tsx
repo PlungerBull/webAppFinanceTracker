@@ -11,6 +11,7 @@ import { useReconciliations, useReconciliationSummary } from '@/features/reconci
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
+import { centsToDisplayAmount } from '@/lib/utils/cents-parser';
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -99,18 +100,22 @@ export function BulkActionBar({
     const selectedTransactionIds = Array.from(selectedIds);
     const selectedTransactions = transactions.filter((t) => selectedTransactionIds.includes(t.id));
 
-    // Calculate sum of selected transactions
-    const selectedSum = selectedTransactions.reduce((sum, t) => sum + (t.amountHomeCents / 100), 0);
+    // Calculate sum of selected transactions in integer cents first, then convert once
+    // This avoids floating-point accumulation errors from repeated division
+    const selectedSumCents = selectedTransactions.reduce((sum, t) => sum + t.amountHomeCents, 0);
+    const selectedSum = centsToDisplayAmount(selectedSumCents);
 
-    // Calculate preview difference
+    // Calculate preview difference with rounding to prevent float drift
     // Formula: Ending Balance - (Beginning Balance + Current Linked Sum + Selected Sum)
     const currentLinkedSum = reconciliationSummary.linkedSum;
-    const previewLinkedSum = currentLinkedSum + selectedSum;
-    const previewDifference = selectedReconciliation.endingBalance - (selectedReconciliation.beginningBalance + previewLinkedSum);
+    const previewLinkedSum = Math.round((currentLinkedSum + selectedSum) * 100) / 100;
+    const previewDifference = Math.round(
+      (selectedReconciliation.endingBalance - (selectedReconciliation.beginningBalance + previewLinkedSum)) * 100
+    ) / 100;
 
     return {
       difference: previewDifference,
-      isBalanced: Math.abs(previewDifference) < 0.01, // Allow for floating point precision
+      isBalanced: Math.abs(previewDifference) < 0.005, // Half a cent tolerance
     };
   }, [reconciliationValue, reconciliationSummary, selectedIds, transactions, reconciliations]);
 

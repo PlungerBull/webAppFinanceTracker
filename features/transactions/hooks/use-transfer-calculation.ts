@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { parseCurrencyToCents } from '@/lib/utils/cents-parser';
 
 interface TransferCalculation {
   exchangeRate: number;
@@ -10,6 +11,9 @@ interface TransferCalculation {
 /**
  * Calculates implied exchange rate for multi-currency transfers
  * Rate = receivedAmount / sentAmount
+ *
+ * Uses string-based cents parsing to avoid IEEE 754 floating-point errors
+ * that would occur with parseFloat().
  */
 export function useTransferCalculation(
   sentAmount: string,
@@ -28,10 +32,19 @@ export function useTransferCalculation(
       return { exchangeRate: 1, isMultiCurrency: false };
     }
 
-    const sent = parseFloat(sentAmount) || 0;
-    const received = parseFloat(receivedAmount) || 0;
+    // Parse to cents using string-based method to avoid float contamination
+    // parseCurrencyToCents throws on invalid input, so we handle gracefully
+    let sentCents: number;
+    let receivedCents: number;
+    try {
+      sentCents = parseCurrencyToCents(sentAmount || '0');
+      receivedCents = parseCurrencyToCents(receivedAmount || '0');
+    } catch {
+      sentCents = 0;
+      receivedCents = 0;
+    }
 
-    if (sent === 0) {
+    if (sentCents === 0) {
       return {
         exchangeRate: 1,
         isMultiCurrency: true,
@@ -39,12 +52,15 @@ export function useTransferCalculation(
       };
     }
 
-    const exchangeRate = received / sent;
+    // Integer division produces cleaner result than float division
+    // receivedCents / sentCents = (received * 100) / (sent * 100) = received / sent
+    const exchangeRate = receivedCents / sentCents;
 
     return {
       exchangeRate,
       isMultiCurrency: true,
-      displayRate: `1 ${fromCurrency} = ${exchangeRate.toFixed(4)} ${toCurrency}`,
+      // Display with 6 decimals to match database NUMERIC(15,6) precision
+      displayRate: `1 ${fromCurrency} = ${exchangeRate.toFixed(6)} ${toCurrency}`,
     };
   }, [sentAmount, receivedAmount, fromCurrency, toCurrency]);
 

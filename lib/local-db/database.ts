@@ -103,8 +103,8 @@ async function initializeDatabase(): Promise<Database | null> {
       dbName: DATABASE_NAME,
       // Use incremental IndexedDB for better performance
       useIncrementalIndexedDB: true,
-      // Enable web worker for non-blocking operations
-      useWebWorker: true,
+      // Disable web worker (deprecated in 0.27.x, causes bundling issues with Next.js)
+      useWebWorker: false,
       // Handle worker errors gracefully
       onSetUpError: (error: Error) => {
         console.error('[LocalDB] Setup error:', error);

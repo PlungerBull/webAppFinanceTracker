@@ -41,13 +41,14 @@ export function FinancialOverview() {
         const groupChildren = children.filter(child => child.parentId === parent.categoryId);
 
         // Calculate totals for the parent row (Sum of children)
+        // Round to 2 decimal places to prevent float accumulation drift
         const totals: Record<string, number> = {};
         months.forEach(month => {
           const monthKey = month.toISOString().slice(0, 7);
           const childrenSum = groupChildren.reduce((sum, child) => {
             return sum + (child.monthlyAmounts[monthKey] || 0);
           }, 0);
-          totals[monthKey] = childrenSum;
+          totals[monthKey] = Math.round(childrenSum * 100) / 100;
         });
 
         return {
@@ -70,6 +71,7 @@ export function FinancialOverview() {
   );
 
   // CTO Refinement #2: Memoized frontend aggregation for summary rows
+  // Round to 2 decimal places to prevent float accumulation drift
   const incomeTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     months.forEach(month => {
@@ -77,7 +79,7 @@ export function FinancialOverview() {
       const monthTotal = incomeGroups.reduce((sum, group) => {
         return sum + (group.totals[monthKey] || 0);
       }, 0);
-      totals[monthKey] = monthTotal;
+      totals[monthKey] = Math.round(monthTotal * 100) / 100;
     });
     return totals;
   }, [incomeGroups, months]);
@@ -89,7 +91,7 @@ export function FinancialOverview() {
       const monthTotal = expenseGroups.reduce((sum, group) => {
         return sum + (group.totals[monthKey] || 0);
       }, 0);
-      totals[monthKey] = monthTotal;
+      totals[monthKey] = Math.round(monthTotal * 100) / 100;
     });
     return totals;
   }, [expenseGroups, months]);
@@ -100,7 +102,7 @@ export function FinancialOverview() {
       const monthKey = month.toISOString().slice(0, 7);
       const income = incomeTotals[monthKey] || 0;
       const expense = expenseTotals[monthKey] || 0;
-      flow[monthKey] = income - expense;
+      flow[monthKey] = Math.round((income - expense) * 100) / 100;
     });
     return flow;
   }, [incomeTotals, expenseTotals, months]);
