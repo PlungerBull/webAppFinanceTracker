@@ -1116,3 +1116,139 @@ SentryProvider          ← Outermost (error tracking + user context)
 - ❌ Set `Sentry.setUser()` with email or username — ID only
 - ❌ Use `Sentry.captureException()` for expected network errors (sync retries handle these)
 - ❌ Skip the PII scrubber by constructing events manually
+
+## 13. Cross-Feature IoC Pattern (IGroupingOperations)
+
+### Overview
+
+Features that need to access another feature's service layer MUST go through an **orchestrator hook** in `lib/hooks/`. This enforces Inversion of Control (IoC) — features depend on interfaces in the Sacred Domain, not concrete implementations in other features.
+
+**Status:** ✅ **IMPLEMENTED** — Groupings feature decoupled from Categories feature.
+
+### Problem Statement
+
+The groupings feature (`features/groupings/`) needed `CategoryService` methods to manage parent categories. Direct imports violated feature boundaries:
+
+```typescript
+// ❌ VIOLATION: Feature importing from another feature's internal hooks
+import { useCategoryService } from '@/features/categories/hooks/use-category-service';
+```
+
+### Solution: Orchestrator Hook Pattern
+
+**Three-layer architecture:**
+
+1. **Sacred Domain (`@/domain/categories`)** — Platform-agnostic interface + error codes
+2. **Orchestrator Hook (`@/lib/hooks/use-grouping-operations`)** — Wraps service, translates errors
+3. **Feature Hooks (`features/groupings/hooks/use-groupings`)** — Consumes orchestrator, never the service directly
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  features/groupings/hooks/use-groupings.ts                       │
+│  - Imports from @/domain/categories (types + error guards)       │
+│  - Imports from @/lib/hooks/use-grouping-operations (orchestrator)│
+│  - NEVER imports from @/features/categories/*                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  lib/hooks/use-grouping-operations.ts (ORCHESTRATOR)             │
+│  - Wraps useCategoryService() internally                         │
+│  - Error translation: CategoryError → GroupingOperationError     │
+│  - Stable memoization via useRef                                 │
+│  - Returns IGroupingOperations | null (Orchestrator Rule)        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  domain/categories.ts (SACRED DOMAIN)                            │
+│  - IGroupingOperations interface                                 │
+│  - GroupingErrorCode union type                                  │
+│  - GroupingOperationError interface                              │
+│  - DTOs: CreateGroupingDTO, UpdateGroupingDTO, etc.              │
+│  - Entities: GroupingEntity, CategoryWithCountEntity             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Error Code Translation
+
+The orchestrator translates feature-level errors to Sacred Domain error codes:
+
+| Feature Error Class | → | Domain Error Code |
+|---------------------|---|-------------------|
+| `CategoryDuplicateNameError` | → | `'DUPLICATE_NAME'` |
+| `CategoryHasChildrenError` | → | `'HAS_CHILDREN'` |
+| `CategoryHasTransactionsError` | → | `'HAS_TRANSACTIONS'` |
+| `CategoryHierarchyError` | → | `'INVALID_HIERARCHY'` |
+| `CategoryVersionConflictError` | → | `'VERSION_CONFLICT'` |
+| `CategoryNotFoundError` | → | `'NOT_FOUND'` |
+
+Consumers handle errors with typed switch statements:
+
+```typescript
+onError: (err) => {
+  if (isGroupingOperationError(err)) {
+    switch (err.code) {
+      case 'DUPLICATE_NAME':
+        toast.error('Grouping already exists');
+        break;
+      case 'HAS_CHILDREN':
+        toast.error(`Has ${err.childCount} subcategories`);
+        break;
+      // ...
+    }
+  }
+}
+```
+
+### Memoization Stability
+
+The orchestrator uses `useRef` to maintain stable object identity:
+
+```typescript
+export function useGroupingOperations(): IGroupingOperations | null {
+  const service = useCategoryService();
+  const operationsRef = useRef<IGroupingOperations | null>(null);
+  const serviceRef = useRef(service);
+
+  return useMemo(() => {
+    if (!service) {
+      operationsRef.current = null;
+      return null;
+    }
+
+    // Only create new object if service reference changed
+    if (serviceRef.current !== service || !operationsRef.current) {
+      serviceRef.current = service;
+      operationsRef.current = { /* ... methods ... */ };
+    }
+
+    return operationsRef.current;
+  }, [service]);
+}
+```
+
+This prevents cascading re-renders when `useGroupingOperations()` is consumed by multiple hooks.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `domain/categories.ts` | `IGroupingOperations`, `GroupingErrorCode`, `GroupingOperationError`, DTOs |
+| `lib/hooks/use-grouping-operations.ts` | Orchestrator hook with error translation |
+| `features/groupings/hooks/use-groupings.ts` | Consumer hooks (queries + mutations) |
+
+### Rules for Cross-Feature Dependencies
+
+**DO:**
+- ✅ Define interfaces in `@/domain/` for cross-feature contracts
+- ✅ Create orchestrator hooks in `@/lib/hooks/` that wrap feature services
+- ✅ Translate feature errors to domain error codes in the orchestrator
+- ✅ Use `useRef` for stable memoization in orchestrator hooks
+- ✅ Import types from `@/domain/` in consuming features
+
+**DON'T:**
+- ❌ Import from `@/features/other-feature/hooks/*` in feature code
+- ❌ Import from `@/features/other-feature/services/*` in feature code
+- ❌ Use `instanceof` error checks in consuming features — use error codes
+- ❌ Create new objects on every render in orchestrator hooks
