@@ -16,8 +16,8 @@ import { TransactionList } from '@/features/transactions/components/transaction-
 import { InboxDetailPanel } from './inbox-detail-panel';
 import { useInboxItems } from '../hooks/use-inbox';
 import { useBulkSelection } from '@/features/transactions/hooks/use-bulk-selection';
+import { inboxItemViewsToTransactionViews } from '@/lib/data/data-transformers';
 import type { InboxItemViewEntity } from '../domain/entities';
-import type { TransactionViewEntity } from '@/features/transactions/domain/entities';
 
 function InboxContent() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -30,37 +30,9 @@ function InboxContent() {
     totalCount,
   } = useInboxItems();
 
-  // Transform InboxItemViewEntity to match TransactionViewEntity shape expected by TransactionList
-  // NULL-SAFE: Handle partial drafts with missing amount/description
-  // INTEGER CENTS: Convert decimal amounts to integer cents (Repository Pattern)
-  const transactions: TransactionViewEntity[] = inboxItems.map((item: InboxItemViewEntity) => ({
-    id: item.id,
-    version: item.version ?? 1, // Inbox drafts initialize at version 1
-    userId: item.userId,
-    accountId: item.accountId ?? '',
-    accountName: item.account?.name ?? 'Unassigned',
-    accountColor: null, // Inbox items don't have account color joined yet
-    accountCurrency: item.currencyCode ?? 'USD', // Currency from account
-    // INTEGER CENTS: Already in integer cents from domain
-    amountCents: item.amountCents ?? 0,
-    amountHomeCents: item.amountCents ?? 0,
-    currencyOriginal: item.currencyCode ?? '',
-    exchangeRate: item.exchangeRate ?? 1.0,
-    date: item.date ?? new Date().toISOString(),
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-    deletedAt: null, // Inbox items are never soft-deleted
-    categoryId: item.categoryId,
-    categoryName: item.category?.name ?? null,
-    categoryColor: item.category?.color ?? null,
-    categoryType: null, // Inbox items don't have type yet
-    transferId: null, // Inbox items are never transfers
-    description: item.description ?? '—', // Show dash if null
-    notes: item.notes ?? null,
-    reconciliationId: null, // Inbox items aren't reconciled yet
-    cleared: false, // Inbox items aren't cleared
-    reconciliationStatus: null, // Inbox items aren't reconciled yet
-  }));
+  // Transform InboxItemViewEntity to TransactionViewEntity shape for TransactionList
+  // Uses centralized transformer from data-transformers.ts
+  const transactions = inboxItemViewsToTransactionViews(inboxItems);
 
   // === Bulk Selection (Domain Hook) ===
   // CTO MANDATE: Inbox uses the same selection rules as Transactions

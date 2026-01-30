@@ -440,6 +440,32 @@ UI Components (React)                         ← Display Defaults Here
     - ?? ''
 ```
 
+### Cross-Domain Transformers (Domain-to-Domain)
+
+Some UI components need to display data from one domain as if it were another domain's shape. For example, `inbox-table.tsx` displays inbox items using the shared `TransactionList` component, which expects `TransactionViewEntity[]`.
+
+Rather than duplicating the mapping logic inline, these "shape adapters" are centralized in `data-transformers.ts`:
+
+| Transformer | Input | Output | Consumer |
+|-------------|-------|--------|----------|
+| `inboxItemViewToTransactionView()` | `InboxItemViewEntity` | `TransactionViewEntity` | `inbox-table.tsx` |
+| `inboxItemViewsToTransactionViews()` | `InboxItemViewEntity[]` | `TransactionViewEntity[]` | Batch version |
+
+**Key Mappings for Inbox → Transaction:**
+- `accountColor`: `null` (not joined in inbox view)
+- `categoryType`: `null` (inbox items don't have category type)
+- `amountHomeCents`: uses `amountCents` (no currency conversion for inbox)
+- `reconciliation` fields: `null`/`false` (inbox items aren't reconciled)
+- `description`: falls back to `'—'` (em-dash) for UI display
+
+**Usage:**
+```typescript
+// inbox-table.tsx
+import { inboxItemViewsToTransactionViews } from '@/lib/data/data-transformers';
+
+const transactions = inboxItemViewsToTransactionViews(inboxItems);
+```
+
 ### Local Data Transformers (WatermelonDB Bridge)
 
 **Status:** ✅ **IMPLEMENTED** — `lib/data/local-data-transformers.ts`

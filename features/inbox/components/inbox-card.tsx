@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useAccountsData } from '@/lib/hooks/use-reference-data';
 import { CategorySelector } from '@/features/transactions/components/category-selector';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { INBOX } from '@/lib/constants';
@@ -25,7 +25,7 @@ export function InboxCard({ item }: InboxCardProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(item.categoryId ?? '');
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
-  const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const { accounts, isLoading: accountsLoading } = useAccountsData();
   const promoteItem = usePromoteInboxItem();
   const dismissItem = useDismissInboxItem();
   const updateDraft = useUpdateInboxDraft();

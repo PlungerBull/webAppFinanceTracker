@@ -967,3 +967,79 @@ export function domainMetadataToSupabase(
 
   return result;
 }
+
+// ============================================================================
+// CROSS-DOMAIN TRANSFORMERS (Domain-to-Domain)
+// ============================================================================
+
+/**
+ * Transforms an InboxItemViewEntity to TransactionViewEntity shape.
+ *
+ * Used by inbox-table.tsx to display inbox items using the TransactionList component.
+ * This is a "shape adapter" - inbox items need to be displayed as if they were transactions.
+ *
+ * CTO MANDATE: Follows null semantics (no undefined conversions)
+ *
+ * Key Mappings:
+ * - accountColor: null (not joined in inbox view)
+ * - categoryType: null (inbox items don't have category type)
+ * - amountHomeCents: uses amountCents (no currency conversion for inbox)
+ * - reconciliation fields: null/false (inbox items aren't reconciled)
+ */
+export function inboxItemViewToTransactionView(
+  item: InboxItemViewEntity
+): TransactionViewEntity {
+  return {
+    // Core identifiers
+    id: item.id,
+    version: item.version ?? 1,
+    userId: item.userId,
+
+    // Account fields
+    accountId: item.accountId ?? '',
+    accountName: item.account?.name ?? 'Unassigned',
+    accountColor: null, // Inbox items don't have account color joined yet
+    accountCurrency: item.currencyCode ?? 'USD',
+
+    // Amount fields (Sacred Integer Arithmetic)
+    amountCents: item.amountCents ?? 0,
+    amountHomeCents: item.amountCents ?? 0, // No home currency conversion for inbox
+    currencyOriginal: item.currencyCode ?? '',
+    exchangeRate: item.exchangeRate ?? 1.0,
+
+    // Dates
+    date: item.date ?? new Date().toISOString(),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    deletedAt: null, // Inbox items are never soft-deleted
+
+    // Category fields
+    categoryId: item.categoryId,
+    categoryName: item.category?.name ?? null,
+    categoryColor: item.category?.color ?? null,
+    categoryType: null, // Inbox items don't have category type
+
+    // Transfer fields
+    transferId: null, // Inbox items are never transfers
+
+    // Text fields
+    description: item.description ?? '—', // Em-dash for null (UI display convention)
+    notes: item.notes ?? null,
+
+    // Reconciliation fields
+    reconciliationId: null, // Inbox items aren't reconciled
+    cleared: false, // Inbox items aren't cleared
+    reconciliationStatus: null,
+  };
+}
+
+/**
+ * Transforms an array of InboxItemViewEntity to TransactionViewEntity[]
+ *
+ * Batch version for transforming inbox lists.
+ */
+export function inboxItemViewsToTransactionViews(
+  items: InboxItemViewEntity[]
+): TransactionViewEntity[] {
+  return items.map(inboxItemViewToTransactionView);
+}

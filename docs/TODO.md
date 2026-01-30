@@ -68,7 +68,9 @@ Production readiness and iOS native port preparation tasks identified from compr
 
 **Files to Modify:**
 - [ ] `features/dashboard/hooks/use-financial-overview.ts`: Move manual mapping logic (lines 78–127) to `lib/data/data-transformers.ts`
-- [ ] `features/inbox/components/inbox-table.tsx`: Extract the large 25-field inline mapping to a dedicated transformer function
+- [x] `features/inbox/components/inbox-table.tsx`: Extract the large 25-field inline mapping to a dedicated transformer function
+  - Added `inboxItemViewToTransactionView()` and `inboxItemViewsToTransactionViews()` to `lib/data/data-transformers.ts`
+  - Refactored `inbox-card.tsx` to use `useAccountsData()` orchestrator instead of direct `useAccounts()` import
 
 ### 5. Type Safety & Boundary Validation
 
