@@ -55,19 +55,43 @@ Production readiness and iOS native port preparation tasks identified from compr
 - [x] `features/inbox/components/inbox-detail-panel.tsx`: Uses useReferenceData
 - [x] `eslint.config.mjs`: Added no-restricted-imports rules for feature boundaries
 
-### 3. Auth Abstraction Parity
+### ~~3. Auth Abstraction Parity~~ ✅ COMPLETED
 
-**Problem:** The auth feature leaks implementation details by calling `supabase.auth.*` directly in 12 locations. This prevents the system from swapping the auth layer for Apple Native Sign-In on iOS.
+**Problem:** The auth feature leaks implementation details by calling `supabase.auth.*` directly in 8 credential operations (signUp, login, resetPassword, etc.). This prevents the system from swapping the auth layer for Apple Native Sign-In on iOS.
 
-**Files to Modify:**
-- [ ] `features/auth/api/auth.ts`: Refactor all session and identity methods (e.g., `getUser`, `getSession`) to route through the `IAuthProvider` interface
+**Solution Applied:** Multi-Provider Strategy Pattern with IoC.
+- `IAuthProvider` - Identity operations (already complete)
+- `ICredentialAuthProvider` - Email/password operations (web only)
+- `IOAuthAuthProvider` - OAuth operations (iOS Apple Sign-In)
+
+**Files Created:**
+- [x] `lib/auth/credential-auth-provider.interface.ts`: ICredentialAuthProvider contract with DataResult pattern
+- [x] `lib/auth/supabase-credential-provider.ts`: Extracted 8 supabase.auth.* calls with error mapping
+- [x] `lib/auth/oauth-auth-provider.interface.ts`: IOAuthAuthProvider contract for Apple/Google Sign-In
+
+**Files Modified:**
+- [x] `domain/auth.ts`: Added AuthMethod, SignInResult, SignUpResult, CredentialErrorCode, CredentialAuthError types
+- [x] `lib/auth/index.ts`: Added exports for new interfaces and implementations
+- [x] `features/auth/api/auth.ts`: Multi-provider factory with capability checks (hasCredentialAuth, hasOAuthAuth)
+- [x] `providers/auth-provider.tsx`: Inject credential provider at composition root
+- [x] `app/login/page.tsx`: Updated to use DataResult pattern
+- [x] `app/signup/page.tsx`: Updated to use DataResult pattern
+- [x] `app/reset-password/page.tsx`: Updated to use DataResult pattern
+- [x] `app/reset-password/update/page.tsx`: Updated to use DataResult pattern
+- [x] `components/settings/change-password-modal.tsx`: Updated to use DataResult pattern
+- [x] `components/settings/change-email-modal.tsx`: Updated to use DataResult pattern
+- [x] `docs/ARCHITECTURE.md`: Section 10 with multi-provider documentation
 
 ### 4. Transformer Standardization
 
 **Problem:** Several "Read-Heavy" features bypass the central Transformer Registry, performing manual `forEach` or `.map()` transformations. This leads to logic drift where snake_case to camelCase conversion is handled inconsistently.
 
 **Files to Modify:**
-- [ ] `features/dashboard/hooks/use-financial-overview.ts`: Move manual mapping logic (lines 78–127) to `lib/data/data-transformers.ts`
+- [x] `features/dashboard/hooks/use-financial-overview.ts`: Move manual mapping logic (lines 78–127) to `lib/data/data-transformers.ts`
+  - Added `dbMonthlySpendingToDomain()` Domain Guard transformer with sanitization, type predicates, and Virtual Parent injection
+  - Added `isValidMonthKey()` type guard for YYYY-MM format validation
+  - Added `MonthlySpendingDbRow`, `CategoryLookupEntry`, `CategoryMonthlyData` exported types
+  - Added comprehensive unit tests in `lib/data/__tests__/data-transformers.test.ts` (17 tests)
 - [x] `features/inbox/components/inbox-table.tsx`: Extract the large 25-field inline mapping to a dedicated transformer function
   - Added `inboxItemViewToTransactionView()` and `inboxItemViewsToTransactionViews()` to `lib/data/data-transformers.ts`
   - Refactored `inbox-card.tsx` to use `useAccountsData()` orchestrator instead of direct `useAccounts()` import
@@ -86,7 +110,8 @@ Production readiness and iOS native port preparation tasks identified from compr
 **Problem:** Minor copy-paste errors and redundant logic identified during deep-dives.
 
 **Files to Modify:**
-- [ ] `features/dashboard/hooks/use-financial-overview.ts`: Remove the duplicate assignment on lines 108–109
+- [x] `features/dashboard/hooks/use-financial-overview.ts`: Remove the duplicate assignment on lines 108–109
+  - Fixed as part of Transformer Standardization refactor (item #4)
 
 
 ---

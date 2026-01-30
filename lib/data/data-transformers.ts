@@ -31,6 +31,38 @@ import { toSafeInteger, toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
 import { toCents } from '@/lib/utils/cents-conversion';
 
 // ============================================================================
+// FINANCIAL OVERVIEW TYPES (RPC Response → Domain)
+// ============================================================================
+
+/** Database row from get_monthly_spending_by_category RPC */
+export interface MonthlySpendingDbRow {
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  month_key: string;      // Expected format: YYYY-MM
+  total_amount: number;   // May be string from JSONB - sanitize!
+}
+
+/** Lookup entry for category metadata */
+export interface CategoryLookupEntry {
+  type: 'income' | 'expense';
+  parent_id: string | null;
+  name: string;
+  color: string;
+}
+
+/** Domain type for category with monthly spending breakdown */
+export interface CategoryMonthlyData {
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  categoryType: 'income' | 'expense';
+  parentId: string | null;
+  monthlyAmounts: Record<string, number>;  // { 'YYYY-MM': cents }
+  isVirtualParent: boolean;  // True if injected for orphaned children
+}
+
+// ============================================================================
 // DATABASE TO DOMAIN TRANSFORMERS
 // ============================================================================
 
@@ -738,6 +770,15 @@ export function isValidDateString(value: unknown): value is string {
 }
 
 /**
+ * Type predicate: validates month_key format (YYYY-MM)
+ * Prevents malformed keys from corrupting monthlyAmounts in financial overview
+ */
+export function isValidMonthKey(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+/**
  * Transforms a database user_settings row to domain UserSettings type
  */
 export function dbUserSettingsToDomain(
@@ -1042,4 +1083,111 @@ export function inboxItemViewsToTransactionViews(
   items: InboxItemViewEntity[]
 ): TransactionViewEntity[] {
   return items.map(inboxItemViewToTransactionView);
+}
+
+// ============================================================================
+// FINANCIAL OVERVIEW TRANSFORMERS
+// ============================================================================
+
+/**
+ * Virtual Parent placeholder for orphaned categories
+ */
+const VIRTUAL_PARENT_DEFAULTS = {
+  categoryName: '[Uncategorized]',
+  categoryColor: '#6B7280', // Tailwind gray-500
+  monthlyAmounts: {} as Record<string, number>,
+  isVirtualParent: true,
+} as const;
+
+/**
+ * Transforms RPC monthly spending data to domain CategoryMonthlyData[].
+ *
+ * DOMAIN GUARD RESPONSIBILITIES:
+ * 1. snake_case → camelCase mapping
+ * 2. Sanitize total_amount via Number() || 0 (RPC may return string)
+ * 3. Validate month_key format (YYYY-MM) - skip invalid keys
+ * 4. Inject Virtual Parents for orphaned categories
+ * 5. Guarantee: if CategoryMonthlyData exists, it is complete
+ *
+ * @param spendingRows - Raw rows from get_monthly_spending_by_category RPC
+ * @param categoriesLookup - Map<categoryId, { type, parent_id, name, color }>
+ * @returns CategoryMonthlyData[] with guaranteed referential integrity
+ */
+export function dbMonthlySpendingToDomain(
+  spendingRows: MonthlySpendingDbRow[],
+  categoriesLookup: Map<string, CategoryLookupEntry>
+): CategoryMonthlyData[] {
+  // Early return for empty data
+  if (!spendingRows || spendingRows.length === 0) {
+    return [];
+  }
+
+  // Build category data map with spending aggregations
+  const categoryDataMap: Record<string, CategoryMonthlyData> = {};
+
+  for (const row of spendingRows) {
+    const categoryId = row.category_id;
+    const category = categoriesLookup.get(categoryId);
+
+    // Initialize category entry if not exists
+    if (!categoryDataMap[categoryId]) {
+      categoryDataMap[categoryId] = {
+        categoryId: row.category_id,
+        categoryName: row.category_name,
+        categoryColor: row.category_color,
+        categoryType: category?.type ?? 'expense',
+        parentId: category?.parent_id ?? null,
+        monthlyAmounts: {},
+        isVirtualParent: false,
+      };
+    }
+
+    // Sanitize and validate month_key before adding
+    if (isValidMonthKey(row.month_key)) {
+      // Sanitize total_amount: RPC may return string from JSONB
+      const sanitizedAmount = Number(row.total_amount) || 0;
+      categoryDataMap[categoryId].monthlyAmounts[row.month_key] = sanitizedAmount;
+    }
+    // Invalid month_key is silently skipped (logged in dev if needed)
+  }
+
+  // Ensure parent categories exist for all children (Virtual Parent injection)
+  const categoriesToAdd: CategoryMonthlyData[] = [];
+
+  for (const cat of Object.values(categoryDataMap)) {
+    if (cat.parentId && !categoryDataMap[cat.parentId]) {
+      // Check if parent is in the lookup (exists in DB but has no spending)
+      const parentFromLookup = categoriesLookup.get(cat.parentId);
+
+      if (parentFromLookup) {
+        // Parent exists in DB - use its real data
+        categoryDataMap[cat.parentId] = {
+          categoryId: cat.parentId,
+          categoryName: parentFromLookup.name,
+          categoryColor: parentFromLookup.color,
+          categoryType: parentFromLookup.type,
+          parentId: parentFromLookup.parent_id,
+          monthlyAmounts: {},
+          isVirtualParent: false,
+        };
+      } else {
+        // Orphaned parent (not in lookup) - inject Virtual Parent
+        categoriesToAdd.push({
+          categoryId: cat.parentId,
+          ...VIRTUAL_PARENT_DEFAULTS,
+          categoryType: cat.categoryType, // Inherit from child
+          parentId: null, // Virtual parents are top-level
+        });
+      }
+    }
+  }
+
+  // Add virtual parents to the map (after iteration to avoid mutation during loop)
+  for (const virtualParent of categoriesToAdd) {
+    if (!categoryDataMap[virtualParent.categoryId]) {
+      categoryDataMap[virtualParent.categoryId] = virtualParent;
+    }
+  }
+
+  return Object.values(categoryDataMap);
 }

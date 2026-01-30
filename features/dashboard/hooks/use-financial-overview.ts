@@ -1,36 +1,34 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCY, DATABASE, QUERY_KEYS } from '@/lib/constants';
+import {
+  dbMonthlySpendingToDomain,
+  type CategoryMonthlyData,
+  type MonthlySpendingDbRow,
+  type CategoryLookupEntry,
+} from '@/lib/data/data-transformers';
 
-interface MonthlySpendingRow {
-  category_id: string;
-  category_name: string;
-  category_color: string;
-  month_key: string;
-  total_amount: number;
-}
-
-interface CategoryRow {
-  id: string;
-  name: string;
-  color: string;
-  parent_id: string | null;
-  type: 'income' | 'expense';
-}
-
-export interface CategoryMonthlyData {
-  categoryId: string;
-  categoryName: string;
-  categoryColor: string;
-  categoryType: 'income' | 'expense';
-  parentId: string | null;
-  monthlyAmounts: { [key: string]: number };
-}
+// Re-export for consumers that import from this hook
+export type { CategoryMonthlyData };
 
 export interface FinancialOverviewData {
   incomeCategories: CategoryMonthlyData[];
   expenseCategories: CategoryMonthlyData[];
   mainCurrency: string;
+}
+
+/**
+ * Sorts categories by parent-child hierarchy and name
+ * Parents come first, then children sorted alphabetically
+ */
+function sortCategoriesByHierarchy(categories: CategoryMonthlyData[]): CategoryMonthlyData[] {
+  return categories.sort((a, b) => {
+    // Parents first, then children
+    if (!a.parentId && b.parentId) return -1;
+    if (a.parentId && !b.parentId) return 1;
+    // Sort alphabetically within same level
+    return a.categoryName.localeCompare(b.categoryName);
+  });
 }
 
 /**
@@ -75,79 +73,33 @@ export function useFinancialOverview(monthsBack = DATABASE.MONTHS_BACK.DEFAULT) 
         throw error;
       }
 
-      // Create a map of categories by ID for quick lookup
-      const categoriesMap = new Map<string, CategoryRow>();
-      (categoriesData || []).forEach((cat) => {
-        categoriesMap.set(cat.id, {
-          id: cat.id,
-          name: cat.name,
-          color: cat.color,
-          parent_id: cat.parent_id,
-          type: cat.type as 'income' | 'expense',
-        });
-      });
+      // Build categories lookup for the transformer
+      const categoriesLookup = new Map<string, CategoryLookupEntry>(
+        (categoriesData || []).map(cat => [
+          cat.id,
+          {
+            type: cat.type as 'income' | 'expense',
+            parent_id: cat.parent_id,
+            name: cat.name,
+            color: cat.color,
+          },
+        ])
+      );
 
-      // Transform flat data into grouped format
-      const categoryDataMap: { [categoryId: string]: CategoryMonthlyData } = {};
+      // Transform using centralized Domain Guard transformer
+      const allCategories = dbMonthlySpendingToDomain(
+        (rawData || []) as MonthlySpendingDbRow[],
+        categoriesLookup
+      );
 
-      (rawData || []).forEach((row: MonthlySpendingRow) => {
-        const categoryId = row.category_id;
-        const category = categoriesMap.get(categoryId);
+      // Separate by type and sort by hierarchy
+      const incomeCategories = sortCategoriesByHierarchy(
+        allCategories.filter(cat => cat.categoryType === 'income')
+      );
 
-        if (!categoryDataMap[categoryId]) {
-          categoryDataMap[categoryId] = {
-            categoryId: row.category_id,
-            categoryName: row.category_name,
-            categoryColor: row.category_color,
-            categoryType: category?.type || 'expense',
-            parentId: category?.parent_id || null,
-            monthlyAmounts: {},
-          };
-        }
-
-        categoryDataMap[categoryId].monthlyAmounts[row.month_key] = row.total_amount;
-        categoryDataMap[categoryId].monthlyAmounts[row.month_key] = row.total_amount;
-      });
-
-      // Ensure parents exist for all children
-      Object.values(categoryDataMap).forEach((cat) => {
-        if (cat.parentId && !categoryDataMap[cat.parentId]) {
-          const parent = categoriesMap.get(cat.parentId);
-          if (parent) {
-            categoryDataMap[parent.id] = {
-              categoryId: parent.id,
-              categoryName: parent.name,
-              categoryColor: parent.color,
-              categoryType: parent.type,
-              parentId: parent.parent_id,
-              monthlyAmounts: {},
-            };
-          }
-        }
-      });
-
-      const allCategories = Object.values(categoryDataMap);
-
-      // Separate by type and organize by parent-child hierarchy
-      const incomeCategories = allCategories
-        .filter(cat => cat.categoryType === 'income')
-        .sort((a, b) => {
-          // Parents first, then children
-          if (!a.parentId && b.parentId) return -1;
-          if (a.parentId && !b.parentId) return 1;
-          // Sort alphabetically within same level
-          return a.categoryName.localeCompare(b.categoryName);
-        });
-
-      const expenseCategories = allCategories
-        .filter(cat => cat.categoryType === 'expense')
-        .sort((a, b) => {
-          // Parents first, then children
-          if (!a.parentId && b.parentId) return -1;
-          if (a.parentId && !b.parentId) return 1;
-          // Sort alphabetically within same level
-          return a.categoryName.localeCompare(b.categoryName);
-        });
+      const expenseCategories = sortCategoriesByHierarchy(
+        allCategories.filter(cat => cat.categoryType === 'expense')
+      );
 
       return {
         incomeCategories,
