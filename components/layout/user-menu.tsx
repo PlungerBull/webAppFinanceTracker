@@ -16,6 +16,7 @@ import { Settings, User, LogOut, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInitials } from '@/lib/utils';
 import { USER_MENU } from '@/lib/constants';
+import { getDisplayName } from '@/domain/auth';
 
 interface UserMenuProps {
   isCollapsed: boolean;
@@ -32,22 +33,18 @@ export function UserMenu({ isCollapsed, className }: UserMenuProps) {
 
   const userDisplayName = useMemo(() => {
     if (!user) return USER_MENU.DEFAULT_NAME;
-    if (user.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    return user.email || USER_MENU.DEFAULT_NAME;
+    // Use platform-agnostic getDisplayName helper
+    return getDisplayName(user);
   }, [user]);
 
   const initials = useMemo(() => {
     if (!user) return USER_MENU.FALLBACK_INITIALS;
-    const firstName = user.user_metadata?.firstName;
-    const lastName = user.user_metadata?.lastName;
-
-    if (firstName || lastName) {
-      return getInitials(firstName, lastName);
+    // AuthUserEntity has firstName/lastName directly (not in user_metadata)
+    if (user.firstName || user.lastName) {
+      return getInitials(user.firstName ?? undefined, user.lastName ?? undefined);
     }
     // Fallback if no name is set
-    return getInitials(user.email);
+    return getInitials(user.email ?? undefined);
   }, [user]);
 
   const handleLogout = async () => {

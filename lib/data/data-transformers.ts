@@ -25,6 +25,8 @@ import type {
 import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
 import type { AccountViewEntity } from '@/features/accounts/domain/entities';
 import type { TransactionViewEntity } from '@/features/transactions/domain/entities';
+import type { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
+import type { AuthUserEntity, AuthSessionEntity, AuthEventType } from '@/domain/auth';
 import { toSafeInteger, toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
 import { toCents } from '@/lib/utils/cents-conversion';
 
@@ -861,4 +863,85 @@ export function dbReconciliationSummaryToDomain(
     difference: Number(dbSummary.difference),
     isBalanced: Boolean(dbSummary.isBalanced),
   };
+}
+
+// ============================================================================
+// AUTH TRANSFORMERS
+// ============================================================================
+
+/**
+ * Transforms Supabase User to domain AuthUserEntity
+ *
+ * METADATA DRIFT HANDLING:
+ * - Derives firstName/lastName from raw metadata
+ * - Does NOT use full_name concatenation (logic leak identified)
+ * - Returns null for missing metadata (no magic defaults)
+ *
+ * CTO MANDATE: Critical fields (id) must throw on null
+ */
+export function dbAuthUserToDomain(supabaseUser: SupabaseUser): AuthUserEntity {
+  if (!supabaseUser.id) {
+    throw new Error('AuthUserEntity: id cannot be null - data integrity failure');
+  }
+
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email ?? null,
+    firstName: supabaseUser.user_metadata?.firstName ?? null,
+    lastName: supabaseUser.user_metadata?.lastName ?? null,
+    createdAt: supabaseUser.created_at,
+  };
+}
+
+/**
+ * Transforms Supabase Session to domain AuthSessionEntity
+ */
+export function dbAuthSessionToDomain(supabaseSession: SupabaseSession): AuthSessionEntity {
+  return {
+    accessToken: supabaseSession.access_token,
+    refreshToken: supabaseSession.refresh_token ?? null,
+    expiresAt: supabaseSession.expires_at ?? 0,
+    user: dbAuthUserToDomain(supabaseSession.user),
+  };
+}
+
+/**
+ * Maps Supabase auth events to domain AuthEventType
+ */
+export function dbAuthEventToDomain(supabaseEvent: string): AuthEventType {
+  const eventMap: Record<string, AuthEventType> = {
+    'SIGNED_IN': 'SIGNED_IN',
+    'SIGNED_OUT': 'SIGNED_OUT',
+    'TOKEN_REFRESHED': 'TOKEN_REFRESHED',
+    'USER_UPDATED': 'USER_UPDATED',
+  };
+  return eventMap[supabaseEvent] ?? 'USER_UPDATED';
+}
+
+/**
+ * Transforms domain metadata to Supabase user_metadata format
+ *
+ * ATOMIC MERGE: Deep-merges new metadata without wiping existing fields
+ */
+export function domainMetadataToSupabase(
+  metadata: Partial<{ firstName: string; lastName: string }>,
+  existingMetadata?: Record<string, unknown>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...existingMetadata };
+
+  if (metadata.firstName !== undefined) {
+    result.firstName = metadata.firstName;
+  }
+  if (metadata.lastName !== undefined) {
+    result.lastName = metadata.lastName;
+  }
+
+  // Compute full_name for backward compatibility with existing profiles
+  if (metadata.firstName !== undefined || metadata.lastName !== undefined) {
+    const firstName = metadata.firstName ?? (existingMetadata?.firstName as string | undefined);
+    const lastName = metadata.lastName ?? (existingMetadata?.lastName as string | undefined);
+    result.full_name = [firstName, lastName].filter(Boolean).join(' ').trim() || null;
+  }
+
+  return result;
 }

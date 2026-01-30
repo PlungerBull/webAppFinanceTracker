@@ -1,14 +1,26 @@
 import { create } from 'zustand';
-import type { User } from '@supabase/supabase-js';
-import { authApi } from '@/features/auth/api/auth';
-import type { AuthState } from '@/types/auth.types';
+import type { AuthUserEntity } from '@/domain/auth';
+import { getAuthApi, isAuthApiInitialized } from '@/features/auth/api/auth';
 
-interface AuthStore extends AuthState {
-  setUser: (user: User | null) => void;
+/**
+ * Auth Store State
+ *
+ * Uses platform-agnostic AuthUserEntity instead of Supabase User.
+ */
+interface AuthStoreState {
+  user: AuthUserEntity | null;
+  loading: boolean;
+  initialized: boolean;
+}
+
+interface AuthStoreActions {
+  setUser: (user: AuthUserEntity | null) => void;
   setLoading: (loading: boolean) => void;
   initialize: () => Promise<void>;
   logout: () => Promise<void>;
 }
+
+type AuthStore = AuthStoreState & AuthStoreActions;
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
@@ -20,9 +32,16 @@ export const useAuthStore = create<AuthStore>((set) => ({
   setLoading: (loading) => set({ loading }),
 
   initialize: async () => {
+    // Guard: authApi must be initialized first (done in AuthProvider)
+    if (!isAuthApiInitialized()) {
+      console.warn('Auth store initialize called before authApi initialized');
+      set({ user: null, loading: false, initialized: true });
+      return;
+    }
+
     try {
       set({ loading: true });
-      const user = await authApi.getUser();
+      const user = await getAuthApi().getUser();
       set({ user, loading: false, initialized: true });
     } catch (error) {
       console.error('Failed to initialize auth:', error);
@@ -31,8 +50,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   logout: async () => {
+    if (!isAuthApiInitialized()) {
+      throw new Error('Auth API not initialized');
+    }
+
     try {
-      await authApi.logout();
+      await getAuthApi().logout();
       set({ user: null });
     } catch (error) {
       console.error('Failed to logout:', error);

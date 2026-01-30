@@ -54,3 +54,15 @@ export {
   isCompletedReconciliation,
   isDeletedReconciliation,
 } from './reconciliations';
+
+// Auth Domain
+export {
+  type AuthUserEntity,
+  type AuthSessionEntity,
+  type AuthEventType,
+  type AuthStateChangeCallback,
+  type AuthUnsubscribe,
+  hasEmail,
+  hasFullName,
+  getDisplayName,
+} from './auth';

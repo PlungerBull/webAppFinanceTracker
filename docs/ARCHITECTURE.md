@@ -542,29 +542,102 @@ All errors are mapped to typed domain errors (see ADR #002).
 
 ### Overview
 
-All service-layer authentication is routed through the `IAuthProvider` interface, enabling platform-agnostic auth. No service, API module, or component in `features/` (except `features/auth/`) calls `supabase.auth.getUser()` directly.
+All service-layer authentication is routed through the `IAuthProvider` interface, enabling platform-agnostic auth. This architecture supports:
 
-**Status:** ✅ **COMPLETE** — Zero direct `supabase.auth.getUser()` calls remain in `features/` (excluding `features/auth/`).
+1. **Service Layer:** Services inject `IAuthProvider` for user identity operations
+2. **Auth API Layer:** Session and identity methods (`getUser`, `getSession`, `updateUserMetadata`) route through `IAuthProvider` via IOC injection
+3. **ESLint Enforcement:** "Gatekeeper" rules block direct Supabase auth imports in features
+
+**Status:** ✅ **COMPLETE** — Full auth abstraction with IOC injection pattern.
+
+### Domain Types (Sacred Domain)
+
+Platform-agnostic auth entities live in `domain/auth.ts` — any feature can import from here.
+
+```typescript
+// domain/auth.ts
+interface AuthUserEntity {
+  readonly id: string;
+  readonly email: string | null;
+  readonly firstName: string | null;
+  readonly lastName: string | null;
+  readonly createdAt: string;
+}
+
+interface AuthSessionEntity {
+  readonly accessToken: string;
+  readonly refreshToken: string | null;
+  readonly expiresAt: number;
+  readonly user: AuthUserEntity;
+}
+
+type AuthEventType = 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED' | 'USER_UPDATED';
+type AuthStateChangeCallback = (event: AuthEventType, session: AuthSessionEntity | null) => void;
+type AuthUnsubscribe = () => void;
+```
+
+```swift
+// iOS Mirror
+struct AuthUserEntity: Codable, Identifiable {
+    let id: String
+    let email: String?
+    let firstName: String?
+    let lastName: String?
+    let createdAt: String
+}
+
+struct AuthSessionEntity: Codable {
+    let accessToken: String
+    let refreshToken: String?
+    let expiresAt: Int
+    let user: AuthUserEntity
+}
+```
 
 ### Interface Contract
 
 ```typescript
 // lib/auth/auth-provider.interface.ts
 interface IAuthProvider {
+  // === SERVICE LAYER METHODS (for constructor injection) ===
   getCurrentUserId(): Promise<string>;   // throws AuthenticationError
   isAuthenticated(): Promise<boolean>;
   signOut?(): Promise<void>;
+
+  // === AUTH API METHODS (for IOC injection) ===
+  getUser(): Promise<AuthUserEntity | null>;           // graceful null, never throws for missing session
+  getSession(): Promise<AuthSessionEntity | null>;
+  updateUserMetadata(metadata: Partial<{ firstName: string; lastName: string }>): Promise<void>;
+  onAuthStateChange(callback: AuthStateChangeCallback): AuthUnsubscribe;
 }
 ```
 
 ```swift
 // iOS Mirror
 protocol AuthProviderProtocol {
+    // Service layer
     func getCurrentUserId() async throws -> String
     func isAuthenticated() async throws -> Bool
     func signOut() async throws
+
+    // Auth API layer
+    func getUser() async -> AuthUserEntity?
+    func getSession() async -> AuthSessionEntity?
+    func updateUserMetadata(firstName: String?, lastName: String?) async throws
+    func onAuthStateChange(callback: @escaping (AuthEventType, AuthSessionEntity?) -> Void) -> () -> Void
 }
 ```
+
+### Auth Transformers
+
+Supabase-to-domain mapping lives in `lib/data/data-transformers.ts`:
+
+| Transformer | Input | Output | Key Behavior |
+|-------------|-------|--------|--------------|
+| `dbAuthUserToDomain` | Supabase `User` | `AuthUserEntity` | Maps `user_metadata.firstName/lastName`, throws on null `id` |
+| `dbAuthSessionToDomain` | Supabase `Session` | `AuthSessionEntity` | Composes `dbAuthUserToDomain` for nested user |
+| `dbAuthEventToDomain` | Supabase event string | `AuthEventType` | Maps `SIGNED_IN` → `'SIGNED_IN'`, etc. |
+| `domainMetadataToSupabase` | Domain metadata | Supabase `user_metadata` | Atomic deep-merge, computes `full_name` for backward compat |
 
 ### Implementations
 
@@ -573,13 +646,91 @@ protocol AuthProviderProtocol {
 | Web (Supabase) | `SupabaseAuthProvider` | `lib/auth/supabase-auth-provider.ts` |
 | iOS (Future) | `AppleAuthProvider` | Native Apple Sign-In via `ASAuthorizationAppleIDProvider` |
 
-### Unauthorized Guard
+#### SupabaseAuthProvider Key Behaviors
 
-`SupabaseAuthProvider.getCurrentUserId()` throws `AuthenticationError` (never returns `null`). Services assume the user must be logged in — if they aren't, the provider screams so the UI can redirect to `/login`.
+| Method | Behavior |
+|--------|----------|
+| `getCurrentUserId()` | Throws `AuthenticationError` (never returns null) — for services that require auth |
+| `getUser()` | Returns `null` for `AuthSessionMissingError` — graceful identity for UI components |
+| `updateUserMetadata()` | Atomic deep-merge via `domainMetadataToSupabase` — preserves existing metadata fields |
+| `onAuthStateChange()` | Hash-based deduplication — skips redundant events to prevent unnecessary re-renders |
 
-### Injection Pattern
+### IOC Injection Pattern (Auth API)
 
-Every service uses **constructor injection** of `IAuthProvider`:
+The auth API uses **factory pattern with singleton injection** at the composition root:
+
+```typescript
+// features/auth/api/auth.ts
+
+// Factory creates authApi bound to provider
+export function createAuthApi(authProvider: IAuthProvider) {
+  return {
+    getUser: () => authProvider.getUser(),
+    getSession: () => authProvider.getSession(),
+    logout: async () => { await authProvider.signOut?.(); },
+    updateUserMetadata: (data) => authProvider.updateUserMetadata(data),
+    // Credential operations remain direct Supabase (platform-specific)
+    signUp: credentialApi.signUp,
+    login: credentialApi.login,
+    // ...
+  };
+}
+
+// Singleton management
+let _authApiInstance: ReturnType<typeof createAuthApi> | null = null;
+export function initAuthApi(authProvider: IAuthProvider): void { _authApiInstance = createAuthApi(authProvider); }
+export function getAuthApi() { if (!_authApiInstance) throw new Error('authApi not initialized'); return _authApiInstance; }
+export function isAuthApiInitialized(): boolean { return _authApiInstance !== null; }
+
+// Legacy export for backward compatibility
+export const authApi = {
+  get getUser() { return getAuthApi().getUser; },
+  get getSession() { return getAuthApi().getSession; },
+  // ...
+};
+```
+
+### Composition Root Initialization
+
+The `AuthProvider` component initializes the singleton at app startup:
+
+```typescript
+// providers/auth-provider.tsx
+export function AuthProvider({ children }) {
+  const { setUser, initialize } = useAuthStore();
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    // SINGLETON PROVIDER: Initialize once at composition root
+    const supabase = createClient();
+    const authProvider = createSupabaseAuthProvider(supabase);
+
+    // IOC INJECTION: Inject provider into authApi singleton
+    if (!isAuthApiInitialized()) {
+      initAuthApi(authProvider);
+    }
+
+    // Initialize auth store (now that authApi is ready)
+    initialize();
+
+    // Subscribe to auth changes with filtered events
+    const unsubscribe = authProvider.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => unsubscribe();
+  }, [initialize, setUser]);
+
+  return <>{children}</>;
+}
+```
+
+### Service Layer Injection Pattern
+
+Services use **constructor injection** of `IAuthProvider` (unchanged from before):
 
 ```typescript
 class XService {
@@ -626,29 +777,76 @@ function useXService() {
 | DataImportService | `features/import-export/services/data-import-service.ts` | Constructor (supabase + authProvider) |
 | DataExportService | `features/import-export/services/data-export-service.ts` | Constructor (supabase + authProvider) |
 
-### Allowed Direct `supabase.auth.getUser()` Calls
+### ESLint Gatekeeper Enforcement
 
-These locations are **exempt** — they legitimately need direct Supabase auth access:
+The `eslint.config.mjs` enforces auth abstraction with `no-restricted-imports`:
+
+```javascript
+// Block direct Supabase imports in features (except repositories and auth API)
+const authLockdownForFeatures = {
+  files: ["features/**/*.ts", "features/**/*.tsx"],
+  ignores: [
+    "features/**/repository/**",
+    "features/**/repositories/**",
+    "features/auth/api/**",
+  ],
+  rules: {
+    "no-restricted-imports": ["error", {
+      patterns: [{
+        group: ["@/lib/supabase/client", "@/lib/supabase/server"],
+        message: "Direct Supabase imports are restricted in features. Use IAuthProvider from @/lib/auth for auth, or inject SupabaseClient via service factory.",
+      }],
+      paths: [{
+        name: "@supabase/supabase-js",
+        importNames: ["createClient"],
+        message: "Use IAuthProvider from @/lib/auth instead of direct Supabase auth imports in features.",
+      }],
+    }],
+  },
+};
+```
+
+**Exemptions:**
+- `features/**/repository/**` — Repositories need direct Supabase for data queries
+- `features/auth/api/**` — Auth module needs direct Supabase for credential operations
+
+### Allowed Direct `supabase.auth.*` Calls
 
 | Location | Reason |
 |----------|--------|
-| `features/auth/api/auth.ts` | Auth module itself (login, signup, getUser) |
-| `app/*/page.tsx` (server components) | Server-side route protection — redirects unauthenticated users |
+| `features/auth/api/auth.ts` | Credential operations (login, signup) — platform-specific |
+| `lib/auth/supabase-auth-provider.ts` | Provider implementation — wraps all auth calls |
+| `app/*/page.tsx` (server components) | Server-side route protection |
 | `lib/supabase/middleware.ts` | Next.js middleware route guard |
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `domain/auth.ts` | Sacred auth types (AuthUserEntity, AuthSessionEntity, etc.) |
+| `lib/auth/auth-provider.interface.ts` | IAuthProvider interface contract |
+| `lib/auth/supabase-auth-provider.ts` | Supabase implementation with graceful identity + event filtering |
+| `lib/auth/index.ts` | Barrel exports for auth module |
+| `lib/data/data-transformers.ts` | Auth transformers (dbAuthUserToDomain, etc.) |
+| `features/auth/api/auth.ts` | Auth API with IOC injection (createAuthApi, initAuthApi, getAuthApi) |
+| `providers/auth-provider.tsx` | Composition root — initializes singleton provider |
+| `stores/auth-store.ts` | Zustand store using AuthUserEntity |
 
 ### Rules for New Services
 
 **DO:**
 - ✅ Accept `IAuthProvider` via constructor injection
-- ✅ Use `authProvider.getCurrentUserId()` for user identity
+- ✅ Use `authProvider.getCurrentUserId()` for user identity in services
+- ✅ Use `getAuthApi().getUser()` for user profile in components/hooks
 - ✅ Export a factory function that creates the auth provider internally
 - ✅ Wire hooks via `useMemo` with `createSupabaseAuthProvider`
 
 **DON'T:**
-- ❌ Call `supabase.auth.getUser()` from any service or component in `features/` (except `features/auth/`)
+- ❌ Call `supabase.auth.getUser()` from any service or component in `features/` (except `features/auth/api/`)
+- ❌ Import `@/lib/supabase/client` in feature files (ESLint will block it)
 - ❌ Pass raw `userId` strings between methods — inject `IAuthProvider` and let the service decide when to fetch
-- ❌ Return `null` from `getCurrentUserId()` — throw `AuthenticationError`
-- ❌ Put raw Supabase auth logic in `.tsx` files — use hooks or `createSupabaseAuthProvider` via `useMemo`
+- ❌ Return `null` from `getCurrentUserId()` — throw `AuthenticationError` (but `getUser()` can return `null`)
+- ❌ Put raw Supabase auth logic in `.tsx` files — use `getAuthApi()` or hooks with `createSupabaseAuthProvider`
 
 ## 11. Zod Network Boundary Validation (Schema Contracts)
 

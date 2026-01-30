@@ -27,6 +27,10 @@ const mockAuthProvider: IAuthProvider = {
   getCurrentUserId: vi.fn(),
   isAuthenticated: vi.fn(),
   signOut: vi.fn(),
+  getUser: vi.fn(),
+  getSession: vi.fn(),
+  updateUserMetadata: vi.fn(),
+  onAuthStateChange: vi.fn(() => vi.fn()),
 };
 
 const mockRepository = {
