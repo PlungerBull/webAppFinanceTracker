@@ -19,7 +19,7 @@ import type { ITransferService } from './transfer-service.interface';
 import type { ITransactionRoutingService } from './transaction-routing-service.interface';
 import type { ITransactionRepository, ITransferRepository } from '../repository';
 import type { IAuthProvider } from '@/lib/auth';
-import type { InboxService } from '@/features/inbox/services/inbox-service';
+import type { IInboxOperations } from '@/domain/inbox';
 
 // Re-export interfaces
 export type { ITransactionService } from './transaction-service.interface';
@@ -88,21 +88,22 @@ export function createTransferService(
  * Creates a new transaction routing service instance
  *
  * Decision Engine for Smart Routing (Ledger vs Inbox).
+ * Uses IInboxOperations interface for IoC - avoids direct feature coupling.
  *
  * CTO Note: "The UI's job is to collect inputs. The Service's job is to decide
  * the destination. If the iOS app collects the same inputs, it should land in
  * the same table. No exceptions."
  *
  * @param transactionService - Service for ledger operations
- * @param inboxService - Service for inbox operations
+ * @param inboxOperations - Interface for inbox operations (IoC)
  * @returns Routing service implementation
  *
  * @example
  * ```typescript
  * // Hook usage
  * const transactionService = useTransactionService();
- * const inboxService = getInboxService();
- * const routingService = createTransactionRoutingService(transactionService, inboxService);
+ * const inboxOperations = useInboxOperations();
+ * const routingService = createTransactionRoutingService(transactionService, inboxOperations);
  *
  * const decision = routingService.determineRoute(data);
  * // decision.route === 'ledger' or 'inbox'
@@ -112,18 +113,18 @@ export function createTransferService(
  * ```swift
  * func createTransactionRoutingService(
  *     transactionService: TransactionServiceProtocol,
- *     inboxService: InboxServiceProtocol
+ *     inboxOperations: InboxOperationsProtocol
  * ) -> TransactionRoutingServiceProtocol {
  *     return TransactionRoutingService(
  *         transactionService: transactionService,
- *         inboxService: inboxService
+ *         inboxOperations: inboxOperations
  *     )
  * }
  * ```
  */
 export function createTransactionRoutingService(
   transactionService: ITransactionService,
-  inboxService: InboxService
+  inboxOperations: IInboxOperations
 ): ITransactionRoutingService {
-  return new TransactionRoutingService(transactionService, inboxService);
+  return new TransactionRoutingService(transactionService, inboxOperations);
 }

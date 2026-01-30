@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
-import type { Reconciliation, ReconciliationSummary } from '@/types/domain';
+import type { Reconciliation, ReconciliationSummary } from '@/domain/reconciliations';
 import {
   dbReconciliationToDomain,
   dbReconciliationsToDomain,

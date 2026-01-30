@@ -201,59 +201,10 @@ export type TransactionSortMode = 'date' | 'created_at';
 export type BankAccount = Account;
 
 // ============================================================================
-// RECONCILIATION TYPES (Frontend camelCase)
+// RECONCILIATION TYPES - MOVED TO @/domain/reconciliations.ts
 // ============================================================================
-
-/**
- * Reconciliation Status
- * - draft: Reconciliation in progress, transactions can be linked/unlinked
- * - completed: Reconciliation locked, linked transactions become immutable (semi-permeable lock)
- */
-export type ReconciliationStatus = 'draft' | 'completed';
-
-/**
- * Reconciliation session tracking the "Contract of Truth" between bank statements and ledger
- *
- * SYNC FIELDS (Phase 2a):
- * - version: Optimistic concurrency control via global_transaction_version
- * - deletedAt: Tombstone pattern for distributed sync
- */
-export interface Reconciliation {
-  id: string;
-  version: number;
-  userId: string;
-  accountId: string;
-  name: string;
-  beginningBalance: number;
-  endingBalance: number;
-  dateStart: string | null; // ISO timestamp - optional filter for transaction date range
-  dateEnd: string | null;   // ISO timestamp - optional filter for transaction date range
-  status: ReconciliationStatus;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-}
-
-/**
- * Reconciliation with joined account display data
- * Used in Settings Manager to show account name/currency alongside reconciliation
- */
-export interface ReconciliationWithAccount extends Reconciliation {
-  accountName: string;
-  accountColor: string;
-  accountCurrency: string;
-}
-
-/**
- * Real-time reconciliation math summary
- * Formula: Difference = Ending Balance - (Beginning Balance + Linked Sum)
- * isBalanced = true when Difference = 0
- */
-export interface ReconciliationSummary {
-  beginningBalance: number;
-  endingBalance: number;
-  linkedSum: number;      // Sum of amount_home for all linked transactions
-  linkedCount: number;    // Number of transactions linked to this reconciliation
-  difference: number;     // The "gap" that needs to be reconciled
-  isBalanced: boolean;    // TRUE when difference = 0 (reconciliation complete)
-}
+// Import from @/domain/reconciliations for:
+// - ReconciliationStatus
+// - Reconciliation
+// - ReconciliationWithAccount
+// - ReconciliationSummary

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
+import { useCategoriesData } from '@/lib/hooks/use-reference-data';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
@@ -17,9 +17,11 @@ interface CategorySelectorProps {
  * - No section headers or parent categories visible
  * - Color dots are the primary differentiator
  * - Sorted with income first, then expense, then alphabetically
+ *
+ * Uses useReferenceData from lib/ to avoid feature-to-feature coupling.
  */
 export function CategorySelector({ value, onChange, disabled = false }: CategorySelectorProps) {
-  const leafCategories = useLeafCategories();
+  const { categories: leafCategories } = useCategoriesData();
 
   return (
     <div className="w-72 max-h-96 overflow-y-auto p-2">

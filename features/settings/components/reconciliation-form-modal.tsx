@@ -25,7 +25,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useAccountsData } from '@/lib/hooks/use-reference-data';
 import {
   useCreateReconciliation,
   useUpdateReconciliation,
@@ -50,13 +50,18 @@ interface ReconciliationFormModalProps {
   reconciliationId?: string | null;
 }
 
+/**
+ * Reconciliation Form Modal
+ *
+ * Uses useAccountsData from lib/ to avoid feature-to-feature coupling.
+ */
 export function ReconciliationFormModal({
   open,
   onOpenChange,
   reconciliationId,
 }: ReconciliationFormModalProps) {
   const isEditing = !!reconciliationId;
-  const { data: accounts = [] } = useAccounts();
+  const { accounts } = useAccountsData();
   const { data: existingReconciliation } = useReconciliation(reconciliationId || '');
   const createMutation = useCreateReconciliation();
   const updateMutation = useUpdateReconciliation();

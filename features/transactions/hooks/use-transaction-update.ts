@@ -22,7 +22,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTransactionService } from './use-transaction-service';
-import { getInboxService } from '@/features/inbox/services/inbox-service';
+import { useInboxOperations } from '@/lib/hooks/use-inbox-operations';
 import { createTransactionRoutingService } from '../services';
 import { INBOX } from '@/lib/constants';
 import type { ITransactionRoutingService } from '../services/transaction-routing-service.interface';
@@ -157,14 +157,16 @@ export function useTransactionUpdate(
   // Check if transaction service is ready
   const isReady = transactionService !== null;
 
+  // Get inbox operations via IoC hook (avoids direct feature coupling)
+  const inboxOperations = useInboxOperations();
+
   // Create routing service with dependencies (only when service is ready)
   const routingService = useMemo(() => {
     if (!transactionService) {
       return null;
     }
-    const inboxService = getInboxService();
-    return createTransactionRoutingService(transactionService, inboxService);
-  }, [transactionService]);
+    return createTransactionRoutingService(transactionService, inboxOperations);
+  }, [transactionService, inboxOperations]);
 
   /**
    * Update transaction with automatic routing

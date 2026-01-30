@@ -8,17 +8,23 @@ import {
   useDeleteReconciliation,
   useUpdateReconciliation,
 } from '@/features/reconciliations/hooks/use-reconciliations';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useAccountsData } from '@/lib/hooks/use-reference-data';
 import { ReconciliationFormModal } from './reconciliation-form-modal';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+/**
+ * Reconciliation Settings Component
+ *
+ * Uses useAccountsData from lib/ to avoid feature-to-feature coupling.
+ * Reconciliation hooks remain since this IS the reconciliation management UI.
+ */
 export function ReconciliationSettings() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingReconciliation, setEditingReconciliation] = useState<string | null>(null);
 
   const { data: reconciliations = [], isLoading } = useReconciliations();
-  const { data: accounts = [] } = useAccounts();
+  const { accounts } = useAccountsData();
   const deleteMutation = useDeleteReconciliation();
   const updateMutation = useUpdateReconciliation();
 

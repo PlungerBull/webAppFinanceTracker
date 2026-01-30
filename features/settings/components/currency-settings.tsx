@@ -1,6 +1,6 @@
 'use client';
 
-import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
+import { useCurrenciesData } from '@/lib/hooks/use-reference-data';
 import { useUserSettings } from '@/features/settings/hooks/use-user-settings';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
@@ -18,12 +18,17 @@ interface CurrencySettingsProps {
     disabled?: boolean;
 }
 
+/**
+ * Currency Settings Component
+ *
+ * Uses useReferenceData from lib/ to avoid feature-to-feature coupling.
+ */
 export function CurrencySettings({
     selectedCurrency,
     onCurrencyChange,
     disabled = false
 }: CurrencySettingsProps) {
-    const { data: currencies = [], isLoading: loadingCurrencies } = useCurrencies();
+    const { currencies, isLoading: loadingCurrencies } = useCurrenciesData();
     const { isLoading: loadingSettings } = useUserSettings();
 
     if (loadingCurrencies || loadingSettings) {

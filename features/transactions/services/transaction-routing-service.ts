@@ -30,7 +30,7 @@
 
 import type { ITransactionRoutingService } from './transaction-routing-service.interface';
 import type { ITransactionService } from './transaction-service.interface';
-import type { InboxService } from '@/features/inbox/services/inbox-service';
+import type { IInboxOperations } from '@/domain/inbox';
 import type {
   TransactionRouteInputDTO,
   UpdateRouteInputDTO,
@@ -96,10 +96,18 @@ function sanitizeInput(data: TransactionRouteInputDTO): TransactionRouteInputDTO
  * Decision Engine for Smart Routing.
  * Pure business logic, no React dependencies.
  */
+/**
+ * Transaction Routing Service
+ *
+ * Decision Engine for Smart Routing.
+ * Pure business logic, no React dependencies.
+ *
+ * Uses IInboxOperations interface for IoC - avoids direct dependency on inbox feature.
+ */
 export class TransactionRoutingService implements ITransactionRoutingService {
   constructor(
     private readonly transactionService: ITransactionService,
-    private readonly inboxService: InboxService
+    private readonly inboxOperations: IInboxOperations
   ) {}
 
   /**
@@ -204,7 +212,7 @@ export class TransactionRoutingService implements ITransactionRoutingService {
       };
     } else {
       // PATH B: Partial Data → Inbox (Scratchpad)
-      const result = await this.inboxService.create({
+      const result = await this.inboxOperations.create({
         amountCents: sanitizedData.amountCents ?? undefined,
         description: sanitizedData.description ?? undefined,
         accountId: sanitizedData.accountId ?? undefined,
@@ -282,7 +290,7 @@ export class TransactionRoutingService implements ITransactionRoutingService {
         };
       } else {
         // Update in Inbox
-        const result = await this.inboxService.update(id, {
+        const result = await this.inboxOperations.update(id, {
           amountCents: sanitizedData.amountCents,
           description: sanitizedData.description,
           accountId: sanitizedData.accountId,
@@ -311,7 +319,7 @@ export class TransactionRoutingService implements ITransactionRoutingService {
     // CASE 2: Promotion (Inbox → Ledger)
     if (sourceRoute === 'inbox' && targetRoute === 'ledger') {
       // Use InboxService.promote() - handles delete + create atomically
-      const promoteResult = await this.inboxService.promote({
+      const promoteResult = await this.inboxOperations.promote({
         inboxId: id,
         accountId: sanitizedData.accountId!,
         categoryId: sanitizedData.categoryId!,
@@ -347,7 +355,7 @@ export class TransactionRoutingService implements ITransactionRoutingService {
       await this.transactionService.delete(id, version);
 
       // Step 2: Create in Inbox with the data
-      const inboxResult = await this.inboxService.create({
+      const inboxResult = await this.inboxOperations.create({
         amountCents: sanitizedData.amountCents ?? undefined,
         description: sanitizedData.description ?? undefined,
         accountId: sanitizedData.accountId ?? undefined,
@@ -380,14 +388,15 @@ export class TransactionRoutingService implements ITransactionRoutingService {
  * Factory function for creating routing service
  *
  * Used for dependency injection in hooks and tests.
+ * Uses IInboxOperations interface for IoC.
  *
  * @param transactionService - Service for ledger operations
- * @param inboxService - Service for inbox operations
+ * @param inboxOperations - Interface for inbox operations (IoC)
  * @returns TransactionRoutingService instance
  */
 export function createTransactionRoutingService(
   transactionService: ITransactionService,
-  inboxService: InboxService
+  inboxOperations: IInboxOperations
 ): ITransactionRoutingService {
-  return new TransactionRoutingService(transactionService, inboxService);
+  return new TransactionRoutingService(transactionService, inboxOperations);
 }

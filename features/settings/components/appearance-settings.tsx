@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useAccountsData } from '@/lib/hooks/use-reference-data';
 import { useUpdateAccountVisibility } from '@/features/settings/hooks/use-update-account-visibility';
 import { useUserSettings, useUpdateMainCurrency } from '@/features/settings/hooks/use-user-settings';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,9 +10,13 @@ import { DollarSign, Loader2, Save } from 'lucide-react';
 import { ACCOUNT_UI } from '@/lib/constants';
 import { CurrencySettings } from './currency-settings';
 
-
+/**
+ * Appearance Settings Component
+ *
+ * Uses useAccountsData from lib/ to avoid feature-to-feature coupling.
+ */
 export function AppearanceSettings() {
-    const { data: accounts = [], isLoading } = useAccounts();
+    const { accounts, isLoading } = useAccountsData();
     const { mutate: updateVisibility, isPending: isSavingVisibility } = useUpdateAccountVisibility();
     const { data: userSettings } = useUserSettings();
     const { mutate: updateMainCurrency, isPending: isSavingCurrency } = useUpdateMainCurrency();

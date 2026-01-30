@@ -15,12 +15,13 @@ import type {
   Category,
   CategoryWithCount,
   ParentCategoryWithCount,
-
   UserSettings,
+} from '@/types/domain';
+import type {
   Reconciliation,
   ReconciliationStatus,
   ReconciliationSummary,
-} from '@/types/domain';
+} from '@/domain/reconciliations';
 import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
 import type { AccountViewEntity } from '@/features/accounts/domain/entities';
 import type { TransactionViewEntity } from '@/features/transactions/domain/entities';

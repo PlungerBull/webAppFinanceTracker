@@ -21,19 +21,39 @@ Production readiness and iOS native port preparation tasks identified from compr
 - [x] `supabase/migrations/20260129030002_reconciliations_tombstone_indexes.sql`: Added partial indexes for performance
 - [x] `features/reconciliations/api/reconciliations.ts`: Updated delete to use version-checked soft delete RPC, added tombstone filters
 - [x] `lib/data/db-row-schemas.ts`: Added `...BaseSyncFields` to `ReconciliationRowSchema`
-- [x] `types/domain.ts`: Added `version` and `deletedAt` to `Reconciliation` interface
-- [x] `lib/data/data-transformers.ts`: Updated transformer for sync fields
+- [x] `domain/reconciliations.ts`: Created domain file with `Reconciliation`, `ReconciliationSummary`, and type guards
+- [x] `lib/data/data-transformers.ts`: Updated transformer for sync fields, imports from `@/domain/reconciliations`
 - [x] `features/reconciliations/hooks/use-reconciliations.ts`: Updated delete mutation for version parameter
 - [x] `features/settings/components/reconciliation-settings.tsx`: Updated UI to pass version on delete
 
-### 2. Feature Bleed Remediation (The "Spaghetti" Fix)
+### ~~2. Feature Bleed Remediation (The "Spaghetti" Fix)~~ ✅ COMPLETED
 
 **Problem:** Systemic violations where features import directly from other features (40+ instances), creating tight coupling that threatens the modularity required for the React Compiler and separate platform builds.
 
-**Files to Modify:**
-- [ ] **Transactions:** Remove imports from `accounts`, `categories`, and `inbox`. Move shared components like `CategorySelector` and hooks like `useAccounts` to `lib/` or `components/shared/`
-- [ ] **Settings:** Decouple from `reconciliations` and `currencies` by moving dependency injection to the page level
-- [ ] **Inbox:** Remove critical dependencies on transactions components and hooks
+**Solution Applied:** DDD + Clean Architecture with Domain Isolation, Inversion of Control, and ESLint Enforcement.
+
+**Files Created:**
+- [x] `domain/accounts.ts`: AccountEntity, AccountViewEntity, type guards
+- [x] `domain/categories.ts`: CategoryEntity, LeafCategoryEntity, type guards
+- [x] `domain/inbox.ts`: InboxItemViewEntity, DTOs, IInboxOperations interface
+- [x] `domain/reconciliations.ts`: Reconciliation, ReconciliationSummary, type guards
+- [x] `domain/index.ts`: Barrel export for Sacred Domain
+- [x] `lib/hooks/use-reference-data.ts`: Orchestrator hook for accounts, categories, currencies
+- [x] `lib/hooks/use-inbox-operations.ts`: IoC adapter wrapping InboxService
+- [x] `lib/schemas/profile.schema.ts`: Moved from features/auth
+
+**Files Refactored:**
+- [x] `features/transactions/services/transaction-routing-service.ts`: Uses IInboxOperations interface (IoC)
+- [x] `features/transactions/hooks/use-transaction-routing.ts`: Uses useInboxOperations hook
+- [x] `features/transactions/hooks/use-transaction-update.ts`: Uses useInboxOperations hook
+- [x] `features/transactions/components/category-selector.tsx`: Uses useCategoriesData
+- [x] `features/settings/components/reconciliation-settings.tsx`: Uses useAccountsData
+- [x] `features/settings/components/reconciliation-form-modal.tsx`: Uses useAccountsData
+- [x] `features/settings/components/currency-settings.tsx`: Uses useCurrenciesData
+- [x] `features/settings/components/appearance-settings.tsx`: Uses useAccountsData
+- [x] `features/settings/components/profile-settings.tsx`: Imports from @/lib/schemas
+- [x] `features/inbox/components/inbox-detail-panel.tsx`: Uses useReferenceData
+- [x] `eslint.config.mjs`: Added no-restricted-imports rules for feature boundaries
 
 ### 3. Auth Abstraction Parity
 

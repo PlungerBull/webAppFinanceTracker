@@ -4,9 +4,8 @@ import { useMemo } from 'react';
 import { TransactionDetailPanel as SharedPanel } from '@/features/shared/components/transaction-detail-panel';
 import type { PanelData, InboxPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/features/shared/components/transaction-detail-panel';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
-import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
-import type { InboxItemViewEntity } from '../domain/entities';
+import { useReferenceData } from '@/lib/hooks/use-reference-data';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 import { toast } from 'sonner';
 import { INBOX } from '@/lib/constants';
 import { displayAmountToCents } from '@/lib/utils/cents-parser';
@@ -15,12 +14,16 @@ interface InboxDetailPanelProps {
   item: InboxItemViewEntity | null;
 }
 
+/**
+ * Inbox Detail Panel
+ *
+ * Uses useReferenceData from lib/ to avoid feature-to-feature coupling.
+ */
 export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   const promoteMutation = usePromoteInboxItem();
   const dismissMutation = useDismissInboxItem();
   const updateDraftMutation = useUpdateInboxDraft();
-  const leafCategories = useLeafCategories();
-  const { data: accountsData = [] } = useAccounts();
+  const { accounts: accountsData, categories: leafCategories } = useReferenceData();
 
 
   // Transform InboxItemViewEntity to PanelData

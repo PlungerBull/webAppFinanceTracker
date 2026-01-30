@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
     updateProfileSchema,
     type UpdateProfileFormData,
-} from '@/features/auth/schemas/profile.schema';
+} from '@/lib/schemas/profile.schema';
 import { authApi } from '@/features/auth/api/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
