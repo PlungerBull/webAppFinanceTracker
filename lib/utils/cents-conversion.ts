@@ -76,3 +76,26 @@ export function toCents(decimal: number | string | null | undefined): number {
 export function fromCents(cents: number): number {
   return cents / 100;
 }
+
+/**
+ * Format integer cents as display string with 2 decimal places
+ *
+ * CTO MANDATE: Single source of truth for cents → display conversion.
+ * Use this for all UI display of monetary amounts stored as integer cents.
+ *
+ * @param cents - Integer cents (or null)
+ * @returns Formatted string with 2 decimal places (e.g., "10.50")
+ *
+ * @example
+ * formatCents(1050)   // "10.50"
+ * formatCents(100)    // "1.00"
+ * formatCents(1)      // "0.01"
+ * formatCents(-1050)  // "-10.50"
+ * formatCents(null)   // "0.00"
+ */
+export function formatCents(cents: number | null | undefined): string {
+  if (cents === null || cents === undefined) {
+    return '0.00';
+  }
+  return (cents / 100).toFixed(2);
+}

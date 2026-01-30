@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import type { InboxItemViewEntity } from '../domain/entities';
 import { Check, X, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCents } from '@/lib/utils/cents-conversion';
 import { format } from 'date-fns';
 
 interface InboxCardProps {
@@ -109,7 +110,7 @@ export function InboxCard({ item }: InboxCardProps) {
                 {item.amountCents !== null ? (
                   <>
                     {item.amountCents > 0 ? '+' : ''}
-                    {(item.amountCents / 100).toFixed(2)} {item.currencyCode}
+                    {formatCents(item.amountCents)} {item.currencyCode}
                   </>
                 ) : (
                   <span className="text-muted-foreground">—</span>

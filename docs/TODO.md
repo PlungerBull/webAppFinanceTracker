@@ -18,7 +18,9 @@
 
 - [x] **Sanitize Dashboard Calculations:** Remove all `Math.round(val * 100) / 100` workarounds in `financial-overview.tsx`. Force the `get_monthly_spending_by_category` RPC to return BIGINT cents, ensuring the frontend only performs integer addition.
 
-- [ ] **Enforce Display Formatting:** Replace all instances of `.toFixed(2)` in `reconciliation-settings.tsx` and `inbox-card.tsx` with the centralized `fromCents()` utility to ensure consistent display logic.
+- [x] **Enforce Display Formatting:** Replace all instances of `.toFixed(2)` in `reconciliation-settings.tsx` and `inbox-card.tsx` with the centralized `formatCents()` utility to ensure consistent display logic.
+  - Created `formatCents()` utility in `lib/utils/cents-conversion.ts`
+  - Fixed critical bug: `reconciliation-settings.tsx` was displaying raw integer cents (e.g., 10050) instead of dollars ($100.50)
 
 
 ---

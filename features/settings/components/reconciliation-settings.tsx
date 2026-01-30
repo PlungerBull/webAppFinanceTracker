@@ -12,6 +12,7 @@ import { useAccountsData } from '@/lib/hooks/use-reference-data';
 import { ReconciliationFormModal } from './reconciliation-form-modal';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { formatCents } from '@/lib/utils/cents-conversion';
 
 /**
  * Reconciliation Settings Component
@@ -176,7 +177,7 @@ export function ReconciliationSettings() {
                         <div className="flex items-baseline gap-1">
                           <DollarSign className="w-4 h-4 text-gray-400" />
                           <span className="text-xl font-mono font-bold text-gray-900">
-                            {reconciliation.beginningBalance.toFixed(2)}
+                            {formatCents(reconciliation.beginningBalance)}
                           </span>
                         </div>
                       </div>
@@ -187,7 +188,7 @@ export function ReconciliationSettings() {
                         <div className="flex items-baseline gap-1">
                           <DollarSign className="w-4 h-4 text-gray-400" />
                           <span className="text-xl font-mono font-bold text-gray-900">
-                            {reconciliation.endingBalance.toFixed(2)}
+                            {formatCents(reconciliation.endingBalance)}
                           </span>
                         </div>
                       </div>
