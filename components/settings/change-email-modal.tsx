@@ -1,7 +1,7 @@
 'use client';
 
-import { changeEmailSchema } from '@/features/auth/schemas/profile.schema';
-import { authApi } from '@/features/auth/api/auth';
+import { changeEmailSchema, type ChangeEmailFormData } from '@/features/auth/schemas/profile.schema';
+import { getAuthApi } from '@/features/auth/api/auth';
 import { FormModal } from '@/components/ui/form-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,21 @@ interface ChangeEmailModalProps {
 }
 
 export function ChangeEmailModal({ open, onOpenChange }: ChangeEmailModalProps) {
+  const handleSubmit = async (data: ChangeEmailFormData) => {
+    const credential = getAuthApi().credential;
+    if (!credential) {
+      throw new Error('Credential authentication is not available');
+    }
+
+    const result = await credential.changeEmail({
+      newEmail: data.newEmail,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error.message);
+    }
+  };
+
   return (
     <FormModal
       open={open}
@@ -21,7 +36,7 @@ export function ChangeEmailModal({ open, onOpenChange }: ChangeEmailModalProps) 
       description={UI.MODALS.CHANGE_EMAIL.DESCRIPTION}
       successMessage={UI.MODALS.CHANGE_EMAIL.SUCCESS}
       schema={changeEmailSchema}
-      onSubmit={authApi.changeEmail}
+      onSubmit={handleSubmit}
       autoCloseDelay={UI.AUTO_CLOSE_DELAY.LONG}
     >
       {({ register, formState: { errors, isSubmitting } }) => (

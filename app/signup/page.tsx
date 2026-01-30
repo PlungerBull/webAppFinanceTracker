@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { authApi } from '@/features/auth/api/auth';
+import { getAuthApi } from '@/features/auth/api/auth';
 import { signUpSchema, type SignUpFormData } from '@/features/auth/schemas/auth.schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,18 +28,32 @@ export default function SignUpPage() {
   });
 
   const onSubmit = async (data: SignUpFormData) => {
-    try {
-      setError(null);
-      await authApi.signUp(data);
-      setSuccess(true);
+    setError(null);
 
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        router.push(`/login?message=${AUTH.SIGNUP.MESSAGES.SUCCESS_REDIRECT}`);
-      }, 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : AUTH.SIGNUP.MESSAGES.ERROR);
+    const credential = getAuthApi().credential;
+    if (!credential) {
+      setError('Credential authentication is not available');
+      return;
     }
+
+    const result = await credential.signUp({
+      email: data.email,
+      password: data.password,
+      firstName: data.firstName,
+      lastName: data.lastName,
+    });
+
+    if (!result.success) {
+      setError(result.error.message);
+      return;
+    }
+
+    setSuccess(true);
+
+    // Redirect to login after 2 seconds
+    setTimeout(() => {
+      router.push(`/login?message=${AUTH.SIGNUP.MESSAGES.SUCCESS_REDIRECT}`);
+    }, 2000);
   };
 
   if (success) {

@@ -1,7 +1,7 @@
 'use client';
 
-import { changePasswordSchema } from '@/features/auth/schemas/profile.schema';
-import { authApi } from '@/features/auth/api/auth';
+import { changePasswordSchema, type ChangePasswordFormData } from '@/features/auth/schemas/profile.schema';
+import { getAuthApi } from '@/features/auth/api/auth';
 import { FormModal } from '@/components/ui/form-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,21 @@ export function ChangePasswordModal({
   open,
   onOpenChange,
 }: ChangePasswordModalProps) {
+  const handleSubmit = async (data: ChangePasswordFormData) => {
+    const credential = getAuthApi().credential;
+    if (!credential) {
+      throw new Error('Credential authentication is not available');
+    }
+
+    const result = await credential.changePassword({
+      newPassword: data.newPassword,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error.message);
+    }
+  };
+
   return (
     <FormModal
       open={open}
@@ -23,7 +38,7 @@ export function ChangePasswordModal({
       title={UI.MODALS.CHANGE_PASSWORD.TITLE}
       successMessage={UI.MODALS.CHANGE_PASSWORD.SUCCESS}
       schema={changePasswordSchema}
-      onSubmit={authApi.changePassword}
+      onSubmit={handleSubmit}
       autoCloseDelay={UI.AUTO_CLOSE_DELAY.MEDIUM}
     >
       {({ register, formState: { errors, isSubmitting } }) => (

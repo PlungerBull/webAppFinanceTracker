@@ -5,30 +5,25 @@
  *
  * ARCHITECTURE:
  * - Universal operations (getUser, getSession, logout, updateUserMetadata) route through IAuthProvider
- * - Credential operations (signUp, login, resetPassword, etc.) remain direct Supabase calls
- *   (platform-specific, not applicable to Apple Sign-In)
+ * - Credential operations (signUp, login, resetPassword, etc.) route through ICredentialAuthProvider
+ * - OAuth operations (signInWithApple) route through IOAuthAuthProvider
  *
  * IOC PATTERN:
- * - Factory `createAuthApi` accepts IAuthProvider as dependency
+ * - Factory `createAuthApi` accepts providers as dependencies
  * - Singleton initialized at composition root (providers/auth-provider.tsx)
- * - When moving to iOS, inject NativeAppleAuthProvider into the same structure
+ * - Platform configuration:
+ *   - Web: IAuthProvider + ICredentialAuthProvider
+ *   - iOS: IAuthProvider + IOAuthAuthProvider
  *
  * @module auth-api
  */
 
-import { createClient } from '@/lib/supabase/client';
-import { AUTH } from '@/lib/constants';
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
-import type { AuthUserEntity, AuthSessionEntity } from '@/domain/auth';
-import type {
-  SignUpData,
-  LoginData,
-  ResetPasswordData,
-} from '@/types/auth.types';
+import type { ICredentialAuthProvider } from '@/lib/auth/credential-auth-provider.interface';
+import type { IOAuthAuthProvider } from '@/lib/auth/oauth-auth-provider.interface';
+import type { AuthUserEntity, AuthSessionEntity, AuthMethod } from '@/domain/auth';
 import type {
   UpdateProfileFormData,
-  ChangeEmailFormData,
-  ChangePasswordFormData,
 } from '@/features/auth/schemas/profile.schema';
 
 // ============================================================================
@@ -37,182 +32,95 @@ import type {
 
 /**
  * Auth API type definition
+ *
+ * Multi-provider architecture:
+ * - Identity operations (getUser, getSession, etc.) - all platforms
+ * - Credential operations (signUp, login, etc.) - web only via ICredentialAuthProvider
+ * - OAuth operations (signInWithApple) - iOS primarily via IOAuthAuthProvider
  */
 export interface AuthApi {
-  // Universal operations (via IAuthProvider)
+  // =========================================================================
+  // IDENTITY OPERATIONS (IAuthProvider - all platforms)
+  // =========================================================================
   getUser: () => Promise<AuthUserEntity | null>;
   getSession: () => Promise<AuthSessionEntity | null>;
   logout: () => Promise<void>;
   updateUserMetadata: (data: UpdateProfileFormData) => Promise<void>;
 
-  // Credential operations (platform-specific, direct Supabase)
-  signUp: (data: SignUpData) => Promise<ReturnType<typeof createCredentialAuthApi>['signUp']>;
-  login: (data: LoginData) => Promise<ReturnType<typeof createCredentialAuthApi>['login']>;
-  resetPassword: (data: ResetPasswordData) => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<void>;
-  changePassword: (data: ChangePasswordFormData) => Promise<void>;
-  changeEmail: (data: ChangeEmailFormData) => Promise<void>;
+  // =========================================================================
+  // CREDENTIAL OPERATIONS (ICredentialAuthProvider - web only)
+  // =========================================================================
+  /**
+   * Credential auth provider for email/password operations.
+   * Returns null on platforms that don't support credential auth (e.g., iOS).
+   *
+   * @example
+   * ```typescript
+   * const result = await getAuthApi().credential?.signIn({ email, password });
+   * if (result?.success) {
+   *   router.push('/dashboard');
+   * }
+   * ```
+   */
+  credential: ICredentialAuthProvider | null;
+
+  // =========================================================================
+  // OAUTH OPERATIONS (IOAuthAuthProvider - iOS primarily)
+  // =========================================================================
+  /**
+   * OAuth auth provider for Apple/Google sign-in.
+   * Returns null on platforms that don't support OAuth (e.g., web initially).
+   *
+   * @example
+   * ```typescript
+   * const result = await getAuthApi().oauth?.signInWithApple(data);
+   * if (result?.success) {
+   *   router.push('/dashboard');
+   * }
+   * ```
+   */
+  oauth: IOAuthAuthProvider | null;
+
+  // =========================================================================
+  // CAPABILITY CHECKS
+  // =========================================================================
+  /**
+   * Check if credential authentication (email/password) is available.
+   */
+  hasCredentialAuth: () => boolean;
+
+  /**
+   * Check if OAuth authentication is available.
+   */
+  hasOAuthAuth: () => boolean;
+
+  /**
+   * Get list of available authentication methods on this platform.
+   */
+  availableAuthMethods: () => AuthMethod[];
 }
 
 /**
- * Creates credential-based auth operations.
- * These are platform-specific (email/password) and remain direct Supabase calls.
- */
-function createCredentialAuthApi() {
-  return {
-    /**
-     * Sign up a new user with email and password
-     */
-    signUp: async (data: SignUpData) => {
-      const supabase = createClient();
-      const full_name = `${data.firstName} ${data.lastName}`.trim();
-
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-          data: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            full_name: full_name,
-          },
-        },
-      });
-
-      if (error) {
-        console.error(AUTH.ERRORS.SIGN_UP_ERROR, error);
-        throw new Error(error.message || AUTH.ERRORS.FAILED_SIGN_UP);
-      }
-
-      return authData;
-    },
-
-    /**
-     * Login with email and password
-     */
-    login: async (data: LoginData) => {
-      const supabase = createClient();
-
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (error) {
-        console.error(AUTH.ERRORS.LOGIN_ERROR, error);
-        throw new Error(error.message || AUTH.ERRORS.FAILED_LOGIN);
-      }
-
-      return authData;
-    },
-
-    /**
-     * Send password reset email
-     */
-    resetPassword: async (data: ResetPasswordData) => {
-      const supabase = createClient();
-
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/update`,
-      });
-
-      if (error) {
-        console.error(AUTH.ERRORS.RESET_PASSWORD_ERROR, error);
-        throw new Error(error.message || AUTH.ERRORS.FAILED_RESET_EMAIL);
-      }
-    },
-
-    /**
-     * Update password (after reset)
-     */
-    updatePassword: async (newPassword: string) => {
-      const supabase = createClient();
-
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        console.error(AUTH.ERRORS.UPDATE_PASSWORD_ERROR, error);
-        throw new Error(error.message || AUTH.ERRORS.FAILED_UPDATE_PASSWORD);
-      }
-    },
-
-    /**
-     * Change user's password (requires reauthentication)
-     */
-    changePassword: async (data: ChangePasswordFormData) => {
-      const supabase = createClient();
-
-      // 1. Re-authenticate with current password
-      const {
-        data: { user },
-        error: reauthError,
-      } = await supabase.auth.reauthenticate();
-
-      if (reauthError || !user) {
-        console.error(AUTH.ERRORS.REAUTH_ERROR, reauthError);
-        throw new Error(AUTH.ERRORS.REAUTH_FAILED);
-      }
-
-      // 2. Update to new password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.newPassword,
-      });
-
-      if (updateError) {
-        console.error(AUTH.ERRORS.CHANGE_PASSWORD_ERROR, updateError);
-        throw new Error(updateError.message || AUTH.ERRORS.FAILED_CHANGE_PASSWORD);
-      }
-    },
-
-    /**
-     * Change user's email (requires reauthentication)
-     */
-    changeEmail: async (data: ChangeEmailFormData) => {
-      const supabase = createClient();
-
-      // 1. Re-authenticate
-      const {
-        data: { user },
-        error: reauthError,
-      } = await supabase.auth.reauthenticate();
-
-      if (reauthError || !user) {
-        console.error(AUTH.ERRORS.REAUTH_ERROR, reauthError);
-        throw new Error(AUTH.ERRORS.REAUTH_FAILED);
-      }
-
-      // 2. Update to new email
-      const { error: updateError } = await supabase.auth.updateUser(
-        { email: data.newEmail },
-        { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard` }
-      );
-
-      if (updateError) {
-        console.error(AUTH.ERRORS.CHANGE_EMAIL_ERROR, updateError);
-        throw new Error(updateError.message || AUTH.ERRORS.FAILED_CHANGE_EMAIL);
-      }
-    },
-  };
-}
-
-/**
- * Creates auth API with injected auth provider.
+ * Creates auth API with injected providers.
  *
- * IOC PATTERN: Receives IAuthProvider via dependency injection.
- * When we move to iOS, we simply inject NativeAppleAuthProvider.
+ * IOC PATTERN: Receives providers via dependency injection.
+ * Platform configuration:
+ * - Web: authProvider + credentialProvider
+ * - iOS: authProvider + oauthProvider
  *
- * @param authProvider - IAuthProvider implementation
+ * @param authProvider - IAuthProvider implementation (required)
+ * @param credentialProvider - ICredentialAuthProvider implementation (optional, web only)
+ * @param oauthProvider - IOAuthAuthProvider implementation (optional, iOS primarily)
  * @returns Auth API object
  */
-export function createAuthApi(authProvider: IAuthProvider) {
-  const credentialApi = createCredentialAuthApi();
-
+export function createAuthApi(
+  authProvider: IAuthProvider,
+  credentialProvider?: ICredentialAuthProvider | null,
+  oauthProvider?: IOAuthAuthProvider | null
+): AuthApi {
   return {
     // =========================================================================
-    // UNIVERSAL OPERATIONS (via IAuthProvider)
+    // IDENTITY OPERATIONS (via IAuthProvider)
     // =========================================================================
 
     /**
@@ -246,15 +154,38 @@ export function createAuthApi(authProvider: IAuthProvider) {
     },
 
     // =========================================================================
-    // CREDENTIAL OPERATIONS (platform-specific, direct Supabase)
+    // CREDENTIAL OPERATIONS (via ICredentialAuthProvider)
     // =========================================================================
 
-    signUp: credentialApi.signUp,
-    login: credentialApi.login,
-    resetPassword: credentialApi.resetPassword,
-    updatePassword: credentialApi.updatePassword,
-    changePassword: credentialApi.changePassword,
-    changeEmail: credentialApi.changeEmail,
+    credential: credentialProvider ?? null,
+
+    // =========================================================================
+    // OAUTH OPERATIONS (via IOAuthAuthProvider)
+    // =========================================================================
+
+    oauth: oauthProvider ?? null,
+
+    // =========================================================================
+    // CAPABILITY CHECKS
+    // =========================================================================
+
+    hasCredentialAuth: () => credentialProvider != null,
+
+    hasOAuthAuth: () => oauthProvider != null && oauthProvider.isAvailable(),
+
+    availableAuthMethods: () => {
+      const methods: AuthMethod[] = [];
+      if (credentialProvider) {
+        methods.push('credential');
+      }
+      if (oauthProvider?.availableProviders.includes('apple')) {
+        methods.push('oauth_apple');
+      }
+      if (oauthProvider?.availableProviders.includes('google')) {
+        methods.push('oauth_google');
+      }
+      return methods;
+    },
   };
 }
 
@@ -266,17 +197,27 @@ export function createAuthApi(authProvider: IAuthProvider) {
  * Singleton auth API instance.
  * Initialized at composition root (providers/auth-provider.tsx).
  */
-let _authApiInstance: ReturnType<typeof createAuthApi> | null = null;
+let _authApiInstance: AuthApi | null = null;
 
 /**
- * Initialize auth API with provider.
+ * Initialize auth API with providers.
  *
  * Call once at composition root before using authApi.
  *
- * @param authProvider - IAuthProvider implementation
+ * Platform configuration:
+ * - Web: initAuthApi(authProvider, credentialProvider)
+ * - iOS: initAuthApi(authProvider, null, oauthProvider)
+ *
+ * @param authProvider - IAuthProvider implementation (required)
+ * @param credentialProvider - ICredentialAuthProvider implementation (optional)
+ * @param oauthProvider - IOAuthAuthProvider implementation (optional)
  */
-export function initAuthApi(authProvider: IAuthProvider): void {
-  _authApiInstance = createAuthApi(authProvider);
+export function initAuthApi(
+  authProvider: IAuthProvider,
+  credentialProvider?: ICredentialAuthProvider | null,
+  oauthProvider?: IOAuthAuthProvider | null
+): void {
+  _authApiInstance = createAuthApi(authProvider, credentialProvider, oauthProvider);
 }
 
 /**
@@ -285,7 +226,7 @@ export function initAuthApi(authProvider: IAuthProvider): void {
  * @returns Auth API instance
  * @throws Error if not initialized
  */
-export function getAuthApi(): ReturnType<typeof createAuthApi> {
+export function getAuthApi(): AuthApi {
   if (!_authApiInstance) {
     throw new Error('authApi not initialized - call initAuthApi first');
   }
@@ -308,9 +249,14 @@ export function isAuthApiInitialized(): boolean {
  *
  * Uses getters to lazily access the singleton instance.
  * This allows existing code to continue using `authApi.method()` syntax
- * while the actual implementation routes through the injected provider.
+ * while the actual implementation routes through the injected providers.
  *
- * @deprecated Use `getAuthApi()` for explicit access
+ * MIGRATION PATH:
+ * - Replace `authApi.login(data)` with `getAuthApi().credential?.signIn(data)`
+ * - Replace `authApi.signUp(data)` with `getAuthApi().credential?.signUp(data)`
+ * - Check DataResult.success instead of try/catch
+ *
+ * @deprecated Use `getAuthApi()` for explicit access with DataResult pattern
  */
 export const authApi = {
   // Universal operations (delegated to provider)
@@ -327,23 +273,112 @@ export const authApi = {
     return getAuthApi().updateUserMetadata;
   },
 
-  // Credential operations (direct access - doesn't need provider)
+  // Credential operations (delegated to ICredentialAuthProvider)
+  // These throw for backward compatibility - new code should use DataResult pattern
   get signUp() {
-    return getAuthApi().signUp;
+    return async (data: { email: string; password: string; firstName: string; lastName: string }) => {
+      const provider = getAuthApi().credential;
+      if (!provider) {
+        throw new Error('Credential auth not available on this platform');
+      }
+      const result = await provider.signUp({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      });
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+      // Return shape compatible with old Supabase response
+      return {
+        user: result.data.user,
+        session: result.data.session,
+      };
+    };
   },
   get login() {
-    return getAuthApi().login;
+    return async (data: { email: string; password: string }) => {
+      const provider = getAuthApi().credential;
+      if (!provider) {
+        throw new Error('Credential auth not available on this platform');
+      }
+      const result = await provider.signIn(data);
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+      // Return shape compatible with old Supabase response
+      return {
+        user: result.data.user,
+        session: result.data.session,
+      };
+    };
   },
   get resetPassword() {
-    return getAuthApi().resetPassword;
+    return async (data: { email: string }) => {
+      const provider = getAuthApi().credential;
+      if (!provider) {
+        throw new Error('Credential auth not available on this platform');
+      }
+      const result = await provider.resetPassword(data);
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+    };
   },
   get updatePassword() {
-    return getAuthApi().updatePassword;
+    return async (newPassword: string) => {
+      const provider = getAuthApi().credential;
+      if (!provider) {
+        throw new Error('Credential auth not available on this platform');
+      }
+      const result = await provider.updatePassword({ newPassword });
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+    };
   },
   get changePassword() {
-    return getAuthApi().changePassword;
+    return async (data: { newPassword: string }) => {
+      const provider = getAuthApi().credential;
+      if (!provider) {
+        throw new Error('Credential auth not available on this platform');
+      }
+      const result = await provider.changePassword(data);
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+    };
   },
   get changeEmail() {
-    return getAuthApi().changeEmail;
+    return async (data: { newEmail: string }) => {
+      const provider = getAuthApi().credential;
+      if (!provider) {
+        throw new Error('Credential auth not available on this platform');
+      }
+      const result = await provider.changeEmail(data);
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+    };
+  },
+
+  // Capability checks (new)
+  get hasCredentialAuth() {
+    return getAuthApi().hasCredentialAuth;
+  },
+  get hasOAuthAuth() {
+    return getAuthApi().hasOAuthAuth;
+  },
+  get availableAuthMethods() {
+    return getAuthApi().availableAuthMethods;
+  },
+
+  // Provider access (new)
+  get credential() {
+    return getAuthApi().credential;
+  },
+  get oauth() {
+    return getAuthApi().oauth;
   },
 };

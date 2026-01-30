@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { authApi } from '@/features/auth/api/auth';
+import { getAuthApi } from '@/features/auth/api/auth';
 import { updatePasswordSchema, type UpdatePasswordFormData } from '@/features/auth/schemas/auth.schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,13 +26,24 @@ export default function UpdatePasswordPage() {
   });
 
   const onSubmit = async (data: UpdatePasswordFormData) => {
-    try {
-      setError(null);
-      await authApi.updatePassword(data.password);
-      router.push(`/login?message=${AUTH.UPDATE_PASSWORD.MESSAGES.SUCCESS_REDIRECT}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : AUTH.UPDATE_PASSWORD.MESSAGES.ERROR);
+    setError(null);
+
+    const credential = getAuthApi().credential;
+    if (!credential) {
+      setError('Credential authentication is not available');
+      return;
     }
+
+    const result = await credential.updatePassword({
+      newPassword: data.password,
+    });
+
+    if (!result.success) {
+      setError(result.error.message);
+      return;
+    }
+
+    router.push(`/login?message=${AUTH.UPDATE_PASSWORD.MESSAGES.SUCCESS_REDIRECT}`);
   };
 
   return (

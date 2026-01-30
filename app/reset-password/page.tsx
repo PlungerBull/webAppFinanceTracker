@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { authApi } from '@/features/auth/api/auth';
+import { getAuthApi } from '@/features/auth/api/auth';
 import { resetPasswordSchema, type ResetPasswordFormData } from '@/features/auth/schemas/auth.schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,13 +26,24 @@ export default function ResetPasswordPage() {
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
-    try {
-      setError(null);
-      await authApi.resetPassword(data);
-      setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : AUTH.RESET_PASSWORD.MESSAGES.ERROR);
+    setError(null);
+
+    const credential = getAuthApi().credential;
+    if (!credential) {
+      setError('Credential authentication is not available');
+      return;
     }
+
+    const result = await credential.resetPassword({
+      email: data.email,
+    });
+
+    if (!result.success) {
+      setError(result.error.message);
+      return;
+    }
+
+    setSuccess(true);
   };
 
   if (success) {

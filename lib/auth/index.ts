@@ -6,22 +6,56 @@
  * @module auth-provider
  */
 
-// Interface and error classes
+// ============================================================================
+// INTERFACES
+// ============================================================================
+
+// Identity provider interface (all platforms)
 export * from './auth-provider.interface';
 
-// Supabase implementation
+// Credential provider interface (web only)
+export * from './credential-auth-provider.interface';
+
+// OAuth provider interface (iOS primarily)
+export * from './oauth-auth-provider.interface';
+
+// ============================================================================
+// IMPLEMENTATIONS
+// ============================================================================
+
+// Supabase identity provider
 export * from './supabase-auth-provider';
 
-// Server-side helpers
+// Supabase credential provider
+export * from './supabase-credential-provider';
+
+// ============================================================================
+// SERVER-SIDE HELPERS
+// ============================================================================
+
 export * from './server-auth';
 
-// Re-export domain types for convenience
+// ============================================================================
+// RE-EXPORTED DOMAIN TYPES
+// ============================================================================
+
 export type {
+  // User and session entities
   AuthUserEntity,
   AuthSessionEntity,
   AuthEventType,
   AuthStateChangeCallback,
   AuthUnsubscribe,
+  // Auth method types
+  AuthMethod,
+  SignInResult,
+  SignUpResult,
+  // Error types
+  CredentialErrorCode,
+  CredentialAuthError,
+  OAuthErrorCode,
+  OAuthAuthError,
+  OAuthSignInData,
 } from '@/domain/auth';
 
 export { getDisplayName, hasEmail, hasFullName } from '@/domain/auth';

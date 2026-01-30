@@ -564,17 +564,54 @@ The RPC returns structured errors for:
 
 All errors are mapped to typed domain errors (see ADR #002).
 
-## 10. Auth Provider Architecture (IAuthProvider)
+## 10. Auth Provider Architecture (Multi-Provider)
 
 ### Overview
 
-All service-layer authentication is routed through the `IAuthProvider` interface, enabling platform-agnostic auth. This architecture supports:
+All authentication is routed through a **multi-provider architecture** enabling platform-agnostic auth. This architecture supports:
 
-1. **Service Layer:** Services inject `IAuthProvider` for user identity operations
-2. **Auth API Layer:** Session and identity methods (`getUser`, `getSession`, `updateUserMetadata`) route through `IAuthProvider` via IOC injection
-3. **ESLint Enforcement:** "Gatekeeper" rules block direct Supabase auth imports in features
+1. **Identity Operations:** `IAuthProvider` for user identity (getUser, getSession, signOut) — all platforms
+2. **Credential Operations:** `ICredentialAuthProvider` for email/password auth — web only
+3. **OAuth Operations:** `IOAuthAuthProvider` for Apple/Google sign-in — iOS primarily
+4. **ESLint Enforcement:** "Gatekeeper" rules block direct Supabase auth imports in features
 
-**Status:** ✅ **COMPLETE** — Full auth abstraction with IOC injection pattern.
+**Status:** ✅ **COMPLETE** — Full multi-provider auth abstraction with DataResult pattern.
+
+### Multi-Provider Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  UI Components (React/SwiftUI)                                   │
+│  - Login, Signup, Settings pages                                 │
+│  - Conditionally render based on available auth methods          │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────────┐
+│  Auth API (features/auth/api/auth.ts)                            │
+│  createAuthApi(authProvider, credentialProvider?, oauthProvider?)│
+│  - Identity ops → IAuthProvider                                  │
+│  - Credential ops → ICredentialAuthProvider | null               │
+│  - OAuth ops → IOAuthAuthProvider | null                         │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+    ┌─────────────────┼─────────────────┐
+    │                 │                 │
+┌───▼────┐     ┌──────▼──────┐    ┌─────▼─────┐
+│IAuth   │     │ICredential  │    │IOAuth     │
+│Provider│     │AuthProvider │    │AuthProvider│
+│        │     │ (Web only)  │    │ (iOS only)│
+└───┬────┘     └──────┬──────┘    └─────┬─────┘
+    │                 │                 │
+┌───▼────┐     ┌──────▼──────┐    ┌─────▼─────┐
+│Supabase│     │Supabase     │    │Apple      │
+│Auth    │     │Credential   │    │Auth       │
+│Provider│     │Provider     │    │Provider   │
+└────────┘     └─────────────┘    └───────────┘
+```
+
+**Platform Configuration:**
+- **Web:** `IAuthProvider` + `ICredentialAuthProvider` (email/password)
+- **iOS:** `IAuthProvider` + `IOAuthAuthProvider` (Apple Sign-In)
 
 ### Domain Types (Sacred Domain)
 
@@ -582,6 +619,8 @@ Platform-agnostic auth entities live in `domain/auth.ts` — any feature can imp
 
 ```typescript
 // domain/auth.ts
+
+// === User & Session Entities ===
 interface AuthUserEntity {
   readonly id: string;
   readonly email: string | null;
@@ -597,9 +636,51 @@ interface AuthSessionEntity {
   readonly user: AuthUserEntity;
 }
 
+// === Auth Event Types ===
 type AuthEventType = 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED' | 'USER_UPDATED';
 type AuthStateChangeCallback = (event: AuthEventType, session: AuthSessionEntity | null) => void;
 type AuthUnsubscribe = () => void;
+
+// === Auth Method Types (Multi-Platform) ===
+type AuthMethod = 'credential' | 'oauth_apple' | 'oauth_google';
+
+// === Sign-In/Sign-Up Results ===
+interface SignInResult {
+  readonly user: AuthUserEntity;
+  readonly session: AuthSessionEntity;
+  readonly isNewUser: boolean;
+}
+
+interface SignUpResult {
+  readonly user: AuthUserEntity | null;
+  readonly session: AuthSessionEntity | null;
+  readonly needsEmailConfirmation: boolean;
+}
+
+// === Credential Error Types ===
+type CredentialErrorCode =
+  | 'INVALID_CREDENTIALS' | 'EMAIL_NOT_CONFIRMED' | 'EMAIL_ALREADY_EXISTS'
+  | 'WEAK_PASSWORD' | 'RATE_LIMITED' | 'REAUTHENTICATION_FAILED'
+  | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+
+interface CredentialAuthError extends SerializableError {
+  readonly code: CredentialErrorCode;
+}
+
+// === OAuth Error Types ===
+type OAuthErrorCode = 'CANCELLED' | 'INVALID_TOKEN' | 'NOT_AVAILABLE' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+
+interface OAuthAuthError extends SerializableError {
+  readonly code: OAuthErrorCode;
+}
+
+// === OAuth Sign-In Data ===
+interface OAuthSignInData {
+  readonly identityToken: string;
+  readonly nonce?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+}
 ```
 
 ```swift
@@ -618,9 +699,29 @@ struct AuthSessionEntity: Codable {
     let expiresAt: Int
     let user: AuthUserEntity
 }
+
+enum AuthMethod: String, Codable {
+    case credential
+    case oauthApple = "oauth_apple"
+    case oauthGoogle = "oauth_google"
+}
+
+struct SignInResult: Codable {
+    let user: AuthUserEntity
+    let session: AuthSessionEntity
+    let isNewUser: Bool
+}
+
+enum CredentialErrorCode: String, Codable {
+    case invalidCredentials = "INVALID_CREDENTIALS"
+    case emailNotConfirmed = "EMAIL_NOT_CONFIRMED"
+    // ...
+}
 ```
 
-### Interface Contract
+### Interface Contracts
+
+#### IAuthProvider (Identity Operations — All Platforms)
 
 ```typescript
 // lib/auth/auth-provider.interface.ts
@@ -638,19 +739,48 @@ interface IAuthProvider {
 }
 ```
 
+#### ICredentialAuthProvider (Email/Password — Web Only)
+
+```typescript
+// lib/auth/credential-auth-provider.interface.ts
+interface ICredentialAuthProvider {
+  signUp(data: CredentialSignUpData): Promise<DataResult<SignUpResult, CredentialAuthError>>;
+  signIn(data: CredentialSignInData): Promise<DataResult<SignInResult, CredentialAuthError>>;
+  resetPassword(data: ResetPasswordData): Promise<DataResult<void, CredentialAuthError>>;
+  updatePassword(data: UpdatePasswordData): Promise<DataResult<void, CredentialAuthError>>;
+  changePassword(data: ChangePasswordData): Promise<DataResult<void, CredentialAuthError>>;
+  changeEmail(data: ChangeEmailData): Promise<DataResult<void, CredentialAuthError>>;
+}
+```
+
+#### IOAuthAuthProvider (Apple/Google Sign-In — iOS Primarily)
+
+```typescript
+// lib/auth/oauth-auth-provider.interface.ts
+interface IOAuthAuthProvider {
+  readonly availableProviders: readonly ('apple' | 'google')[];
+  signInWithApple(data: OAuthSignInData): Promise<DataResult<SignInResult, OAuthAuthError>>;
+  signInWithGoogle?(data: OAuthSignInData): Promise<DataResult<SignInResult, OAuthAuthError>>;
+  isAvailable(): boolean;
+}
+```
+
 ```swift
 // iOS Mirror
 protocol AuthProviderProtocol {
-    // Service layer
     func getCurrentUserId() async throws -> String
     func isAuthenticated() async throws -> Bool
     func signOut() async throws
-
-    // Auth API layer
     func getUser() async -> AuthUserEntity?
     func getSession() async -> AuthSessionEntity?
     func updateUserMetadata(firstName: String?, lastName: String?) async throws
     func onAuthStateChange(callback: @escaping (AuthEventType, AuthSessionEntity?) -> Void) -> () -> Void
+}
+
+protocol OAuthAuthProviderProtocol {
+    var availableProviders: [OAuthProvider] { get }
+    func signInWithApple(_ data: OAuthSignInData) async -> Result<SignInResult, OAuthAuthError>
+    func isAvailable() -> Bool
 }
 ```
 
@@ -667,10 +797,12 @@ Supabase-to-domain mapping lives in `lib/data/data-transformers.ts`:
 
 ### Implementations
 
-| Platform | Class | Location |
-|----------|-------|----------|
-| Web (Supabase) | `SupabaseAuthProvider` | `lib/auth/supabase-auth-provider.ts` |
-| iOS (Future) | `AppleAuthProvider` | Native Apple Sign-In via `ASAuthorizationAppleIDProvider` |
+| Interface | Platform | Class | Location |
+|-----------|----------|-------|----------|
+| `IAuthProvider` | Web | `SupabaseAuthProvider` | `lib/auth/supabase-auth-provider.ts` |
+| `IAuthProvider` | iOS | `AppleAuthProvider` | Native (future) |
+| `ICredentialAuthProvider` | Web | `SupabaseCredentialProvider` | `lib/auth/supabase-credential-provider.ts` |
+| `IOAuthAuthProvider` | iOS | `AppleOAuthProvider` | Native Apple Sign-In (future) |
 
 #### SupabaseAuthProvider Key Behaviors
 
@@ -681,44 +813,122 @@ Supabase-to-domain mapping lives in `lib/data/data-transformers.ts`:
 | `updateUserMetadata()` | Atomic deep-merge via `domainMetadataToSupabase` — preserves existing metadata fields |
 | `onAuthStateChange()` | Hash-based deduplication — skips redundant events to prevent unnecessary re-renders |
 
+#### SupabaseCredentialProvider Key Behaviors
+
+| Method | Behavior |
+|--------|----------|
+| `signUp()` | Returns `DataResult<SignUpResult>` — `needsEmailConfirmation: true` when session is null |
+| `signIn()` | Returns `DataResult<SignInResult>` — maps Supabase errors to `CredentialErrorCode` |
+| `changePassword()` | Two-step: `reauthenticate()` → `updateUser()` — returns `REAUTHENTICATION_FAILED` on step 1 failure |
+| `changeEmail()` | Two-step: `reauthenticate()` → `updateUser()` — sends confirmation to new email |
+
+#### Error Mapping (Supabase → CredentialErrorCode)
+
+| Supabase Error | CredentialErrorCode |
+|----------------|---------------------|
+| "Invalid login credentials" | `INVALID_CREDENTIALS` |
+| "Email not confirmed" | `EMAIL_NOT_CONFIRMED` |
+| "User already registered" | `EMAIL_ALREADY_EXISTS` |
+| Password validation failure | `WEAK_PASSWORD` |
+| HTTP 429 | `RATE_LIMITED` |
+| Reauthentication failure | `REAUTHENTICATION_FAILED` |
+
 ### IOC Injection Pattern (Auth API)
 
-The auth API uses **factory pattern with singleton injection** at the composition root:
+The auth API uses **factory pattern with multi-provider injection** at the composition root:
 
 ```typescript
 // features/auth/api/auth.ts
 
-// Factory creates authApi bound to provider
-export function createAuthApi(authProvider: IAuthProvider) {
+// AuthApi type with provider access and capability checks
+interface AuthApi {
+  // Identity operations (IAuthProvider - all platforms)
+  getUser: () => Promise<AuthUserEntity | null>;
+  getSession: () => Promise<AuthSessionEntity | null>;
+  logout: () => Promise<void>;
+  updateUserMetadata: (data: UpdateProfileFormData) => Promise<void>;
+
+  // Credential operations (ICredentialAuthProvider - web only)
+  credential: ICredentialAuthProvider | null;
+
+  // OAuth operations (IOAuthAuthProvider - iOS primarily)
+  oauth: IOAuthAuthProvider | null;
+
+  // Capability checks
+  hasCredentialAuth: () => boolean;
+  hasOAuthAuth: () => boolean;
+  availableAuthMethods: () => AuthMethod[];
+}
+
+// Factory creates authApi bound to providers
+export function createAuthApi(
+  authProvider: IAuthProvider,
+  credentialProvider?: ICredentialAuthProvider | null,
+  oauthProvider?: IOAuthAuthProvider | null
+): AuthApi {
   return {
+    // Identity operations
     getUser: () => authProvider.getUser(),
     getSession: () => authProvider.getSession(),
     logout: async () => { await authProvider.signOut?.(); },
     updateUserMetadata: (data) => authProvider.updateUserMetadata(data),
-    // Credential operations remain direct Supabase (platform-specific)
-    signUp: credentialApi.signUp,
-    login: credentialApi.login,
-    // ...
+
+    // Provider access
+    credential: credentialProvider ?? null,
+    oauth: oauthProvider ?? null,
+
+    // Capability checks
+    hasCredentialAuth: () => credentialProvider != null,
+    hasOAuthAuth: () => oauthProvider != null && oauthProvider.isAvailable(),
+    availableAuthMethods: () => {
+      const methods: AuthMethod[] = [];
+      if (credentialProvider) methods.push('credential');
+      if (oauthProvider?.availableProviders.includes('apple')) methods.push('oauth_apple');
+      if (oauthProvider?.availableProviders.includes('google')) methods.push('oauth_google');
+      return methods;
+    },
   };
 }
 
 // Singleton management
-let _authApiInstance: ReturnType<typeof createAuthApi> | null = null;
-export function initAuthApi(authProvider: IAuthProvider): void { _authApiInstance = createAuthApi(authProvider); }
-export function getAuthApi() { if (!_authApiInstance) throw new Error('authApi not initialized'); return _authApiInstance; }
-export function isAuthApiInitialized(): boolean { return _authApiInstance !== null; }
+export function initAuthApi(
+  authProvider: IAuthProvider,
+  credentialProvider?: ICredentialAuthProvider | null,
+  oauthProvider?: IOAuthAuthProvider | null
+): void { _authApiInstance = createAuthApi(authProvider, credentialProvider, oauthProvider); }
 
-// Legacy export for backward compatibility
-export const authApi = {
-  get getUser() { return getAuthApi().getUser; },
-  get getSession() { return getAuthApi().getSession; },
-  // ...
+export function getAuthApi(): AuthApi { /* ... */ }
+export function isAuthApiInitialized(): boolean { /* ... */ }
+```
+
+### UI Usage Pattern (DataResult)
+
+```typescript
+// app/login/page.tsx
+const onSubmit = async (data: LoginFormData) => {
+  const credential = getAuthApi().credential;
+  if (!credential) {
+    setError('Credential authentication is not available');
+    return;
+  }
+
+  const result = await credential.signIn({
+    email: data.email,
+    password: data.password,
+  });
+
+  if (!result.success) {
+    setError(result.error.message);
+    return;
+  }
+
+  router.push('/dashboard');
 };
 ```
 
 ### Composition Root Initialization
 
-The `AuthProvider` component initializes the singleton at app startup:
+The `AuthProvider` component initializes all providers at app startup:
 
 ```typescript
 // providers/auth-provider.tsx
@@ -730,13 +940,21 @@ export function AuthProvider({ children }) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // SINGLETON PROVIDER: Initialize once at composition root
+    // SINGLETON PROVIDERS: Initialize once at composition root
     const supabase = createClient();
+
+    // Identity provider (all platforms)
     const authProvider = createSupabaseAuthProvider(supabase);
 
-    // IOC INJECTION: Inject provider into authApi singleton
+    // Credential provider (web only)
+    const credentialProvider = createSupabaseCredentialProvider(supabase);
+
+    // OAuth provider (iOS only - null on web)
+    const oauthProvider = null;
+
+    // IOC INJECTION: Inject all providers into authApi singleton
     if (!isAuthApiInitialized()) {
-      initAuthApi(authProvider);
+      initAuthApi(authProvider, credentialProvider, oauthProvider);
     }
 
     // Initialize auth store (now that authApi is ready)
@@ -753,6 +971,10 @@ export function AuthProvider({ children }) {
   return <>{children}</>;
 }
 ```
+
+**Platform Configuration:**
+- **Web:** Injects `credentialProvider`, `oauthProvider = null`
+- **iOS (Future):** Injects `oauthProvider`, `credentialProvider = null`
 
 ### Service Layer Injection Pattern
 
@@ -849,21 +1071,26 @@ const authLockdownForFeatures = {
 
 | File | Purpose |
 |------|---------|
-| `domain/auth.ts` | Sacred auth types (AuthUserEntity, AuthSessionEntity, etc.) |
+| `domain/auth.ts` | Sacred auth types (AuthUserEntity, AuthSessionEntity, SignInResult, CredentialErrorCode, etc.) |
 | `lib/auth/auth-provider.interface.ts` | IAuthProvider interface contract |
-| `lib/auth/supabase-auth-provider.ts` | Supabase implementation with graceful identity + event filtering |
+| `lib/auth/credential-auth-provider.interface.ts` | ICredentialAuthProvider interface contract |
+| `lib/auth/oauth-auth-provider.interface.ts` | IOAuthAuthProvider interface contract |
+| `lib/auth/supabase-auth-provider.ts` | Supabase identity provider implementation |
+| `lib/auth/supabase-credential-provider.ts` | Supabase credential provider implementation (8 auth methods) |
 | `lib/auth/index.ts` | Barrel exports for auth module |
 | `lib/data/data-transformers.ts` | Auth transformers (dbAuthUserToDomain, etc.) |
-| `features/auth/api/auth.ts` | Auth API with IOC injection (createAuthApi, initAuthApi, getAuthApi) |
-| `providers/auth-provider.tsx` | Composition root — initializes singleton provider |
+| `features/auth/api/auth.ts` | Auth API with multi-provider IOC injection |
+| `providers/auth-provider.tsx` | Composition root — initializes all providers |
 | `stores/auth-store.ts` | Zustand store using AuthUserEntity |
 
 ### Rules for New Services
 
 **DO:**
-- ✅ Accept `IAuthProvider` via constructor injection
+- ✅ Accept `IAuthProvider` via constructor injection for services
 - ✅ Use `authProvider.getCurrentUserId()` for user identity in services
 - ✅ Use `getAuthApi().getUser()` for user profile in components/hooks
+- ✅ Use `getAuthApi().credential?.signIn()` for credential operations (returns DataResult)
+- ✅ Check `result.success` before accessing `result.data` (DataResult pattern)
 - ✅ Export a factory function that creates the auth provider internally
 - ✅ Wire hooks via `useMemo` with `createSupabaseAuthProvider`
 
@@ -873,6 +1100,7 @@ const authLockdownForFeatures = {
 - ❌ Pass raw `userId` strings between methods — inject `IAuthProvider` and let the service decide when to fetch
 - ❌ Return `null` from `getCurrentUserId()` — throw `AuthenticationError` (but `getUser()` can return `null`)
 - ❌ Put raw Supabase auth logic in `.tsx` files — use `getAuthApi()` or hooks with `createSupabaseAuthProvider`
+- ❌ Use try/catch for credential operations — use DataResult pattern (`if (!result.success) { ... }`)
 
 ## 11. Zod Network Boundary Validation (Schema Contracts)
 

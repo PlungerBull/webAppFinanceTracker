@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { authApi } from '@/features/auth/api/auth';
+import { getAuthApi } from '@/features/auth/api/auth';
 import { loginSchema, type LoginFormData } from '@/features/auth/schemas/auth.schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,14 +32,26 @@ function LoginForm() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    try {
-      setError(null);
-      await authApi.login(data);
-      router.push('/dashboard');
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : AUTH.LOGIN.MESSAGES.ERROR);
+    setError(null);
+
+    const credential = getAuthApi().credential;
+    if (!credential) {
+      setError('Credential authentication is not available');
+      return;
     }
+
+    const result = await credential.signIn({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (!result.success) {
+      setError(result.error.message);
+      return;
+    }
+
+    router.push('/dashboard');
+    router.refresh();
   };
 
   return (
