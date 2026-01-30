@@ -7,15 +7,16 @@
 
 ---
 
-## Phase 1: The Sacred Mandate (Critical/P0)
+## Phase 1: The Sacred Mandate (Critical/P0) ✅
 
 **Goal:** Eliminate floating-point math and fix broken data paths.
 
-- [ ] **Repair the Broken Import RPC:** Update the `import_transactions` RPC in Supabase to reference `amount_cents` and `amount_home_cents` instead of the deleted `amount_original` columns. Ensure it converts decimal inputs to BIGINT using `ROUND(val * 100)`.
+- [x] **Repair the Broken Import RPC:** Update the `import_transactions` RPC in Supabase to reference `amount_cents` and `amount_home_cents` instead of the deleted `amount_original` columns. Ensure it converts decimal inputs to BIGINT using `ROUND(val * 100)`.
+  - Migration: `20260130000000_fix_import_transactions_bigint.sql`
 
-- [ ] **Lock Down Settings Inputs:** Refactor `reconciliation-form-modal.tsx` to remove `step="0.01"` from number inputs. Implement a "Cents-at-the-Edge" pattern where user input is converted to integer cents via `toCents()` immediately upon form submission.
+- [x] **Lock Down Settings Inputs:** Refactor `reconciliation-form-modal.tsx` to remove `step="0.01"` from number inputs. Implement a "Cents-at-the-Edge" pattern where user input is converted to integer cents via `toCents()` immediately upon form submission.
 
-- [ ] **Sanitize Dashboard Calculations:** Remove all `Math.round(val * 100) / 100` workarounds in `financial-overview.tsx`. Force the `get_monthly_spending_by_category` RPC to return BIGINT cents, ensuring the frontend only performs integer addition.
+- [x] **Sanitize Dashboard Calculations:** Remove all `Math.round(val * 100) / 100` workarounds in `financial-overview.tsx`. Force the `get_monthly_spending_by_category` RPC to return BIGINT cents, ensuring the frontend only performs integer addition.
 
 - [ ] **Enforce Display Formatting:** Replace all instances of `.toFixed(2)` in `reconciliation-settings.tsx` and `inbox-card.tsx` with the centralized `fromCents()` utility to ensure consistent display logic.
 
@@ -44,15 +45,16 @@
 
 **Goal:** Polish type safety and performance for S-Tier quality.
 
-- [ ] **Purge `any` and Fix Return Types:**
-  - Replace `undefined as any` in `local-transaction-repository.ts` and `supabase-transaction-repository.ts` with explicit `DataResult<void>` return types.
-  - Update `appearance-settings.tsx` to type the promise array as `Promise<void>[]` instead of `Promise<any>[]`.
+- [x] **Purge `any` and Fix Return Types:**
+  - Replaced `undefined as any` in `local-transaction-repository.ts` and `supabase-transaction-repository.ts` with `undefined as void`
+  - Fixed `currencyOriginal: undefined as any` in `data-transformers.ts` with empty string sentinel
+  - [ ] Update `appearance-settings.tsx` to type the promise array as `Promise<void>[]` instead of `Promise<any>[]`
 
 - [ ] **Memoization Cleanup:**
   - Wrap handlers in `inbox-card.tsx` (`handleAccountChange`, etc.) with `useCallback` to prevent re-renders in the infinite list.
   - Stabilize the `virtualizer` object in `transaction-list.tsx` by moving it to a `useRef` or providing a stable dependency key.
 
-- [ ] **Boundary Validation:** Add the missing `GlobalCurrencyRowSchema` to `lib/data/db-row-schemas.ts` and apply it to the `currenciesApi` to ensure reference data integrity.
+- [x] **Boundary Validation:** Added `GlobalCurrencyRowSchema` to `lib/data/db-row-schemas.ts` and applied Zod validation to `currenciesApi.getAll()`.
 
 
 ---

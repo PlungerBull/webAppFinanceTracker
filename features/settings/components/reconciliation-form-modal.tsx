@@ -32,6 +32,7 @@ import {
   useReconciliation,
 } from '@/features/reconciliations/hooks/use-reconciliations';
 import { cn } from '@/lib/utils';
+import { toCents, fromCents } from '@/lib/utils/cents-conversion';
 
 const reconciliationSchema = z.object({
   accountId: z.string().min(1, 'Account is required'),
@@ -94,12 +95,14 @@ export function ReconciliationFormModal({
   });
 
   // Populate form when editing
+  // HARDENED: Convert cents to decimal for display
   useEffect(() => {
     if (isEditing && existingReconciliation) {
       setValue('accountId', existingReconciliation.accountId);
       setValue('name', existingReconciliation.name);
-      setValue('beginningBalance', existingReconciliation.beginningBalance);
-      setValue('endingBalance', existingReconciliation.endingBalance);
+      // Convert cents to decimal for form display
+      setValue('beginningBalance', fromCents(existingReconciliation.beginningBalance));
+      setValue('endingBalance', fromCents(existingReconciliation.endingBalance));
       setValue('dateStart', existingReconciliation.dateStart);
       setValue('dateEnd', existingReconciliation.dateEnd);
     } else if (!isEditing) {
@@ -109,13 +112,20 @@ export function ReconciliationFormModal({
 
   const onSubmit = async (data: ReconciliationFormData) => {
     try {
+      // HARDENED: Convert decimal input to cents at the boundary
+      const dataWithCents = {
+        ...data,
+        beginningBalance: toCents(data.beginningBalance),
+        endingBalance: toCents(data.endingBalance),
+      };
+
       if (isEditing) {
         await updateMutation.mutateAsync({
           id: reconciliationId,
-          updates: data,
+          updates: dataWithCents,
         });
       } else {
-        await createMutation.mutateAsync(data);
+        await createMutation.mutateAsync(dataWithCents);
       }
       onOpenChange(false);
       reset();
@@ -186,6 +196,7 @@ export function ReconciliationFormModal({
           </div>
 
           {/* Balance Fields (Side by Side) */}
+          {/* HARDENED: Removed step="0.01" - use toCents() for conversion */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -193,7 +204,7 @@ export function ReconciliationFormModal({
               </label>
               <Input
                 type="number"
-                step="0.01"
+                step="any"
                 {...register('beginningBalance', { valueAsNumber: true })}
                 placeholder="0.00"
                 className="bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors font-mono"
@@ -206,7 +217,7 @@ export function ReconciliationFormModal({
               </label>
               <Input
                 type="number"
-                step="0.01"
+                step="any"
                 {...register('endingBalance', { valueAsNumber: true })}
                 placeholder="0.00"
                 className="bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white transition-colors font-mono"

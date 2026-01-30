@@ -180,6 +180,8 @@ This architecture enables **Todoist-style offline sync** capabilities:
 
 ### Core CTO Mandates (All Implemented)
 
+> **See Also:** [Section 14: The Zero-Any Mandate](#14-the-zero-any-mandate-type-safe-boundaries) — Non-negotiable rule prohibiting `any`, unguarded `unknown`, and type-casting hacks like `undefined as any`.
+
 #### 1. Atomic Transfer Protocol
 **Problem:** Network interruption between two `create()` calls leaves ledger unbalanced.
 **Solution:** Single atomic RPC (`create_transfer_transaction`) creates both OUT and IN transactions.
@@ -1552,3 +1554,104 @@ Type 'InboxError' is not assignable to type 'Error'.
 - ❌ Use `instanceof` error checks in consuming features — use error codes
 - ❌ Create new objects on every render in orchestrator hooks
 - ❌ Use default `DataResult<T>` (which uses `Error`) for IoC interfaces — use `DataResult<T, SerializableError>`
+
+## 14. The Zero-Any Mandate (Type-Safe Boundaries)
+
+### Overview
+
+**Status: NON-NEGOTIABLE**
+
+To ensure mathematical determinism and prevent runtime crashes in the iOS Native Port, the use of `any`, `unknown` (without a guard), and type-casting hacks like `undefined as any` is strictly prohibited. These patterns circumvent the compiler and create "silent failure" points that are particularly dangerous for financial synchronization.
+
+### Why This Exists
+
+1. **Silent Failure Prevention:** An `as any` cast masks type errors at compile time but causes runtime crashes — often in production, often in the sync engine at 2am.
+2. **iOS Native Port:** Swift has no `any` equivalent that survives JSON serialization. TypeScript `any` becomes `nil` in Swift, causing cascading `nil` unwrapping crashes.
+3. **Financial Integrity:** A masked type error on `amountCents` can cause balance drift that's impossible to audit retroactively.
+
+### 14.1 Repository Return Types
+
+Repositories must never return naked `undefined` or force types to match a void contract. Use explicit `DataResult<T>` unions to handle buffered or empty responses.
+
+**Incorrect (The Hack):**
+```typescript
+// ❌ Forces a lie through the type system
+return { success: true, data: undefined as any };
+```
+
+**Correct (S-Tier):**
+```typescript
+// ✅ Explicit null where the interface allows T | null
+return { success: true, data: null };
+```
+
+**Note:** Ensure the `DataResult` generic in `@/lib/data-patterns` is defined to allow optional data or explicit `null` for successful but empty operations:
+
+```typescript
+// For operations that may return no data on success (e.g., soft delete confirmation)
+type DataResult<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; data: null; error: E };
+```
+
+### 14.2 The Registry Guard
+
+All data entering the system from a database or RPC boundary must be validated via Zod and transformed via the Centralized Registry (see [Section 7](#7-transformer-registry-data-border-control) and [Section 11](#11-zod-network-boundary-validation-schema-contracts)).
+
+| Violation | Fix |
+|-----------|-----|
+| `(row as any).someField` | Regenerate the schema with `supabase gen types typescript` |
+| `error as any` | Use `instanceof` or a type guard before property access |
+| `unknown` without narrowing | Apply Zod validation or explicit type guard |
+| `JSON.parse() as T` | Validate with Zod schema: `schema.parse(JSON.parse(str))` |
+
+### 14.3 Error Boundary Guards
+
+All `unknown` types in catch blocks must be narrowed using `instanceof` or a type guard before property access:
+
+**Incorrect:**
+```typescript
+// ❌ Assumes error shape without verification
+catch (error) {
+  console.log((error as any).message);
+}
+```
+
+**Correct:**
+```typescript
+// ✅ Narrows unknown to known shape
+catch (error) {
+  if (error instanceof Error) {
+    console.log(error.message);
+  } else if (isSerializableError(error)) {
+    console.log(error.message);
+  } else {
+    Sentry.captureException(new Error('Unknown error type'), { extra: { error } });
+  }
+}
+```
+
+### 14.4 Enforcement
+
+The Zero-Any Mandate is enforced via:
+
+1. **ESLint Rules:** `@typescript-eslint/no-explicit-any` is set to `error`
+2. **TypeScript Strict Mode:** `strict: true` in `tsconfig.json`
+3. **Code Review:** Any PR introducing `as any` or `as unknown` without a guarding comment requires CTO approval
+4. **CI/CD Gate:** Type errors block deployment
+
+### Rules Summary
+
+**DO:**
+- ✅ Use `DataResult<T>` with explicit `null` for empty success states
+- ✅ Validate all external data with Zod before transformation
+- ✅ Narrow `unknown` types with `instanceof` or type guards
+- ✅ Regenerate database types when schema changes (`supabase gen types typescript`)
+- ✅ Use `satisfies` for type checking without widening
+
+**DON'T:**
+- ❌ Use `as any` to silence type errors
+- ❌ Use `undefined as any` to satisfy return types
+- ❌ Use `(row as any).field` when database types are outdated
+- ❌ Access properties on `unknown` without narrowing first
+- ❌ Use `@ts-ignore` or `@ts-expect-error` without a linked issue

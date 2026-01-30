@@ -683,7 +683,7 @@ export class LocalTransactionRepository implements ITransactionRepository {
       );
       if (lockResult.isLocked) {
         // Delete buffered - will be applied after sync completes
-        return { success: true, data: undefined as any, buffered: true };
+        return { success: true, data: undefined as void, buffered: true };
       }
 
       // CTO MANDATE: Soft delete (Tombstone Pattern)
@@ -696,7 +696,7 @@ export class LocalTransactionRepository implements ITransactionRepository {
 
       return {
         success: true,
-        data: undefined as any,
+        data: undefined as void,
       };
     } catch (err) {
       return {
@@ -985,7 +985,7 @@ export class LocalTransactionRepository implements ITransactionRepository {
 
       return {
         success: true,
-        data: undefined as any,
+        data: undefined as void,
       };
     } catch (err) {
       return {

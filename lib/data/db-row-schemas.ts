@@ -240,14 +240,27 @@ export const ReconciliationRowSchema = z.object({
   user_id: uuid,
   account_id: uuid,
   name: z.string(),
-  beginning_balance: z.number().int(),
-  ending_balance: z.number().int(),
+  beginning_balance_cents: z.number().int(),  // HARDENED: BIGINT cents
+  ending_balance_cents: z.number().int(),     // HARDENED: BIGINT cents
   date_start: z.string().nullable(),
   date_end: z.string().nullable(),
   status: ReconciliationStatusEnum,
   created_at: timestamptz,
   updated_at: timestamptz,
   ...BaseSyncFields,
+});
+
+/**
+ * global_currencies table Row
+ *
+ * Reference data for currency codes, names, symbols, and flags.
+ * Used by currenciesApi for display purposes.
+ */
+export const GlobalCurrencyRowSchema = z.object({
+  code: z.string(),             // ISO 4217 code (e.g., "USD", "EUR")
+  name: z.string(),             // Human-readable name (e.g., "US Dollar")
+  symbol: z.string(),           // Currency symbol (e.g., "$", "€")
+  flag: z.string().nullable(),  // Emoji flag or null
 });
 
 /**
@@ -272,13 +285,14 @@ export const ParentCategoryWithCountRowSchema = z.object({
 /**
  * get_reconciliation_summary RPC response
  * Returns camelCase JSONB (not snake_case)
+ * HARDENED: All amounts in integer cents (BIGINT)
  */
 export const ReconciliationSummaryRpcSchema = z.object({
-  beginningBalance: z.number(),
-  endingBalance: z.number(),
-  linkedSum: z.number(),
+  beginningBalanceCents: z.number().int(),  // HARDENED: BIGINT cents
+  endingBalanceCents: z.number().int(),     // HARDENED: BIGINT cents
+  linkedSumCents: z.number().int(),         // HARDENED: BIGINT cents
   linkedCount: z.number().int(),
-  difference: z.number(),
+  differenceCents: z.number().int(),        // HARDENED: BIGINT cents
   isBalanced: z.boolean(),
 });
 

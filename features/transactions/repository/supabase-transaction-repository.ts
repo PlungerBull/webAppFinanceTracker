@@ -540,7 +540,7 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
 
       return {
         success: true,
-        data: undefined as any,
+        data: undefined as void,
       };
     } catch (err) {
       return {

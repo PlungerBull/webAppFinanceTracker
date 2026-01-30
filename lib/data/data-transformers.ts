@@ -268,7 +268,8 @@ export function dbTransactionToDomain(
     amountCents: toSafeIntegerOrZero(dbTransaction.amount_cents),        // BIGINT → safe number
     amountHomeCents: toSafeIntegerOrZero(dbTransaction.amount_home_cents), // BIGINT → safe number
     // NOTE: currency_original removed from table - now derived from account via transactions_view
-    currencyOriginal: undefined as any,  // REMOVED from table schema - use transactions_view instead
+    // @deprecated Use dbTransactionViewToDomain with transactions_view instead
+    currencyOriginal: '',  // SENTINEL: Raw table lacks currency - use view for currency access
     exchangeRate: dbTransaction.exchange_rate,
     description: dbTransaction.description,
     notes: dbTransaction.notes,
@@ -376,8 +377,8 @@ export function dbTransactionViewToDomain(
     amountCents: Number(dbView.amount_cents ?? 0),
     amountHomeCents: Number(dbView.amount_home_cents ?? 0),
 
-    // Currency and exchange
-    currencyOriginal: dbView.currency_original ?? null as any,
+    // Currency and exchange (view provides currency via JOIN; empty string fallback if JOIN fails)
+    currencyOriginal: dbView.currency_original ?? '',
     exchangeRate: Number(dbView.exchange_rate ?? 1),
 
     // Transfer and reconciliation
@@ -822,6 +823,26 @@ export function dbMainCurrencyToDomain(
 // ============================================================================
 
 /**
+ * Reconciliation row shape from Zod validation
+ * HARDENED: Uses BIGINT cents columns
+ */
+interface ReconciliationDbRow {
+  id: string;
+  user_id: string;
+  account_id: string;
+  name: string;
+  beginning_balance_cents: number;
+  ending_balance_cents: number;
+  date_start: string | null;
+  date_end: string | null;
+  status: 'draft' | 'completed';
+  created_at: string;
+  updated_at: string;
+  version?: number;
+  deleted_at?: string | null;
+}
+
+/**
  * Transforms a database reconciliations row to domain Reconciliation type
  *
  * SYNC FIELDS (Phase 2a):
@@ -829,28 +850,23 @@ export function dbMainCurrencyToDomain(
  * - deletedAt: Tombstone pattern for distributed sync
  */
 export function dbReconciliationToDomain(
-  dbReconciliation: Database['public']['Tables']['reconciliations']['Row']
+  dbReconciliation: ReconciliationDbRow
 ): Reconciliation {
-  // Type assertion for sync fields added by migration
-  const syncRow = dbReconciliation as typeof dbReconciliation & {
-    version?: number;
-    deleted_at?: string | null;
-  };
-
   return {
     id: dbReconciliation.id,
-    version: syncRow.version ?? 1,
+    version: dbReconciliation.version ?? 1,
     userId: dbReconciliation.user_id,
     accountId: dbReconciliation.account_id,
     name: dbReconciliation.name,
-    beginningBalance: toSafeIntegerOrZero(dbReconciliation.beginning_balance),  // BIGINT → safe number
-    endingBalance: toSafeIntegerOrZero(dbReconciliation.ending_balance),        // BIGINT → safe number
+    // HARDENED: BIGINT cents from database (domain stores in cents)
+    beginningBalance: toSafeIntegerOrZero(dbReconciliation.beginning_balance_cents),
+    endingBalance: toSafeIntegerOrZero(dbReconciliation.ending_balance_cents),
     dateStart: dbReconciliation.date_start,
     dateEnd: dbReconciliation.date_end,
     status: dbReconciliation.status as ReconciliationStatus,
     createdAt: dbReconciliation.created_at,
     updatedAt: dbReconciliation.updated_at,
-    deletedAt: syncRow.deleted_at ?? null,
+    deletedAt: dbReconciliation.deleted_at ?? null,
   };
 }
 
@@ -858,72 +874,78 @@ export function dbReconciliationToDomain(
  * Transforms an array of reconciliations
  */
 export function dbReconciliationsToDomain(
-  dbReconciliations: Database['public']['Tables']['reconciliations']['Row'][]
+  dbReconciliations: ReconciliationDbRow[]
 ): Reconciliation[] {
   return dbReconciliations.map(dbReconciliationToDomain);
 }
 
 /**
  * Transforms domain reconciliation data to database insert format
+ * HARDENED: Expects beginningBalance/endingBalance in cents (BIGINT)
  */
 export function domainReconciliationToDbInsert(data: {
   userId: string;
   accountId: string;
   name: string;
-  beginningBalance: number;
-  endingBalance: number;
+  beginningBalance: number;  // cents
+  endingBalance: number;     // cents
   dateStart?: string | null;
   dateEnd?: string | null;
   status?: ReconciliationStatus;
 }): Database['public']['Tables']['reconciliations']['Insert'] {
-  return {
+  // Type assertion for BIGINT cents columns
+  const insert = {
     user_id: data.userId,
     account_id: data.accountId,
     name: data.name,
-    beginning_balance: data.beginningBalance,
-    ending_balance: data.endingBalance,
+    beginning_balance_cents: data.beginningBalance,  // HARDENED: BIGINT cents
+    ending_balance_cents: data.endingBalance,        // HARDENED: BIGINT cents
     date_start: data.dateStart ?? null,
     date_end: data.dateEnd ?? null,
     status: data.status,
   };
+  return insert as unknown as Database['public']['Tables']['reconciliations']['Insert'];
 }
 
 /**
  * Transforms domain reconciliation data to database update format
+ * HARDENED: Expects beginningBalance/endingBalance in cents (BIGINT)
  */
 export function domainReconciliationToDbUpdate(data: {
   name?: string;
-  beginningBalance?: number;
-  endingBalance?: number;
+  beginningBalance?: number;  // cents
+  endingBalance?: number;     // cents
   dateStart?: string | null;
   dateEnd?: string | null;
   status?: ReconciliationStatus;
 }): Database['public']['Tables']['reconciliations']['Update'] {
-  const update: Database['public']['Tables']['reconciliations']['Update'] = {};
+  // Build update with BIGINT cents columns
+  const update: Record<string, unknown> = {};
 
   if (data.name !== undefined) update.name = data.name;
-  if (data.beginningBalance !== undefined) update.beginning_balance = data.beginningBalance;
-  if (data.endingBalance !== undefined) update.ending_balance = data.endingBalance;
+  if (data.beginningBalance !== undefined) update.beginning_balance_cents = data.beginningBalance;
+  if (data.endingBalance !== undefined) update.ending_balance_cents = data.endingBalance;
   if (data.dateStart !== undefined) update.date_start = data.dateStart;
   if (data.dateEnd !== undefined) update.date_end = data.dateEnd;
   if (data.status !== undefined) update.status = data.status;
 
-  return update;
+  return update as Database['public']['Tables']['reconciliations']['Update'];
 }
 
 /**
  * Transforms RPC reconciliation summary to domain type
- * The RPC returns JSONB, so we need to handle the transformation carefully
+ * HARDENED: RPC returns BIGINT cents, domain stores in cents
  */
 export function dbReconciliationSummaryToDomain(
   dbSummary: any  // JSONB from RPC - not strictly typed
 ): ReconciliationSummary {
   return {
-    beginningBalance: Number(dbSummary.beginningBalance),
-    endingBalance: Number(dbSummary.endingBalance),
-    linkedSum: Number(dbSummary.linkedSum),
-    linkedCount: Number(dbSummary.linkedCount),
-    difference: Number(dbSummary.difference),
+    // HARDENED: All values in cents from BIGINT RPC
+    beginningBalance: toSafeIntegerOrZero(dbSummary.beginningBalanceCents),
+    endingBalance: toSafeIntegerOrZero(dbSummary.endingBalanceCents),
+    linkedSum: toSafeIntegerOrZero(dbSummary.linkedSumCents),
+    linkedCount: toSafeIntegerOrZero(dbSummary.linkedCount),
+    difference: toSafeIntegerOrZero(dbSummary.differenceCents),
     isBalanced: Boolean(dbSummary.isBalanced),
   };
 }

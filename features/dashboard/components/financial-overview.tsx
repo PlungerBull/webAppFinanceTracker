@@ -7,6 +7,7 @@ import { formatCurrencyShort } from '@/lib/hooks/use-formatted-balance';
 import { UI } from '@/lib/constants';
 import { startOfMonth, subMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { fromCents } from '@/lib/utils/cents-conversion';
 
 // Helper types for grouped data
 interface CategoryGroup {
@@ -41,14 +42,14 @@ export function FinancialOverview() {
         const groupChildren = children.filter(child => child.parentId === parent.categoryId);
 
         // Calculate totals for the parent row (Sum of children)
-        // Round to 2 decimal places to prevent float accumulation drift
+        // HARDENED: Data is now in integer cents - pure integer arithmetic
         const totals: Record<string, number> = {};
         months.forEach(month => {
           const monthKey = month.toISOString().slice(0, 7);
           const childrenSum = groupChildren.reduce((sum, child) => {
             return sum + (child.monthlyAmounts[monthKey] || 0);
           }, 0);
-          totals[monthKey] = Math.round(childrenSum * 100) / 100;
+          totals[monthKey] = childrenSum;  // No Math.round needed - integer cents
         });
 
         return {
@@ -70,8 +71,7 @@ export function FinancialOverview() {
     [overviewData, groupCategories]
   );
 
-  // CTO Refinement #2: Memoized frontend aggregation for summary rows
-  // Round to 2 decimal places to prevent float accumulation drift
+  // HARDENED: Pure integer arithmetic - data is in cents
   const incomeTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     months.forEach(month => {
@@ -79,7 +79,7 @@ export function FinancialOverview() {
       const monthTotal = incomeGroups.reduce((sum, group) => {
         return sum + (group.totals[monthKey] || 0);
       }, 0);
-      totals[monthKey] = Math.round(monthTotal * 100) / 100;
+      totals[monthKey] = monthTotal;  // No Math.round needed - integer cents
     });
     return totals;
   }, [incomeGroups, months]);
@@ -91,7 +91,7 @@ export function FinancialOverview() {
       const monthTotal = expenseGroups.reduce((sum, group) => {
         return sum + (group.totals[monthKey] || 0);
       }, 0);
-      totals[monthKey] = Math.round(monthTotal * 100) / 100;
+      totals[monthKey] = monthTotal;  // No Math.round needed - integer cents
     });
     return totals;
   }, [expenseGroups, months]);
@@ -102,7 +102,7 @@ export function FinancialOverview() {
       const monthKey = month.toISOString().slice(0, 7);
       const income = incomeTotals[monthKey] || 0;
       const expense = expenseTotals[monthKey] || 0;
-      flow[monthKey] = Math.round((income - expense) * 100) / 100;
+      flow[monthKey] = income - expense;  // No Math.round needed - integer cents
     });
     return flow;
   }, [incomeTotals, expenseTotals, months]);
@@ -149,19 +149,20 @@ export function FinancialOverview() {
   }
 
   // Render individual month cells with CTO Refinement #3: Tabular numbers
+  // HARDENED: amount is in cents, use fromCents() for display
   const renderMonthCells = (amounts: Record<string, number>, type: 'income' | 'expense', isParent = false) => {
     return months.map((month) => {
       const monthKey = month.toISOString().slice(0, 7);
-      const amount = amounts[monthKey] ?? 0; // COALESCE to 0
+      const amountCents = amounts[monthKey] ?? 0; // COALESCE to 0
 
       return (
         <div key={month.toISOString()} className={cn(
           "text-right text-[13px] font-mono tabular-nums",
           isParent ? "font-semibold text-gray-700" : "text-gray-600"
         )}>
-          {amount > 0 ? (
+          {amountCents > 0 ? (
             <span className={type === 'income' ? 'text-emerald-600' : ''}>
-              {formatCurrencyShort(amount, mainCurrency)}
+              {formatCurrencyShort(fromCents(amountCents), mainCurrency)}
             </span>
           ) : (
             <span className="text-gray-300">—</span>
@@ -252,17 +253,17 @@ export function FinancialOverview() {
               </div>
               {incomeGroups.map(group => renderGroup(group, 'income'))}
 
-              {/* TOTAL INCOME Row */}
+              {/* TOTAL INCOME Row - HARDENED: cents to decimal for display */}
               <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-white border-y border-emerald-200" style={{ gridColumn: '1 / -1' }}>
                 <div className="py-4 text-[12px] font-bold text-emerald-700 uppercase tracking-wide">
                   Total Income
                 </div>
                 {months.map((month) => {
                   const monthKey = month.toISOString().slice(0, 7);
-                  const amount = incomeTotals[monthKey] ?? 0;
+                  const amountCents = incomeTotals[monthKey] ?? 0;
                   return (
                     <div key={month.toISOString()} className="py-4 text-right text-[13px] font-mono font-bold text-emerald-700 tabular-nums">
-                      {amount > 0 ? formatCurrencyShort(amount, mainCurrency) : '—'}
+                      {amountCents > 0 ? formatCurrencyShort(fromCents(amountCents), mainCurrency) : '—'}
                     </div>
                   );
                 })}
@@ -279,17 +280,17 @@ export function FinancialOverview() {
               </div>
               {expenseGroups.map(group => renderGroup(group, 'expense'))}
 
-              {/* TOTAL EXPENSES Row */}
+              {/* TOTAL EXPENSES Row - HARDENED: cents to decimal for display */}
               <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-white border-y border-rose-200" style={{ gridColumn: '1 / -1' }}>
                 <div className="py-4 text-[12px] font-bold text-rose-700 uppercase tracking-wide">
                   Total Expenses
                 </div>
                 {months.map((month) => {
                   const monthKey = month.toISOString().slice(0, 7);
-                  const amount = expenseTotals[monthKey] ?? 0;
+                  const amountCents = expenseTotals[monthKey] ?? 0;
                   return (
                     <div key={month.toISOString()} className="py-4 text-right text-[13px] font-mono font-bold text-rose-700 tabular-nums">
-                      {amount > 0 ? formatCurrencyShort(amount, mainCurrency) : '—'}
+                      {amountCents > 0 ? formatCurrencyShort(fromCents(amountCents), mainCurrency) : '—'}
                     </div>
                   );
                 })}
@@ -297,7 +298,7 @@ export function FinancialOverview() {
             </>
           )}
 
-          {/* NET CASH FLOW Row */}
+          {/* NET CASH FLOW Row - HARDENED: cents to decimal for display */}
           <div className="h-8" style={{ gridColumn: '1 / -1' }} />
           <div className="grid grid-cols-[1fr_repeat(6,minmax(100px,1fr))] gap-x-4 bg-white border-y-2 border-gray-300" style={{ gridColumn: '1 / -1' }}>
             <div className="py-5 flex items-center gap-2 text-[13px] font-bold text-gray-900 uppercase tracking-wide">
@@ -306,8 +307,8 @@ export function FinancialOverview() {
             </div>
             {months.map((month) => {
               const monthKey = month.toISOString().slice(0, 7);
-              const flow = netCashFlow[monthKey] ?? 0;
-              const isPositive = flow >= 0;
+              const flowCents = netCashFlow[monthKey] ?? 0;
+              const isPositive = flowCents >= 0;
               return (
                 <div
                   key={month.toISOString()}
@@ -316,7 +317,7 @@ export function FinancialOverview() {
                     isPositive ? "text-emerald-600" : "text-rose-600"
                   )}
                 >
-                  {flow !== 0 ? formatCurrencyShort(flow, mainCurrency) : '—'}
+                  {flowCents !== 0 ? formatCurrencyShort(fromCents(flowCents), mainCurrency) : '—'}
                 </div>
               );
             })}
