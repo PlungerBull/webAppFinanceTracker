@@ -7,7 +7,6 @@ import { MissingInfoBanner } from './missing-info-banner';
 import { ActionFooter } from './action-footer';
 import { calculateLedgerReadiness } from './utils/readiness';
 import { useCurrency } from '@/contexts/currency-context';
-import { useUserSettings } from '@/features/settings/hooks/use-user-settings';
 import type { TransactionDetailPanelProps, EditedFields } from './types';
 
 
@@ -26,9 +25,9 @@ export function TransactionDetailPanel(props: TransactionDetailPanelProps) {
   const [editedFields, setEditedFields] = useState<EditedFields>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Access main currency and check if settings are still loading
-  const { mainCurrency } = useCurrency();  // May be default USD during load
-  const { isLoading: isSettingsLoading } = useUserSettings();  // Check if still loading
+  // Access main currency and loading state from context
+  // Context now exposes isLoading, eliminating need for separate useUserSettings call
+  const { mainCurrency, isLoading: isSettingsLoading } = useCurrency();
 
   // CRITICAL: Treat as loading if settings not yet resolved
   // Prevents user from saving with wrong currency assumption

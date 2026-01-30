@@ -1,77 +1,43 @@
 'use client';
 
-import { createContext, useContext, useMemo, ReactNode } from 'react';
-import { useUserSettings } from '@/features/settings/hooks/use-user-settings';
+import { createContext, useContext, ReactNode } from 'react';
+import { useMainCurrency } from '@/lib/hooks/use-main-currency';
 import { CURRENCY } from '@/lib/constants';
 
+/**
+ * Currency context value shape.
+ *
+ * SIMPLIFIED: Removed unused formatCurrency and formatCurrencyShort functions.
+ * Use @/lib/utils/currency-formatter or @/lib/hooks/use-formatted-balance instead.
+ */
 interface CurrencyContextValue {
+  /** User's main currency code (e.g., 'USD', 'EUR') */
   mainCurrency: string;
-  formatCurrency: (amount: number, currency?: string) => string;
-  formatCurrencyShort: (amount: number, currency?: string) => string;
+  /** Whether currency data is still loading */
+  isLoading: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
 
 /**
- * CurrencyProvider - Provides optimized currency formatting with memoized formatters
+ * CurrencyProvider - Provides main currency from user settings
  *
- * Benefits:
- * - Single Intl.NumberFormat instance per currency (cached)
- * - Automatic main currency detection from user settings
- * - Better performance by avoiding repeated formatter creation
+ * REFACTORED: Now uses lib-level useMainCurrency hook instead of
+ * directly importing from settings feature. This eliminates the
+ * context → feature dependency that violated architectural boundaries.
+ *
+ * REMOVED (unused):
+ * - formatCurrency() - use @/lib/utils/currency-formatter instead
+ * - formatCurrencyShort() - use @/lib/utils/currency-formatter instead
  */
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const { data: userSettings } = useUserSettings();
+  const { mainCurrency, isLoading } = useMainCurrency();
 
-  // Get main currency from user settings
-  const mainCurrency = useMemo(
-    () => userSettings?.mainCurrency || CURRENCY.DEFAULT,
-    [userSettings]
-  );
-
-  // Create memoized formatters with caching
-  const formatters = useMemo(() => {
-    const cache = new Map<string, Intl.NumberFormat>();
-
-    /**
-     * Get or create a cached formatter for a specific currency and decimal precision
-     */
-    const getFormatter = (currency: string, decimals: number) => {
-      const key = `${currency}-${decimals}`;
-      if (!cache.has(key)) {
-        cache.set(key, new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency,
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals,
-        }));
-      }
-      return cache.get(key)!;
-    };
-
-    return {
-      /**
-       * Format currency with 2 decimal places
-       */
-      format: (amount: number, currency: string) =>
-        getFormatter(currency, CURRENCY.FORMAT.DECIMAL_PLACES).format(amount),
-
-      /**
-       * Format currency with no decimal places (for large numbers/summaries)
-       */
-      formatShort: (amount: number, currency: string) =>
-        getFormatter(currency, 0).format(amount),
-    };
-  }, []); // Empty dependency array - formatters never change
-
-  // Memoize the context value to prevent unnecessary re-renders
-  const value = useMemo<CurrencyContextValue>(() => ({
-    mainCurrency,
-    formatCurrency: (amount: number, currency?: string) =>
-      formatters.format(amount, currency || mainCurrency),
-    formatCurrencyShort: (amount: number, currency?: string) =>
-      formatters.formatShort(amount, currency || mainCurrency),
-  }), [mainCurrency, formatters]);
+  const value: CurrencyContextValue = {
+    // Return default during loading to prevent undefined states
+    mainCurrency: isLoading ? CURRENCY.DEFAULT : mainCurrency,
+    isLoading,
+  };
 
   return (
     <CurrencyContext.Provider value={value}>
@@ -81,13 +47,13 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Hook to access currency formatting functions
+ * Hook to access main currency
  *
  * @example
  * ```tsx
- * const { formatCurrency, mainCurrency } = useCurrency();
- * return <span>{formatCurrency(100.50)}</span>; // Uses main currency
- * return <span>{formatCurrency(100.50, 'EUR')}</span>; // Specific currency
+ * const { mainCurrency, isLoading } = useCurrency();
+ * if (isLoading) return <Loading />;
+ * return <span>Main currency: {mainCurrency}</span>;
  * ```
  *
  * @throws Error if used outside of CurrencyProvider

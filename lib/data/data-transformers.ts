@@ -754,6 +754,28 @@ export function dbUserSettingsToDomain(
   };
 }
 
+/**
+ * Transforms raw main_currency DB value to type-safe domain string
+ *
+ * Data Border Control: Sanitizes currency at the boundary to ensure
+ * type-safe, valid ISO 4217 currency codes reach the application layer.
+ *
+ * @param rawCurrency - Raw value from database (may be null/undefined/invalid)
+ * @param defaultCurrency - Fallback currency code (e.g., 'USD')
+ * @returns Sanitized 3-character uppercase ISO currency code
+ */
+export function dbMainCurrencyToDomain(
+  rawCurrency: string | null | undefined,
+  defaultCurrency: string
+): string {
+  if (!rawCurrency || typeof rawCurrency !== 'string') {
+    return defaultCurrency;
+  }
+  // Sanitize: uppercase, trim, validate 3-char ISO code
+  const sanitized = rawCurrency.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(sanitized) ? sanitized : defaultCurrency;
+}
+
 // ============================================================================
 // RECONCILIATION TRANSFORMERS
 // ============================================================================
