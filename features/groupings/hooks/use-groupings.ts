@@ -2,10 +2,12 @@
  * Grouping Query and Mutation Hooks
  *
  * React Query hooks for grouping (parent category) operations.
- * Uses CategoryService since groupings are parent categories (parentId = null).
+ * Uses IGroupingOperations via orchestrator hook for decoupled service access.
  *
  * CTO MANDATES:
- * - Orchestrator Rule: Service may be null, queries/mutations must guard
+ * - Orchestrator Rule: Operations may be null, queries/mutations must guard
+ * - Sacred Domain: Types imported from @/domain, not @/features
+ * - Error Codes: Handle typed errors from IGroupingOperations
  *
  * @module use-groupings
  */
@@ -13,7 +15,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
-import { useCategoryService } from '@/features/categories/hooks/use-category-service';
+import { useGroupingOperations } from '@/lib/hooks/use-grouping-operations';
 import type {
   CreateGroupingDTO,
   CreateSubcategoryDTO,
@@ -21,16 +23,10 @@ import type {
   ReassignSubcategoryDTO,
   GroupingEntity,
   CategoryWithCountEntity,
-} from '@/features/categories/domain';
-import {
-  CategoryRepositoryError,
-  isCategoryHasChildrenError,
-  isCategoryHasTransactionsError,
-  isCategoryDuplicateNameError,
-  isCategoryHierarchyError,
-} from '@/features/categories/domain';
+} from '@/domain/categories';
+import { isGroupingOperationError } from '@/domain/categories';
 
-// Re-export types for consumers
+// Re-export types for consumers (from Sacred Domain)
 export type { GroupingEntity, CategoryWithCountEntity };
 
 /**
@@ -39,7 +35,7 @@ export type { GroupingEntity, CategoryWithCountEntity };
  * Query hook for fetching all parent categories (groupings).
  *
  * CTO MANDATE: Orchestrator Rule
- * Query is disabled until service is ready.
+ * Query is disabled until operations are ready.
  *
  * @returns Query result with groupings array
  *
@@ -63,18 +59,18 @@ export type { GroupingEntity, CategoryWithCountEntity };
  * ```
  */
 export function useGroupings() {
-  const service = useCategoryService();
+  const operations = useGroupingOperations();
 
   return useQuery({
     queryKey: QUERY_KEYS.GROUPINGS,
     queryFn: () => {
-      if (!service) {
-        throw new Error('Category service not ready');
+      if (!operations) {
+        throw new Error('Grouping operations not ready');
       }
-      return service.getGroupings();
+      return operations.getGroupings();
     },
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
-    enabled: !!service, // CTO MANDATE: Orchestrator Rule
+    enabled: !!operations, // CTO MANDATE: Orchestrator Rule
   });
 }
 
@@ -84,23 +80,23 @@ export function useGroupings() {
  * Query hook for fetching children of a specific parent.
  *
  * CTO MANDATE: Orchestrator Rule
- * Query is disabled until service is ready.
+ * Query is disabled until operations are ready.
  *
  * @param parentId - Parent category ID
  * @returns Query result with child categories array
  */
 export function useGroupingChildren(parentId: string) {
-  const service = useCategoryService();
+  const operations = useGroupingOperations();
 
   return useQuery({
     queryKey: ['grouping-children', parentId],
     queryFn: () => {
-      if (!service) {
-        throw new Error('Category service not ready');
+      if (!operations) {
+        throw new Error('Grouping operations not ready');
       }
-      return service.getByParentId(parentId);
+      return operations.getByParentId(parentId);
     },
-    enabled: !!service && !!parentId, // CTO MANDATE: Orchestrator Rule
+    enabled: !!operations && !!parentId, // CTO MANDATE: Orchestrator Rule
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
   });
 }
@@ -111,7 +107,7 @@ export function useGroupingChildren(parentId: string) {
  * Mutation hook for creating a new parent category.
  *
  * CTO MANDATE: Orchestrator Rule
- * Returns isReady flag to indicate if service is available.
+ * Returns isReady flag to indicate if operations are available.
  *
  * @example
  * ```typescript
@@ -124,25 +120,33 @@ export function useGroupingChildren(parentId: string) {
  * ```
  */
 export function useAddGrouping() {
-  const service = useCategoryService();
+  const operations = useGroupingOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: (data: CreateGroupingDTO) => {
-      if (!service) {
-        throw new CategoryRepositoryError('Category service not ready');
+      if (!operations) {
+        throw new Error('Grouping operations not ready');
       }
-      return service.createGrouping(data);
+      return operations.createGrouping(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isCategoryDuplicateNameError(err)) {
-        toast.error('Grouping already exists', {
-          description: err.message,
-        });
+      if (isGroupingOperationError(err)) {
+        switch (err.code) {
+          case 'DUPLICATE_NAME':
+            toast.error('Grouping already exists', {
+              description: err.message,
+            });
+            break;
+          default:
+            toast.error('Failed to create grouping', {
+              description: err.message,
+            });
+        }
       } else {
         const errorMessage = err instanceof Error ? err.message : String(err);
         toast.error('Failed to create grouping', {
@@ -154,7 +158,7 @@ export function useAddGrouping() {
 
   return {
     ...mutation,
-    isReady: !!service,
+    isReady: !!operations,
   };
 }
 
@@ -164,7 +168,7 @@ export function useAddGrouping() {
  * Mutation hook for updating a parent category.
  *
  * CTO MANDATE: Orchestrator Rule
- * Returns isReady flag to indicate if service is available.
+ * Returns isReady flag to indicate if operations are available.
  *
  * @example
  * ```typescript
@@ -177,25 +181,38 @@ export function useAddGrouping() {
  * ```
  */
 export function useUpdateGrouping() {
-  const service = useCategoryService();
+  const operations = useGroupingOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateGroupingDTO }) => {
-      if (!service) {
-        throw new CategoryRepositoryError('Category service not ready');
+      if (!operations) {
+        throw new Error('Grouping operations not ready');
       }
-      return service.updateGrouping(id, data);
+      return operations.updateGrouping(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isCategoryDuplicateNameError(err)) {
-        toast.error('Grouping already exists', {
-          description: err.message,
-        });
+      if (isGroupingOperationError(err)) {
+        switch (err.code) {
+          case 'DUPLICATE_NAME':
+            toast.error('Grouping already exists', {
+              description: err.message,
+            });
+            break;
+          case 'VERSION_CONFLICT':
+            toast.error('Conflict detected', {
+              description: 'This grouping was modified elsewhere. Please refresh and try again.',
+            });
+            break;
+          default:
+            toast.error('Failed to update grouping', {
+              description: err.message,
+            });
+        }
       } else {
         const errorMessage = err instanceof Error ? err.message : String(err);
         toast.error('Failed to update grouping', {
@@ -207,7 +224,7 @@ export function useUpdateGrouping() {
 
   return {
     ...mutation,
-    isReady: !!service,
+    isReady: !!operations,
   };
 }
 
@@ -217,8 +234,8 @@ export function useUpdateGrouping() {
  * Mutation hook for deleting a parent category.
  *
  * CTO Mandates:
- * - Type-safe error handling via instanceof
- * - Orchestrator Rule: Service may be null
+ * - Type-safe error handling via error codes
+ * - Orchestrator Rule: Operations may be null
  *
  * @example
  * ```typescript
@@ -231,29 +248,43 @@ export function useUpdateGrouping() {
  * ```
  */
 export function useDeleteGrouping() {
-  const service = useCategoryService();
+  const operations = useGroupingOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: ({ id, version }: { id: string; version: number }) => {
-      if (!service) {
-        throw new CategoryRepositoryError('Category service not ready');
+      if (!operations) {
+        throw new Error('Grouping operations not ready');
       }
-      return service.delete(id, version);
+      return operations.delete(id, version);
     },
     onError: (err) => {
-      // CTO Mandate: Use instanceof for type-safe error handling
-      if (isCategoryHasChildrenError(err)) {
-        toast.error('Cannot delete grouping', {
-          description:
-            err.childCount > 0
-              ? `This grouping has ${err.childCount} subcategories. Move or delete them first.`
-              : 'Move or delete subcategories first.',
-        });
-      } else if (isCategoryHasTransactionsError(err)) {
-        toast.error('Cannot delete grouping', {
-          description: 'This grouping has transactions. Move or delete them first.',
-        });
+      // CTO Mandate: Use error codes for type-safe error handling
+      if (isGroupingOperationError(err)) {
+        switch (err.code) {
+          case 'HAS_CHILDREN':
+            toast.error('Cannot delete grouping', {
+              description:
+                err.childCount && err.childCount > 0
+                  ? `Has ${err.childCount} subcategories. Move or delete them first.`
+                  : 'Move or delete subcategories first.',
+            });
+            break;
+          case 'HAS_TRANSACTIONS':
+            toast.error('Cannot delete grouping', {
+              description: 'Has transactions. Move or delete them first.',
+            });
+            break;
+          case 'VERSION_CONFLICT':
+            toast.error('Conflict detected', {
+              description: 'This grouping was modified elsewhere. Please refresh and try again.',
+            });
+            break;
+          default:
+            toast.error('Failed to delete grouping', {
+              description: err.message,
+            });
+        }
       } else {
         const errorMessage = err instanceof Error ? err.message : String(err);
         toast.error('Failed to delete grouping', {
@@ -269,7 +300,7 @@ export function useDeleteGrouping() {
 
   return {
     ...mutation,
-    isReady: !!service,
+    isReady: !!operations,
   };
 }
 
@@ -279,7 +310,7 @@ export function useDeleteGrouping() {
  * Mutation hook for creating a subcategory under a parent.
  *
  * CTO MANDATE: Orchestrator Rule
- * Returns isReady flag to indicate if service is available.
+ * Returns isReady flag to indicate if operations are available.
  *
  * @example
  * ```typescript
@@ -296,29 +327,38 @@ export function useDeleteGrouping() {
  * ```
  */
 export function useAddSubcategory() {
-  const service = useCategoryService();
+  const operations = useGroupingOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: (data: CreateSubcategoryDTO) => {
-      if (!service) {
-        throw new CategoryRepositoryError('Category service not ready');
+      if (!operations) {
+        throw new Error('Grouping operations not ready');
       }
-      return service.createSubcategory(data);
+      return operations.createSubcategory(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isCategoryDuplicateNameError(err)) {
-        toast.error('Subcategory already exists', {
-          description: err.message,
-        });
-      } else if (isCategoryHierarchyError(err)) {
-        toast.error('Invalid hierarchy', {
-          description: err.message,
-        });
+      if (isGroupingOperationError(err)) {
+        switch (err.code) {
+          case 'DUPLICATE_NAME':
+            toast.error('Subcategory already exists', {
+              description: err.message,
+            });
+            break;
+          case 'INVALID_HIERARCHY':
+            toast.error('Invalid hierarchy', {
+              description: err.message,
+            });
+            break;
+          default:
+            toast.error('Failed to create subcategory', {
+              description: err.message,
+            });
+        }
       } else {
         const errorMessage = err instanceof Error ? err.message : String(err);
         toast.error('Failed to create subcategory', {
@@ -330,7 +370,7 @@ export function useAddSubcategory() {
 
   return {
     ...mutation,
-    isReady: !!service,
+    isReady: !!operations,
   };
 }
 
@@ -340,7 +380,7 @@ export function useAddSubcategory() {
  * Mutation hook for moving a subcategory to a different parent.
  *
  * CTO MANDATE: Orchestrator Rule
- * Returns isReady flag to indicate if service is available.
+ * Returns isReady flag to indicate if operations are available.
  *
  * @example
  * ```typescript
@@ -356,25 +396,33 @@ export function useAddSubcategory() {
  * ```
  */
 export function useReassignSubcategory() {
-  const service = useCategoryService();
+  const operations = useGroupingOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: (data: ReassignSubcategoryDTO) => {
-      if (!service) {
-        throw new CategoryRepositoryError('Category service not ready');
+      if (!operations) {
+        throw new Error('Grouping operations not ready');
       }
-      return service.reassignSubcategory(data);
+      return operations.reassignSubcategory(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isCategoryHierarchyError(err)) {
-        toast.error('Invalid reassignment', {
-          description: err.message,
-        });
+      if (isGroupingOperationError(err)) {
+        switch (err.code) {
+          case 'INVALID_HIERARCHY':
+            toast.error('Invalid reassignment', {
+              description: err.message,
+            });
+            break;
+          default:
+            toast.error('Failed to reassign subcategory', {
+              description: err.message,
+            });
+        }
       } else {
         const errorMessage = err instanceof Error ? err.message : String(err);
         toast.error('Failed to reassign subcategory', {
@@ -386,6 +434,6 @@ export function useReassignSubcategory() {
 
   return {
     ...mutation,
-    isReady: !!service,
+    isReady: !!operations,
   };
 }

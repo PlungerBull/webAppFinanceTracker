@@ -26,9 +26,19 @@ export {
   type CategoryType,
   type CategoryEntity,
   type LeafCategoryEntity,
+  type GroupingEntity,
+  type CategoryWithCountEntity,
+  type CreateGroupingDTO,
+  type UpdateGroupingDTO,
+  type CreateSubcategoryDTO,
+  type ReassignSubcategoryDTO,
+  type GroupingErrorCode,
+  type GroupingOperationError,
+  type IGroupingOperations,
   isGrouping,
   isSubcategory,
   isLeafCategory,
+  isGroupingOperationError,
 } from './categories';
 
 // Inbox Domain
