@@ -1,6 +1,6 @@
 'use client';
 
-import { TransactionList } from './transaction-list';
+import { TransactionList } from '@/components/shared/transaction-list';
 import { useTransactions } from '../hooks/use-transactions';
 
 interface AccountTransactionsTableProps {

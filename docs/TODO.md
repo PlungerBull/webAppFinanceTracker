@@ -27,12 +27,12 @@
 
 **Goal:** Resolve "Feature Bleed" to allow the iOS Native Port to compile features in isolation.
 
-- [ ] **Extract Shared Components:** Move the following from feature folders to `@/components/shared/`:
-  - `TransactionDetailPanel` (from `features/shared`)
-  - `CategorySelector` (from `features/transactions`)
-  - `TransactionList` (from `features/transactions`)
+- [x] **Extract Shared Components:** Move the following from feature folders to `@/components/shared/`:
+  - `TransactionDetailPanel` (from `features/shared`) → `components/shared/transaction-detail-panel/`
+  - `CategorySelector` (from `features/transactions`) → `components/shared/category-selector.tsx`
+  - `TransactionList` + `TransactionRow` (from `features/transactions`) → `components/shared/`
 
-- [ ] **Library Hook Migration:** Move `useBulkSelection` and `useCurrencies` hooks from feature folders to `@/lib/hooks/` to act as neutral orchestrators.
+- [x] **Library Hook Migration:** Move `useBulkSelection` and `useCurrencies` hooks from feature folders to `@/lib/hooks/` to act as neutral orchestrators.
 
 - [ ] **Create Category IoC Interface:** Implement an `ICategoryOperations` interface in `@/domain/categories`. Refactor `add-category-modal.tsx` to depend on this interface rather than importing hooks directly from the groupings feature.
 

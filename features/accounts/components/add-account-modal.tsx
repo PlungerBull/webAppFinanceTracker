@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useFormModal } from '@/lib/hooks/use-form-modal';
 import { useCurrencyManager } from '@/lib/hooks/use-currency-manager';
-import { useCurrencies } from '@/features/currencies/hooks/use-currencies';
+import { useCurrencies } from '@/lib/hooks/use-currencies';
 import { useCreateAccount } from '../hooks/use-account-mutations';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';

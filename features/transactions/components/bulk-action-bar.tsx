@@ -4,7 +4,7 @@ import { X, Hash, CreditCard, Calendar as CalendarIcon, FileText, Loader2, FileC
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { SmartSelector } from './smart-selector';
-import { CategorySelector } from './category-selector';
+import { CategorySelector } from '@/components/shared/category-selector';
 import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
 import { useReconciliations, useReconciliationSummary } from '@/features/reconciliations/hooks/use-reconciliations';

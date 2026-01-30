@@ -20,7 +20,7 @@ import { Loader2 } from 'lucide-react';
 import { TRANSACTIONS, PAGINATION } from '@/lib/constants';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { TransactionRow, type TransactionRowData } from './transaction-row';
-import type { TransactionViewEntity } from '../domain';
+import type { TransactionViewEntity } from '@/features/transactions/domain';
 
 /**
  * Normalized transaction type for display

@@ -12,10 +12,10 @@
 import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { SidebarProvider } from '@/contexts/sidebar-context';
-import { TransactionList } from '@/features/transactions/components/transaction-list';
+import { TransactionList } from '@/components/shared/transaction-list';
 import { InboxDetailPanel } from './inbox-detail-panel';
 import { useInboxItems } from '../hooks/use-inbox';
-import { useBulkSelection } from '@/features/transactions/hooks/use-bulk-selection';
+import { useBulkSelection } from '@/lib/hooks/use-bulk-selection';
 import { inboxItemViewsToTransactionViews } from '@/lib/data/data-transformers';
 import type { InboxItemViewEntity } from '../domain/entities';
 

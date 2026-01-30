@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { currenciesApi } from '../api/currencies';
+import { currenciesApi } from '@/features/currencies/api/currencies';
 import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
 
 /**

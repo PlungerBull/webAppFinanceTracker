@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { CreditCard, Tag, Calendar as CalendarIcon } from 'lucide-react';
 import { SmartSelector } from './smart-selector';
-import { CategorySelector } from './category-selector';
+import { CategorySelector } from '@/components/shared/category-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

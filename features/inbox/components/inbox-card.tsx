@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAccountsData } from '@/lib/hooks/use-reference-data';
-import { CategorySelector } from '@/features/transactions/components/category-selector';
+import { CategorySelector } from '@/components/shared/category-selector';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { INBOX } from '@/lib/constants';
 import { toast } from 'sonner';
