@@ -101,9 +101,15 @@ Production readiness and iOS native port preparation tasks identified from compr
 **Problem:** Use of `any` types in high-traffic interfaces and a lack of Zod validation on specific RPC results create "blind spots" in the type safety net.
 
 **Files to Modify:**
-- [ ] `features/import-export/services/data-import-service.ts`: Replace the type assertion on `rpcResult` (line 103) with a proper `.parse()` using a new `ImportResultRpcSchema`
-- [ ] `features/settings/components/profile-settings.tsx`: Replace `user: any` with the proper Supabase `User` type
-- [ ] `features/inbox/repository/supabase-inbox-repository.ts`: Fix the `any` cast in the version conflict fallback query
+- [x] `features/import-export/services/data-import-service.ts`: Replace the type assertion on `rpcResult` (line 103) with a proper `.parse()` using a new `ImportResultRpcSchema`
+  - Added `ImportResultRpcSchema` to `lib/data/db-row-schemas.ts`
+  - Replaced `as` type assertion with `validateOrThrow(ImportResultRpcSchema, data, 'ImportResultRpc')`
+- [x] `features/settings/components/profile-settings.tsx`: Replace `user: any` with the proper `AuthUserEntity` type
+  - Used platform-agnostic `AuthUserEntity | null` from `@/domain/auth` (follows architecture abstraction)
+  - Updated property accesses from `user_metadata.firstName/lastName` to `firstName/lastName`
+- [x] `features/inbox/repository/supabase-inbox-repository.ts`: Fix the `any` cast in the version conflict fallback query
+  - Added local `VersionCheckSchema` for the fallback query validation
+  - Replaced `(currentItem as any).version` with `validateOrThrow(VersionCheckSchema, currentItem, 'VersionCheck').version`
 
 ### 6. Code Hygiene & Deduplication
 

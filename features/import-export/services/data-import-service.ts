@@ -2,6 +2,8 @@ import { read, utils } from 'xlsx';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import { ACCOUNT, CATEGORY, IMPORT_EXPORT } from '@/lib/constants';
+import { validateOrThrow } from '@/lib/data/validate';
+import { ImportResultRpcSchema } from '@/lib/data/db-row-schemas';
 
 export interface ImportResult {
     total: number;
@@ -98,9 +100,8 @@ export class DataImportService {
 
             if (error) throw new Error(IMPORT_EXPORT.ERRORS.RPC_CALL_FAILED(error.message));
 
-            // Parse result
-            // The RPC returns { success: number, failed: number, errors: string[] }
-            const rpcResult = data as { success: number; failed: number; errors: string[] };
+            // Validate and parse RPC result at the network boundary
+            const rpcResult = validateOrThrow(ImportResultRpcSchema, data, 'ImportResultRpc');
 
             result.success = rpcResult.success;
             result.failed = rpcResult.failed;

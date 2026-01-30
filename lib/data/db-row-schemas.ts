@@ -295,6 +295,15 @@ export const LinkUnlinkRpcSchema = z.object({
   })),
 });
 
+/**
+ * import_transactions RPC response
+ */
+export const ImportResultRpcSchema = z.object({
+  success: z.number().int().min(0),
+  failed: z.number().int().min(0),
+  errors: z.array(z.string()),
+});
+
 // ============================================================================
 // SYNC RPC SCHEMAS (for pull-engine.ts)
 // The get_changes_since RPC returns renamed columns:

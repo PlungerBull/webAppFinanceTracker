@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { AuthUserEntity } from '@/domain/auth';
 import {
     updateProfileSchema,
     type UpdateProfileFormData,
@@ -16,7 +17,7 @@ import { SETTINGS } from '@/lib/constants';
 import { getInitials } from '@/lib/utils';
 
 interface ProfileSettingsProps {
-    user: any; // Supabase User type
+    user: AuthUserEntity | null;
     initialize: () => void;
     openPasswordModal: () => void;
     openEmailModal: () => void;
@@ -34,16 +35,16 @@ export function ProfileSettings({ user, initialize, openPasswordModal, openEmail
     } = useForm<UpdateProfileFormData>({
         resolver: zodResolver(updateProfileSchema),
         defaultValues: {
-            firstName: user?.user_metadata?.firstName || '',
-            lastName: user?.user_metadata?.lastName || '',
+            firstName: user?.firstName || '',
+            lastName: user?.lastName || '',
         },
     });
 
     useEffect(() => {
         if (user) {
             reset({
-                firstName: user.user_metadata?.firstName || '',
-                lastName: user.user_metadata?.lastName || '',
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
             });
         }
     }, [user, reset]);
@@ -63,8 +64,8 @@ export function ProfileSettings({ user, initialize, openPasswordModal, openEmail
     };
 
     const initials = getInitials(
-        user?.user_metadata?.firstName,
-        user?.user_metadata?.lastName
+        user?.firstName ?? undefined,
+        user?.lastName ?? undefined
     );
 
     return (
@@ -127,7 +128,7 @@ export function ProfileSettings({ user, initialize, openPasswordModal, openEmail
                         <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
                             <div className="space-y-0.5 overflow-hidden">
                                 <Label className="text-base">{SETTINGS.LABELS.EMAIL}</Label>
-                                <p className="text-sm text-muted-foreground truncate" title={user?.email}>{user?.email}</p>
+                                <p className="text-sm text-muted-foreground truncate" title={user?.email ?? undefined}>{user?.email}</p>
                             </div>
                             <Button
                                 type="button"

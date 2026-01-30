@@ -40,6 +40,14 @@ import { dbInboxItemViewToDomain } from '@/lib/data/data-transformers';
 import { validateOrThrow, validateArrayOrThrow } from '@/lib/data/validate';
 import { TransactionInboxViewRowSchema } from '@/lib/data/db-row-schemas';
 import type { InboxItemViewEntity } from '../domain/entities';
+import { z } from 'zod';
+
+/**
+ * Schema for version-only query result (used in conflict detection)
+ */
+const VersionCheckSchema = z.object({
+  version: z.number().int().min(0),
+});
 
 /**
  * Default pagination constants
@@ -257,10 +265,11 @@ export class SupabaseInboxRepository implements IInboxRepository {
         }
 
         // Item exists, so it must be a version conflict
+        const validated = validateOrThrow(VersionCheckSchema, currentItem, 'VersionCheck');
         return {
           success: false,
           data: null,
-          error: new VersionConflictError(id, data.lastKnownVersion ?? -1, (currentItem as any).version),
+          error: new VersionConflictError(id, data.lastKnownVersion ?? -1, validated.version),
         };
       }
 
