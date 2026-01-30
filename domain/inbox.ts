@@ -14,7 +14,7 @@
  * @module domain/inbox
  */
 
-import type { DataResult } from '@/lib/data-patterns/types';
+import type { DataResult, SerializableError } from '@/lib/data-patterns/types';
 
 /**
  * Inbox Item Status
@@ -229,7 +229,7 @@ export interface IInboxOperations {
   /**
    * Create a new inbox item
    */
-  create(data: CreateInboxItemDTO): Promise<DataResult<InboxItemViewEntity>>;
+  create(data: CreateInboxItemDTO): Promise<DataResult<InboxItemViewEntity, SerializableError>>;
 
   /**
    * Update an existing inbox item
@@ -237,10 +237,10 @@ export interface IInboxOperations {
   update(
     id: string,
     data: UpdateInboxItemDTO
-  ): Promise<DataResult<InboxItemViewEntity>>;
+  ): Promise<DataResult<InboxItemViewEntity, SerializableError>>;
 
   /**
    * Promote an inbox item to a full transaction
    */
-  promote(data: PromoteInboxItemDTO): Promise<DataResult<PromoteResult>>;
+  promote(data: PromoteInboxItemDTO): Promise<DataResult<PromoteResult, SerializableError>>;
 }

@@ -1230,12 +1230,56 @@ export function useGroupingOperations(): IGroupingOperations | null {
 
 This prevents cascading re-renders when `useGroupingOperations()` is consumed by multiple hooks.
 
+### Error Type Standards for IoC Interfaces
+
+**Critical Rule:** IoC interfaces that return `DataResult<T>` MUST use `SerializableError` as the error type parameter, NOT the default `Error`.
+
+```typescript
+// ✅ CORRECT: Use SerializableError for IoC interface methods
+import type { DataResult, SerializableError } from '@/lib/data-patterns/types';
+
+export interface IInboxOperations {
+  create(data: CreateInboxItemDTO): Promise<DataResult<InboxItemViewEntity, SerializableError>>;
+  update(id: string, data: UpdateInboxItemDTO): Promise<DataResult<InboxItemViewEntity, SerializableError>>;
+  promote(data: PromoteInboxItemDTO): Promise<DataResult<PromoteResult, SerializableError>>;
+}
+
+// ❌ WRONG: Default Error type causes type incompatibility
+export interface IInboxOperations {
+  create(data: CreateInboxItemDTO): Promise<DataResult<InboxItemViewEntity>>;  // Defaults to Error
+}
+```
+
+**Why This Matters:**
+
+Feature-specific error types (e.g., `InboxError`, `CategoryError`) extend `SerializableError` for Swift compatibility — they have `code` and `message` but NOT `name`. The built-in `Error` type requires `name`, causing type incompatibility:
+
+```
+Type 'InboxError' is not assignable to type 'Error'.
+  Property 'name' is missing in type 'InboxError' but required in type 'Error'.
+```
+
+| Type | Properties | Swift Compatible |
+|------|------------|-----------------|
+| `Error` (built-in) | `name`, `message`, `stack?` | ❌ No (`name` is runtime-only) |
+| `SerializableError` | `code`, `message` | ✅ Yes (JSON-serializable) |
+| `InboxError` | `code` (union), `message` | ✅ Yes (extends SerializableError) |
+
+**Affected Interfaces:**
+
+| Interface | Location | Error Type |
+|-----------|----------|------------|
+| `IInboxOperations` | `domain/inbox.ts` | `SerializableError` |
+| `IGroupingOperations` | `domain/categories.ts` | Uses error code translation (no DataResult) |
+
 ### Key Files
 
 | File | Purpose |
 |------|---------|
 | `domain/categories.ts` | `IGroupingOperations`, `GroupingErrorCode`, `GroupingOperationError`, DTOs |
+| `domain/inbox.ts` | `IInboxOperations` with `SerializableError`-typed DataResult returns |
 | `lib/hooks/use-grouping-operations.ts` | Orchestrator hook with error translation |
+| `lib/hooks/use-inbox-operations.ts` | Orchestrator hook wrapping InboxService |
 | `features/groupings/hooks/use-groupings.ts` | Consumer hooks (queries + mutations) |
 
 ### Rules for Cross-Feature Dependencies
@@ -1246,9 +1290,11 @@ This prevents cascading re-renders when `useGroupingOperations()` is consumed by
 - ✅ Translate feature errors to domain error codes in the orchestrator
 - ✅ Use `useRef` for stable memoization in orchestrator hooks
 - ✅ Import types from `@/domain/` in consuming features
+- ✅ Use `DataResult<T, SerializableError>` for IoC interface return types (not `DataResult<T>`)
 
 **DON'T:**
 - ❌ Import from `@/features/other-feature/hooks/*` in feature code
 - ❌ Import from `@/features/other-feature/services/*` in feature code
 - ❌ Use `instanceof` error checks in consuming features — use error codes
 - ❌ Create new objects on every render in orchestrator hooks
+- ❌ Use default `DataResult<T>` (which uses `Error`) for IoC interfaces — use `DataResult<T, SerializableError>`

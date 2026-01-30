@@ -19,7 +19,7 @@ import type {
   InboxItemViewEntity,
   PromoteResult,
 } from '@/domain/inbox';
-import type { DataResult } from '@/lib/data-patterns/types';
+import type { DataResult, SerializableError } from '@/lib/data-patterns/types';
 
 /**
  * Hook that provides IInboxOperations interface
@@ -50,14 +50,14 @@ export function useInboxOperations(): IInboxOperations {
 
     // Adapter that implements IInboxOperations using InboxService
     // Type assertions needed because InboxService uses its own DataResult type
-    // with InboxError, but IInboxOperations expects standard DataResult with Error
+    // with InboxError, but IInboxOperations expects DataResult with SerializableError
     const operations: IInboxOperations = {
       create: (data) =>
-        inboxService.create(data) as Promise<DataResult<InboxItemViewEntity>>,
+        inboxService.create(data) as Promise<DataResult<InboxItemViewEntity, SerializableError>>,
       update: (id, data) =>
-        inboxService.update(id, data) as Promise<DataResult<InboxItemViewEntity>>,
+        inboxService.update(id, data) as Promise<DataResult<InboxItemViewEntity, SerializableError>>,
       promote: (data) =>
-        inboxService.promote(data) as Promise<DataResult<PromoteResult>>,
+        inboxService.promote(data) as Promise<DataResult<PromoteResult, SerializableError>>,
     };
 
     return operations;
