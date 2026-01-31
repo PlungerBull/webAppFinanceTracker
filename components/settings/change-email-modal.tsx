@@ -1,7 +1,7 @@
 'use client';
 
 import { changeEmailSchema, type ChangeEmailFormData } from '@/features/auth/schemas/profile.schema';
-import { getAuthApi } from '@/features/auth/api/auth';
+import { getAuthApi } from '@/lib/auth';
 import { FormModal } from '@/components/ui/form-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

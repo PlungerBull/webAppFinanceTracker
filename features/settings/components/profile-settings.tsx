@@ -8,7 +8,7 @@ import {
     updateProfileSchema,
     type UpdateProfileFormData,
 } from '@/lib/schemas/profile.schema';
-import { authApi } from '@/features/auth/api/auth';
+import { getAuthApi } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,7 +53,7 @@ export function ProfileSettings({ user, initialize, openPasswordModal, openEmail
         try {
             setError(null);
             setSuccess(false);
-            await authApi.updateUserMetadata(data);
+            await getAuthApi().updateUserMetadata(data);
             setSuccess(true);
             initialize();
             reset(data);

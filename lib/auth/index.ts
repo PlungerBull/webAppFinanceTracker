@@ -36,6 +36,18 @@ export * from './supabase-credential-provider';
 export * from './server-auth';
 
 // ============================================================================
+// AUTH API (Singleton Facade)
+// ============================================================================
+
+export {
+  type AuthApi,
+  createAuthApi,
+  initAuthApi,
+  getAuthApi,
+  isAuthApiInitialized,
+} from './auth-api';
+
+// ============================================================================
 // RE-EXPORTED DOMAIN TYPES
 // ============================================================================
 

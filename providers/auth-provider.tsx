@@ -18,7 +18,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import { createSupabaseCredentialProvider } from '@/lib/auth/supabase-credential-provider';
-import { initAuthApi, isAuthApiInitialized } from '@/features/auth/api/auth';
+import { initAuthApi, isAuthApiInitialized } from '@/lib/auth';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setUser, initialize } = useAuthStore();
