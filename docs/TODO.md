@@ -8,15 +8,8 @@
 
 ---
 
-## Lint Cleanup (Tech Debt)
-
-✅ **Complete.** 0 errors, 50 warnings (intentional `_` prefixes).
-
----
-
 ## Known Bugs & Edge Cases
 
-- [x] **Build Error - Auth Import Boundary:** ~~Fixed. Split into `lib/auth/client.ts` and `lib/auth/server.ts`.~~
 - [ ] **Main Currency Fix:** Resolve the bug where changing the "Main Currency" breaks existing balance calculations
 - [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates
 - [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers
