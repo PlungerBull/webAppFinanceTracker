@@ -1,288 +1,333 @@
-# Feature Audit: Categories
+# Composable Manifest: features/categories
 
-> **Audit Date:** 2026-01-30
-> **Auditor:** Claude (Senior Systems Architect)
-> **Feature Path:** `features/categories/`
-> **Status:** PASS WITH WARNINGS
-> **Grade:** A- (2 feature bleed violations blocking iOS phase)
+> **Generated**: 2026-01-31
+> **Auditor**: Claude (Senior Systems Architect)
+> **Scope**: `/features/categories/` folder
+> **Status**: PASS WITH WARNINGS
+> **Grade**: A (1 repository pattern violation in utils/validation.ts)
 
 ---
 
 ## Executive Summary
 
+| Category | Status | Details |
+|----------|--------|---------|
+| Variable & Entity Registry | **PASS** | 4 entities, 8 DTOs, 10 error classes, 9 type guards |
+| Dependency Manifest | **PASS** | 0 feature bleed violations across 24 files |
+| Sacred Mandate | **PASS** | Version bumping, soft deletes, auth abstraction all compliant |
+| Performance | **PASS** | React Compiler ready, 0 watch() calls |
+| Type Safety | **PASS** | 0 `any` types, 1 appropriate `unknown` usage |
+
+**Critical Metrics:**
 | Metric | Value | Evidence |
 |--------|-------|----------|
-| Files Audited | 21 | Domain: 5, Repository: 4, Services: 2, Hooks: 5, Components: 5 |
-| Domain Entities | 4 interfaces | `entities.ts:34-133` |
-| Re-exported Types | 6 | From `@/domain/categories` |
-| DTOs | 8 | `types.ts:40-208` |
-| Error Classes | 10 | Base + 9 specific with SQLSTATE mapping |
-| Type Guards | 9 functions | All accept `unknown` parameter |
-| Constants | 4 objects | `constants.ts:22-99` |
-| Interface Contracts | 2 | ICategoryRepository (10 methods), ICategoryService (13 methods) |
-| **Violations Found** | **2 CRITICAL** | Feature bleed in components layer |
-| Sacred Mandate Compliance | 4/4 | Version bumping, soft deletes, auth abstraction, integer cents (N/A) |
+| Files Audited | 24 | Domain: 5, Repository: 5, Services: 3, Hooks: 5, Components: 5, Utils: 1 |
+| Total Lines of Code | ~6,500 | Across all feature files |
 | `any` Types | 0 | Perfect type safety |
-| `unknown` Types | 8 appropriate | Error handlers, type guards |
-| Readonly Properties | 100% | All entity/DTO properties |
+| `unknown` Types | 1 | errors.ts:160 (appropriate for error wrapping) |
+| Readonly Properties | 100% | All entities and DTOs |
+| Feature Bleed Violations | 0 | Clean architecture |
+| Repository Pattern Violations | 1 | utils/validation.ts (WARNING) |
 
-**Overall Assessment:** The categories feature demonstrates mature architecture with strict type safety, proper error handling, and clean separation of concerns. Two feature bleed violations in the components layer require remediation before iOS development phase.
+**Issues Found:**
+- Snake_case properties in `errors.ts` are **INTENTIONAL** - These are DB discriminator literals for `HierarchyViolationReason` ('self_parent', 'max_depth', 'parent_is_child') and `MergeErrorReason` ('empty_source', 'target_not_found', etc.) matching PostgreSQL trigger/RPC error codes
+- `utils/validation.ts` makes direct Supabase calls (should use repository pattern)
 
 ---
 
 ## 1. Variable & Entity Registry
 
-### 1.1 Domain Entities (Feature-Specific)
+### 1.1 File Inventory
 
-| Entity | File | Lines | Properties | Swift Mirror | Purpose |
-|--------|------|-------|------------|--------------|---------|
-| `CategoryWithCountEntity` | `domain/entities.ts` | 34-37 | extends CategoryEntity + `transactionCount: number` | No | UI rendering with usage stats |
-| `GroupingEntity` | `domain/entities.ts` | 66-106 | 10 readonly props | Yes (lines 50-64) | Parent category container |
-| `CategorizedCategories` | `domain/entities.ts` | 114-120 | `income: CategoryGroup[]`, `expense: CategoryGroup[]` | No | Hierarchical type grouping |
-| `CategoryGroup` | `domain/entities.ts` | 127-133 | `parent: CategoryWithCountEntity`, `children: CategoryWithCountEntity[]` | No | Parent+children tuple |
+**Total Files**: 24
 
-### 1.2 Re-exported Types from @/domain/categories
+#### Domain Layer (5 files, ~868 lines)
+| File | Path | Lines | Purpose |
+|------|------|-------|---------|
+| `entities.ts` | `domain/entities.ts` | 146 | 4 interfaces, 1 type guard, 6 re-exports |
+| `types.ts` | `domain/types.ts` | 208 | 8 DTOs, 1 type alias |
+| `errors.ts` | `domain/errors.ts` | 342 | 10 error classes, 8 type guards, 2 union types |
+| `constants.ts` | `domain/constants.ts` | 99 | 4 constant objects |
+| `index.ts` | `domain/index.ts` | 68 | Barrel exports |
 
-| Type | Source | Re-export Line | Purpose |
-|------|--------|----------------|---------|
-| `CategoryEntity` | `@/domain/categories` | `entities.ts:17` | Core category data from DB |
-| `LeafCategoryEntity` | `@/domain/categories` | `entities.ts:18` | Transaction-assignable category |
-| `CategoryType` | `@/domain/categories` | `entities.ts:17` | `'income' \| 'expense'` |
-| `isGrouping` | `@/domain/categories` | `entities.ts:19` | Type guard function |
-| `isSubcategory` | `@/domain/categories` | `entities.ts:20` | Type guard function |
-| `isLeafCategory` | `@/domain/categories` | `entities.ts:21` | Type guard function |
+#### Repository Layer (5 files, ~2,618 lines)
+| File | Path | Lines | Purpose |
+|------|------|-------|---------|
+| `category-repository.interface.ts` | `repository/category-repository.interface.ts` | 278 | ICategoryRepository contract (12 methods) |
+| `supabase-category-repository.ts` | `repository/supabase-category-repository.ts` | 1034 | Supabase implementation |
+| `local-category-repository.ts` | `repository/local-category-repository.ts` | 1005 | WatermelonDB implementation |
+| `hybrid-category-repository.ts` | `repository/hybrid-category-repository.ts` | 214 | Offline-first strategy coordinator |
+| `index.ts` | `repository/index.ts` | 87 | Factory functions and exports |
 
-### 1.3 Data Transfer Objects (DTOs)
+#### Services Layer (3 files, ~634 lines)
+| File | Path | Lines | Purpose |
+|------|------|-------|---------|
+| `category-service.interface.ts` | `services/category-service.interface.ts` | 225 | ICategoryService contract (15 methods) |
+| `category-service.ts` | `services/category-service.ts` | 395 | Business logic with pre-validation |
+| `index.ts` | `services/index.ts` | 14 | Barrel exports |
 
-| DTO | File | Lines | Direction | Version Required | Swift Mirror |
-|-----|------|-------|-----------|------------------|--------------|
-| `CategoryDataResult<T>` | `types.ts` | 22 | Out (wrapper) | N/A | No |
-| `CreateCategoryDTO` | `types.ts` | 40-65 | In (create) | No (new entity) | Yes (lines 29-38) |
-| `CreateGroupingDTO` | `types.ts` | 73-82 | In (create) | No (convenience) | No |
-| `CreateSubcategoryDTO` | `types.ts` | 89-101 | In (create) | No (convenience) | No |
-| `UpdateCategoryDTO` | `types.ts` | 118-140 | In (update) | **Yes** (line 125) | Yes (lines 108-116) |
-| `UpdateGroupingDTO` | `types.ts` | 149-165 | In (update) | **Yes** (line 155) | No |
-| `ReassignSubcategoryDTO` | `types.ts` | 172-178 | In (mutation) | No | No |
-| `CategoryFilters` | `types.ts` | 185-194 | In (query) | N/A | No |
-| `BatchCategoryResult` | `types.ts` | 202-208 | Out (bulk ops) | N/A | No |
+#### Hooks Layer (5 files, ~935 lines)
+| File | Path | Lines | Purpose |
+|------|------|-------|---------|
+| `use-category-service.ts` | `hooks/use-category-service.ts` | 74 | Service initialization with DI |
+| `use-categories.ts` | `hooks/use-categories.ts` | 192 | 5 query hooks |
+| `use-category-mutations.ts` | `hooks/use-category-mutations.ts` | 578 | 7 mutation hooks |
+| `use-leaf-categories.ts` | `hooks/use-leaf-categories.ts` | 32 | Transaction category selector |
+| `use-categorized-categories.ts` | `hooks/use-categorized-categories.ts` | 59 | Hierarchical structure hook |
 
-### 1.4 Error Classes with SQLSTATE Mapping (10 Total)
+#### Components Layer (5 files, ~1,287 lines)
+| File | Path | Lines | Purpose |
+|------|------|-------|---------|
+| `add-category-modal.tsx` | `components/add-category-modal.tsx` | 232 | New grouping creation |
+| `edit-grouping-modal.tsx` | `components/edit-grouping-modal.tsx` | 439 | Grouping editing |
+| `category-form.tsx` | `components/category-form.tsx` | 128 | Shared form component |
+| `category-list.tsx` | `components/category-list.tsx` | 337 | Category tree display |
+| `delete-category-dialog.tsx` | `components/delete-category-dialog.tsx` | 151 | Delete confirmation |
 
-| Error Class | File | Lines | SQLSTATE | Code | Constructor Params |
-|-------------|------|-------|----------|------|-------------------|
-| `CategoryError` (base) | `errors.ts` | 40-47 | - | Dynamic | `message: string`, `code: string` |
-| `CategoryHierarchyError` | `errors.ts` | 80-89 | P0001 | `HIERARCHY_VIOLATION` | `reason: HierarchyViolationReason` |
-| `CategoryNotFoundError` | `errors.ts` | 96-100 | - | `CATEGORY_NOT_FOUND` | `categoryId: string` |
-| `CategoryHasTransactionsError` | `errors.ts` | 108-118 | 23503 | `CATEGORY_HAS_TRANSACTIONS` | `categoryId: string`, `transactionCount?: number` |
-| `CategoryHasChildrenError` | `errors.ts` | 126-136 | 23503 | `CATEGORY_HAS_CHILDREN` | `categoryId: string`, `childCount?: number` |
-| `CategoryValidationError` | `errors.ts` | 143-150 | - | `VALIDATION_ERROR` | `message: string`, `field?: string` |
-| `CategoryRepositoryError` | `errors.ts` | 157-164 | - | `REPOSITORY_ERROR` | `message: string`, `originalError?: unknown` |
-| `CategoryVersionConflictError` | `errors.ts` | 183-194 | - | `VERSION_CONFLICT` | `categoryId: string`, `expectedVersion: number`, `currentVersion: number` |
-| `CategoryDuplicateNameError` | `errors.ts` | 212-224 | 23505 | `DUPLICATE_NAME` | `categoryName: string`, `parentId: string \| null` |
-| `CategoryMergeError` | `errors.ts` | 263-275 | P0001 | `MERGE_ERROR` | `reason: MergeErrorReason` |
+#### Utils Layer (1 file, 123 lines)
+| File | Path | Lines | Purpose |
+|------|------|-------|---------|
+| `validation.ts` | `utils/validation.ts` | 123 | Hierarchy validation (WARNING: direct Supabase calls) |
 
-#### Error Reason Types
+---
 
-| Type | File | Lines | Values |
-|------|------|-------|--------|
-| `HierarchyViolationReason` | `errors.ts` | 57-60 | `'self_parent' \| 'max_depth' \| 'parent_is_child'` |
-| `MergeErrorReason` | `errors.ts` | 236-241 | `'empty_source' \| 'target_not_found' \| 'unauthorized' \| 'target_in_source' \| 'has_children'` |
+### 1.2 Entity Inventory (Domain Layer)
+
+#### Feature-Specific Interfaces (entities.ts)
+
+| Entity | Lines | Properties | Swift Mirror | Purpose |
+|--------|-------|------------|--------------|---------|
+| `CategoryWithCountEntity` | 34-37 | extends CategoryEntity + `transactionCount: number` | No | UI rendering with usage stats |
+| `GroupingEntity` | 66-106 | 11 readonly props | Yes (lines 50-64) | Parent category container |
+| `CategorizedCategories` | 114-120 | `income: CategoryGroup[]`, `expense: CategoryGroup[]` | No | Hierarchical type grouping |
+| `CategoryGroup` | 127-133 | `parent: CategoryWithCountEntity`, `children: CategoryWithCountEntity[]` | No | Parent+children tuple |
+
+**GroupingEntity Properties (Lines 68-105):**
+```typescript
+readonly id: string;                    // Line 68
+readonly userId: string;                // Line 71
+readonly name: string;                  // Line 74
+readonly color: string;                 // Line 77
+readonly type: CategoryType;            // Line 80
+readonly createdAt: string;             // Line 83
+readonly updatedAt: string;             // Line 86
+readonly version: number;               // Line 92 - Sync integrity
+readonly deletedAt: string | null;      // Line 99 - Tombstone
+readonly childCount: number;            // Line 102
+readonly totalTransactionCount: number; // Line 105
+```
+
+#### Re-exported Types from @/domain/categories (Lines 12-22)
+
+| Type | Source | Purpose |
+|------|--------|---------|
+| `CategoryEntity` | `@/domain/categories` | Core category from sacred domain |
+| `LeafCategoryEntity` | `@/domain/categories` | Transaction-assignable category |
+| `CategoryType` | `@/domain/categories` | `'income' \| 'expense'` |
+| `isGrouping()` | `@/domain/categories` | Type guard function |
+| `isSubcategory()` | `@/domain/categories` | Type guard function |
+| `isLeafCategory()` | `@/domain/categories` | Type guard function |
+
+---
+
+### 1.3 Data Transfer Objects (types.ts)
+
+| DTO | Lines | Direction | Version Required | Readonly | Swift Mirror |
+|-----|-------|-----------|------------------|----------|--------------|
+| `CategoryDataResult<T>` | 22 | Out (wrapper) | N/A | N/A | No |
+| `CreateCategoryDTO` | 40-65 | In (create) | No | Yes (4 props) | Yes (29-38) |
+| `CreateGroupingDTO` | 73-82 | In (create) | No | Yes (3 props) | No |
+| `CreateSubcategoryDTO` | 89-101 | In (create) | No | Yes (3 props) | No |
+| `UpdateCategoryDTO` | 118-140 | In (update) | **Yes (line 125)** | Yes (4 props) | Yes (108-116) |
+| `UpdateGroupingDTO` | 149-165 | In (update) | **Yes (line 155)** | Yes (4 props) | No |
+| `ReassignSubcategoryDTO` | 172-178 | In (mutation) | No | Yes (2 props) | No |
+| `CategoryFilters` | 185-194 | In (query) | N/A | Yes (3 props) | No |
+| `BatchCategoryResult` | 202-208 | Out (bulk) | N/A | Yes (2 props) | No |
+
+**Version Field Compliance:**
+- `UpdateCategoryDTO.version: number` (Line 125) - **Required, not optional**
+- `UpdateGroupingDTO.version: number` (Line 155) - **Required, not optional**
+
+---
+
+### 1.4 Error Classes (errors.ts)
+
+| Error Class | Lines | SQLSTATE | Code | Constructor Parameters |
+|-------------|-------|----------|------|------------------------|
+| `CategoryError` (base) | 40-47 | - | Dynamic | `message: string`, `code: string` |
+| `CategoryHierarchyError` | 80-89 | P0001 | `HIERARCHY_VIOLATION` | `reason: HierarchyViolationReason` |
+| `CategoryNotFoundError` | 96-100 | - | `CATEGORY_NOT_FOUND` | `categoryId: string` |
+| `CategoryHasTransactionsError` | 108-118 | 23503 | `CATEGORY_HAS_TRANSACTIONS` | `categoryId`, `transactionCount?` |
+| `CategoryHasChildrenError` | 126-136 | 23503 | `CATEGORY_HAS_CHILDREN` | `categoryId`, `childCount?` |
+| `CategoryValidationError` | 143-150 | - | `VALIDATION_ERROR` | `message`, `field?` |
+| `CategoryRepositoryError` | 157-164 | - | `REPOSITORY_ERROR` | `message`, `originalError?: unknown` |
+| `CategoryVersionConflictError` | 183-194 | - | `VERSION_CONFLICT` | `categoryId`, `expectedVersion`, `currentVersion` |
+| `CategoryDuplicateNameError` | 212-224 | 23505 | `DUPLICATE_NAME` | `categoryName`, `parentId: string \| null` |
+| `CategoryMergeError` | 263-275 | P0001 | `MERGE_ERROR` | `reason: MergeErrorReason` |
+
+#### Error Reason Union Types (INTENTIONAL snake_case)
+
+**HierarchyViolationReason (Lines 57-60):**
+```typescript
+export type HierarchyViolationReason =
+  | 'self_parent'      // DB trigger code: Self-parenting prevention
+  | 'max_depth'        // DB trigger code: 2-level max hierarchy
+  | 'parent_is_child'; // DB trigger code: Circular reference prevention
+```
+
+**MergeErrorReason (Lines 236-241):**
+```typescript
+export type MergeErrorReason =
+  | 'empty_source'     // RPC error: No source categories provided
+  | 'target_not_found' // RPC error: Target category missing
+  | 'unauthorized'     // RPC error: User doesn't own categories
+  | 'target_in_source' // RPC error: Target in source list
+  | 'has_children';    // RPC error: Categories have subcategories
+```
+
+**Note:** These snake_case literals are **INTENTIONAL** - they match PostgreSQL trigger and RPC error codes for proper SQLSTATE mapping.
+
+---
 
 ### 1.5 Type Guards (9 Total)
 
-| Function | File | Lines | Parameter Type | Return Type |
-|----------|------|-------|----------------|-------------|
-| `hasCategoryCount` | `entities.ts` | 142-146 | `CategoryEntity \| CategoryWithCountEntity` | `entity is CategoryWithCountEntity` |
-| `isCategoryVersionConflictError` | `errors.ts` | 199-203 | `unknown` | `error is CategoryVersionConflictError` |
-| `isCategoryNotFoundError` | `errors.ts` | 284-288 | `unknown` | `error is CategoryNotFoundError` |
-| `isCategoryHierarchyError` | `errors.ts` | 293-297 | `unknown` | `error is CategoryHierarchyError` |
-| `isCategoryHasTransactionsError` | `errors.ts` | 302-306 | `unknown` | `error is CategoryHasTransactionsError` |
-| `isCategoryHasChildrenError` | `errors.ts` | 311-315 | `unknown` | `error is CategoryHasChildrenError` |
-| `isCategoryValidationError` | `errors.ts` | 320-324 | `unknown` | `error is CategoryValidationError` |
-| `isCategoryDuplicateNameError` | `errors.ts` | 329-333 | `unknown` | `error is CategoryDuplicateNameError` |
-| `isCategoryMergeError` | `errors.ts` | 338-342 | `unknown` | `error is CategoryMergeError` |
+| Function | File | Lines | Parameter | Returns |
+|----------|------|-------|-----------|---------|
+| `hasCategoryCount` | entities.ts | 142-146 | `CategoryEntity \| CategoryWithCountEntity` | `entity is CategoryWithCountEntity` |
+| `isCategoryVersionConflictError` | errors.ts | 199-203 | `unknown` | `error is CategoryVersionConflictError` |
+| `isCategoryNotFoundError` | errors.ts | 284-288 | `unknown` | `error is CategoryNotFoundError` |
+| `isCategoryHierarchyError` | errors.ts | 293-297 | `unknown` | `error is CategoryHierarchyError` |
+| `isCategoryHasTransactionsError` | errors.ts | 302-306 | `unknown` | `error is CategoryHasTransactionsError` |
+| `isCategoryHasChildrenError` | errors.ts | 311-315 | `unknown` | `error is CategoryHasChildrenError` |
+| `isCategoryValidationError` | errors.ts | 320-324 | `unknown` | `error is CategoryValidationError` |
+| `isCategoryDuplicateNameError` | errors.ts | 329-333 | `unknown` | `error is CategoryDuplicateNameError` |
+| `isCategoryMergeError` | errors.ts | 338-342 | `unknown` | `error is CategoryMergeError` |
 
-**Type Safety Evidence:** All type guards properly accept `unknown` parameter type (TypeScript best practice).
+All type guards in errors.ts properly use `unknown` parameter type (TypeScript best practice).
 
-### 1.6 Constants (4 Objects)
+---
 
-| Constant | File | Lines | Properties | Swift Mirror |
-|----------|------|-------|------------|--------------|
-| `CATEGORY_VALIDATION` | `constants.ts` | 22-40 | `NAME_MAX_LENGTH`, `NAME_MIN_LENGTH`, `COLOR_REGEX`, `MAX_HIERARCHY_DEPTH`, `DEFAULT_COLOR`, `DEFAULT_TYPE` | Yes (lines 7-14) |
-| `CATEGORY_ERRORS` | `constants.ts` | 45-60 | 14 error message strings | No |
-| `CATEGORY_LIMITS` | `constants.ts` | 65-74 | `MAX_CATEGORIES_PER_USER`, `MAX_CHILDREN_PER_PARENT`, `DEFAULT_PAGE_SIZE` | No |
-| `CATEGORY_QUERY_KEYS` | `constants.ts` | 81-99 | `ALL`, `LEAF`, `CATEGORIZED`, `byId()`, `children()`, `byType()` | No |
+### 1.6 Constants (constants.ts)
+
+| Constant | Lines | Properties |
+|----------|-------|------------|
+| `CATEGORY_VALIDATION` | 22-40 | `NAME_MAX_LENGTH: 50`, `NAME_MIN_LENGTH: 1`, `COLOR_REGEX: /^#[0-9A-Fa-f]{6}$/`, `MAX_HIERARCHY_DEPTH: 2`, `DEFAULT_COLOR: '#6b7280'`, `DEFAULT_TYPE: 'expense'` |
+| `CATEGORY_ERRORS` | 45-60 | 14 error message strings |
+| `CATEGORY_LIMITS` | 65-74 | `MAX_CATEGORIES_PER_USER: 500`, `MAX_CHILDREN_PER_PARENT: 50`, `DEFAULT_PAGE_SIZE: 100` |
+| `CATEGORY_QUERY_KEYS` | 81-99 | `ALL`, `LEAF`, `CATEGORIZED`, `byId()`, `children()`, `byType()` |
+
+---
 
 ### 1.7 Naming Convention Audit
 
-| Convention | Status | Notes |
-|------------|--------|-------|
-| Entity suffix for domain models | **PASS** | All use `*Entity` suffix |
-| DTO suffix for transfer objects | **PASS** | All use `*DTO` suffix |
-| Interface naming (no I prefix) | **PASS** | Modern TypeScript convention followed |
-| Error class suffix | **PASS** | All extend `CategoryError` with `Category*Error` pattern |
-| camelCase properties | **PASS** | Domain layer uses camelCase throughout |
+| Convention | Status | Evidence |
+|------------|--------|----------|
+| Entity suffix | **PASS** | All entities use `*Entity` suffix |
+| DTO suffix | **PASS** | All DTOs use `*DTO` suffix |
+| Error class suffix | **PASS** | All errors use `Category*Error` pattern |
+| camelCase properties | **PASS** | 100% compliance across domain |
+| PascalCase types | **PASS** | All interfaces/types follow convention |
 | SCREAMING_SNAKE_CASE constants | **PASS** | All constants follow convention |
+| snake_case DB codes | **INTENTIONAL** | `HierarchyViolationReason`, `MergeErrorReason` match DB |
+
+---
 
 ### 1.8 Type Safety Audit
 
-| Check | Result | Count | Notes |
-|-------|--------|-------|-------|
-| `any` types | **PASS** | 0 | No `any` types in codebase |
-| `unknown` types | **PASS** | 8 | All appropriate - error handlers (1), type guards (7) |
-| Nullable handling | **PASS** | - | Uses `T \| null` for DB NULLs, `?` for optional DTO fields |
-| Readonly properties | **PASS** | 100% | All entity/DTO properties are `readonly` |
+| Check | Result | Count | Evidence |
+|-------|--------|-------|----------|
+| `any` types | **PASS** | 0 | Zero instances in entire feature |
+| `unknown` types | **PASS** | 1 | `errors.ts:160` - `originalError?: unknown` (appropriate) |
+| Nullable handling | **PASS** | - | Proper `T \| null` vs `?` distinction |
+| Readonly properties | **PASS** | 80+ | All entity/DTO properties readonly |
 
 ---
 
-## 2. Interface Contracts
+## 2. Dependency Manifest
 
-### 2.1 Repository Interface
+### 2.1 Feature Bleed Check
 
-| Interface | File | Lines | Methods | Swift Mirror |
-|-----------|------|-------|---------|--------------|
-| `ICategoryRepository` | `repository/category-repository.interface.ts` | 59-264 | 12 | Yes (lines 29-39) |
+**Result: PASS** - 0 violations across 24 files
 
-**Methods:**
+| File | Imports from @/features/ | Status |
+|------|--------------------------|--------|
+| All 24 files | None | **CLEAN** |
 
-| Method | Lines | Signature | Purpose |
-|--------|-------|-----------|---------|
-| `getAll` | 71-74 | `(userId, filters?) => Promise<CategoryDataResult<CategoryEntity[]>>` | Fetch all categories |
-| `getAllWithCounts` | 84-86 | `(userId) => Promise<CategoryDataResult<CategoryWithCountEntity[]>>` | Categories with transaction counts |
-| `getById` | 95-98 | `(userId, id) => Promise<CategoryDataResult<CategoryEntity>>` | Single category lookup |
-| `getLeafCategories` | 112-114 | `(userId) => Promise<CategoryDataResult<LeafCategoryEntity[]>>` | Transaction-assignable categories |
-| `getByParentId` | 123-126 | `(userId, parentId) => Promise<CategoryDataResult<CategoryWithCountEntity[]>>` | Children under parent |
-| `getGroupings` | 134 | `(userId) => Promise<CategoryDataResult<GroupingEntity[]>>` | Parent categories only |
-| `getCategorizedCategories` | 146-148 | `(userId) => Promise<CategoryDataResult<CategorizedCategories>>` | Hierarchical structure |
-| `create` | 169-172 | `(userId, data) => Promise<CategoryDataResult<CategoryEntity>>` | Create category |
-| `update` | 194-198 | `(userId, id, data) => Promise<CategoryDataResult<CategoryEntity>>` | Update category |
-| `delete` | 219 | `(userId, id, version) => Promise<CategoryDataResult<void>>` | Soft delete with version |
-| `reassignCategories` | 235-239 | `(userId, categoryIds, newParentId) => Promise<CategoryDataResult<number>>` | Bulk reassignment |
-| `mergeCategories` | 259-263 | `(userId, sourceIds, targetId) => Promise<CategoryDataResult<MergeCategoriesResult>>` | Merge operation |
+**Previous violations FIXED:**
+- `add-category-modal.tsx` now imports from `../hooks/use-category-mutations` (line 7)
+- `edit-grouping-modal.tsx` now imports from `../hooks/use-category-mutations` (line 8)
 
-### 2.2 Service Interface
+### 2.2 Approved Import Categories
 
-| Interface | File | Lines | Methods |
-|-----------|------|-------|---------|
-| `ICategoryService` | `services/category-service.interface.ts` | 37-211 | 13 |
+| Import Zone | Files Using | Status |
+|-------------|-------------|--------|
+| `@/lib/*` | 12 files | **ALLOWED** |
+| `@/components/*` | 8 files | **ALLOWED** |
+| `@/domain/categories` | 1 file (entities.ts) | **ALLOWED** (Sacred Domain) |
+| `@/types/*` | 5 files | **ALLOWED** |
+| Internal relative imports | All files | **ALLOWED** |
 
-**Additional Service Methods (beyond repository):**
+### 2.3 Transformer Usage
 
-| Method | Lines | Purpose |
-|--------|-------|---------|
-| `createGrouping` | 122 | Convenience wrapper for creating parent categories |
-| `createSubcategory` | 137 | Creates child with inheritance from parent |
-| `updateGrouping` | 163 | Updates parent with cascade awareness |
-| `reassignSubcategory` | 186 | Single subcategory reassignment |
+| Transformer | Source | Used In |
+|-------------|--------|---------|
+| `dbCategoryToDomain` | `@/lib/data/data-transformers` | `supabase-category-repository.ts:86` |
+| `dbParentCategoryWithCountToDomain` | `@/lib/data/data-transformers` | `supabase-category-repository.ts:112` |
+| `localCategoryToDomain` | `@/lib/data/local-data-transformers` | `local-category-repository.ts:75, 389` |
+
+**No inline transformations** - All snake_case→camelCase via shared transformers.
 
 ---
 
-## 3. Dependency Manifest
+## 3. Sacred Mandate Compliance
 
-### 3.1 Approved External Imports
+### 3.1 Integer Cents
 
-| From | Imports | Status |
-|------|---------|--------|
-| `@/lib/constants` | `QUERY_KEYS`, `QUERY_CONFIG`, `ACCOUNT`, `VALIDATION`, `ACCOUNTS`, `CATEGORY` | **PASS** |
-| `@/lib/data/data-transformers` | `dbCategoryToDomain`, `dbParentCategoryWithCountToDomain` | **PASS** |
-| `@/lib/data/local-data-transformers` | `localCategoryToDomain` | **PASS** |
-| `@/lib/data/validate` | `validateOrThrow`, `validateArrayOrThrow` | **PASS** |
-| `@/lib/data/db-row-schemas` | `CategoryRowSchema`, `ParentCategoryWithCountRowSchema` | **PASS** |
-| `@/lib/errors` | `DomainError` | **PASS** |
-| `@/lib/data-patterns` | `DataResult` | **PASS** |
-| `@/lib/supabase/client` | `createClient` | **PASS** |
-| `@/lib/auth/auth-provider.interface` | `IAuthProvider` | **PASS** |
-| `@/lib/auth/supabase-auth-provider` | `createSupabaseAuthProvider` | **PASS** |
-| `@/lib/local-db` | `useLocalDatabase` | **PASS** |
-| `@/lib/utils` | `cn` | **PASS** |
-| `@/components/ui/*` | UI primitives | **PASS** |
-| `@/components/shared/*` | Shared components | **PASS** |
+**Status: N/A** - Categories have no financial amounts
 
-### 3.2 Feature Bleed Check
+### 3.2 Sync Integrity (Version Bumping)
 
-| Status | File | Line | Violation |
-|--------|------|------|-----------|
-| **CRITICAL VIOLATION** | `components/add-category-modal.tsx` | 7 | `import { useAddGrouping } from '@/features/groupings/hooks/use-groupings'` |
-| **CRITICAL VIOLATION** | `components/edit-grouping-modal.tsx` | 8 | `import { useUpdateGrouping, useReassignSubcategory } from '@/features/groupings/hooks/use-groupings'` |
-
-### 3.3 Transformer Check
-
-| Check | Status | Evidence |
-|-------|--------|----------|
-| Uses centralized transformers | **PASS** | `@/lib/data/data-transformers.ts`, `@/lib/data/local-data-transformers.ts` |
-| No inline DB→Domain mapping | **PASS** | All snake_case→camelCase via shared transformers |
-| Null handling follows spec | **PASS** | Returns `null`, not empty strings |
-
----
-
-## 4. Sacred Mandate Compliance
-
-### 4.1 Integer Cents Arithmetic
-
-| Status | Applicability |
-|--------|---------------|
-| **N/A** | Categories have no financial amounts (no `amountCents` fields) |
-
-### 4.2 Sync Integrity (Version Bumping)
+**Status: PASS**
 
 | Check | Status | File | Line | Evidence |
 |-------|--------|------|------|----------|
-| Version field in entities | **PASS** | `entities.ts` | 92 | `readonly version: number` in GroupingEntity |
-| UpdateCategoryDTO.version required | **PASS** | `types.ts` | 125 | `readonly version: number` (no optional modifier) |
-| UpdateGroupingDTO.version required | **PASS** | `types.ts` | 155 | `readonly version: number` (no optional modifier) |
-| Delete requires version | **PASS** | `category-repository.interface.ts` | 219 | `delete(userId, id, version): Promise<...>` |
+| Version field in entities | **PASS** | `entities.ts` | 92 | `readonly version: number` |
+| UpdateCategoryDTO.version required | **PASS** | `types.ts` | 125 | `readonly version: number` (not optional) |
+| UpdateGroupingDTO.version required | **PASS** | `types.ts` | 155 | `readonly version: number` (not optional) |
+| Delete requires version | **PASS** | `category-repository.interface.ts` | 219 | `delete(userId, id, version)` |
 | RPC uses p_expected_version (update) | **PASS** | `supabase-category-repository.ts` | 688 | `p_expected_version: data.version` |
 | RPC uses p_expected_version (delete) | **PASS** | `supabase-category-repository.ts` | 801 | `p_expected_version: version` |
-| Version conflict error handling | **PASS** | `supabase-category-repository.ts` | 718-728 | `CategoryVersionConflictError` returned |
-| Local version checking | **PASS** | `local-category-repository.ts` | 606 | `category.version !== data.version` check |
+| Local version checking | **PASS** | `local-category-repository.ts` | 606 | `category.version !== data.version` |
+| Version conflict error | **PASS** | `supabase-category-repository.ts` | 718 | `CategoryVersionConflictError` |
 
-**Code Evidence (supabase-category-repository.ts:684-694):**
-```typescript
-const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
-  'update_category_with_version',
-  {
-    p_category_id: id,
-    p_expected_version: data.version,
-    p_name: data.name ?? undefined,
-    p_color: data.color ?? undefined,
-    p_parent_id: data.parentId ?? undefined,
-    p_type: undefined,
-  }
-);
-```
+**RPC Calls with Version Checking:**
+1. `update_category_with_version` (line 685) - `p_expected_version: data.version`
+2. `delete_category_with_version` (line 798) - `p_expected_version: version`
+3. `merge_categories` (line 949) - Atomic RPC bumps transaction versions
 
-### 4.3 Soft Deletes (Tombstone Pattern)
+### 3.3 Soft Deletes (Tombstone Pattern)
+
+**Status: PASS**
 
 | Check | Status | File | Line | Evidence |
 |-------|--------|------|------|----------|
-| deletedAt field exists | **PASS** | `entities.ts` | 94-99 | `readonly deletedAt: string \| null` |
-| No hard DELETE operations | **PASS** | `supabase-category-repository.ts` | 796-803 | Uses `delete_category_with_version` RPC |
-| Supabase queries filter tombstones | **PASS** | `supabase-category-repository.ts` | 218, 273 | `.is('deleted_at', null)` |
-| Local queries filter tombstones | **PASS** | `local-category-repository.ts` | 140, 170 | `...activeTombstoneFilter()` |
-| Local soft delete implementation | **PASS** | `local-category-repository.ts` | 787-791 | Sets `deletedAt = Date.now()`, `localSyncStatus = PENDING` |
+| deletedAt field exists | **PASS** | `entities.ts` | 99 | `readonly deletedAt: string \| null` |
+| No hard DELETE operations | **PASS** | All repos | - | Zero `.delete()` Supabase calls |
+| Supabase tombstone filter | **PASS** | `supabase-category-repository.ts` | 218, 273, 290, 462, 763 | `.is('deleted_at', null)` |
+| Local tombstone filter | **PASS** | `local-category-repository.ts` | 140, 170, 261, 321, 360 | `...activeTombstoneFilter()` |
+| Soft delete via RPC | **PASS** | `supabase-category-repository.ts` | 798 | `delete_category_with_version` |
+| Local soft delete | **PASS** | `local-category-repository.ts` | 790 | `record.deletedAt = Date.now()` |
 
-**Zero Hard DELETE Evidence:** Searched entire repository implementation - no `.delete()` Supabase calls found. All deletions routed through soft-delete RPC.
+### 3.4 Auth Abstraction (IAuthProvider)
 
-**Code Evidence (supabase-category-repository.ts:796-803):**
-```typescript
-// CTO Mandate: Use version-checked soft delete RPC
-const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
-  'delete_category_with_version',
-  {
-    p_category_id: id,
-    p_expected_version: version,
-  }
-);
-```
-
-### 4.4 Auth Abstraction (IAuthProvider)
+**Status: PASS**
 
 | Check | Status | File | Line | Evidence |
 |-------|--------|------|------|----------|
-| Service constructor accepts IAuthProvider | **PASS** | `category-service.ts` | 51-54 | `constructor(..., private readonly authProvider: IAuthProvider)` |
-| No direct supabase.auth.getUser() | **PASS** | All service files | - | Zero occurrences |
-| getCurrentUserId() delegates to provider | **PASS** | `category-service.ts` | 63-65 | `return this.authProvider.getCurrentUserId()` |
-| Factory creates with auth provider | **PASS** | `category-service.ts` | 390-394 | `createCategoryService(repository, authProvider)` |
+| Service accepts IAuthProvider | **PASS** | `category-service.ts` | 53 | `private readonly authProvider: IAuthProvider` |
+| No direct supabase.auth calls | **PASS** | All service files | - | Zero occurrences |
+| getCurrentUserId() delegates | **PASS** | `category-service.ts` | 64 | `return this.authProvider.getCurrentUserId()` |
+| Factory creates with provider | **PASS** | `category-service.ts` | 390-394 | `createCategoryService(repository, authProvider)` |
 
 **Code Evidence (category-service.ts:50-65):**
 ```typescript
@@ -299,323 +344,270 @@ export class CategoryService implements ICategoryService {
 
 ---
 
-## 5. CRITICAL VIOLATIONS - Feature Bleed
+## 4. Performance & Scalability
 
-### 5.1 Violation #1: add-category-modal.tsx
+### 4.1 React Compiler Compatibility
 
-| Attribute | Value |
-|-----------|-------|
-| **File** | `features/categories/components/add-category-modal.tsx` |
-| **Line** | 7 |
-| **Import** | `import { useAddGrouping } from '@/features/groupings/hooks/use-groupings'` |
-| **Severity** | CRITICAL |
-| **Impact** | Blocks iOS development - feature cannot be ported independently |
+**Status: PASS**
 
-**Full Import Context (lines 1-14):**
-```typescript
-'use client';
+| Check | Status | Evidence |
+|-------|--------|----------|
+| `watch()` calls | **PASS** | 0 instances - fully migrated to `useWatch` |
+| `useWatch` usage | **PASS** | 6 instances across 3 component files |
+| Proper useMemo deps | **PASS** | 8 hooks with correct dependency arrays |
+| Proper useEffect deps | **PASS** | 2 hooks with correct dependency arrays |
 
-import { useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useAddGrouping } from '@/features/groupings/hooks/use-groupings';  // <-- VIOLATION
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-// ...
-```
+**useWatch Usage (6 instances):**
+| File | Lines | Watched Fields |
+|------|-------|----------------|
+| `add-category-modal.tsx` | 50-59 | `color`, `name` |
+| `edit-grouping-modal.tsx` | 97-111 | `color`, `type`, `name` |
+| `category-form.tsx` | 54-58 | `color` |
 
-### 5.2 Violation #2: edit-grouping-modal.tsx
+### 4.2 Hook Dependency Analysis
 
-| Attribute | Value |
-|-----------|-------|
-| **File** | `features/categories/components/edit-grouping-modal.tsx` |
-| **Line** | 8 |
-| **Import** | `import { useUpdateGrouping, useReassignSubcategory } from '@/features/groupings/hooks/use-groupings'` |
-| **Severity** | CRITICAL |
-| **Impact** | Blocks iOS development - feature cannot be ported independently |
+**useMemo Hooks (8 total):**
+| File | Hook | Dependencies | Status |
+|------|------|--------------|--------|
+| `use-category-service.ts` | Service init | `[database, isReady]` | **PASS** |
+| `use-categorized-categories.ts` | grouped | `[categories]` | **PASS** |
+| `edit-grouping-modal.tsx` | subcategories | `[allCategories, category?.id]` | **PASS** |
+| `edit-grouping-modal.tsx` | availableParents | `[allCategories, category?.id]` | **PASS** |
+| `category-list.tsx` | autoExpandedParent | `[currentCategoryId, categories]` | **PASS** |
+| `category-list.tsx` | expandedParents | `[manuallyExpanded, manuallyCollapsed, autoExpandedParent]` | **PASS** |
+| `category-list.tsx` | categoryTree | `[categories]` | **PASS** |
 
-**Full Import Context (lines 1-12):**
-```typescript
-'use client';
+**useEffect Hooks (2 total):**
+| File | Purpose | Dependencies | Status |
+|------|---------|--------------|--------|
+| `edit-grouping-modal.tsx` | Click-outside detection | `[isMigrationDropdownOpen]` | **PASS** |
+| `delete-category-dialog.tsx` | Deletability check | `[open, category, checkDeletability]` | **PASS** |
 
-import { useEffect, useState, useMemo, useRef } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useCategories } from '../hooks/use-categories';  // <-- CORRECT (within feature)
-import { useUpdateGrouping, useReassignSubcategory } from '@/features/groupings/hooks/use-groupings';  // <-- VIOLATION
-import { Button } from '@/components/ui/button';
-// ...
-```
+### 4.3 Query Optimization
 
-### 5.3 Remediation Strategy
-
-| Option | Effort | Recommendation |
-|--------|--------|----------------|
-| **Option A:** Move hooks to categories feature | Medium | Create `use-grouping-mutations.ts` in `features/categories/hooks/` with equivalent implementations |
-| **Option B:** Merge categories + groupings features | High | Combine into single `features/category-management/` if coupling is inherent |
-| **Option C:** Create shared orchestration layer | Medium | Create `features/shared/category-grouping-operations/` for cross-cutting concerns |
-
-**Recommended:** Option A - Move the specific hooks needed (`useAddGrouping`, `useUpdateGrouping`, `useReassignSubcategory`) into the categories feature, as they operate on category entities through the category service.
+| Pattern | Status | Evidence |
+|---------|--------|----------|
+| staleTime configured | **PASS** | `QUERY_CONFIG.STALE_TIME.MEDIUM` on all queries |
+| Enabled guards | **PASS** | `enabled: !!service` on all 5 query hooks |
+| Service memoization | **PASS** | `useMemo` with `[database, isReady]` |
+| Mutation isReady | **PASS** | `isReady: !!service` on all 7 mutation hooks |
+| Optimistic updates | **PASS** | `onMutate` in useUpdateCategory, useDeleteCategory |
+| Batch invalidation | **PASS** | `Promise.all` in useDeleteCategory, useMergeCategories |
 
 ---
 
-## 6. Repository/Services Layer Verification
+## 5. Repository Pattern Compliance
 
-### 6.1 DataResult Pattern
+### 5.1 DataResult Pattern
 
 | Check | Status | Evidence |
 |-------|--------|----------|
 | Repositories never throw | **PASS** | All methods return `CategoryDataResult<T>` |
-| Success/failure explicitly handled | **PASS** | `if (!result.success) { return { success: false, ... } }` pattern |
-| Error field populated on failure | **PASS** | `error: this.mapDatabaseError(error, {...})` |
-| Service unwraps and throws | **PASS** | `if (!result.success) { throw result.error; }` at lines 127-129 |
+| Success/failure explicit | **PASS** | `{ success: true/false, data?, error? }` |
+| Services unwrap and throw | **PASS** | `if (!result.success) { throw result.error; }` |
 
-### 6.2 SQLSTATE Error Mapping
+### 5.2 SQLSTATE Error Mapping (supabase-category-repository.ts:140-189)
 
-| SQLSTATE | Mapped Error | Evidence (supabase-category-repository.ts) |
-|----------|--------------|-------------------------------------------|
-| 23503 (foreign_key_violation) | `CategoryHasTransactionsError` or `CategoryHasChildrenError` | Lines 148-157 |
-| 23505 (unique_violation) | `CategoryDuplicateNameError` | Lines 160-165 |
-| P0001 (raise_exception) | `CategoryHierarchyError` | Lines 168-182 |
-| Generic | `CategoryRepositoryError` | Lines 184-189 |
+| SQLSTATE | Mapped Error | Detection Logic |
+|----------|--------------|-----------------|
+| 23503 | `CategoryHasTransactionsError` | Message contains 'transactions' or 'category_id' |
+| 23503 | `CategoryHasChildrenError` | Message contains 'parent_id' |
+| 23505 | `CategoryDuplicateNameError` | Unique constraint violation |
+| P0001 | `CategoryHierarchyError` | Trigger message parsing for self_parent, max_depth, parent_is_child |
+| P0001 | `CategoryMergeError` | RPC error parsing for merge reasons |
 
-**Merge-specific SQLSTATE mapping (lines 990-1020):**
-- `empty_source` → `CategoryMergeError('empty_source')`
-- `target_not_found` → `CategoryMergeError('target_not_found')`
-- `unauthorized` → `CategoryMergeError('unauthorized')`
-- `target_in_source` → `CategoryMergeError('target_in_source')`
-- `has_children` → `CategoryMergeError('has_children')`
+### 5.3 Zod Validation at Boundary
 
-### 6.3 Zod Validation at Boundary
-
-| Location | File | Line | Schema Used |
-|----------|------|------|-------------|
+| Location | File | Line | Schema |
+|----------|------|------|--------|
 | `getAll()` | `supabase-category-repository.ts` | 231 | `CategoryRowSchema` |
 | `getById()` | `supabase-category-repository.ts` | 355 | `CategoryRowSchema` |
 | `getGroupings()` | `supabase-category-repository.ts` | 546-547 | `ParentCategoryWithCountRowSchema` |
 
-### 6.4 Centralized Transformers
+---
 
-| Transformer | Source | Used At |
-|-------------|--------|---------|
-| `dbCategoryToDomain` | `@/lib/data/data-transformers` | `supabase-category-repository.ts:86` |
-| `dbParentCategoryWithCountToDomain` | `@/lib/data/data-transformers` | `supabase-category-repository.ts:112` |
-| `localCategoryToDomain` | `@/lib/data/local-data-transformers` | `local-category-repository.ts:75, 389` |
+## 6. Interface Contracts
 
-**No inline mapping found** - all snake_case→camelCase transformations delegated to shared transformers.
+### 6.1 ICategoryRepository (12 methods)
+
+| Method | Lines | Signature |
+|--------|-------|-----------|
+| `getAll` | 71-74 | `(userId, filters?) => Promise<CategoryDataResult<CategoryEntity[]>>` |
+| `getAllWithCounts` | 84-86 | `(userId) => Promise<CategoryDataResult<CategoryWithCountEntity[]>>` |
+| `getById` | 95-98 | `(userId, id) => Promise<CategoryDataResult<CategoryEntity>>` |
+| `getLeafCategories` | 112-114 | `(userId) => Promise<CategoryDataResult<LeafCategoryEntity[]>>` |
+| `getByParentId` | 123-126 | `(userId, parentId) => Promise<CategoryDataResult<CategoryWithCountEntity[]>>` |
+| `getGroupings` | 134 | `(userId) => Promise<CategoryDataResult<GroupingEntity[]>>` |
+| `getCategorizedCategories` | 146-148 | `(userId) => Promise<CategoryDataResult<CategorizedCategories>>` |
+| `create` | 169-172 | `(userId, data) => Promise<CategoryDataResult<CategoryEntity>>` |
+| `update` | 194-198 | `(userId, id, data) => Promise<CategoryDataResult<CategoryEntity>>` |
+| `delete` | 219 | `(userId, id, version) => Promise<CategoryDataResult<void>>` |
+| `reassignCategories` | 235-239 | `(userId, categoryIds, newParentId) => Promise<CategoryDataResult<number>>` |
+| `mergeCategories` | 259-263 | `(userId, sourceIds, targetId) => Promise<CategoryDataResult<MergeCategoriesResult>>` |
+
+### 6.2 ICategoryService (15 methods)
+
+| Method | Lines | Pre-validates |
+|--------|-------|---------------|
+| `getAll` | 49 | No |
+| `getAllWithCounts` | 57 | No |
+| `getById` | 66 | No |
+| `getLeafCategories` | 76 | No |
+| `getByParentId` | 84 | No |
+| `getGroupings` | 91 | No |
+| `getCategorizedCategories` | 98 | No |
+| `create` | 112 | Yes (name, color) |
+| `createGrouping` | 122 | Delegated |
+| `createSubcategory` | 137 | Yes (parent validation) |
+| `update` | 152 | Yes (hierarchy, name, color) |
+| `updateGrouping` | 163 | Delegated |
+| `delete` | 176 | No |
+| `reassignSubcategory` | 186 | Yes (parent validation) |
+| `mergeCategories` | 210 | Yes (empty source, target in source) |
 
 ---
 
-## 7. Hooks/Components Layer Verification
+## 7. Warnings & Technical Debt
 
-### 7.1 React Compiler Compatibility
+### 7.1 Repository Pattern Violation in utils/validation.ts
 
-| Check | Status | Evidence |
-|-------|--------|----------|
-| No `watch()` calls | **PASS** | Zero occurrences - fully migrated to `useWatch` |
-| `useWatch` usage correct | **PASS** | `add-category-modal.tsx:50-58`, `edit-grouping-modal.tsx:97-111`, `category-form.tsx:54-58` |
+**Severity:** MEDIUM
 
-**Evidence (add-category-modal.tsx:50-58):**
-```typescript
-const selectedColor = useWatch({
-  control,
-  name: 'color',
-  defaultValue: ACCOUNT.DEFAULT_COLOR,
-});
-const groupingName = useWatch({
-  control,
-  name: 'name',
-  defaultValue: '',
-});
-```
+**Problem:** `utils/validation.ts` makes direct Supabase client calls instead of using repository pattern.
 
-### 7.2 useMemo Dependency Verification
+**Direct Supabase Calls (5 instances):**
+| Line | Function | Table Accessed |
+|------|----------|----------------|
+| 19 | `validateCategoryHierarchy` | categories |
+| 39 | `validateCategoryHierarchy` | transactions |
+| 67 | `canDeleteParent` | categories |
+| 92 | `getTransactionCountForCategory` | transactions |
+| 108 | `ensureSubcategoryOnly` | categories |
 
-| Hook | File | Line | Dependencies | Status |
-|------|------|------|--------------|--------|
-| Service initialization | `use-category-service.ts` | 61-73 | `[database, isReady]` | **PASS** |
-| subcategories filter | `edit-grouping-modal.tsx` | 62-65 | `[allCategories, category?.id]` | **PASS** |
-| availableParents filter | `edit-grouping-modal.tsx` | 68-75 | `[allCategories, category?.id]` | **PASS** |
-| currentCategory lookup | `category-list.tsx` | 52-58 | `[currentCategoryId, categories]` | **PASS** |
-| expandedSet computation | `category-list.tsx` | 62-69 | `[manuallyExpanded, manuallyCollapsed, autoExpandedParent]` | **PASS** |
-| hierarchicalCategories | `category-list.tsx` | 72-103 | `[categories]` | **PASS** |
-| categorizedCategories | `use-categorized-categories.ts` | 30-56 | `[categories]` | **PASS** |
+**Impact:**
+- Does not work with local-first (WatermelonDB) architecture
+- Bypasses repository abstraction layer
+- Cannot be used offline
 
-### 7.3 useEffect Dependency Verification
+**Recommended Remediation:**
+1. Move validation functions into service layer
+2. Use ICategoryRepository methods for data access
+3. Or create a validation-specific repository interface
 
-| Component | File | Lines | Dependencies | Status |
-|-----------|------|-------|--------------|--------|
-| State reset on open | `edit-grouping-modal.tsx` | 113-118 | `[open, category]` | **PASS** |
-| Click-outside detection | `edit-grouping-modal.tsx` | 121-136 | `[isMigrationDropdownOpen]` | **PASS** |
-| Deletability check | `delete-category-dialog.tsx` | 66-72 | `[open, category, checkDeletability]` | **PASS** |
+### 7.2 Technical Debt Tracked
 
-### 7.4 Query Optimization
-
-| Pattern | Status | Evidence |
-|---------|--------|----------|
-| staleTime configured | **PASS** | `QUERY_CONFIG.STALE_TIME.MEDIUM` at `use-categories.ts:68,94,163,189` |
-| Enabled flag (Orchestrator Rule) | **PASS** | `enabled: !!service` at lines 69, 95, 133, 164, 190 |
-| Service memoization | **PASS** | `useMemo` with `[database, isReady]` at `use-category-service.ts:61-73` |
-| Mutation isReady guards | **PASS** | `isReady: !!service` returned from all mutation hooks |
-| Optimistic updates | **PASS** | `onMutate` with snapshot/rollback in all mutations |
-| Type-safe error handling | **PASS** | `instanceof` guards, not string matching |
+| Item | Location | Priority |
+|------|----------|----------|
+| validation.ts direct Supabase | `utils/validation.ts` | P2 |
+| Missing staleTime on useCategory | `use-categories.ts:122-135` | P3 |
+| Missing optimistic update on useAddCategory | `use-category-mutations.ts:59-96` | P3 |
 
 ---
 
-## 8. Complete File Inventory (21 Files)
+## 8. Certification Checklist
 
-### 8.1 Domain Layer (5 files)
-
-| File | Path | Purpose | Lines |
-|------|------|---------|-------|
-| `entities.ts` | `domain/entities.ts` | 4 interfaces, 1 type guard, 6 re-exports | ~147 |
-| `types.ts` | `domain/types.ts` | 8 DTOs and result types | ~209 |
-| `errors.ts` | `domain/errors.ts` | 10 error classes, 8 type guards | ~343 |
-| `constants.ts` | `domain/constants.ts` | 4 constant objects | ~100 |
-| `index.ts` | `domain/index.ts` | Barrel exports | ~69 |
-
-### 8.2 Repository Layer (4 files)
-
-| File | Path | Purpose | Lines |
-|------|------|---------|-------|
-| `category-repository.interface.ts` | `repository/category-repository.interface.ts` | Platform-agnostic contract | ~279 |
-| `supabase-category-repository.ts` | `repository/supabase-category-repository.ts` | Supabase implementation | ~1035 |
-| `local-category-repository.ts` | `repository/local-category-repository.ts` | WatermelonDB implementation | ~600 |
-| `hybrid-category-repository.ts` | `repository/hybrid-category-repository.ts` | Sync strategy coordinator | ~300 |
-
-### 8.3 Service Layer (2 files)
-
-| File | Path | Purpose | Lines |
-|------|------|---------|-------|
-| `category-service.interface.ts` | `services/category-service.interface.ts` | Business logic contract | ~226 |
-| `category-service.ts` | `services/category-service.ts` | Implementation with pre-validation | ~396 |
-
-### 8.4 Hooks Layer (5 files)
-
-| File | Path | Purpose | Lines |
-|------|------|---------|-------|
-| `use-category-service.ts` | `hooks/use-category-service.ts` | Service initialization with DI | ~75 |
-| `use-categories.ts` | `hooks/use-categories.ts` | Query hooks (5 hooks) | ~193 |
-| `use-category-mutations.ts` | `hooks/use-category-mutations.ts` | Mutation hooks (4 hooks) | ~396 |
-| `use-leaf-categories.ts` | `hooks/use-leaf-categories.ts` | Transaction category selector | ~50 |
-| `use-categorized-categories.ts` | `hooks/use-categorized-categories.ts` | Hierarchical structure hook | ~50 |
-
-### 8.5 Components Layer (5 files)
-
-| File | Path | Purpose | Violation |
-|------|------|---------|-----------|
-| `add-category-modal.tsx` | `components/add-category-modal.tsx` | New grouping creation | **CRITICAL (line 7)** |
-| `edit-grouping-modal.tsx` | `components/edit-grouping-modal.tsx` | Grouping editing | **CRITICAL (line 8)** |
-| `category-form.tsx` | `components/category-form.tsx` | Shared form component | PASS |
-| `category-list.tsx` | `components/category-list.tsx` | Category list display | PASS |
-| `delete-category-dialog.tsx` | `components/delete-category-dialog.tsx` | Delete confirmation | PASS |
-
----
-
-## 9. Certification Checklist
-
-### 9.1 Domain Layer
+### 8.1 Domain Layer
 - [x] All entities follow `*Entity` naming convention
 - [x] All DTOs include `readonly` modifier on properties
-- [x] All DTOs for mutations include `version` field
-- [x] No `any` types in codebase (0 found)
-- [x] Appropriate `unknown` usage in error handlers (8 instances)
-- [x] 100% readonly properties on all entities
+- [x] All mutation DTOs include required `version` field
+- [x] No `any` types (0 found)
+- [x] Appropriate `unknown` usage (1 instance)
+- [x] 100% readonly properties
 - [x] SCREAMING_SNAKE_CASE for constants
-- [x] camelCase for all other identifiers
-- [x] Swift mirrors documented where applicable
+- [x] camelCase for identifiers
+- [x] Swift mirrors documented
 
-### 9.2 Repository Layer
+### 8.2 Repository Layer
 - [x] DataResult pattern (never throws)
 - [x] SQLSTATE to domain error mapping
 - [x] Zod validation at boundary
-- [x] Centralized transformers used
+- [x] Centralized transformers
 - [x] Version-checked RPC for updates
 - [x] Version-checked RPC for deletes
 - [x] Soft delete (tombstone) pattern
 - [x] Tombstone filtering on all queries
 
-### 9.3 Service Layer
-- [x] IAuthProvider injection (no direct supabase.auth)
+### 8.3 Service Layer
+- [x] IAuthProvider injection
 - [x] Pre-validation before DB calls
-- [x] Hierarchy validation (self-parent check)
-- [x] Error throwing (unwraps DataResult)
+- [x] Hierarchy validation
+- [x] DataResult unwrapping
 
-### 9.4 Hooks Layer
+### 8.4 Hooks Layer
 - [x] Service memoization with useMemo
 - [x] Orchestrator Rule (enabled: !!service)
 - [x] staleTime configured
 - [x] Optimistic updates with rollback
-- [x] Type-safe error handling (instanceof)
+- [x] Type-safe error handling
 
-### 9.5 Components Layer
-- [x] React Compiler compatible (useWatch, no watch)
+### 8.5 Components Layer
+- [x] React Compiler compatible (useWatch)
 - [x] Correct useMemo dependencies
 - [x] Correct useEffect dependencies
-- [ ] **No feature bleed violations** (**2 CRITICAL VIOLATIONS**)
+- [x] No feature bleed violations
 
-### 9.6 Sacred Mandates
-- [x] Integer Cents Arithmetic (N/A for this feature)
-- [x] Version Bumping (Sync Integrity)
-- [x] Soft Deletes (Tombstone Pattern)
-- [x] Auth Abstraction (IAuthProvider)
+### 8.6 Sacred Mandates
+- [x] Integer Cents (N/A)
+- [x] Version Bumping
+- [x] Soft Deletes
+- [x] Auth Abstraction
 
 ---
 
-## 10. Final Certification
+## 9. Final Certification
 
 **Overall Status:** PASS WITH WARNINGS
 
 | Category | Grade | Notes |
 |----------|-------|-------|
-| Domain Layer | **A+** | Perfect compliance - 0 violations |
-| Repository Layer | **A+** | Excellent SQLSTATE mapping, DataResult pattern |
+| Domain Layer | **A+** | Perfect type safety, naming, structure |
+| Repository Layer | **A+** | Full Sacred Mandate compliance |
 | Service Layer | **A+** | Proper auth abstraction, pre-validation |
-| Hooks Layer | **A** | Correct patterns, Orchestrator Rule followed |
-| Components Layer | **B-** | 2 CRITICAL feature bleed violations |
-| Sacred Mandates | **A+** | 4/4 compliance (Integer Cents N/A) |
+| Hooks Layer | **A+** | Orchestrator Rule, optimistic updates |
+| Components Layer | **A+** | React Compiler ready, no feature bleed |
+| Utils Layer | **B** | Repository pattern violation |
+| **Overall** | **A** | 1 medium-priority issue in utils |
 
-### Blocking Issues
+### Action Items
 
-| Issue ID | Severity | File | Line | Description |
-|----------|----------|------|------|-------------|
-| CAT-001 | CRITICAL | `add-category-modal.tsx` | 7 | Import from `@/features/groupings/hooks/use-groupings` |
-| CAT-002 | CRITICAL | `edit-grouping-modal.tsx` | 8 | Import from `@/features/groupings/hooks/use-groupings` |
-
-### Remediation Required Before iOS Phase
-
-1. **CAT-001 & CAT-002:** Move `useAddGrouping`, `useUpdateGrouping`, `useReassignSubcategory` hooks into `features/categories/hooks/use-grouping-mutations.ts`
-2. Update imports in affected components to use local hooks
-3. Re-run audit to verify PASS status
+| Issue ID | Severity | File | Description |
+|----------|----------|------|-------------|
+| CAT-001 | MEDIUM | `utils/validation.ts` | Migrate to repository pattern |
 
 ---
 
-**Audit Completed:** 2026-01-30
+**Audit Completed:** 2026-01-31
 **Auditor Signature:** Claude (Senior Systems Architect)
-**Next Audit Due:** Upon completion of feature bleed remediation
+**Next Audit Due:** Upon utils/validation.ts remediation
 
 ---
 
-## Appendix A: Architecture Cross-Reference
+## Appendix A: RPC Calls Summary
 
-| Architectural Section | Categories Implementation |
-|----------------------|---------------------------|
-| ARCHITECTURE.md Section 6 (Repository Pattern) | Fully implemented with 3-layer architecture |
-| ARCHITECTURE.md Section 7 (Transformer Registry) | Uses `dbCategoryToDomain` from shared transformers |
-| ARCHITECTURE.md Section 8 (Category Merge Protocol) | `merge_categories` RPC with version bumping |
-| ARCHITECTURE.md Section 10 (Auth Provider) | IAuthProvider injection in CategoryService |
+| RPC Name | File | Line | Purpose |
+|----------|------|------|---------|
+| `update_category_with_version` | `supabase-category-repository.ts` | 685 | Version-checked update |
+| `delete_category_with_version` | `supabase-category-repository.ts` | 798 | Version-checked soft delete |
+| `merge_categories` | `supabase-category-repository.ts` | 949 | Atomic merge with transaction version bump |
 
-## Appendix B: Swift Mirror Coverage
+## Appendix B: Query Keys
 
-| TypeScript Type | Swift Mirror Status |
-|----------------|---------------------|
-| `CategoryEntity` | Documented in `@/domain/categories` |
-| `GroupingEntity` | Documented in `domain/entities.ts:50-64` |
-| `CreateCategoryDTO` | Documented in `domain/types.ts:29-38` |
-| `UpdateCategoryDTO` | Documented in `domain/types.ts:108-116` |
-| `ICategoryRepository` | Documented in `repository/category-repository.interface.ts:29-39` |
-| `CategoryError` enum | Documented in `domain/errors.ts` |
-| `CATEGORY_VALIDATION` | Documented in `domain/constants.ts:7-14` |
+| Key | Pattern | Used By |
+|-----|---------|---------|
+| `['categories']` | Base | useCategories |
+| `['categories', 'with-counts']` | Extended | useCategoriesWithCounts |
+| `['categories', id]` | Dynamic | useCategory |
+| `['categories', 'leaf']` | Extended | useLeafCategoriesQuery |
+| `['categories', 'categorized']` | Extended | useCategorizedCategories |
+
+## Appendix C: Swift Mirror Coverage
+
+| TypeScript Type | Swift Documented |
+|----------------|------------------|
+| `CategoryEntity` | `@/domain/categories` |
+| `GroupingEntity` | `domain/entities.ts:50-64` |
+| `CreateCategoryDTO` | `domain/types.ts:29-38` |
+| `UpdateCategoryDTO` | `domain/types.ts:108-116` |
+| `ICategoryRepository` | `category-repository.interface.ts:29-39` |
+| `CategoryError` codes | `domain/errors.ts:17-28` |
+| `CATEGORY_VALIDATION` | `domain/constants.ts:7-14` |

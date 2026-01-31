@@ -1,24 +1,28 @@
-# Technical Audit Manifest: features/reconciliations
+# Composable Manifest: features/reconciliations
 
-**Audit Date:** 2026-01-30 (Updated)
-**Previous Audit:** 2026-01-28
-**Auditor:** Senior Systems Architect
-**Scope:** Complete technical audit of `/features/reconciliations/` folder
+> **Audit Version**: 3.0 (Comprehensive)
+> **Audit Date**: 2026-01-31
+> **Previous Audits**: 2026-01-28 (v1), 2026-01-30 (v2)
+> **Auditor**: Senior Systems Architect
+> **Scope**: `/features/reconciliations/` folder + orchestration layer
 
 ---
 
 ## Executive Summary
 
-| Category | Status | Notes |
-|----------|--------|-------|
-| Variable & Entity Registry | **PASS** | Clean domain separation, proper naming |
-| Dependency Manifest | **PASS** | No feature bleed, correct transformer usage |
-| Integer Cents | **PASS** | `toSafeIntegerOrZero()` for BIGINT conversion |
-| Sync Integrity | **PASS** | `version` column + trigger implemented |
-| Soft Deletes | **PASS** | Tombstone pattern implemented with version-checked RPC |
+| Category | Status | Details |
+|----------|--------|---------|
+| Variable & Entity Registry | **PASS** | 4 feature files, clean domain separation |
+| Naming Audit | **PASS** | camelCase domain, snake_case DB |
+| Type Safety | **PASS** | No naked `any`, proper constraints |
+| Dependency Manifest | **PASS** | 0 feature bleed violations |
+| Transformer Check | **PASS** | Uses `@/lib/data/data-transformers` |
+| Integer Cents | **PASS** | BIGINT cents, `toCents()`/`fromCents()` |
+| Sync Integrity | **PASS** | `version` column + trigger |
+| Soft Deletes | **PASS** | Tombstone pattern with RPC |
 | Auth Abstraction | **PASS** | Uses `IAuthProvider` interface |
-| Performance | **PASS** | No `watch()` calls, smart React Query invalidation |
-| Type Safety | **PASS** | 1 `any` type (JSONB) guarded by Zod validation |
+| React Compiler | **PASS** | Uses `useWatch`, no `watch()` |
+| Re-render Optimization | **PASS** | Smart invalidation, no polling |
 
 **Overall Result: ALL SACRED MANDATES COMPLIANT**
 
@@ -26,54 +30,71 @@
 
 ## 1. Variable & Entity Registry
 
-### 1.1 Entity Inventory
+### 1.1 Feature File Inventory
 
-**Feature Files:**
+**Total Files**: 4 (828 lines)
+
 | File | Lines | Purpose |
 |------|-------|---------|
-| [api/reconciliations.ts](features/reconciliations/api/reconciliations.ts) | 255 | Service layer: CRUD, RPC operations, soft delete |
-| [hooks/use-reconciliations.ts](features/reconciliations/hooks/use-reconciliations.ts) | 253 | React Query hooks for data fetching/mutations |
+| [api/reconciliations.ts](features/reconciliations/api/reconciliations.ts) | 254 | Service layer: CRUD, RPC operations, soft delete |
+| [hooks/use-reconciliations.ts](features/reconciliations/hooks/use-reconciliations.ts) | 15 | Re-export shim (deprecated) |
+| [components/settings/reconciliation-settings.tsx](features/reconciliations/components/settings/reconciliation-settings.tsx) | 258 | Settings UI: list, delete, finalize |
+| [components/settings/reconciliation-form-modal.tsx](features/reconciliations/components/settings/reconciliation-form-modal.tsx) | 301 | Create/Edit modal with form |
+
+**Orchestration Layer** (outside feature):
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| [lib/hooks/use-reconciliations.ts](lib/hooks/use-reconciliations.ts) | 268 | React Query hooks (orchestrator) |
+
+### 1.2 Entity Inventory
+
+**Feature-Local Types:**
+
+| Name | Kind | File | Line |
+|------|------|------|------|
+| `ReconciliationFormData` | type | `reconciliation-form-modal.tsx` | 45 |
+| `ReconciliationFormModalProps` | interface | `reconciliation-form-modal.tsx` | 47 |
+| `ReconciliationsService` | class | `api/reconciliations.ts` | 19 |
 
 **Domain Types (Sacred Domain):**
-| Entity | Type | Location |
-|--------|------|----------|
-| `Reconciliation` | Interface | [domain/reconciliations.ts:62](domain/reconciliations.ts#L62) |
-| `ReconciliationWithAccount` | Interface | [domain/reconciliations.ts:112](domain/reconciliations.ts#L112) |
-| `ReconciliationSummary` | Interface | [domain/reconciliations.ts:132](domain/reconciliations.ts#L132) |
-| `ReconciliationStatus` | Type | [domain/reconciliations.ts:27](domain/reconciliations.ts#L27) |
 
-**Type Guards:**
-| Guard | Purpose | Location |
-|-------|---------|----------|
-| `isDraftReconciliation()` | Check if reconciliation is editable | [domain/reconciliations.ts:159](domain/reconciliations.ts#L159) |
-| `isCompletedReconciliation()` | Check if reconciliation is locked | [domain/reconciliations.ts:168](domain/reconciliations.ts#L168) |
-| `isDeletedReconciliation()` | Check if reconciliation is tombstoned | [domain/reconciliations.ts:177](domain/reconciliations.ts#L177) |
+| Name | Kind | File | Line |
+|------|------|------|------|
+| `Reconciliation` | interface | [domain/reconciliations.ts](domain/reconciliations.ts#L62) | 62 |
+| `ReconciliationWithAccount` | interface | [domain/reconciliations.ts](domain/reconciliations.ts#L112) | 112 |
+| `ReconciliationSummary` | interface | [domain/reconciliations.ts](domain/reconciliations.ts#L132) | 132 |
+| `ReconciliationStatus` | type | [domain/reconciliations.ts](domain/reconciliations.ts#L27) | 27 |
+| `isDraftReconciliation()` | type guard | [domain/reconciliations.ts](domain/reconciliations.ts#L159) | 159 |
+| `isCompletedReconciliation()` | type guard | [domain/reconciliations.ts](domain/reconciliations.ts#L168) | 168 |
+| `isDeletedReconciliation()` | type guard | [domain/reconciliations.ts](domain/reconciliations.ts#L177) | 177 |
 
 **Zod Schemas (Boundary Validation):**
-| Schema | Purpose | Location |
-|--------|---------|----------|
-| `ReconciliationRowSchema` | Database row validation | [lib/data/db-row-schemas.ts:238](lib/data/db-row-schemas.ts#L238) |
-| `ReconciliationSummaryRpcSchema` | RPC response validation | [lib/data/db-row-schemas.ts:276](lib/data/db-row-schemas.ts#L276) |
-| `LinkUnlinkRpcSchema` | Bulk operation RPC validation | [lib/data/db-row-schemas.ts:288](lib/data/db-row-schemas.ts#L288) |
 
-### 1.2 Naming Audit
+| Schema | Purpose | File | Line |
+|--------|---------|------|------|
+| `ReconciliationRowSchema` | Database row validation | [db-row-schemas.ts](lib/data/db-row-schemas.ts#L235) | 235 |
+| `ReconciliationSummaryRpcSchema` | RPC response validation | [db-row-schemas.ts](lib/data/db-row-schemas.ts#L287) | 287 |
+| `LinkUnlinkRpcSchema` | Bulk operation RPC | [db-row-schemas.ts](lib/data/db-row-schemas.ts#L299) | 299 |
+
+### 1.3 Naming Audit
 
 | Convention | Expected | Actual | Status |
 |------------|----------|--------|--------|
-| Domain objects | camelCase | `beginningBalance`, `endingBalance`, `deletedAt`, `version` | **PASS** |
-| Database rows | snake_case | `beginning_balance`, `ending_balance`, `deleted_at`, `version` | **PASS** |
-| React hooks | `use*` prefix | `useReconciliations`, `useDeleteReconciliation`, `useLinkTransactions` | **PASS** |
+| Domain objects | camelCase | `beginningBalance`, `endingBalance`, `deletedAt` | **PASS** |
+| Database columns | snake_case | `beginning_balance_cents`, `ending_balance_cents`, `deleted_at` | **PASS** |
+| React hooks | `use*` prefix | `useReconciliations`, `useDeleteReconciliation` | **PASS** |
+| Type guards | `is*` prefix | `isDraftReconciliation`, `isCompletedReconciliation` | **PASS** |
 | Query keys | Constant object | `QUERY_KEYS.RECONCILIATIONS.*` | **PASS** |
-| Type guards | `is*` prefix | `isDraftReconciliation`, `isCompletedReconciliation`, `isDeletedReconciliation` | **PASS** |
+| Service factory | `create*` prefix | `createReconciliationsService` | **PASS** |
 
-### 1.3 Type Safety Audit
+### 1.4 Type Safety Audit
 
-| Issue | Severity | Location | Assessment |
-|-------|----------|----------|------------|
-| `any` type in transformer | LOW | [data-transformers.ts:919](lib/data/data-transformers.ts#L919) | JSONB from RPC, guarded by `validateOrThrow(ReconciliationSummaryRpcSchema)` at [api/reconciliations.ts:243](features/reconciliations/api/reconciliations.ts#L243) |
-| `Record<string, unknown>` | NONE | [api/reconciliations.ts:165](features/reconciliations/api/reconciliations.ts#L165) | Proper constraint for RPC response data |
-
-**No naked `any` or `unknown` types in feature folder.**
+| Pattern | Location | Assessment |
+|---------|----------|------------|
+| `Record<string, unknown>` | [api/reconciliations.ts:165](features/reconciliations/api/reconciliations.ts#L165) | **PASS** - Properly constrained RPC response |
+| `step="any"` | [reconciliation-form-modal.tsx:206,219](features/reconciliations/components/settings/reconciliation-form-modal.tsx#L206) | **PASS** - HTML attribute, not TypeScript type |
+| No naked `any` | All files | **PASS** - Grep returned 0 type violations |
 
 ---
 
@@ -83,58 +104,79 @@
 
 **Result: NO VIOLATIONS**
 
-All imports are from allowed sources:
+| File | Imports From | Category | Status |
+|------|-------------|----------|--------|
+| `api/reconciliations.ts` | `@/lib/auth/*` | Auth abstraction | **ALLOWED** |
+| `api/reconciliations.ts` | `@/lib/data/*` | Transformers, validation | **ALLOWED** |
+| `api/reconciliations.ts` | `@/domain/reconciliations` | Domain types | **ALLOWED** |
+| `reconciliation-settings.tsx` | `@/lib/hooks/use-reconciliations` | Orchestration layer | **ALLOWED** |
+| `reconciliation-settings.tsx` | `@/lib/hooks/use-reference-data` | Orchestration layer | **ALLOWED** |
+| `reconciliation-settings.tsx` | `@/lib/utils/cents-conversion` | Shared utility | **ALLOWED** |
+| `reconciliation-settings.tsx` | `@/components/ui/*` | UI components | **ALLOWED** |
+| `reconciliation-form-modal.tsx` | `@/lib/hooks/use-reconciliations` | Orchestration layer | **ALLOWED** |
+| `reconciliation-form-modal.tsx` | `@/lib/hooks/use-reference-data` | Orchestration layer | **ALLOWED** |
+| `reconciliation-form-modal.tsx` | `@/lib/utils/cents-conversion` | Shared utility | **ALLOWED** |
 
-| Import Source | Category | Files Using |
-|---------------|----------|-------------|
-| `@/lib/auth/auth-provider.interface` | Auth abstraction | `api/reconciliations.ts` |
-| `@/lib/auth/supabase-auth-provider` | Auth implementation | `api/reconciliations.ts` |
-| `@/lib/data/data-transformers` | Data transformers | `api/reconciliations.ts` |
-| `@/lib/data/validate` | Zod validation helpers | `api/reconciliations.ts` |
-| `@/lib/data/db-row-schemas` | Zod schemas | `api/reconciliations.ts` |
-| `@/lib/supabase/client` | Supabase client factory | `hooks/use-reconciliations.ts` |
-| `@/domain/reconciliations` | Domain types | `api/reconciliations.ts` |
-| `@tanstack/react-query` | External package | `hooks/use-reconciliations.ts` |
-| `@supabase/supabase-js` | External package | `api/reconciliations.ts` |
-| `sonner` | External package (toast) | `hooks/use-reconciliations.ts` |
+**No imports from other `features/*` folders.**
 
-**Domain Type Import Path:** Changed from `@/types/domain` to `@/domain/reconciliations` (correct Sacred Domain pattern).
+### 2.2 Architecture Pattern
 
-### 2.2 Transformer Usage
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    COMPONENTS LAYER                             │
+│  reconciliation-settings.tsx  ←───  reconciliation-form-modal   │
+│                    │                           │                │
+│                    └───────────┬───────────────┘                │
+│                                ▼                                │
+├─────────────────────────────────────────────────────────────────┤
+│                   ORCHESTRATION LAYER                           │
+│           lib/hooks/use-reconciliations.ts                      │
+│                                │                                │
+│                                ▼                                │
+├─────────────────────────────────────────────────────────────────┤
+│                      SERVICE LAYER                              │
+│         features/reconciliations/api/reconciliations.ts         │
+│                                │                                │
+│                                ▼                                │
+├─────────────────────────────────────────────────────────────────┤
+│                     DATA LAYER                                  │
+│    lib/data/data-transformers.ts  ←  lib/data/db-row-schemas.ts │
+│                                │                                │
+│                                ▼                                │
+├─────────────────────────────────────────────────────────────────┤
+│                    DOMAIN LAYER                                 │
+│              domain/reconciliations.ts                          │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-| Transformer | Location | Service Method |
-|-------------|----------|----------------|
-| `dbReconciliationToDomain()` | [data-transformers.ts:831](lib/data/data-transformers.ts#L831) | `getById()` |
-| `dbReconciliationsToDomain()` | [data-transformers.ts:860](lib/data/data-transformers.ts#L860) | `getAll()` |
-| `domainReconciliationToDbInsert()` | [data-transformers.ts:869](lib/data/data-transformers.ts#L869) | `create()` |
-| `domainReconciliationToDbUpdate()` | [data-transformers.ts:894](lib/data/data-transformers.ts#L894) | `update()` |
-| `dbReconciliationSummaryToDomain()` | [data-transformers.ts:918](lib/data/data-transformers.ts#L918) | `getSummary()` |
+### 2.3 Transformer Usage
 
-**No inline mapping logic.** All transformations properly delegated to centralized transformers.
+| Transformer | Purpose | Usage Location |
+|-------------|---------|----------------|
+| `dbReconciliationToDomain()` | Row → Domain | `api/reconciliations.ts:73` |
+| `dbReconciliationsToDomain()` | Rows → Domain[] | `api/reconciliations.ts:52` |
+| `domainReconciliationToDbInsert()` | Domain → Insert | `api/reconciliations.ts:89` |
+| `domainReconciliationToDbUpdate()` | Domain → Update | `api/reconciliations.ts:126` |
+| `dbReconciliationSummaryToDomain()` | RPC → Domain | `api/reconciliations.ts:244` |
 
-### 2.3 Transformer Sync Field Handling
+**All transformations use centralized transformers. No inline mapping logic.**
 
-The `dbReconciliationToDomain()` transformer correctly handles sync fields:
+### 2.4 Deprecated Re-export Shim
 
 ```typescript
-// lib/data/data-transformers.ts:831-855
-export function dbReconciliationToDomain(
-  dbReconciliation: Database['public']['Tables']['reconciliations']['Row']
-): Reconciliation {
-  const syncRow = dbReconciliation as typeof dbReconciliation & {
-    version?: number;
-    deleted_at?: string | null;
-  };
-
-  return {
-    id: dbReconciliation.id,
-    version: syncRow.version ?? 1,              // Sync field
-    userId: dbReconciliation.user_id,
-    // ... other fields ...
-    deletedAt: syncRow.deleted_at ?? null,      // Tombstone field
-  };
-}
+// features/reconciliations/hooks/use-reconciliations.ts
+/**
+ * @deprecated Import from @/lib/hooks/use-reconciliations instead.
+ * This file re-exports from the orchestration layer for backward compatibility.
+ */
+export {
+  useReconciliations,
+  useReconciliation,
+  // ... all 8 hooks
+} from '@/lib/hooks/use-reconciliations';
 ```
+
+**Pattern**: Feature hooks moved to orchestration layer (`lib/hooks/`). Feature-local shim provides backward compatibility.
 
 ---
 
@@ -144,19 +186,30 @@ export function dbReconciliationToDomain(
 
 **Status: PASS**
 
-| Aspect | Implementation |
-|--------|----------------|
-| Database type | `NUMERIC(15, 2)` stored as cents |
-| Transformation | `toSafeIntegerOrZero()` from `lib/utils/bigint-safety.ts` |
-| Frontend storage | Integers representing cents |
-| RPC calculations | Server-side math in PostgreSQL, returns integers |
-| Domain documentation | Comments explicitly state "INTEGER CENTS" |
+| Layer | Implementation | Evidence |
+|-------|----------------|----------|
+| **Database** | `BIGINT` columns | `beginning_balance_cents`, `ending_balance_cents` |
+| **RPC** | BIGINT arithmetic | `v_difference_cents := v_ending_balance_cents - (v_beginning_balance_cents + v_linked_sum_cents)` |
+| **Transformer** | `toSafeIntegerOrZero()` | [data-transformers.ts:856-857](lib/data/data-transformers.ts#L856) |
+| **UI Input** | `toCents()` on submit | [reconciliation-form-modal.tsx:117-118](features/reconciliations/components/settings/reconciliation-form-modal.tsx#L117) |
+| **UI Display** | `fromCents()` for edit | [reconciliation-form-modal.tsx:103-104](features/reconciliations/components/settings/reconciliation-form-modal.tsx#L103) |
+| **UI Display** | `formatCents()` for list | [reconciliation-settings.tsx:180,190](features/reconciliations/components/settings/reconciliation-settings.tsx#L180) |
 
-**Code Evidence:**
+**Form Submission Flow:**
 ```typescript
-// lib/data/data-transformers.ts:846-847
-beginningBalance: toSafeIntegerOrZero(dbReconciliation.beginning_balance),  // BIGINT → safe number
-endingBalance: toSafeIntegerOrZero(dbReconciliation.ending_balance),        // BIGINT → safe number
+// reconciliation-form-modal.tsx:115-119
+const dataWithCents = {
+  ...data,
+  beginningBalance: toCents(data.beginningBalance),  // User input → cents
+  endingBalance: toCents(data.endingBalance),        // User input → cents
+};
+```
+
+**Zod Schema (Hardened):**
+```typescript
+// db-row-schemas.ts:240-241
+beginning_balance_cents: z.number().int(),  // HARDENED: BIGINT cents
+ending_balance_cents: z.number().int(),     // HARDENED: BIGINT cents
 ```
 
 ### 3.2 Sync Integrity (Version Column)
@@ -169,19 +222,7 @@ endingBalance: toSafeIntegerOrZero(dbReconciliation.ending_balance),        // B
 | Version trigger | `trigger_set_reconciliation_version` using `global_transaction_version` sequence |
 | Domain type | `version: number` at [domain/reconciliations.ts:67](domain/reconciliations.ts#L67) |
 | Zod schema | `...BaseSyncFields` includes `version: z.number().int().min(0)` |
-| Delta sync support | `idx_reconciliations_sync_version` partial index created |
-
-**Database Schema (Post-Migration):**
-```sql
-ALTER TABLE "public"."reconciliations"
-ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1,
-ADD COLUMN IF NOT EXISTS "deleted_at" TIMESTAMPTZ DEFAULT NULL;
-
-CREATE TRIGGER "trigger_set_reconciliation_version"
-  BEFORE INSERT OR UPDATE ON "public"."reconciliations"
-  FOR EACH ROW
-  EXECUTE FUNCTION "public"."set_reconciliation_version"();
-```
+| UI usage | `handleDelete(reconciliation.id, reconciliation.version)` |
 
 ### 3.3 Soft Deletes (Tombstone Pattern)
 
@@ -189,42 +230,28 @@ CREATE TRIGGER "trigger_set_reconciliation_version"
 
 | Requirement | Implementation |
 |-------------|----------------|
-| `deleted_at` column | Added via migration (line 13) |
-| Tombstone filter in queries | `.is('deleted_at', null)` in `getAll()` and `getById()` |
-| Soft delete operation | `delete_reconciliation_with_version` RPC |
-| Domain type | `deletedAt: string \| null` at [domain/reconciliations.ts:103](domain/reconciliations.ts#L103) |
+| `deleted_at` column | Added via migration |
+| Tombstone filter | `.is('deleted_at', null)` in `getAll()` and `getById()` |
+| Soft delete RPC | `delete_reconciliation_with_version(id, version)` |
+| Domain type | `deletedAt: string \| null` |
 | Type guard | `isDeletedReconciliation()` function |
-| Partial indexes | `idx_reconciliations_active_*` for O(1) tombstone filtering |
+| Partial indexes | `idx_reconciliations_active_*` for O(1) filtering |
 
-**Service Layer Implementation:**
+**Service Layer Tombstone Filter:**
 ```typescript
-// api/reconciliations.ts:33-38
-async getAll(accountId?: string): Promise<Reconciliation[]> {
-  let query = this.supabase
-    .from('reconciliations')
-    .select('*')
-    .is('deleted_at', null)  // Tombstone filter: only active reconciliations
-    .order('created_at', { ascending: false });
+// api/reconciliations.ts:36-38
+.is('deleted_at', null)  // Tombstone filter: only active reconciliations
 ```
 
-**Version-Checked Soft Delete RPC:**
-| Feature | Implementation |
-|---------|----------------|
-| RPC Function | `delete_reconciliation_with_version(p_reconciliation_id, p_expected_version)` |
-| Version conflict detection | Returns `{ error: 'version_conflict', currentVersion, currentData }` |
-| Business rule enforcement | Cannot delete completed reconciliations |
-| Transaction unlinking | Automatically unlinks transactions before soft delete |
-| Location | [20260129030001_reconciliation_version_ops.sql](supabase/migrations/20260129030001_reconciliation_version_ops.sql) |
-
-**Hook Error Handling:**
+**Version-Checked Soft Delete:**
 ```typescript
-// hooks/use-reconciliations.ts:145-154
-if (result.error === 'version_conflict') {
-  toast.error('This reconciliation was modified. Please refresh and try again.');
-} else if (result.error === 'reconciliation_completed') {
-  toast.error('Cannot delete a completed reconciliation. Change status to draft first.');
-} else if (result.error === 'not_found') {
-  toast.error('Reconciliation not found or already deleted.');
+// api/reconciliations.ts:150-177
+async delete(id: string, version: number): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await this.supabase.rpc('delete_reconciliation_with_version', {
+    p_reconciliation_id: id,
+    p_expected_version: version,
+  });
+  // ...
 }
 ```
 
@@ -236,7 +263,7 @@ if (result.error === 'version_conflict') {
 |-------------|----------------|
 | Interface used | `IAuthProvider` from `@/lib/auth/auth-provider.interface` |
 | Implementation | `SupabaseAuthProvider` injected via factory |
-| Direct Supabase auth calls | **NONE** in feature folder |
+| Direct Supabase auth | **NONE** in feature folder |
 | Factory pattern | `createReconciliationsService()` handles DI |
 
 **Service Constructor:**
@@ -262,10 +289,22 @@ export class ReconciliationsService {
 
 **Status: PASS**
 
-| Check | Finding |
-|-------|---------|
-| `watch()` calls | **NONE DETECTED** |
-| `useWatch` usage | Not applicable (no react-hook-form in this feature) |
+| Pattern | Location | Assessment |
+|---------|----------|------------|
+| `useWatch` (correct) | [reconciliation-form-modal.tsx:80,85,90](features/reconciliations/components/settings/reconciliation-form-modal.tsx#L80) | **PASS** |
+| `watch()` (deprecated) | Not found | **PASS** |
+
+**Correct Usage:**
+```typescript
+// reconciliation-form-modal.tsx:80-94
+const dateStart = useWatch({
+  control,
+  name: 'dateStart',
+  defaultValue: null,
+});
+const dateEnd = useWatch({ ... });
+const accountId = useWatch({ ... });
+```
 
 ### 4.2 Re-render Optimization
 
@@ -278,34 +317,29 @@ export class ReconciliationsService {
 | Query invalidation | Smart invalidation on mutation success |
 | Heavy computations | None detected in hooks |
 
-**Service Memoization:**
+**No Polling Pattern (CTO Directive):**
 ```typescript
-// hooks/use-reconciliations.ts:16-21
-function useReconciliationsService() {
-  return useMemo(() => {
-    const supabase = createClient();
-    return createReconciliationsService(supabase);
-  }, []);
+// lib/hooks/use-reconciliations.ts:73-81
+export function useReconciliationSummary(reconciliationId: string | null | undefined) {
+  // ...
+  return useQuery({
+    // ...
+    // NO refetchInterval - invalidation handles updates
+  });
 }
 ```
 
-**Query Invalidation Strategy (Delete with Transactions):**
-```typescript
-// hooks/use-reconciliations.ts:137-143
-onSuccess: (result) => {
-  if (result.success) {
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
-    queryClient.invalidateQueries({ queryKey: ['transactions'] });  // Unlinked transactions
-    toast.success('Reconciliation deleted successfully');
-  }
-}
-```
+### 4.3 Query Invalidation Strategy
 
-### 4.3 Database Performance (Partial Indexes)
+| Mutation | Invalidates |
+|----------|-------------|
+| `useCreateReconciliation` | `ALL`, `BY_ACCOUNT` |
+| `useUpdateReconciliation` | `ALL`, `BY_ACCOUNT`, `BY_ID`, `SUMMARY` |
+| `useDeleteReconciliation` | `ALL`, `['transactions']` |
+| `useLinkTransactions` | `SUMMARY`, `['transactions']` |
+| `useUnlinkTransactions` | `ALL`, `['transactions']` |
 
-**Status: PASS**
-
-Partial indexes created for O(1) tombstone filtering:
+### 4.4 Database Partial Indexes
 
 | Index | Columns | Filter |
 |-------|---------|--------|
@@ -320,47 +354,66 @@ Partial indexes created for O(1) tombstone filtering:
 
 ### 5.1 RPC Inventory
 
-| RPC Function | Purpose | Validation | Location |
-|--------------|---------|------------|----------|
-| `link_transactions_to_reconciliation` | Atomic bulk link | `LinkUnlinkRpcSchema` | [20260109000004_create_reconciliation_rpcs.sql](supabase/migrations/20260109000004_create_reconciliation_rpcs.sql) |
-| `unlink_transactions_from_reconciliation` | Atomic bulk unlink | `LinkUnlinkRpcSchema` | Same |
-| `get_reconciliation_summary` | Real-time math | `ReconciliationSummaryRpcSchema` | Same |
-| `delete_reconciliation_with_version` | Version-checked soft delete | Manual JSONB parsing | [20260129030001_reconciliation_version_ops.sql](supabase/migrations/20260129030001_reconciliation_version_ops.sql) |
+| RPC Function | Purpose | Validation Schema |
+|--------------|---------|-------------------|
+| `link_transactions_to_reconciliation` | Atomic bulk link | `LinkUnlinkRpcSchema` |
+| `unlink_transactions_from_reconciliation` | Atomic bulk unlink | `LinkUnlinkRpcSchema` |
+| `get_reconciliation_summary` | Real-time math (BIGINT) | `ReconciliationSummaryRpcSchema` |
+| `delete_reconciliation_with_version` | Version-checked soft delete | Manual JSONB parsing |
 
-### 5.2 Delete RPC Business Rules
+### 5.2 Delete RPC Error Handling
 
-The `delete_reconciliation_with_version` RPC enforces:
-
-1. **Authentication**: Must be authenticated user
-2. **Ownership**: Can only delete own reconciliations (RLS)
-3. **Status Check**: Cannot delete completed reconciliations
-4. **Version Check**: Prevents concurrent modification conflicts
-5. **Transaction Cleanup**: Automatically unlinks transactions before soft delete
-6. **Tombstone**: Sets `deleted_at` instead of hard delete
+| Error Code | UI Message | Trigger |
+|------------|------------|---------|
+| `version_conflict` | "This reconciliation was modified. Please refresh and try again." | Concurrent edit |
+| `reconciliation_completed` | "Cannot delete a completed reconciliation. Change status to draft first." | Business rule |
+| `not_found` | "Reconciliation not found or already deleted." | Already deleted |
+| `concurrent_modification` | Generic error | Race condition |
 
 ---
 
-## 6. Query Key Structure
+## 6. UI Components
 
+### 6.1 ReconciliationSettings Component
+
+**Purpose**: Settings page list view with CRUD actions
+
+**Features:**
+- List all reconciliations with account info
+- Status badges (Draft/Locked)
+- Balance display using `formatCents()`
+- Delete with version check
+- Finalize/Revert status toggle
+- Resume/View audit button (TODO: navigation)
+
+**State Management:**
 ```typescript
-const QUERY_KEYS = {
-  RECONCILIATIONS: {
-    ALL: ['reconciliations'],
-    BY_ACCOUNT: (accountId) => ['reconciliations', 'account', accountId],
-    BY_ID: (id) => ['reconciliations', id],
-    SUMMARY: (id) => ['reconciliations', id, 'summary'],
-  }
-};
+const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+const [editingReconciliation, setEditingReconciliation] = useState<string | null>(null);
 ```
 
-**Invalidation Patterns:**
-| Mutation | Invalidates |
-|----------|-------------|
-| `useCreateReconciliation` | `ALL`, `BY_ACCOUNT` |
-| `useUpdateReconciliation` | `ALL`, `BY_ACCOUNT`, `BY_ID`, `SUMMARY` |
-| `useDeleteReconciliation` | `ALL`, `['transactions']` |
-| `useLinkTransactions` | `SUMMARY`, `['transactions']` |
-| `useUnlinkTransactions` | `ALL`, `['transactions']` |
+### 6.2 ReconciliationFormModal Component
+
+**Purpose**: Create/Edit reconciliation form
+
+**Features:**
+- Account selector (disabled during edit)
+- Name input with validation
+- Balance inputs with `toCents()` conversion
+- Date range pickers (optional)
+- Zod schema validation
+
+**Form Schema:**
+```typescript
+const reconciliationSchema = z.object({
+  accountId: z.string().min(1, 'Account is required'),
+  name: z.string().min(1, 'Name is required'),
+  beginningBalance: z.number(),
+  endingBalance: z.number(),
+  dateStart: z.string().nullable().optional(),
+  dateEnd: z.string().nullable().optional(),
+});
+```
 
 ---
 
@@ -368,20 +421,21 @@ const QUERY_KEYS = {
 
 | Migration | Date | Purpose |
 |-----------|------|---------|
-| `20260109000001_create_reconciliations_table.sql` | 2026-01-09 | Initial table creation |
-| `20260109000002_add_reconciliation_to_transactions.sql` | 2026-01-09 | Add FK to transactions |
+| `20260109000001_create_reconciliations_table.sql` | 2026-01-09 | Initial table (NUMERIC balances) |
+| `20260109000002_add_reconciliation_to_transactions.sql` | 2026-01-09 | FK to transactions |
 | `20260109000004_create_reconciliation_rpcs.sql` | 2026-01-09 | Link/unlink/summary RPCs |
 | `20260109000005_update_transactions_view_reconciliation.sql` | 2026-01-09 | View updates |
 | `20260110000001_add_reconciliation_status_to_view.sql` | 2026-01-10 | Status in view |
-| `20260129030000_reconciliations_sync_hardening.sql` | 2026-01-29 | Add version/deleted_at columns |
+| `20260129030000_reconciliations_sync_hardening.sql` | 2026-01-29 | Add version/deleted_at |
 | `20260129030001_reconciliation_version_ops.sql` | 2026-01-29 | Version-checked delete RPC |
-| `20260129030002_reconciliations_tombstone_indexes.sql` | 2026-01-29 | Partial indexes for performance |
+| `20260129030002_reconciliations_tombstone_indexes.sql` | 2026-01-29 | Partial indexes |
+| `20260130000002_reconciliations_bigint.sql` | 2026-01-30 | BIGINT cents conversion |
 
 ---
 
 ## 8. Swift Mirror (iOS Sync Readiness)
 
-The domain type includes Swift documentation for iOS implementation:
+**Status: READY**
 
 ```swift
 struct ReconciliationEntity: Codable {
@@ -403,102 +457,85 @@ struct ReconciliationEntity: Codable {
 
 ---
 
-## 9. Error Handling
+## 9. Audit Comparison
 
-### 9.1 Console Logging
-
-All database operations log errors via `console.error()`:
-```typescript
-console.error('Failed to fetch reconciliations:', error);
-console.error('Failed to delete reconciliation:', error);
-// ... etc
-```
-
-**Recommendation:** Consider routing to error tracking service (Sentry) in production.
-
-### 9.2 User-Facing Errors
-
-| Error Code | Toast Message | Trigger |
-|------------|---------------|---------|
-| `version_conflict` | "This reconciliation was modified. Please refresh and try again." | Concurrent edit detected |
-| `reconciliation_completed` | "Cannot delete a completed reconciliation. Change status to draft first." | Business rule |
-| `not_found` | "Reconciliation not found or already deleted." | Already deleted or invalid ID |
-| Network error | "Failed to delete reconciliation: {message}" | Supabase error |
+| Aspect | v1 (01-28) | v2 (01-30) | v3 (01-31) |
+|--------|------------|------------|------------|
+| Sync Integrity | **FAIL** | **PASS** | **PASS** |
+| Soft Deletes | **FAIL** | **PASS** | **PASS** |
+| Integer Cents | PASS | PASS | **PASS** (BIGINT hardened) |
+| Feature Bleed | PASS | PASS | **PASS** |
+| Auth Abstraction | PASS | PASS | **PASS** |
+| React Compiler | PASS | PASS | **PASS** (`useWatch`) |
+| Components | None | None | **2 new components** |
+| Orchestration | In-feature | In-feature | **Moved to lib/hooks** |
+| DB Columns | `beginning_balance` | `beginning_balance` | `beginning_balance_cents` |
+| Lines of Code | 461 | 508 | **828** |
 
 ---
 
-## 10. File Inventory (Final)
+## 10. File Inventory (Complete)
+
+### Feature Files
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `features/reconciliations/api/reconciliations.ts` | 255 | Service layer |
-| `features/reconciliations/hooks/use-reconciliations.ts` | 253 | React Query hooks |
-| `domain/reconciliations.ts` | 180 | Domain types + type guards |
-| **Total Feature Code** | **508** | |
+| `features/reconciliations/api/reconciliations.ts` | 254 | Service layer |
+| `features/reconciliations/hooks/use-reconciliations.ts` | 15 | Deprecated re-export |
+| `features/reconciliations/components/settings/reconciliation-settings.tsx` | 258 | Settings list UI |
+| `features/reconciliations/components/settings/reconciliation-form-modal.tsx` | 301 | Form modal UI |
+| **Feature Total** | **828** | |
 
-**Related Files (Outside Feature):**
-| File | Relevance |
-|------|-----------|
-| `lib/data/db-row-schemas.ts` | Zod schemas (lines 238-296) |
-| `lib/data/data-transformers.ts` | Transformers (lines 831-929) |
-| `supabase/migrations/20260129030000_*.sql` | Sync hardening migrations |
-| `supabase/migrations/20260129030001_*.sql` | Version-checked delete RPC |
-| `supabase/migrations/20260129030002_*.sql` | Tombstone indexes |
+### Supporting Files (Outside Feature)
 
----
+| File | Lines | Purpose |
+|------|-------|---------|
+| `lib/hooks/use-reconciliations.ts` | 268 | Orchestration layer hooks |
+| `domain/reconciliations.ts` | 180 | Domain types + guards |
+| `lib/data/db-row-schemas.ts` | ~70 | Zod schemas (partial) |
+| `lib/data/data-transformers.ts` | ~110 | Transformers (partial) |
 
-## 11. Comparison: Previous vs Current Audit
+### Migrations
 
-| Aspect | Previous (2026-01-28) | Current (2026-01-30) | Change |
-|--------|----------------------|---------------------|--------|
-| Sync Integrity (version) | **FAIL** | **PASS** | Added `version` column + trigger |
-| Soft Deletes | **FAIL** | **PASS** | Implemented tombstone pattern |
-| Delete Operation | Hard delete | Version-checked soft delete RPC | Breaking change (requires version) |
-| Domain Import | `@/types/domain` | `@/domain/reconciliations` | Correct Sacred Domain pattern |
-| Type Guards | None | 3 guards | `isDraft`, `isCompleted`, `isDeleted` |
-| Partial Indexes | None | 4 indexes | O(1) tombstone filtering |
-| Lines of Code | 461 | 508 | +47 lines (sync fields, guards) |
+| Count | Total |
+|-------|-------|
+| Reconciliation migrations | 9 |
 
 ---
 
-## 12. Conclusion
+## 11. Conclusion
 
-**ALL SACRED MANDATES ARE NOW COMPLIANT.**
+**ALL SACRED MANDATES COMPLIANT**
 
 The reconciliations feature demonstrates:
 
-1. **Integer Cents**: Proper `toSafeIntegerOrZero()` conversion
+1. **Integer Cents**: BIGINT storage + `toCents()`/`fromCents()` at UI boundary
 2. **Sync Integrity**: `version` column with `global_transaction_version` sequence
 3. **Soft Deletes**: Tombstone pattern with version-checked RPC
 4. **Auth Abstraction**: Clean `IAuthProvider` interface usage
-5. **Type Safety**: Zod validation at all boundaries
-6. **Performance**: Partial indexes, no polling, smart invalidation
+5. **Type Safety**: Zod validation at all boundaries, no naked `any`
+6. **Performance**: `useWatch` pattern, no polling, smart invalidation
+7. **Architecture**: Proper layering (Service → Orchestration → UI)
 
-**iOS Sync Ready**: The feature is now compatible with Delta Sync Engine requirements:
+**iOS Sync Ready**:
 - Version-based optimistic concurrency control
 - Tombstone propagation for distributed sync
 - Swift-serializable domain types with documentation
+- BIGINT precision for mathematical determinism
 
-**No Critical Issues Remaining.**
+**No Critical Issues.**
 
 ---
 
-## Appendix: Zod Schema Definition
+## Appendix: Query Keys
 
 ```typescript
-// lib/data/db-row-schemas.ts:238-251
-export const ReconciliationRowSchema = z.object({
-  id: uuid,
-  user_id: uuid,
-  account_id: uuid,
-  name: z.string(),
-  beginning_balance: z.number().int(),
-  ending_balance: z.number().int(),
-  date_start: z.string().nullable(),
-  date_end: z.string().nullable(),
-  status: ReconciliationStatusEnum,
-  created_at: timestamptz,
-  updated_at: timestamptz,
-  ...BaseSyncFields,  // version: z.number().int().min(0), deleted_at: z.string().nullable()
-});
+const QUERY_KEYS = {
+  RECONCILIATIONS: {
+    ALL: ['reconciliations'],
+    BY_ACCOUNT: (accountId) => ['reconciliations', 'account', accountId],
+    BY_ID: (id) => ['reconciliations', id],
+    SUMMARY: (id) => ['reconciliations', id, 'summary'],
+  }
+};
 ```

@@ -1,159 +1,107 @@
-# Technical Audit Manifest: features/groupings
+# Composable Manifest: features/groupings
 
-> **Audit Date:** January 30, 2026 (Updated)
-> **Previous Audit:** January 28, 2026
-> **Role:** Senior Systems Architect & Security Auditor
-> **Overall Score:** 10/10
+> **Generated**: 2026-01-31
+> **Auditor**: Senior Systems Architect & Security Auditor
+> **Scope**: `/features/groupings/` folder
 
 ---
 
 ## Executive Summary
 
-The `features/groupings` folder demonstrates **production-grade code quality** with full compliance across all four technical audit pillars. **Significant architectural improvements** have been made since the previous audit:
+| Category | Status | Score | Critical Issues |
+|----------|--------|-------|-----------------|
+| Variable & Entity Registry | PASS | 10/10 | None |
+| Dependency Manifest | **FAIL** | 4/10 | 6 feature bleed violations |
+| Sacred Mandate Compliance | PASS | 10/10 | None |
+| Performance & Scalability | PASS | 10/10 | None |
 
-1. **Sacred Domain Pattern** - Types now imported from `@/domain/categories` (root-level sacred domain)
-2. **ICategoryOperations IoC Interface** - Cross-feature decoupling via `useCategoryOperations()` hook
-3. **Error Translation Layer** - Feature errors mapped to Sacred Domain error codes
-4. **Hybrid Repository** - Offline-first with WatermelonDB + Supabase fallback
+**Overall Score: 8.5/10** - Feature bleed violations must be resolved.
 
-| Audit Category | Score | Status |
-|----------------|-------|--------|
-| Variable & Entity Registry | 10/10 | ✅ PASS |
-| Dependency Manifest | 10/10 | ✅ PASS |
-| Sacred Mandate Compliance | 10/10 | ✅ PASS |
-| Performance & Scalability | 10/10 | ✅ PASS |
+### Critical Issues Found
 
-**Key Findings:**
-- Zero type safety violations (`any`, `unknown`, or unsafe assertions)
-- **NEW**: Sacred Domain imports from `@/domain/categories` (not feature-level)
-- **NEW**: ICategoryOperations interface for cross-feature IoC
-- **NEW**: Typed error codes (`CategoryOperationError`) for error handling
-- Full Sacred Mandate compliance on all four pillars
-- React Compiler compatible with proper memoization patterns
+| Violation | File | Line | Import |
+|-----------|------|------|--------|
+| Feature Bleed | `add-subcategory-modal.tsx` | 17 | `@/features/categories/domain` |
+| Feature Bleed | `delete-grouping-dialog.tsx` | 7 | `@/features/categories/domain` |
+| Feature Bleed | `grouping-list-item.tsx` | 6 | `@/features/categories/domain` |
+| Feature Bleed | `grouping-list.tsx` | 6 | `@/features/categories/components` |
+| Feature Bleed | `grouping-list.tsx` | 7 | `@/features/categories/components` |
+| Feature Bleed | `grouping-list.tsx` | 18 | `@/features/categories/domain` |
 
----
-
-## Folder Structure
-
-```
-features/groupings/
-├── components/
-│   ├── add-subcategory-modal.tsx    (235 lines)
-│   ├── delete-grouping-dialog.tsx   (103 lines)
-│   ├── grouping-list-item.tsx       (56 lines)
-│   └── grouping-list.tsx            (116 lines)
-└── hooks/
-    ├── use-grouping-navigation.ts   (85 lines)
-    └── use-groupings.ts             (440 lines) ← Updated from 392
-```
-
-**Total: 6 files, ~1035 lines**
+**Required Fix**: Replace all `@/features/categories/domain` imports with `@/domain/categories`.
 
 ---
 
 ## 1. Variable & Entity Registry
 
-### Entity Inventory
+### 1.1 Feature File Inventory
 
-**ARCHITECTURAL CHANGE**: All domain types now imported from **`@/domain/categories`** (Sacred Domain), NOT from `@/features/categories/domain`.
+**Total Files**: 6 | **Total Lines**: 1,029
 
-| Type | Classification | Import Source | Description |
-|------|---------------|---------------|-------------|
-| `GroupingEntity` | Entity | `@/domain/categories` | Parent category with child/transaction counts |
-| `CategoryWithCountEntity` | Entity | `@/domain/categories` | Category with transaction count enrichment |
-| `CreateGroupingDTO` | DTO | `@/domain/categories` | Create parent category input |
-| `CreateSubcategoryDTO` | DTO | `@/domain/categories` | Create child category input |
-| `UpdateGroupingDTO` | DTO | `@/domain/categories` | Update parent category input |
-| `ReassignSubcategoryDTO` | DTO | `@/domain/categories` | Move subcategory to different parent |
-| `CategoryOperationError` | Error | `@/domain/categories` | **NEW** - Typed error with error codes |
-| `isCategoryOperationError` | Type Guard | `@/domain/categories` | **NEW** - Error type guard |
+#### features/groupings/components/
 
-**Evidence - Sacred Domain Import:**
-```typescript
-// use-groupings.ts:19-27
-import type {
-  CreateGroupingDTO,
-  CreateSubcategoryDTO,
-  UpdateGroupingDTO,
-  ReassignSubcategoryDTO,
-  GroupingEntity,
-  CategoryWithCountEntity,
-} from '@/domain/categories';
-import { isCategoryOperationError } from '@/domain/categories';
-```
+| File | Lines | Purpose |
+|------|-------|---------|
+| `add-subcategory-modal.tsx` | 234 | Modal for creating subcategories under a parent grouping |
+| `delete-grouping-dialog.tsx` | 102 | Confirmation dialog for deleting groupings |
+| `grouping-list-item.tsx` | 55 | Individual grouping row with actions |
+| `grouping-list.tsx` | 115 | Main list component with modal coordination |
 
-### Error Code Registry (NEW)
+#### features/groupings/hooks/
 
-The Sacred Domain defines typed error codes for cross-platform error handling:
+| File | Lines | Purpose |
+|------|-------|---------|
+| `use-groupings.ts` | 439 | React Query hooks for CRUD operations |
+| `use-grouping-navigation.ts` | 84 | URL parameter management for filtering |
 
-| Error Code | Description | Usage |
-|------------|-------------|-------|
-| `VERSION_CONFLICT` | Optimistic concurrency conflict | Update/delete operations |
-| `DUPLICATE_NAME` | Name already exists in scope | Create/update operations |
-| `HAS_CHILDREN` | Parent has child categories | Delete operation blocked |
-| `HAS_TRANSACTIONS` | Category has linked transactions | Delete operation blocked |
-| `INVALID_HIERARCHY` | Hierarchy constraint violated | Create/reassign operations |
-| `NOT_FOUND` | Category not found | All operations |
-| `SERVICE_NOT_READY` | Orchestrator not ready | Pre-operation guard |
+### 1.2 Entity Inventory
 
-**Evidence - Error Code Handling:**
-```typescript
-// use-groupings.ts:261-287
-onError: (err) => {
-  if (isCategoryOperationError(err)) {
-    switch (err.code) {
-      case 'HAS_CHILDREN':
-        toast.error('Cannot delete grouping', {
-          description: err.childCount && err.childCount > 0
-            ? `Has ${err.childCount} subcategories. Move or delete them first.`
-            : 'Move or delete subcategories first.',
-        });
-        break;
-      case 'HAS_TRANSACTIONS':
-        toast.error('Cannot delete grouping', {
-          description: 'Has transactions. Move or delete them first.',
-        });
-        break;
-      case 'VERSION_CONFLICT':
-        toast.error('Conflict detected', {
-          description: 'This grouping was modified elsewhere. Please refresh.',
-        });
-        break;
-      // ...
-    }
-  }
-}
-```
+#### Imported from Sacred Domain (`@/domain/categories`)
 
-### Local Interfaces
+| Entity | Kind | Used In | Description |
+|--------|------|---------|-------------|
+| `GroupingEntity` | interface | All files | Parent category with counts |
+| `CategoryWithCountEntity` | interface | `use-groupings.ts` | Child category with transaction count |
+| `CreateGroupingDTO` | interface | `use-groupings.ts` | Create parent DTO |
+| `CreateSubcategoryDTO` | interface | `use-groupings.ts` | Create child DTO |
+| `UpdateGroupingDTO` | interface | `use-groupings.ts` | Update parent DTO |
+| `ReassignSubcategoryDTO` | interface | `use-groupings.ts` | Move subcategory DTO |
+| `CategoryOperationError` | interface | `use-groupings.ts` | Typed error with code |
+| `isCategoryOperationError` | type guard | `use-groupings.ts` | Error type checking |
 
-| File | Interface | Purpose |
-|------|-----------|---------|
-| `add-subcategory-modal.tsx` | `AddSubcategoryModalProps` | Modal component props |
-| `add-subcategory-modal.tsx` | `SubcategoryFormData` | Zod-inferred form data type |
-| `grouping-list-item.tsx` | `GroupingListItemProps` | List item component props |
-| `delete-grouping-dialog.tsx` | `DeleteGroupingDialogProps` | Delete dialog props |
-| `use-grouping-navigation.ts` | `UseGroupingNavigationReturn` | Navigation hook return type |
+#### Locally Defined Interfaces
 
-### Naming Audit
+| Name | Kind | File | Line |
+|------|------|------|------|
+| `AddSubcategoryModalProps` | interface | `add-subcategory-modal.tsx` | 19-23 |
+| `SubcategoryFormData` | type (Zod infer) | `add-subcategory-modal.tsx` | 30 |
+| `DeleteGroupingDialogProps` | interface | `delete-grouping-dialog.tsx` | 9-13 |
+| `GroupingListItemProps` | interface | `grouping-list-item.tsx` | 8-15 |
+| `UseGroupingNavigationReturn` | type | `use-grouping-navigation.ts` | 79-84 |
 
-| Convention | Status | Examples |
+### 1.3 Naming Audit
+
+| Convention | Status | Evidence |
 |------------|--------|----------|
-| Domain objects: **camelCase** | ✅ PASS | `groupingId`, `parentId`, `transactionCount`, `childCount` |
-| Database rows: **snake_case** | ✅ PASS | Handled via `data-transformers.ts` |
-| Error codes: **SCREAMING_SNAKE_CASE** | ✅ PASS | `VERSION_CONFLICT`, `HAS_CHILDREN` |
+| Domain objects: **camelCase** | ✅ PASS | `groupingId`, `parentId`, `childCount`, `totalTransactionCount` |
+| Database rows: **snake_case** | ✅ PASS | Via `@/lib/data/data-transformers.ts` |
+| Error codes: **SCREAMING_SNAKE_CASE** | ✅ PASS | `VERSION_CONFLICT`, `HAS_CHILDREN`, `DUPLICATE_NAME` |
+| Props interfaces: **PascalCase + Props** | ✅ PASS | `GroupingListItemProps`, `DeleteGroupingDialogProps` |
+| Hooks: **use + camelCase** | ✅ PASS | `useGroupings`, `useGroupingNavigation` |
 
-### Type Safety
+### 1.4 Type Safety
 
-| Check | Status | Count | Evidence |
-|-------|--------|-------|----------|
-| `any` usage | ✅ PASS | 0 | Grep verified |
-| `unknown` usage | ✅ PASS | 0 | Grep verified |
-| Unsafe type assertions | ✅ PASS | 0 | No `as any` or `as unknown` |
-| `z.any()` / `z.unknown()` | ✅ PASS | 0 | Grep verified |
-| Zod validation present | ✅ PASS | 1 | `subcategorySchema` |
+| Check | Status | Count | Details |
+|-------|--------|-------|---------|
+| `any` usage | ✅ PASS | 0 | Verified via grep |
+| `unknown` usage | ✅ PASS | 0 | Verified via grep |
+| `as any` assertions | ✅ PASS | 0 | No type bypass |
+| `as unknown` assertions | ✅ PASS | 0 | No type bypass |
+| `z.any()` usage | ✅ PASS | 0 | No Zod bypass |
+| `z.unknown()` usage | ✅ PASS | 0 | No Zod bypass |
+| Zod validation | ✅ PASS | 1 | `subcategorySchema` in `add-subcategory-modal.tsx:26-28` |
 
-**Zod Schema:**
+**Zod Schema Definition:**
 ```typescript
 // add-subcategory-modal.tsx:26-28
 const subcategorySchema = z.object({
@@ -165,122 +113,138 @@ type SubcategoryFormData = z.infer<typeof subcategorySchema>;
 
 ---
 
-## 2. Dependency Manifest (Import Audit)
+## 2. Dependency Manifest
 
-### Feature Bleed Check - DETAILED
+### 2.1 Feature Bleed Check
 
-**ARCHITECTURAL CHANGE**: Imports now follow Sacred Domain pattern with IoC interface.
+**Status: FAIL** - 6 violations detected
 
-| Import Source | Files Using | Status | Notes |
-|--------------|-------------|--------|-------|
-| `@/domain/categories` | `use-groupings.ts` | ✅ **Sacred Domain** | Types & error guards |
-| `@/features/categories/domain` | 4 component files | ✅ Allowed | `GroupingEntity` type-only import |
-| `@/features/categories/components` | `grouping-list.tsx` | ✅ Allowed | Shared modals |
-| `@/lib/hooks/use-category-operations` | `use-groupings.ts` | ✅ **IoC Pattern** | Operations interface |
-| Other `@/features/*` | None | ✅ No violations | Clean isolation |
-| `@/lib/*` | Multiple | ✅ Appropriate | Shared utilities |
-| `@/components/shared` | Multiple | ✅ Appropriate | UI components |
+#### Violations Detail
 
-### Import Analysis by File
+| File | Line | Violating Import | Should Be |
+|------|------|------------------|-----------|
+| `add-subcategory-modal.tsx` | 17 | `import type { GroupingEntity } from '@/features/categories/domain'` | `@/domain/categories` |
+| `delete-grouping-dialog.tsx` | 7 | `import type { GroupingEntity } from '@/features/categories/domain'` | `@/domain/categories` |
+| `grouping-list-item.tsx` | 6 | `import type { GroupingEntity } from '@/features/categories/domain'` | `@/domain/categories` |
+| `grouping-list.tsx` | 6 | `import { AddCategoryModal } from '@/features/categories/components/add-category-modal'` | Move to shared or expose via lib |
+| `grouping-list.tsx` | 7 | `import { EditGroupingModal } from '@/features/categories/components/edit-grouping-modal'` | Move to shared or expose via lib |
+| `grouping-list.tsx` | 18 | `import type { GroupingEntity } from '@/features/categories/domain'` | `@/domain/categories` |
 
-#### use-groupings.ts (Core Hook File)
+#### Compliant Imports (use-groupings.ts)
+
 ```typescript
-// Sacred Domain imports
-import type { ... } from '@/domain/categories';
+// CORRECT: Sacred Domain imports
+import type {
+  CreateGroupingDTO,
+  CreateSubcategoryDTO,
+  UpdateGroupingDTO,
+  ReassignSubcategoryDTO,
+  GroupingEntity,
+  CategoryWithCountEntity,
+} from '@/domain/categories';
 import { isCategoryOperationError } from '@/domain/categories';
 
-// IoC Interface hook
+// CORRECT: IoC orchestrator hook
 import { useCategoryOperations } from '@/lib/hooks/use-category-operations';
-
-// React Query & utilities
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
 ```
 
-#### Component Files (4 files)
-```typescript
-// Type-only import from feature domain (acceptable for UI types)
-import type { GroupingEntity } from '@/features/categories/domain';
+### 2.2 Import Analysis by File
 
-// Shared UI components
-import { DeleteDialog } from '@/components/shared/delete-dialog';
-import { ResourceListItem } from '@/components/ui/resource-list-item';
-```
+#### use-groupings.ts ✅ COMPLIANT
 
-### ICategoryOperations Interface (NEW)
+| Import | Source | Status |
+|--------|--------|--------|
+| Types (DTOs, Entities) | `@/domain/categories` | ✅ Sacred Domain |
+| `isCategoryOperationError` | `@/domain/categories` | ✅ Sacred Domain |
+| `useCategoryOperations` | `@/lib/hooks/use-category-operations` | ✅ IoC Pattern |
+| React Query hooks | `@tanstack/react-query` | ✅ External |
+| `toast` | `sonner` | ✅ External |
+| Constants | `@/lib/constants` | ✅ Shared lib |
 
-**Location:** `@/lib/hooks/use-category-operations.ts`
+#### use-grouping-navigation.ts ✅ COMPLIANT
 
-This hook provides the IoC interface that decouples features from direct CategoryService usage:
+| Import | Source | Status |
+|--------|--------|--------|
+| `useCallback` | `react` | ✅ External |
+| `useRouter`, `useSearchParams` | `next/navigation` | ✅ External |
 
-```typescript
-// lib/hooks/use-category-operations.ts:171
-export function useCategoryOperations(): ICategoryOperations | null {
-  const service = useCategoryService();
-  // ...error translation layer...
-  return operations;
-}
-```
+#### add-subcategory-modal.tsx ❌ VIOLATION
 
-**Interface Contract (from @/domain/categories):**
-```typescript
-export interface ICategoryOperations {
-  getGroupings(): Promise<GroupingEntity[]>;
-  getByParentId(parentId: string): Promise<CategoryWithCountEntity[]>;
-  createGrouping(data: CreateGroupingDTO): Promise<CategoryEntity>;
-  updateGrouping(id: string, data: UpdateGroupingDTO): Promise<CategoryEntity>;
-  createSubcategory(data: CreateSubcategoryDTO): Promise<CategoryEntity>;
-  reassignSubcategory(data: ReassignSubcategoryDTO): Promise<CategoryEntity>;
-  delete(id: string, version: number): Promise<void>;
-}
-```
+| Import | Source | Status |
+|--------|--------|--------|
+| `GroupingEntity` | `@/features/categories/domain` | ❌ Feature bleed |
+| Other imports | Various shared/UI | ✅ OK |
 
-### Transformer Check
+#### delete-grouping-dialog.tsx ❌ VIOLATION
+
+| Import | Source | Status |
+|--------|--------|--------|
+| `GroupingEntity` | `@/features/categories/domain` | ❌ Feature bleed |
+| Other imports | Various shared/UI | ✅ OK |
+
+#### grouping-list-item.tsx ❌ VIOLATION
+
+| Import | Source | Status |
+|--------|--------|--------|
+| `GroupingEntity` | `@/features/categories/domain` | ❌ Feature bleed |
+| Other imports | Various shared/UI | ✅ OK |
+
+#### grouping-list.tsx ❌ 3 VIOLATIONS
+
+| Import | Source | Status |
+|--------|--------|--------|
+| `AddCategoryModal` | `@/features/categories/components` | ❌ Feature bleed |
+| `EditGroupingModal` | `@/features/categories/components` | ❌ Feature bleed |
+| `GroupingEntity` | `@/features/categories/domain` | ❌ Feature bleed |
+| Other imports | Various shared/UI | ✅ OK |
+
+### 2.3 Transformer Usage
 
 | Check | Status | Evidence |
 |-------|--------|----------|
-| Uses `@/lib/data/data-transformers.ts` | ✅ PASS | Via service layer |
-| Inline mapping logic | ✅ NONE | No `.map()` with inline transformations |
-| Transformer function | ✅ USED | `dbParentCategoryWithCountToDomain()` |
+| Uses centralized transformers | ✅ PASS | Via `useCategoryOperations` → `CategoryService` → `data-transformers.ts` |
+| Inline DB → Domain mapping | ✅ NONE | No `.map()` with inline snake_case conversion |
+| Transformer function | ✅ USED | `dbParentCategoryWithCountToDomain()` in service layer |
 
-**Data Flow (Updated):**
+**Data Flow:**
 ```
-Database Row
-  → HybridCategoryRepository (local/remote)
-  → Transformer (dbParentCategoryWithCountToDomain)
-  → ICategoryOperations.getGroupings()
-  → Error Translation Layer
-  → GroupingEntity
-  → useGroupings() hook
-  → Component
+Database (snake_case)
+  ↓ HybridCategoryRepository
+  ↓ dbParentCategoryWithCountToDomain()
+  ↓ ICategoryOperations.getGroupings()
+  ↓ withErrorMapping() (error translation)
+  ↓ useGroupings() hook
+  ↓ GroupingEntity (camelCase)
+  ↓ Component
 ```
 
 ---
 
 ## 3. Sacred Mandate Compliance
 
-### Integer Cents
+### 3.1 Integer Cents
 
-| Status | ✅ PASS |
-|--------|---------|
-| **Finding** | Feature handles metadata only (names, colors, hierarchy) - no financial arithmetic |
-| **Floating-point arithmetic** | None detected |
-| **`toCents()`/`fromCents()` usage** | Not required (no financial values) |
+| Status | ✅ PASS (N/A) |
+|--------|---------------|
+
+**Finding**: This feature handles metadata only (names, colors, hierarchy). No financial arithmetic is performed.
 
 **Evidence:**
 ```typescript
-// grouping-list-item.tsx:49 - Uses count, not money
+// grouping-list-item.tsx:49 - Uses count, NOT money
 subtitle={grouping.totalTransactionCount || 0}
 ```
 
-### Sync Integrity
+### 3.2 Sync Integrity
 
 | Status | ✅ PASS |
 |--------|---------|
-| **Version parameter in mutations** | Yes - all mutation hooks |
-| **RPC version conflict handling** | Yes - `VERSION_CONFLICT` error code |
-| **Orchestrator Rule compliance** | Yes - `enabled: !!operations` |
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Version parameter in mutations | ✅ | `useDeleteGrouping`, `useUpdateGrouping` |
+| Orchestrator Rule compliance | ✅ | `enabled: !!operations` on all queries |
+| Error code handling | ✅ | `VERSION_CONFLICT` case in error handlers |
 
 **Evidence - Version in Delete:**
 ```typescript
@@ -291,6 +255,9 @@ mutationFn: ({ id, version }: { id: string; version: number }) => {
   }
   return operations.delete(id, version);
 }
+
+// delete-grouping-dialog.tsx:36
+await deleteGroupingMutation.mutateAsync({ id: grouping.id, version: grouping.version });
 ```
 
 **Evidence - Version Conflict Handling:**
@@ -303,45 +270,50 @@ case 'VERSION_CONFLICT':
   break;
 ```
 
-### Soft Deletes
+### 3.3 Soft Deletes
 
 | Status | ✅ PASS |
 |--------|---------|
-| **Physical DELETE statements** | 0 found in feature |
-| **Tombstone filtering** | Handled by repository layer |
-| **Soft delete RPC** | `delete_category_with_version` |
 
-**Evidence - Delete uses RPC (via operations interface):**
-```typescript
-// delete-grouping-dialog.tsx:36
-await deleteGroupingMutation.mutateAsync({ id: grouping.id, version: grouping.version });
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Physical DELETE statements | ✅ 0 found | Grep verified |
+| Tombstone pattern used | ✅ | Via `delete_category_with_version` RPC |
+| `deletedAt` field | ✅ | Present in `GroupingEntity` interface |
+
+### 3.4 Auth Abstraction
+
+| Status | ✅ PASS |
+|--------|---------|
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Direct `supabase.auth.getUser()` | ✅ 0 found | Grep verified |
+| Direct `supabase.auth.getSession()` | ✅ 0 found | Grep verified |
+| IAuthProvider usage | ✅ | Via CategoryService DI chain |
+
+**Auth Provider Chain:**
 ```
-
-### Auth Abstraction
-
-| Status | ✅ PASS |
-|--------|---------|
-| **Direct `supabase.auth.getUser()` calls** | 0 found |
-| **IAuthProvider usage** | Yes, via CategoryService DI |
-
-**Evidence - Auth Provider Chain:**
-```typescript
-// use-category-service.ts:70-72
-const repository = createHybridCategoryRepository(supabase, database);
-const authProvider = createSupabaseAuthProvider(supabase);
-return createCategoryService(repository, authProvider);
+useGroupings()
+  → useCategoryOperations()
+  → useCategoryService()
+  → createSupabaseAuthProvider(supabase)
+  → IAuthProvider.getCurrentUserId()
 ```
 
 ---
 
 ## 4. Performance & Scalability
 
-### React Compiler Check
+### 4.1 React Compiler Check
 
 | Status | ✅ PASS |
 |--------|---------|
-| **`watch()` usage** | 0 found |
-| **`useWatch` usage** | Correctly implemented |
+
+| Check | Status | Count |
+|-------|--------|-------|
+| `watch()` from react-hook-form | ✅ | 0 found |
+| `useWatch` usage | ✅ | 1 (correct) |
 
 **Evidence:**
 ```typescript
@@ -353,230 +325,160 @@ const subcategoryName = useWatch({
 });
 ```
 
-### Re-render Optimization
+### 4.2 Re-render Optimization
 
-| Pattern | File | Status | Details |
-|---------|------|--------|---------|
-| `useMemo` | `add-subcategory-modal.tsx:40` | ✅ Correct | `[manualParentSelection, parentGrouping]` |
-| `useMemo` | `use-category-operations.ts:179` | ✅ Correct | `[service]` - stable object identity |
-| `useCallback` | `use-grouping-navigation.ts:29` | ✅ Correct | `[router, searchParams, currentGroupingId]` |
-| `useCallback` | `use-grouping-navigation.ts:54` | ✅ Correct | `[router, searchParams]` |
-| `useCallback` | `use-grouping-navigation.ts:63` | ✅ Correct | `[currentGroupingId]` |
-| `useRef` | `use-category-operations.ts:176` | ✅ Correct | Stable operations reference |
-| `useEffect` | All components | ✅ None found | Clean state management |
+| Pattern | File | Line | Status | Dependencies |
+|---------|------|------|--------|--------------|
+| `useMemo` | `add-subcategory-modal.tsx` | 40-42 | ✅ Correct | `[manualParentSelection, parentGrouping]` |
+| `useMemo` | `use-category-operations.ts` | 182-211 | ✅ Correct | `[service]` |
+| `useCallback` | `use-grouping-navigation.ts` | 29-49 | ✅ Correct | `[router, searchParams, currentGroupingId]` |
+| `useCallback` | `use-grouping-navigation.ts` | 54-58 | ✅ Correct | `[router, searchParams]` |
+| `useCallback` | `use-grouping-navigation.ts` | 63-66 | ✅ Correct | `[currentGroupingId]` |
+| `useEffect` | All components | - | ✅ None | Clean state management |
 
-**useMemo Example (Stable Object Identity):**
+**useMemo Example:**
 ```typescript
-// use-category-operations.ts:174-189
-const operationsRef = useRef<ICategoryOperations | null>(null);
-const serviceRef = useRef(service);
-
-return useMemo(() => {
-  if (!service) {
-    operationsRef.current = null;
-    return null;
-  }
-  // Only create new operations object if service reference changed
-  if (serviceRef.current !== service || !operationsRef.current) {
-    serviceRef.current = service;
-    operationsRef.current = { /* operations implementation */ };
-  }
-  return operationsRef.current;
-}, [service]);
+// add-subcategory-modal.tsx:40-42
+const selectedParent = useMemo(() => {
+    return manualParentSelection ?? parentGrouping;
+}, [manualParentSelection, parentGrouping]);
 ```
 
-### Query Configuration
+### 4.3 Query Configuration
 
 | Configuration | Status | Evidence |
 |---------------|--------|----------|
-| `staleTime` | ✅ `QUERY_CONFIG.STALE_TIME.MEDIUM` | Line 72 |
-| `enabled` guard | ✅ `!!operations` | Lines 73, 99 |
-| Query invalidation | ✅ On mutation success | All mutation hooks |
-| `isReady` flag | ✅ Exposed on mutations | Lines 159-162, 225-228, etc. |
+| `staleTime` | ✅ | `QUERY_CONFIG.STALE_TIME.MEDIUM` |
+| `enabled` guard | ✅ | `!!operations` on all queries |
+| Query invalidation | ✅ | On all mutation success handlers |
+| `isReady` flag | ✅ | Exposed on all mutation hooks |
 
-**Example - Orchestrator Rule Compliance:**
+**Query Example:**
 ```typescript
 // use-groupings.ts:64-75
-export function useGroupings() {
-  const operations = useCategoryOperations();
-
-  return useQuery({
-    queryKey: QUERY_KEYS.GROUPINGS,
-    queryFn: () => {
-      if (!operations) {
-        throw new Error('Grouping operations not ready');
-      }
-      return operations.getGroupings();
-    },
-    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
-    enabled: !!operations, // CTO MANDATE: Orchestrator Rule
-  });
-}
+return useQuery({
+  queryKey: QUERY_KEYS.GROUPINGS,
+  queryFn: () => {
+    if (!operations) {
+      throw new Error('Grouping operations not ready');
+    }
+    return operations.getGroupings();
+  },
+  staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+  enabled: !!operations, // CTO MANDATE: Orchestrator Rule
+});
 ```
 
-**Example - isReady Pattern (NEW):**
-```typescript
-// use-groupings.ts:159-163
-return {
-  ...mutation,
-  isReady: !!operations,
-};
-```
+### 4.4 Component Patterns
+
+| Pattern | File | Status | Notes |
+|---------|------|--------|-------|
+| Key-based remount | `delete-grouping-dialog.tsx:94-100` | ✅ | Resets inner state when grouping changes |
+| Actions array | `grouping-list-item.tsx:25-42` | ⚠️ | Recreated per render (acceptable) |
+| Form hooks | `add-subcategory-modal.tsx` | ✅ | `useFormModal` abstraction |
 
 ---
 
-## Files Audited
+## 5. Architectural Analysis
 
-| File | Lines | Key Patterns |
-|------|-------|--------------|
-| `components/add-subcategory-modal.tsx` | 235 | Zod schema, useWatch, useMemo |
-| `components/delete-grouping-dialog.tsx` | 103 | Key-based remount, version passing |
-| `components/grouping-list-item.tsx` | 56 | Pure component, action callbacks |
-| `components/grouping-list.tsx` | 116 | Modal coordination, state management |
-| `hooks/use-grouping-navigation.ts` | 85 | URL param management, useCallback |
-| `hooks/use-groupings.ts` | 440 | **IoC pattern, error codes, isReady** |
+### 5.1 ICategoryOperations IoC Pattern
 
-**Dependencies Audited:**
-- `@/domain/categories` (Sacred Domain types & error guards)
-- `@/lib/hooks/use-category-operations.ts` (IoC adapter)
-- `@/features/categories/hooks/use-category-service.ts` (Service factory)
-- `@/features/categories/domain/errors.ts` (Feature-level errors)
-- `@/lib/data/data-transformers.ts` (Boundary transformers)
+The feature correctly uses the IoC pattern via `useCategoryOperations`:
+
+```typescript
+// use-groupings.ts:62
+const operations = useCategoryOperations();
+```
+
+This decouples from the concrete `CategoryService` and uses the Sacred Domain interface.
+
+### 5.2 Error Translation Layer
+
+Errors are translated in `use-category-operations.ts`:
+
+```
+CategoryHasChildrenError → { code: 'HAS_CHILDREN', childCount: N }
+CategoryVersionConflictError → { code: 'VERSION_CONFLICT' }
+CategoryDuplicateNameError → { code: 'DUPLICATE_NAME' }
+CategoryHierarchyError → { code: 'INVALID_HIERARCHY' }
+CategoryHasTransactionsError → { code: 'HAS_TRANSACTIONS' }
+CategoryNotFoundError → { code: 'NOT_FOUND' }
+```
+
+### 5.3 Hooks Exported
+
+| Hook | Queries/Mutations | isReady |
+|------|-------------------|---------|
+| `useGroupings` | Query | N/A (uses enabled) |
+| `useGroupingChildren` | Query | N/A (uses enabled) |
+| `useAddGrouping` | Mutation | ✅ |
+| `useUpdateGrouping` | Mutation | ✅ |
+| `useDeleteGrouping` | Mutation | ✅ |
+| `useAddSubcategory` | Mutation | ✅ |
+| `useReassignSubcategory` | Mutation | ✅ |
+| `useGroupingNavigation` | Navigation | N/A |
 
 ---
 
-## Architectural Changes Since Previous Audit
+## 6. Recommendations
 
-### 1. Sacred Domain Pattern
+### 6.1 Critical: Fix Feature Bleed (6 violations)
 
-**Before:**
+**Priority: HIGH**
+
+Replace all `@/features/categories/domain` imports with `@/domain/categories`:
+
 ```typescript
+// BEFORE (all 4 component files)
 import type { GroupingEntity } from '@/features/categories/domain';
-```
 
-**After:**
-```typescript
+// AFTER
 import type { GroupingEntity } from '@/domain/categories';
 ```
 
-**Impact:** Cross-feature type sharing without feature coupling.
+For modal components (`AddCategoryModal`, `EditGroupingModal`), choose one approach:
+1. Move modals to `@/components/shared/category-modals/`
+2. Create `@/lib/hooks/use-category-modals` that exposes them via IoC
 
-### 2. ICategoryOperations IoC Interface
+### 6.2 Optional: Actions Array Memoization
 
-**Before:**
-```typescript
-const service = useCategoryService();
-return useQuery({
-  queryFn: () => service.getGroupings(),
-  enabled: !!service,
-});
-```
+**Priority: LOW**
 
-**After:**
-```typescript
-const operations = useCategoryOperations();
-return useQuery({
-  queryFn: () => operations.getGroupings(),
-  enabled: !!operations,
-});
-```
-
-**Impact:** Features depend on interface, not concrete implementation.
-
-### 3. Error Translation Layer
-
-**Before:** Caught `CategoryHasChildrenError` directly.
-
-**After:** Catches `CategoryOperationError` with typed `code` property.
+In `grouping-list-item.tsx`, the `actions` array is recreated on every render:
 
 ```typescript
-if (isCategoryOperationError(err)) {
-  switch (err.code) {
-    case 'HAS_CHILDREN': /* ... */
-    case 'VERSION_CONFLICT': /* ... */
-  }
-}
+// Current - recreates array per render
+const actions = [
+  { label: '...', icon: Pencil, onClick: () => onEdit(grouping) },
+  // ...
+];
 ```
 
-**Impact:** Cross-platform error handling (Web + iOS can share error codes).
+If performance profiling shows issues, memoize with `useMemo`.
 
-### 4. Hybrid Repository
+### 6.3 Optional: List Virtualization
 
-**Before:** Supabase-only repository.
+**Priority: LOW**
 
-**After:** `HybridCategoryRepository` with WatermelonDB local database.
-
-```typescript
-// use-category-service.ts:70
-const repository = createHybridCategoryRepository(supabase, database);
-```
-
-**Impact:** Offline-first architecture with sync support.
+If groupings list exceeds 100+ items in production, consider:
+- `react-window` or `@tanstack/react-virtual`
+- `React.memo()` for `GroupingListItem`
 
 ---
 
-## JSDoc & Documentation Quality (NEW)
+## 7. Score Card
 
-The `use-groupings.ts` file now includes comprehensive JSDoc with:
-
-- CTO MANDATES documented in comments
-- Swift mirror signatures for iOS port reference
-- Usage examples for each hook
-- Error handling examples
-
-**Example:**
-```typescript
-/**
- * Use Delete Grouping
- *
- * Mutation hook for deleting a parent category.
- *
- * CTO Mandates:
- * - Type-safe error handling via error codes
- * - Orchestrator Rule: Operations may be null
- *
- * @example
- * const { mutate, isPending, isReady } = useDeleteGrouping();
- * if (!isReady) return <LoadingSpinner />;
- * mutate({ id: 'group-uuid', version: 1 });
- */
-```
+| Category | Score | Weight | Weighted |
+|----------|-------|--------|----------|
+| Variable & Entity Registry | 10/10 | 25% | 2.50 |
+| Dependency Manifest | 4/10 | 25% | 1.00 |
+| Sacred Mandate Compliance | 10/10 | 30% | 3.00 |
+| Performance & Scalability | 10/10 | 20% | 2.00 |
+| **Total** | | | **8.50/10** |
 
 ---
 
-## Recommendations
-
-**No critical changes required.** The codebase demonstrates excellent quality.
-
-### Optional Enhancements
-
-1. **Actions Array Memoization** (Low Priority)
-   - In `grouping-list-item.tsx`, the `actions` array is recreated on each render
-   - Consider `useMemo` if profiling shows performance impact
-
-2. **List Virtualization** (Future)
-   - If groupings list exceeds 100+ items, consider virtual scrolling
-
-3. **Optimistic Updates** (Enhancement)
-   - Could add optimistic updates for better perceived performance
-   - Currently relies on query invalidation after mutation
-
----
-
-## Score Card
-
-| Category | Score | Notes |
-|----------|-------|-------|
-| Type Safety | 10/10 | Zero violations, typed error codes |
-| Feature Isolation | 10/10 | Clean IoC boundaries |
-| Sacred Mandate | 10/10 | All four pillars pass |
-| Performance | 10/10 | React Compiler ready, stable refs |
-| Documentation | 10/10 | **NEW** - Comprehensive JSDoc |
-| **Overall** | **10/10** | Production-grade |
-
----
-
-## Appendix: Complete Import Map
+## Appendix A: Complete Import Map
 
 ### use-groupings.ts
 ```typescript
@@ -608,8 +510,16 @@ import { useWatch } from 'react-hook-form';
 import { useFormModal } from '@/lib/hooks/use-form-modal';
 import { z } from 'zod';
 import { useAddSubcategory, useGroupings } from '../hooks/use-groupings';
-import type { GroupingEntity } from '@/features/categories/domain';
-// ... UI component imports
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronDown, Check, X, Pencil } from 'lucide-react';
+import { VALIDATION, GROUPING } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import type { GroupingEntity } from '@/features/categories/domain'; // ❌ VIOLATION
 ```
 
 ### delete-grouping-dialog.tsx
@@ -618,7 +528,7 @@ import { useState } from 'react';
 import { useDeleteGrouping, useGroupingChildren } from '../hooks/use-groupings';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { GROUPING } from '@/lib/constants';
-import type { GroupingEntity } from '@/features/categories/domain';
+import type { GroupingEntity } from '@/features/categories/domain'; // ❌ VIOLATION
 ```
 
 ### grouping-list-item.tsx
@@ -626,7 +536,7 @@ import type { GroupingEntity } from '@/features/categories/domain';
 import { Pencil, Trash2, Plus, Archive } from 'lucide-react';
 import { ResourceListItem } from '@/components/ui/resource-list-item';
 import { GROUPING } from '@/lib/constants';
-import type { GroupingEntity } from '@/features/categories/domain';
+import type { GroupingEntity } from '@/features/categories/domain'; // ❌ VIOLATION
 ```
 
 ### grouping-list.tsx
@@ -634,14 +544,31 @@ import type { GroupingEntity } from '@/features/categories/domain';
 import { useState } from 'react';
 import { useGroupings } from '../hooks/use-groupings';
 import { useGroupingNavigation } from '../hooks/use-grouping-navigation';
-import { AddCategoryModal } from '@/features/categories/components/add-category-modal';
-import { EditGroupingModal } from '@/features/categories/components/edit-grouping-modal';
+import { AddCategoryModal } from '@/features/categories/components/add-category-modal'; // ❌ VIOLATION
+import { EditGroupingModal } from '@/features/categories/components/edit-grouping-modal'; // ❌ VIOLATION
 import { DeleteGroupingDialog } from './delete-grouping-dialog';
 import { AddSubcategoryModal } from './add-subcategory-modal';
-import type { GroupingEntity } from '@/features/categories/domain';
-// ... UI component imports
+import { Button } from '@/components/ui/button';
+import { GroupingListItem } from './grouping-list-item';
+import { Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { GROUPING } from '@/lib/constants';
+import type { GroupingEntity } from '@/features/categories/domain'; // ❌ VIOLATION
 ```
 
 ---
 
-*Generated by Technical Audit System | Updated January 30, 2026*
+## Appendix B: Error Code Reference
+
+| Code | Trigger | User Message | Recovery |
+|------|---------|--------------|----------|
+| `VERSION_CONFLICT` | Concurrent edit | "Modified elsewhere. Refresh." | Refetch + retry |
+| `DUPLICATE_NAME` | Name exists | "Already exists" | Choose new name |
+| `HAS_CHILDREN` | Delete blocked | "Has N subcategories" | Move children first |
+| `HAS_TRANSACTIONS` | Delete blocked | "Has transactions" | Move txns first |
+| `INVALID_HIERARCHY` | Bad parent | "Invalid hierarchy" | Choose valid parent |
+| `NOT_FOUND` | Missing entity | "Not found" | Refetch list |
+| `SERVICE_NOT_READY` | Orchestrator null | (Internal) | Wait for ready |
+
+---
+
+*Generated by Technical Audit System | 2026-01-31*

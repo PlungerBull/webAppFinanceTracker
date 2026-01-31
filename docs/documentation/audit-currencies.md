@@ -1,69 +1,72 @@
-# Technical Audit Manifest: features/currencies
+# Composable Manifest: features/currencies
 
-> **Audit Date:** 2026-01-30
-> **Auditor Role:** Senior Systems Architect & Security Auditor
-> **Scope:** Composable Manifest for `features/currencies`
-> **Revision:** 2.0 (Updated after codebase alignment)
+> **Generated:** 2026-01-31
+> **Revision:** 3.0 (Post-alignment comprehensive audit)
+> **Auditor:** Senior Systems Architect & Security Auditor
+> **Scope:** `/features/currencies/` folder + related orchestrator hooks
 
 ---
 
 ## Executive Summary
 
-| Metric | Result |
-|--------|--------|
-| **Total Files** | 2 |
-| **Feature Bleed Violations** | 1 VIOLATION FOUND |
-| **Type Safety Violations** | 0 |
-| **Zod Boundary Validation** | MISSING |
-| **Sacred Mandate Compliance** | N/A (read-only) |
-| **Performance Issues** | 0 |
-| **Overall Status** | NEEDS ATTENTION |
+| Category | Status | Notes |
+|----------|--------|-------|
+| **Variable & Entity Registry** | PASS | Clean, minimal |
+| **Dependency Manifest** | PASS | 0 violations |
+| **Zod Boundary Validation** | PASS | HARDENED |
+| **Transformer Usage** | PASS | Centralized |
+| **Sacred Mandate** | N/A | Read-only reference data |
+| **Performance** | PASS | Optimal caching |
 
----
-
-## Folder Structure
-
-```
-features/currencies/
-├── api/
-│   └── currencies.ts          # 26 lines - API layer for currency operations
-└── hooks/
-    └── use-currencies.ts      # 15 lines - React Query hook for fetching currencies
-```
-
-**Total: 2 files, ~41 lines of code**
+**Overall Result: PASSED**
 
 ---
 
 ## 1. Variable & Entity Registry
 
-### 1.1 Entity Inventory
+### 1.1 Feature File Inventory
+
+**Total Files in Feature:** 1
+
+```
+features/currencies/
+└── api/
+    └── currencies.ts          # 32 lines - API layer with Zod validation
+```
+
+**Note:** The `hooks/` subfolder was intentionally removed. The `useCurrencies` hook now lives in `lib/hooks/use-currencies.ts` following the Orchestrator Pattern.
+
+### 1.2 Entity Inventory
+
+| Name | Kind | Location | Lines |
+|------|------|----------|-------|
+| `Currency` | Interface | [types/domain.ts:170-175](types/domain.ts#L170-L175) | 6 |
+| `GlobalCurrencyRowSchema` | Zod Schema | [lib/data/db-row-schemas.ts:256-261](lib/data/db-row-schemas.ts#L256-L261) | 6 |
+| `currenciesApi` | API Object | [features/currencies/api/currencies.ts:7-31](features/currencies/api/currencies.ts#L7-L31) | 25 |
 
 #### Domain Entity: `Currency`
-**Location:** [types/domain.ts:170-175](types/domain.ts#L170-L175)
 
 ```typescript
+// types/domain.ts:170-175
 export interface Currency {
   code: string;           // ISO 4217 code (e.g., "USD", "EUR", "PEN")
-  name: string;           // Display name (e.g., "United States Dollar")
+  name: string;           // Human-readable display name
   symbol: string;         // Currency symbol (e.g., "$", "€")
   flag: string | null;    // Unicode flag emoji (nullable)
 }
 ```
 
-**Field Analysis:**
-
-| Field | Type | Nullable | Purpose |
-|-------|------|----------|---------|
-| `code` | `string` | No | ISO 4217 currency code (primary key) |
-| `name` | `string` | No | Human-readable display name |
-| `symbol` | `string` | No | Currency symbol for formatting |
-| `flag` | `string \| null` | Yes | Unicode flag emoji for UI decoration |
+| Field | Type | Nullable | Validation | Purpose |
+|-------|------|----------|------------|---------|
+| `code` | `string` | No | `z.string()` | ISO 4217 currency code (primary key) |
+| `name` | `string` | No | `z.string()` | Human-readable display name |
+| `symbol` | `string` | No | `z.string()` | Currency symbol for formatting |
+| `flag` | `string \| null` | Yes | `z.string().nullable()` | Unicode flag emoji |
 
 #### Database Schema: `global_currencies`
-**Location:** [types/database.types.ts:147-167](types/database.types.ts#L147-L167)
 
 ```typescript
+// types/database.types.ts:147-167
 global_currencies: {
   Row: {
     code: string;
@@ -71,55 +74,138 @@ global_currencies: {
     name: string;
     symbol: string;
   }
-  Insert: {
-    code: string;
-    flag?: string | null;
-    name: string;
-    symbol: string;
-  }
-  Update: {
-    code?: string;
-    flag?: string | null;
-    name?: string;
-    symbol?: string;
-  }
-  Relationships: []  // No foreign keys to other tables
+  Relationships: []  // No foreign keys FROM this table
 }
 ```
 
-**Foreign Key References (Inbound):**
-- `bank_accounts.currency_code` → `global_currencies.code`
-- `user_settings.main_currency` → `global_currencies.code`
+**Inbound Foreign Key References:**
+| Referencing Table | Column | Constraint |
+|-------------------|--------|------------|
+| `bank_accounts` | `currency_code` | `bank_accounts_currency_code_fkey` |
+| `user_settings` | `main_currency` | `user_settings_main_currency_fkey` |
 
-#### DTOs Defined: **NONE**
-
-The currencies feature is read-only with no insert/update operations exposed via the API, so no DTOs are required.
-
-### 1.2 Naming Audit
+### 1.3 Naming Convention Audit
 
 | Layer | Convention | Example | Status |
 |-------|------------|---------|--------|
 | Domain Objects | camelCase | `Currency.flag` | COMPLIANT |
 | Database Rows | snake_case | `global_currencies.flag` | COMPLIANT |
-| Transformer Output | camelCase | `dbCurrencyToDomain()` returns `{ flag: ... }` | COMPLIANT |
+| Zod Schema | snake_case (DB match) | `GlobalCurrencyRowSchema.flag` | COMPLIANT |
+| Transformer Output | camelCase | `{ flag: dbCurrency.flag }` | COMPLIANT |
 
-**Note:** Currency fields are identical in both layers (code, name, symbol, flag) since they are single-word properties. The data transformer still provides the architectural separation boundary.
+### 1.4 Type Safety Audit
 
-### 1.3 Type Safety Audit
+| File | `any` | `unknown` | Naked Types | Status |
+|------|-------|-----------|-------------|--------|
+| `features/currencies/api/currencies.ts` | 0 | 0 | 0 | PASS |
+| `lib/hooks/use-currencies.ts` | 0 | 0 | 0 | PASS |
+| `lib/data/db-row-schemas.ts` (GlobalCurrencyRowSchema) | 0 | 0 | 0 | PASS |
+| `lib/data/data-transformers.ts` (dbCurrencyToDomain) | 0 | 0 | 0 | PASS |
 
-#### Currencies Feature Code
+**Result: ZERO type safety violations**
 
-| File | `any` Count | `unknown` Count | Naked Types |
-|------|-------------|-----------------|-------------|
-| `api/currencies.ts` | 0 | 0 | 0 |
-| `hooks/use-currencies.ts` | 0 | 0 | 0 |
+### 1.5 Zod Boundary Validation
 
-**Status: EXCELLENT** - Zero type safety violations in currencies feature code.
+**Status: PASS (HARDENED)**
 
-#### Data Transformer Analysis
-**Location:** [lib/data/data-transformers.ts:135-144](lib/data/data-transformers.ts#L135-L144)
+**Schema Location:** [lib/data/db-row-schemas.ts:256-261](lib/data/db-row-schemas.ts#L256-L261)
 
 ```typescript
+/**
+ * global_currencies table Row
+ *
+ * Reference data for currency codes, names, symbols, and flags.
+ * Used by currenciesApi for display purposes.
+ */
+export const GlobalCurrencyRowSchema = z.object({
+  code: z.string(),             // ISO 4217 code (e.g., "USD", "EUR")
+  name: z.string(),             // Human-readable name (e.g., "US Dollar")
+  symbol: z.string(),           // Currency symbol (e.g., "$", "€")
+  flag: z.string().nullable(),  // Emoji flag or null
+});
+```
+
+**Validation Integration:** [features/currencies/api/currencies.ts:25-26](features/currencies/api/currencies.ts#L25-L26)
+
+```typescript
+// HARDENED: Zod validation at network boundary
+const validated = z.array(GlobalCurrencyRowSchema).parse(data ?? []);
+
+// Transform snake_case to camelCase before returning to frontend
+return dbCurrenciesToDomain(validated);
+```
+
+**Validation Flow:**
+```
+Supabase Response → Zod Parse → Data Transformer → Domain Type → React Component
+       ↓                ↓              ↓                ↓              ↓
+   unknown[]    GlobalCurrencyRow[]  Currency[]     Currency[]      UI
+```
+
+---
+
+## 2. Dependency Manifest
+
+### 2.1 Feature Bleed Check
+
+**Result: PASS** - Zero prohibited cross-feature imports.
+
+#### `features/currencies/api/currencies.ts` Imports
+
+| Import | Source | Type | Status |
+|--------|--------|------|--------|
+| `z` | `zod` | External | ALLOWED |
+| `createClient` | `@/lib/supabase/client` | Library | ALLOWED |
+| `CURRENCY` | `@/lib/constants` | Library | ALLOWED |
+| `dbCurrenciesToDomain` | `@/lib/data/data-transformers` | Library | ALLOWED |
+| `GlobalCurrencyRowSchema` | `@/lib/data/db-row-schemas` | Library | ALLOWED |
+
+### 2.2 Orchestrator Layer (lib/hooks)
+
+**Architecture Pattern:** Features expose APIs, lib/ provides hooks.
+
+| Orchestrator Hook | Location | Purpose |
+|-------------------|----------|---------|
+| `useCurrencies` | [lib/hooks/use-currencies.ts:8-14](lib/hooks/use-currencies.ts#L8-L14) | Primary hook for currencies data |
+| `useCurrenciesData` | [lib/hooks/use-reference-data.ts:139-149](lib/hooks/use-reference-data.ts#L139-L149) | Lightweight alternative |
+| `useCurrencyManager` | [lib/hooks/use-currency-manager.ts:34-142](lib/hooks/use-currency-manager.ts#L34-L142) | Form state management |
+
+**`lib/hooks/use-currencies.ts`:**
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { currenciesApi } from '@/features/currencies/api/currencies';
+import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
+
+export function useCurrencies() {
+  return useQuery({
+    queryKey: QUERY_KEYS.CURRENCIES,
+    queryFn: currenciesApi.getAll,
+    staleTime: QUERY_CONFIG.STALE_TIME.LONG,
+  });
+}
+```
+
+### 2.3 Consumer Analysis
+
+**All consumers use proper orchestrator imports:**
+
+| Consumer | Import | Source | Status |
+|----------|--------|--------|--------|
+| [features/accounts/components/add-account-modal.tsx:7](features/accounts/components/add-account-modal.tsx#L7) | `useCurrencies` | `@/lib/hooks/use-currencies` | COMPLIANT |
+| [features/settings/components/currency-settings.tsx:3](features/settings/components/currency-settings.tsx#L3) | `useCurrenciesData` | `@/lib/hooks/use-reference-data` | COMPLIANT |
+| [lib/hooks/use-currency-manager.ts:2](lib/hooks/use-currency-manager.ts#L2) | `useCurrencies` | `@/lib/hooks/use-currencies` | COMPLIANT |
+
+### 2.4 Transformer Usage
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Uses `data-transformers.ts` | YES | [currencies.ts:4](features/currencies/api/currencies.ts#L4) |
+| Inline mapping logic | NONE | All transformation delegated |
+| Transformer location | Correct | [data-transformers.ts:134-144, 661-665](lib/data/data-transformers.ts#L134-L144) |
+
+**Transformer Implementation:**
+```typescript
+// lib/data/data-transformers.ts:134-144
 export function dbCurrencyToDomain(
   dbCurrency: Database['public']['Tables']['global_currencies']['Row']
 ) {
@@ -130,18 +216,8 @@ export function dbCurrencyToDomain(
     flag: dbCurrency.flag,
   } as const;
 }
-```
 
-| Check | Status | Notes |
-|-------|--------|-------|
-| Type parameter | Strongly typed | Uses `Database['public']['Tables']['global_currencies']['Row']` |
-| Return type | Inferred with `as const` | Provides readonly type narrowing |
-| Null handling | Correct | `flag` passes through as `string \| null` |
-
-#### Batch Transformer
-**Location:** [lib/data/data-transformers.ts:666-670](lib/data/data-transformers.ts#L666-L670)
-
-```typescript
+// lib/data/data-transformers.ts:661-665
 export function dbCurrenciesToDomain(
   dbCurrencies: Database['public']['Tables']['global_currencies']['Row'][]
 ) {
@@ -149,136 +225,38 @@ export function dbCurrenciesToDomain(
 }
 ```
 
-### 1.4 Zod Boundary Validation
-
-**STATUS: MISSING**
-
-**Location checked:** [lib/data/db-row-schemas.ts](lib/data/db-row-schemas.ts)
-
-There is **NO** `GlobalCurrencyRowSchema` defined in db-row-schemas.ts. The currencies feature bypasses Zod validation at the network boundary.
-
-**Impact Assessment:**
-- Risk: Low (read-only reference data, schema controlled by DB)
-- Recommendation: Add schema for consistency with other entities
-
-**Recommended Schema:**
-```typescript
-export const GlobalCurrencyRowSchema = z.object({
-  code: z.string().length(3),  // ISO 4217
-  name: z.string(),
-  symbol: z.string(),
-  flag: z.string().nullable(),
-});
-```
-
 ---
 
-## 2. Dependency Manifest (Import Audit)
-
-### 2.1 Feature Bleed Check
-
-#### `features/currencies/api/currencies.ts`
-
-```typescript
-import { createClient } from '@/lib/supabase/client';      // LIB - ALLOWED
-import { CURRENCY } from '@/lib/constants';                 // LIB - ALLOWED
-import { dbCurrenciesToDomain } from '@/lib/data/data-transformers'; // LIB - ALLOWED
-```
-
-**Status: NO VIOLATIONS** - All imports from `@/lib/`
-
-#### `features/currencies/hooks/use-currencies.ts`
-
-```typescript
-import { useQuery } from '@tanstack/react-query';           // EXTERNAL - ALLOWED
-import { currenciesApi } from '../api/currencies';          // SAME FEATURE - ALLOWED
-import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants'; // LIB - ALLOWED
-```
-
-**Status: NO VIOLATIONS** - All imports compliant
-
-### 2.2 Incoming Dependencies (Who Imports Currencies?)
-
-| File | Import Statement | Status |
-|------|------------------|--------|
-| [features/accounts/components/add-account-modal.tsx:7](features/accounts/components/add-account-modal.tsx#L7) | `import { useCurrencies } from '@/features/currencies/hooks/use-currencies';` | **VIOLATION** |
-| [lib/hooks/use-currency-manager.ts:2](lib/hooks/use-currency-manager.ts#L2) | `import { useCurrencies } from '@/features/currencies/hooks/use-currencies';` | ALLOWED (lib/) |
-| [lib/hooks/use-reference-data.ts:27](lib/hooks/use-reference-data.ts#L27) | `import { currenciesApi } from '@/features/currencies/api/currencies';` | ALLOWED (lib/) |
-
-#### Feature Bleed Violation Detail
-
-**File:** `features/accounts/components/add-account-modal.tsx`
-**Line:** 7
-**Import:** `import { useCurrencies } from '@/features/currencies/hooks/use-currencies';`
-
-**ESLint Rule Exists:** Yes - [eslint.config.mjs:51-54](eslint.config.mjs#L51-L54)
-```javascript
-{
-  group: ["@/features/currencies/hooks/*", "@/features/currencies/domain/*", "@/features/currencies/services/*"],
-  message: "Import from @/lib/hooks/use-reference-data instead of directly from features/currencies."
-}
-```
-
-**Fix Required:** Replace with:
-```typescript
-import { useCurrenciesData } from '@/lib/hooks/use-reference-data';
-// Then use: const { currencies, isLoading } = useCurrenciesData();
-```
-
-### 2.3 Transformer Check
-
-| Check | Status | Implementation |
-|-------|--------|----------------|
-| Uses data-transformers.ts | YES | `dbCurrenciesToDomain()` at line 3 of `currencies.ts` |
-| Inline mapping logic | NONE | All transformation delegated to lib |
-| Transformer location | Correct | [lib/data/data-transformers.ts:666-670](lib/data/data-transformers.ts#L666-L670) |
-
----
-
-## 3. The "Sacred Mandate" Compliance
+## 3. Sacred Mandate Compliance
 
 ### 3.1 Integer Cents
 
 | Status | Rationale |
 |--------|-----------|
-| **N/A** | Currencies feature is read-only reference data. No financial calculations performed. No amount fields in `global_currencies` table. |
+| **N/A** | `global_currencies` contains no monetary amounts. It is reference data (code, name, symbol, flag). |
 
 ### 3.2 Sync Integrity (Delta Sync Engine)
 
 | Status | Rationale |
 |--------|-----------|
-| **N/A** | Global reference data does not participate in user-level sync. No `version` or `deleted_at` columns in `global_currencies` table. |
+| **N/A** | Global reference data does not participate in user-level sync. No `version` or `deleted_at` columns needed. |
 
-**Database Schema Verification:**
-- `global_currencies` has no `version` column
-- `global_currencies` has no `deleted_at` column
-- This is correct: currencies are system-maintained, not user-modifiable
+**Schema Verification:**
+- `global_currencies` has no `version` column (correct)
+- `global_currencies` has no `deleted_at` column (correct)
+- Currencies are system-maintained, not user-modifiable
 
 ### 3.3 Soft Deletes (Tombstone Pattern)
 
 | Status | Rationale |
 |--------|-----------|
-| **N/A** | No delete operations exist. Feature is read-only. |
+| **N/A** | Feature is read-only. No create/update/delete operations. |
 
-**API Operations Audit:**
+**Operations Inventory:**
 
-```typescript
-// currencies.ts - ONLY operation
-export const currenciesApi = {
-  getAll: async () => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('global_currencies')
-      .select('*')
-      .order('code', { ascending: true });
-    // ...
-  },
-};
-```
-
-| Operation | Exists | Has Soft Delete |
-|-----------|--------|-----------------|
-| `getAll()` | YES | N/A (read-only) |
+| Operation | Exists | Implementation |
+|-----------|--------|----------------|
+| `getAll()` | YES | Read-only query with Zod validation |
 | `create()` | NO | N/A |
 | `update()` | NO | N/A |
 | `delete()` | NO | N/A |
@@ -287,23 +265,13 @@ export const currenciesApi = {
 
 | Status | Rationale |
 |--------|-----------|
-| **APPROPRIATE** | Direct Supabase client is correct for public reference data. |
+| **PASS** | Direct Supabase client is appropriate for public reference data. |
 
 **Analysis:**
-- Currencies are **global reference data**, not user-specific
-- No RLS (Row Level Security) needed - all users see same currencies
-- `IAuthProvider` is reserved for user-context operations
-- Direct `createClient()` usage is the correct pattern here
-
-**Code Reference:**
-```typescript
-// currencies.ts:10-15
-const supabase = createClient();
-const { data, error } = await supabase
-  .from('global_currencies')
-  .select('*')
-  .order('code', { ascending: true });
-```
+- Currencies are **global reference data** (not user-specific)
+- No Row Level Security needed
+- All users see identical currency list
+- `IAuthProvider` reserved for user-context operations
 
 ---
 
@@ -311,43 +279,32 @@ const { data, error } = await supabase
 
 ### 4.1 React Compiler Check
 
-| Pattern | File | Status | Details |
-|---------|------|--------|---------|
-| `watch()` | `use-currencies.ts` | N/A | No react-hook-form usage |
-| `useWatch()` | `use-currencies.ts` | N/A | No react-hook-form usage |
-
-**Note:** The currencies hook uses React Query, not react-hook-form. No form-related patterns to audit.
+| Pattern | Status | Notes |
+|---------|--------|-------|
+| `watch()` usage | N/A | No react-hook-form in feature |
+| `useWatch()` usage | N/A | No react-hook-form in feature |
 
 ### 4.2 Re-render Optimization
 
-| Check | Status | Details |
-|-------|--------|---------|
-| Raw `useEffect` for data fetching | NONE | Uses React Query `useQuery` |
-| Unbounded `useMemo` | NONE | No memoization in feature |
-| Missing dependency arrays | N/A | No hooks with deps |
-| Heavy computations in render | NONE | Simple pass-through |
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Raw `useEffect` for fetching | NONE | Uses React Query |
+| Unbounded `useMemo` | NONE | None present |
+| Heavy computations | NONE | Simple pass-through |
 
 ### 4.3 Caching Strategy
 
-**Location:** [features/currencies/hooks/use-currencies.ts:8-13](features/currencies/hooks/use-currencies.ts#L8-L13)
-
-```typescript
-export function useCurrencies() {
-  return useQuery({
-    queryKey: QUERY_KEYS.CURRENCIES,
-    queryFn: currenciesApi.getAll,
-    staleTime: QUERY_CONFIG.STALE_TIME.LONG, // 10 minutes
-  });
-}
-```
+**Configuration:** [lib/hooks/use-currencies.ts:10-12](lib/hooks/use-currencies.ts#L10-L12)
 
 | Setting | Value | Source | Assessment |
 |---------|-------|--------|------------|
-| `queryKey` | `['currencies']` | `QUERY_KEYS.CURRENCIES` | Centralized, correct |
-| `staleTime` | 600,000ms (10 min) | `QUERY_CONFIG.STALE_TIME.LONG` | OPTIMAL for reference data |
+| `queryKey` | `['currencies']` | `QUERY_KEYS.CURRENCIES` | Centralized |
+| `staleTime` | 600,000ms (10 min) | `QUERY_CONFIG.STALE_TIME.LONG` | OPTIMAL |
 | `gcTime` | Default (5 min) | React Query default | Acceptable |
 
-### 4.4 Query Constants Audit
+**Rationale:** Currencies rarely change. 10-minute stale time prevents unnecessary refetches while ensuring data stays reasonably fresh.
+
+### 4.4 Query Constants
 
 **Location:** [lib/constants/query.constants.ts:50](lib/constants/query.constants.ts#L50)
 
@@ -355,7 +312,7 @@ export function useCurrencies() {
 CURRENCIES: ['currencies'] as const,
 ```
 
-**Status: COMPLIANT** - Query key is centralized in constants.
+**Status: COMPLIANT** - Query key is centralized, type-safe with `as const`.
 
 ---
 
@@ -364,90 +321,122 @@ CURRENCIES: ['currencies'] as const,
 ### 5.1 Dependency Graph
 
 ```
-                    ┌─────────────────────────────────┐
-                    │      global_currencies (DB)     │
-                    │   (ISO 4217 reference data)     │
-                    └───────────────┬─────────────────┘
-                                    │
-                    ┌───────────────▼─────────────────┐
-                    │   features/currencies/api/      │
-                    │       currencies.ts             │
-                    │   (Supabase query + transform)  │
-                    └───────────────┬─────────────────┘
-                                    │
-                    ┌───────────────▼─────────────────┐
-                    │   features/currencies/hooks/    │
-                    │      use-currencies.ts          │
-                    │   (React Query wrapper)         │
-                    └───────────────┬─────────────────┘
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        │                           │                           │
-        ▼                           ▼                           ▼
-┌───────────────────┐   ┌───────────────────────┐   ┌───────────────────┐
-│ lib/hooks/        │   │ lib/hooks/            │   │ features/accounts │
-│ use-reference-    │   │ use-currency-         │   │ add-account-      │
-│ data.ts           │   │ manager.ts            │   │ modal.tsx         │
-│ (ALLOWED)         │   │ (ALLOWED)             │   │ (VIOLATION!)      │
-└───────────────────┘   └───────────────────────┘   └───────────────────┘
-        │                           │
-        ▼                           ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│                         UI Components                                 │
-│   (currency-settings.tsx, add-account-modal.tsx, transfer-form.tsx)  │
-└───────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DATABASE LAYER                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                        global_currencies (Postgres)                         │
+│                     ISO 4217 reference data (180+ rows)                     │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │ Supabase Query
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             FEATURE LAYER                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  features/currencies/api/currencies.ts                                      │
+│  ├── Zod validation (GlobalCurrencyRowSchema)                               │
+│  └── Data transformation (dbCurrenciesToDomain)                             │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │ currenciesApi.getAll()
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ORCHESTRATOR LAYER                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  lib/hooks/use-currencies.ts        → Primary hook (React Query wrapper)    │
+│  lib/hooks/use-reference-data.ts    → useCurrenciesData() lightweight hook  │
+│  lib/hooks/use-currency-manager.ts  → Form state management                 │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │ useCurrencies() / useCurrenciesData()
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            COMPONENT LAYER                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  features/accounts/components/add-account-modal.tsx                         │
+│  features/settings/components/currency-settings.tsx                         │
+│  (Other components that need currency data)                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Strengths
+### 5.2 Data Flow (Complete)
 
-1. **Minimal Surface Area** - Only 2 files, ~41 lines total
-2. **Read-Only Design** - Appropriate for global reference data
-3. **Proper Data Transformation** - Uses centralized `dbCurrenciesToDomain()`
-4. **React Query Integration** - No raw `useEffect` for data fetching
-5. **Centralized Query Keys** - Uses `QUERY_KEYS.CURRENCIES`
-6. **Optimal Caching** - 10-minute stale time for rarely-changing data
-7. **Type Safety** - Zero `any`/`unknown` in feature code
-8. **ESLint Protection** - Rule exists to prevent feature bleed
+```
+1. Component calls useCurrencies()
+           │
+           ▼
+2. React Query checks cache (queryKey: ['currencies'])
+           │
+           ├── Cache HIT & fresh → Return cached Currency[]
+           │
+           └── Cache MISS or stale →
+                      │
+                      ▼
+3. currenciesApi.getAll() executes
+           │
+           ▼
+4. Supabase query: SELECT * FROM global_currencies ORDER BY code
+           │
+           ▼
+5. Zod validation: z.array(GlobalCurrencyRowSchema).parse(data)
+           │
+           ├── Validation PASS → Continue
+           │
+           └── Validation FAIL → Throw ZodError (corrupted response)
+                      │
+                      ▼
+6. Data transformation: dbCurrenciesToDomain(validated)
+           │
+           ▼
+7. Return Currency[] to React Query cache
+           │
+           ▼
+8. Component receives { data: Currency[], isLoading, error }
+```
 
-### 5.3 Weaknesses
+### 5.3 Architectural Strengths
 
-1. **Missing Zod Schema** - No `GlobalCurrencyRowSchema` in db-row-schemas.ts
-2. **Feature Bleed Violation** - `add-account-modal.tsx` imports directly
-3. **No Index Exports** - No `features/currencies/index.ts` barrel file
+| # | Strength | Evidence |
+|---|----------|----------|
+| 1 | **Minimal Surface Area** | Single file (32 lines) in feature folder |
+| 2 | **Proper Layer Separation** | API in feature, hooks in lib |
+| 3 | **Zod Boundary Validation** | HARDENED at network boundary |
+| 4 | **Centralized Transformers** | Uses `data-transformers.ts` |
+| 5 | **Type Safety** | Zero `any`/`unknown` usage |
+| 6 | **Centralized Query Keys** | Uses `QUERY_KEYS.CURRENCIES` |
+| 7 | **Optimal Caching** | 10-minute stale time |
+| 8 | **ESLint Protection** | Rule prevents feature bleed |
+| 9 | **Read-Only Design** | Appropriate for reference data |
+
+### 5.4 ESLint Enforcement
+
+**Location:** [eslint.config.mjs:51-54](eslint.config.mjs#L51-L54)
+
+```javascript
+{
+  group: ["@/features/currencies/hooks/*", "@/features/currencies/domain/*", "@/features/currencies/services/*"],
+  message: "Import from @/lib/hooks/use-reference-data instead of directly from features/currencies."
+}
+```
+
+**Note:** The rule targets `hooks/*`, `domain/*`, `services/*` but NOT `api/*`. This is intentional — `lib/` is allowed to import from feature APIs.
 
 ---
 
-## 6. Findings Summary
+## 6. Complete Code Listing
 
-### 6.1 Critical Issues
+### 6.1 Feature API Layer
 
-| ID | Severity | File | Issue | Fix |
-|----|----------|------|-------|-----|
-| CUR-001 | **HIGH** | [features/accounts/components/add-account-modal.tsx:7](features/accounts/components/add-account-modal.tsx#L7) | Feature bleed: Direct import from currencies feature | Use `useCurrenciesData` from `@/lib/hooks/use-reference-data` |
-
-### 6.2 Recommended Improvements
-
-| ID | Priority | Issue | Recommendation |
-|----|----------|-------|----------------|
-| CUR-002 | Medium | Missing Zod schema | Add `GlobalCurrencyRowSchema` to `lib/data/db-row-schemas.ts` |
-| CUR-003 | Low | No barrel file | Consider adding `features/currencies/index.ts` for cleaner exports |
-
----
-
-## 7. Code Samples
-
-### 7.1 Complete API Layer
-
-**File:** [features/currencies/api/currencies.ts](features/currencies/api/currencies.ts)
+**File:** [features/currencies/api/currencies.ts](features/currencies/api/currencies.ts) (32 lines)
 
 ```typescript
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { CURRENCY } from '@/lib/constants';
 import { dbCurrenciesToDomain } from '@/lib/data/data-transformers';
+import { GlobalCurrencyRowSchema } from '@/lib/data/db-row-schemas';
 
 export const currenciesApi = {
   /**
    * Get all global currencies (read-only, no user filtering needed)
+   * HARDENED: Zod validation at network boundary
    */
   getAll: async () => {
     const supabase = createClient();
@@ -462,19 +451,22 @@ export const currenciesApi = {
       throw new Error(error.message || CURRENCY.API.ERRORS.FETCH_ALL_FAILED);
     }
 
+    // HARDENED: Zod validation at network boundary
+    const validated = z.array(GlobalCurrencyRowSchema).parse(data ?? []);
+
     // Transform snake_case to camelCase before returning to frontend
-    return data ? dbCurrenciesToDomain(data) : [];
+    return dbCurrenciesToDomain(validated);
   },
 };
 ```
 
-### 7.2 Complete Hook Layer
+### 6.2 Orchestrator Hook
 
-**File:** [features/currencies/hooks/use-currencies.ts](features/currencies/hooks/use-currencies.ts)
+**File:** [lib/hooks/use-currencies.ts](lib/hooks/use-currencies.ts) (15 lines)
 
 ```typescript
 import { useQuery } from '@tanstack/react-query';
-import { currenciesApi } from '../api/currencies';
+import { currenciesApi } from '@/features/currencies/api/currencies';
 import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
 
 /**
@@ -491,42 +483,40 @@ export function useCurrencies() {
 
 ---
 
-## 8. Compliance Matrix
+## 7. Compliance Matrix
 
 | Mandate | Status | Evidence |
 |---------|--------|----------|
 | Naming (camelCase domain / snake_case DB) | PASS | `Currency` vs `global_currencies` |
-| Type Safety (no any/unknown) | PASS | Zero violations in feature code |
-| Zod Boundary Validation | **FAIL** | No schema in db-row-schemas.ts |
-| Feature Isolation | **FAIL** | 1 violation in add-account-modal.tsx |
+| Type Safety (no any/unknown) | PASS | Zero violations across all files |
+| Zod Boundary Validation | PASS | `GlobalCurrencyRowSchema` at network boundary |
+| Feature Isolation | PASS | Zero cross-feature imports |
 | Transformer Usage | PASS | Uses `dbCurrenciesToDomain()` |
-| Integer Cents | N/A | No financial calculations |
+| Integer Cents | N/A | No monetary amounts in schema |
 | Sync Integrity | N/A | Read-only reference data |
 | Soft Deletes | N/A | No delete operations |
 | Auth Abstraction | PASS | Direct client appropriate for public data |
 | React Query Patterns | PASS | Proper useQuery, centralized keys |
 | Caching Strategy | PASS | 10-minute stale time |
+| Orchestrator Pattern | PASS | Hook in lib/, API in feature |
 
 ---
 
-## 9. Action Items
+## 8. Changes Since v2.0
 
-### Immediate (P0)
-
-- [ ] **CUR-001**: Fix feature bleed in `add-account-modal.tsx`
-  - Replace `import { useCurrencies } from '@/features/currencies/hooks/use-currencies'`
-  - With `import { useCurrenciesData } from '@/lib/hooks/use-reference-data'`
-
-### Short-term (P1)
-
-- [ ] **CUR-002**: Add Zod schema for currencies
-  - Add `GlobalCurrencyRowSchema` to `lib/data/db-row-schemas.ts`
-  - Integrate validation in `currenciesApi.getAll()`
-
-### Nice-to-have (P2)
-
-- [ ] **CUR-003**: Add barrel file `features/currencies/index.ts`
+| Item | v2.0 Status | v3.0 Status | Change |
+|------|-------------|-------------|--------|
+| Feature folder structure | 2 files (api + hooks) | 1 file (api only) | Hooks moved to lib/ |
+| Zod validation | MISSING | IMPLEMENTED | GlobalCurrencyRowSchema added |
+| Feature bleed violations | 1 violation | 0 violations | All consumers use lib/hooks |
+| `useCurrencies` location | `features/currencies/hooks/` | `lib/hooks/` | Orchestrator pattern |
 
 ---
 
-*Generated by Technical Audit Process v2.0*
+## 9. Recommendations
+
+**None.** The currencies feature is now fully compliant with all architectural mandates.
+
+---
+
+*Generated by Technical Audit Process v3.0*
