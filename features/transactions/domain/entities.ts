@@ -43,7 +43,7 @@
  *     let userId: String
  *     let amountCents: Int  // ← Int, NEVER Double
  *     let amountHomeCents: Int
- *     let currencyOriginal: String
+ *     let currencyOriginal: String?  // Null when raw row lacks currency (before JOIN)
  *     let exchangeRate: Decimal
  *     let accountId: String
  *     let categoryId: String?
@@ -113,8 +113,12 @@ export interface TransactionEntity {
    *
    * Derived from account's currency_code (Sacred Ledger pattern)
    * Examples: "USD", "EUR", "GBP", "JPY"
+   *
+   * Null when:
+   * - Raw ledger row before JOIN with account (no currency data available)
+   * - Optimistic update before server confirms currency
    */
-  readonly currencyOriginal: string;
+  readonly currencyOriginal: string | null;
 
   /**
    * Exchange rate for currency conversion
@@ -254,7 +258,7 @@ export interface TransactionEntity {
  *     let userId: String
  *     let amountCents: Int
  *     let amountHomeCents: Int
- *     let currencyOriginal: String
+ *     let currencyOriginal: String?  // Null when raw row lacks currency (before JOIN)
  *     let exchangeRate: Decimal
  *     let accountId: String
  *     let categoryId: String?

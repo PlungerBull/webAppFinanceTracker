@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { useTransferResolution, type TransferResolutionOutput } from '../hooks/use-transfer-resolution';
 import type { GroupedAccount } from '@/lib/hooks/use-grouped-accounts';
-import type { AccountViewEntity } from '@/features/accounts/hooks/use-accounts';
+import type { AccountViewEntity } from '@/domain/accounts';
 
 export interface TransferFormData {
   fromGroupId: string | null;

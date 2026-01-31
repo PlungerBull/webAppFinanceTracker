@@ -83,3 +83,9 @@ export {
   hasFullName,
   getDisplayName,
 } from './auth';
+
+// Settings Domain
+export {
+  type UserSettings,
+  type TransactionSortMode,
+} from './settings';

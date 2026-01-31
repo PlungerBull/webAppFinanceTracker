@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAccountsData } from '@/lib/hooks/use-reference-data';
 import { useUpdateAccountVisibility } from '@/features/settings/hooks/use-update-account-visibility';
 import { useUserSettings, useUpdateMainCurrency } from '@/features/settings/hooks/use-user-settings';
@@ -24,9 +24,9 @@ export function AppearanceSettings() {
     // Local state for pending changes
     const [pendingVisibility, setPendingVisibility] = useState<Record<string, boolean>>({});
     const [selectedCurrency, setSelectedCurrency] = useState<string>('');
-    const [hasChanges, setHasChanges] = useState(false);
 
-    // Initialize local state from fetched data
+    // Initialize pendingVisibility when accounts first load
+    /* eslint-disable react-hooks/set-state-in-effect -- One-time initialization from async data */
     useEffect(() => {
         if (accounts.length > 0) {
             const initialVisibility: Record<string, boolean> = {};
@@ -39,31 +39,29 @@ export function AppearanceSettings() {
         }
     }, [accounts]);
 
-    // Initialize currency from user settings
+    // Initialize selectedCurrency when settings first load
     useEffect(() => {
         if (userSettings?.mainCurrency) {
             setSelectedCurrency(userSettings.mainCurrency);
         }
     }, [userSettings]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
-    // Check for changes whenever state updates
-    useEffect(() => {
-        let changed = false;
-
+    // DERIVED STATE: Compute hasChanges from current state vs server state
+    const hasChanges = useMemo(() => {
         // Check account visibility changes
         for (const acc of accounts) {
             if (acc.id && pendingVisibility[acc.id] !== (acc.isVisible ?? true)) {
-                changed = true;
-                break;
+                return true;
             }
         }
 
         // Check currency changes
         if (selectedCurrency && selectedCurrency !== userSettings?.mainCurrency) {
-            changed = true;
+            return true;
         }
 
-        setHasChanges(changed);
+        return false;
     }, [pendingVisibility, selectedCurrency, userSettings, accounts]);
 
     const handleToggle = (accountId: string) => {
@@ -99,10 +97,11 @@ export function AppearanceSettings() {
         }
 
         // Wait for all saves to complete
+        // Note: hasChanges is derived state - it will automatically become false
+        // when the server data refetches and matches our local state
         if (promises.length > 0) {
             try {
                 await Promise.all(promises);
-                setHasChanges(false);
             } catch (error) {
                 console.error('Error saving settings:', error);
             }

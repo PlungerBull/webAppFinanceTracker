@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { IdentityHeader } from './identity-header';
 import { FormSection } from './form-section';
 import { MissingInfoBanner } from './missing-info-banner';
@@ -23,7 +23,6 @@ export function TransactionDetailPanel(props: TransactionDetailPanelProps) {
 
   // Local state for pending edits
   const [editedFields, setEditedFields] = useState<EditedFields>({});
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Access main currency and loading state from context
   // Context now exposes isLoading, eliminating need for separate useUserSettings call
@@ -33,16 +32,21 @@ export function TransactionDetailPanel(props: TransactionDetailPanelProps) {
   // Prevents user from saving with wrong currency assumption
   const isSettingsReady = !isSettingsLoading;
 
-  // Track unsaved changes
-  useEffect(() => {
-    const hasChanges = Object.keys(editedFields).length > 0;
-    setHasUnsavedChanges(hasChanges);
-  }, [editedFields]);
+  // DERIVED STATE: Compute hasUnsavedChanges from editedFields (no useEffect needed)
+  const hasUnsavedChanges = useMemo(
+    () => Object.keys(editedFields).length > 0,
+    [editedFields]
+  );
 
-  // Reset edited fields when switching to a different transaction/item
-  useEffect(() => {
-    setEditedFields({});
-  }, [data?.id]);
+  // KEY RESET PATTERN: Track previous ID to reset state on entity change
+  const prevIdRef = useRef(data?.id);
+  if (data?.id !== prevIdRef.current) {
+    prevIdRef.current = data?.id;
+    // Reset inline during render (synchronous, no cascade)
+    if (Object.keys(editedFields).length > 0) {
+      setEditedFields({});
+    }
+  }
 
   // Update a single field
   const handleFieldChange = (field: keyof EditedFields, value: string | number | undefined) => {

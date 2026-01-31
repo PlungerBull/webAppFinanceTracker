@@ -27,7 +27,7 @@ export interface Transaction {
   categoryId: string | null;
   amountCents: number;        // INTEGER CENTS (e.g., $10.50 = 1050)
   amountHomeCents: number;    // INTEGER CENTS (home currency)
-  currencyOriginal: string;
+  currencyOriginal: string | null;  // Null when raw row lacks currency (before JOIN)
   exchangeRate: number;
   description: string | null;
   notes: string | null;

@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { SmartSelector } from './smart-selector';
 import { CategorySelector } from '@/components/shared/category-selector';
-import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
+import { useCategoriesData } from '@/lib/hooks/use-reference-data';
 import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
-import { useReconciliations, useReconciliationSummary } from '@/features/reconciliations/hooks/use-reconciliations';
+import { useReconciliations, useReconciliationSummary } from '@/lib/hooks/use-reconciliations';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
@@ -61,7 +61,7 @@ export function BulkActionBar({
   selectedIds,
   transactions = [],
 }: BulkActionBarProps) {
-  const leafCategories = useLeafCategories();
+  const { categories: leafCategories } = useCategoriesData();
   const { data: groupedAccounts = [] } = useGroupedAccounts();
   const { data: reconciliations = [] } = useReconciliations();
   const { data: reconciliationSummary } = useReconciliationSummary(reconciliationValue);

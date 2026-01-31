@@ -84,7 +84,9 @@ export function localAccountViewsToDomain(
 export function localCategoryToDomain(model: CategoryModel): CategoryEntity {
   return {
     id: model.id,
-    userId: model.userId ?? null as any,
+    // System categories have null userId, user categories have string userId
+    // Type assertion needed until CategoryEntity.userId is updated to string | null
+    userId: (model.userId ?? null) as CategoryEntity['userId'],
     name: model.name,
     color: model.color,
     type: model.type,
@@ -137,7 +139,7 @@ export function localTransactionViewToDomain(
     categoryId: model.categoryId,
     amountCents: Math.round(model.amountCents),
     amountHomeCents: Math.round(model.amountHomeCents),
-    currencyOriginal: account?.currencyCode ?? null as any,
+    currencyOriginal: account?.currencyCode ?? null,
     exchangeRate: model.exchangeRate,
     transferId: model.transferId,
     reconciliationId: model.reconciliationId,

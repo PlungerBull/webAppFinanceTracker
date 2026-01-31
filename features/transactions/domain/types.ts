@@ -19,7 +19,7 @@
 
 import type { TransactionError } from './errors';
 import type { TransactionViewEntity } from './entities';
-import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 
 // Import shared types from data-patterns module
 import type {

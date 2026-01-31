@@ -18,13 +18,14 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
           },
           mutations: {
             // Retry mutations on network errors with exponential backoff
-            retry: (failureCount, error: any) => {
+            retry: (failureCount, error: Error) => {
+              const message = error?.message ?? '';
               // Retry network errors up to 3 times
-              if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+              if (message.includes('network') || message.includes('fetch')) {
                 return failureCount < 3;
               }
               // Don't retry version conflicts or validation errors
-              if (error?.message === 'VERSION_CONFLICT_AFTER_RETRY' || error?.message === 'VERSION_CONFLICT_DELETE') {
+              if (message === 'VERSION_CONFLICT_AFTER_RETRY' || message === 'VERSION_CONFLICT_DELETE') {
                 return false;
               }
               // Retry other errors once

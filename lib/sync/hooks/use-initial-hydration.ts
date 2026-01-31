@@ -206,6 +206,7 @@ export function useInitialHydration(userId: string | undefined): UseInitialHydra
   }, [performHydration]);
 
   // Auto-hydrate on mount when dependencies are ready
+  /* eslint-disable react-hooks/set-state-in-effect -- Database hydration is external system sync */
   useEffect(() => {
     // Wait for database to be ready
     if (!isDatabaseReady) {
@@ -247,6 +248,7 @@ export function useInitialHydration(userId: string | undefined): UseInitialHydra
     // Perform hydration check and possibly hydrate
     performHydration(false);
   }, [isDatabaseReady, database, userId, performHydration]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return {
     ...state,

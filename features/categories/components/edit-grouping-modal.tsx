@@ -110,12 +110,17 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         defaultValue: '',
     });
 
-    useEffect(() => {
-        if (open && category) {
+    // KEY RESET PATTERN: Reset selection state when modal opens with new category
+    const prevResetKeyRef = useRef<string | null>(null);
+    const resetKey = open && category ? category.id : null;
+    if (resetKey !== prevResetKeyRef.current) {
+        prevResetKeyRef.current = resetKey;
+        // Reset inline during render (synchronous, no cascade)
+        if (resetKey && (selectedSubcategoryIds.length > 0 || migrationTargetId !== null)) {
             setSelectedSubcategoryIds([]);
             setMigrationTargetId(null);
         }
-    }, [open, category]);
+    }
 
     // Click-outside detection for migration dropdown
     useEffect(() => {

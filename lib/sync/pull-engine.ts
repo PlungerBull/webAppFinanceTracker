@@ -46,6 +46,11 @@ import {
   SyncRecordSchemas,
 } from '@/lib/data/db-row-schemas';
 import * as Sentry from '@sentry/nextjs';
+import {
+  assertIntegerCents,
+  assertIntegerCentsOrNull,
+  type SyncableModelFields,
+} from './type-utils';
 
 /**
  * Internal result with pagination metadata
@@ -412,7 +417,7 @@ export class PullEngine {
       const existing = await collection.find(record.id);
 
       // Update existing record
-      // Using 'as any' for WatermelonDB model callback type compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WatermelonDB callback type
       await existing.update((r: any) => {
         this.mapServerDataToModel(tableName, record.data, r);
         r.version = record.version;
@@ -421,9 +426,9 @@ export class PullEngine {
       });
     } catch {
       // Record doesn't exist, create it
-      // Using 'as any' for WatermelonDB model callback type compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WatermelonDB callback type
       await collection.create((r: any) => {
-        // Set the ID to match server
+        // Set the ID to match server (WatermelonDB internal structure)
         r._raw.id = record.id;
         this.mapServerDataToModel(tableName, record.data, r);
         r.version = record.version;
@@ -445,7 +450,7 @@ export class PullEngine {
     try {
       const existing = await collection.find(record.id);
 
-      // Using 'as any' for WatermelonDB model callback type compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WatermelonDB callback type
       await existing.update((r: any) => {
         r.deletedAt = record.deletedAt
           ? new Date(record.deletedAt).getTime()
@@ -483,7 +488,10 @@ export class PullEngine {
         model.currencyCode = data.currency_code;
         model.color = data.color;
         model.isVisible = data.is_visible;
-        model.currentBalanceCents = Number(data.current_balance_cents ?? 0);
+        model.currentBalanceCents = assertIntegerCents(
+          data.current_balance_cents ?? 0,
+          'current_balance_cents'
+        );
         model.createdAt = this.parseDate(data.created_at);
         model.updatedAt = this.parseDate(data.updated_at);
         break;
@@ -492,8 +500,11 @@ export class PullEngine {
         model.userId = data.user_id;
         model.accountId = data.account_id;
         model.categoryId = data.category_id;
-        model.amountCents = Number(data.amount_cents ?? 0);
-        model.amountHomeCents = Number(data.amount_home_cents ?? 0);
+        model.amountCents = assertIntegerCents(data.amount_cents ?? 0, 'amount_cents');
+        model.amountHomeCents = assertIntegerCents(
+          data.amount_home_cents ?? 0,
+          'amount_home_cents'
+        );
         model.exchangeRate = Number(data.exchange_rate ?? 1);
         model.date = this.parseDate(data.date);
         model.description = data.description;
@@ -519,7 +530,10 @@ export class PullEngine {
 
       case TABLE_NAMES.TRANSACTION_INBOX:
         model.userId = data.user_id;
-        model.amountCents = data.amount_cents ? Number(data.amount_cents) : null;
+        model.amountCents = assertIntegerCentsOrNull(
+          data.amount_cents,
+          'amount_cents'
+        );
         model.description = data.description;
         model.date = this.parseDate(data.date);
         model.sourceText = data.source_text;

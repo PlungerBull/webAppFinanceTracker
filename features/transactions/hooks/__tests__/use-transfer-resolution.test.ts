@@ -19,7 +19,7 @@ import {
   type TransferResolutionInput,
 } from '../use-transfer-resolution';
 import type { GroupedAccount } from '@/lib/hooks/use-grouped-accounts';
-import type { AccountViewEntity } from '@/features/accounts/hooks/use-accounts';
+import type { AccountViewEntity } from '@/domain/accounts';
 
 // Test fixtures
 const createGroupedAccount = (

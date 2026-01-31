@@ -15,7 +15,7 @@
  * @module all-transactions-table
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { MobileHeader } from '@/components/layout/mobile-header';
 import { useSearchParams } from 'next/navigation';
@@ -27,10 +27,9 @@ import { BulkActionBar } from '@/features/transactions/components/bulk-action-ba
 import { useTransactions, useCategoryCounts } from '../hooks/use-transactions';
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection';
 import { useTransactionFilters } from '../hooks/use-transaction-filters';
-import { useLeafCategories } from '@/features/categories/hooks/use-leaf-categories';
 import { useGroupedAccounts } from '@/lib/hooks/use-grouped-accounts';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
-import { useUserSettings, useUpdateSortPreference } from '@/features/settings/hooks/use-user-settings';
+import { useCategoriesData, useAccountsData } from '@/lib/hooks/use-reference-data';
+import { useUserSettings, useUpdateSortPreference } from '@/lib/hooks/use-user-settings';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { toast } from 'sonner';
 import type { TransactionViewEntity } from '../domain';
@@ -55,11 +54,13 @@ function TransactionsContent() {
   );
 
   // Sync local state when settings load/change
+  /* eslint-disable react-hooks/set-state-in-effect -- Initialization from async settings */
   useEffect(() => {
     if (userSettings?.transactionSortPreference) {
       setSortBy(userSettings.transactionSortPreference);
     }
   }, [userSettings?.transactionSortPreference]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSortChange = (newSortBy: TransactionSortMode) => {
     setSortBy(newSortBy);
@@ -86,9 +87,9 @@ function TransactionsContent() {
     sortBy,
   });
 
-  const categories = useLeafCategories();
+  const { categories } = useCategoriesData();
   const { data: accountsData = [] } = useGroupedAccounts();
-  const { data: flatAccounts = [] } = useAccounts();
+  const { accounts: flatAccounts } = useAccountsData();
 
   const { data: categoryCounts = {} } = useCategoryCounts({
     accountId: accountId || undefined,

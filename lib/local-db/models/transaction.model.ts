@@ -76,7 +76,7 @@ export class TransactionModel extends Model {
       categoryId: this.categoryId,
       amountCents: Math.round(this.amountCents), // CTO: Eliminate floating-point dust
       amountHomeCents: Math.round(this.amountHomeCents), // CTO: Eliminate floating-point dust
-      currencyOriginal: '', // Will be populated via join in repository
+      currencyOriginal: null, // Will be populated via join in repository
       exchangeRate: this.exchangeRate,
       description: this.description,
       notes: this.notes,

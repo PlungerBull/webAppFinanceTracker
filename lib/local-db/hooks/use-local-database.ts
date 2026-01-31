@@ -69,6 +69,7 @@ export function useLocalDatabase(): LocalDatabaseState {
   });
 
   // Mark as mounted after hydration
+  /* eslint-disable react-hooks/set-state-in-effect -- SSR hydration guard is external system sync */
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -114,6 +115,7 @@ export function useLocalDatabase(): LocalDatabaseState {
       cancelled = true;
     };
   }, [isMounted]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return state;
 }

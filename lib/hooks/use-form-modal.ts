@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useForm, UseFormProps, UseFormReturn, FieldValues } from 'react-hook-form';
+import { useForm, UseFormProps, UseFormReturn, FieldValues, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -29,9 +29,16 @@ export function useFormModal<T extends FieldValues>(
 ) {
   const [error, setError] = useState<string | null>(null);
 
+  // Zod v4 / @hookform/resolvers type incompatibility workaround
+  // Runtime behavior is correct - this is purely a type-level issue
+  // See: https://github.com/react-hook-form/resolvers/issues/451
+  const resolver = zodResolver(
+    schema as Parameters<typeof zodResolver>[0]
+  ) as Resolver<T>;
+
   const form = useForm<T>({
     ...options,
-    resolver: zodResolver(schema as any),
+    resolver,
   });
 
   const handleClose = useCallback(() => {

@@ -23,8 +23,10 @@ We use a hybrid approach that combines Feature-Sliced Design for business logic 
 
 * `app/`: Contains the route definitions and page entry points (Next.js App Router).
 * `features/`: Contains domain-specific business logic. Each folder here represents a distinct business domain.
-* `components/`: Shared "dumb" UI components (e.g., Button, Modal, DataTable) that are agnostic to business logic (Design System).
-* `lib/`: Shared utilities, including cross-feature hooks (`lib/hooks/`), and general-purpose modules.
+* `components/`: Shared UI components split into two categories:
+  * `components/ui/`: Design system primitives (Button, Modal, DataTable) — agnostic to business logic
+  * `components/shared/`: Cross-feature domain components (TransactionList, TransactionRow, TransactionDetailPanel, CategorySelector) — used by multiple features
+* `lib/`: Shared utilities, including cross-feature hooks (`lib/hooks/` — useBulkSelection, useCurrencies, useCategoryOperations), and general-purpose modules.
 * `lib/data/`: Runtime data layer — Zod validation schemas (`db-row-schemas.ts`), data transformers (`data-transformers.ts`, `local-data-transformers.ts`), and validation helpers (`validate.ts`).
 * `types/`: Shared pure TypeScript types (interfaces, type aliases, database schema) — stripped at build time.
 * `providers/` & `stores/`: Global state management and context providers.

@@ -79,7 +79,7 @@ const FORMAT_OPTIONS = {
  */
 export function formatCurrency(
   amount: number,
-  currency: string,
+  currency: string | null,
   locale: string = DEFAULT_LOCALE
 ): string {
   return new Intl.NumberFormat(locale, FORMAT_OPTIONS.STANDARD).format(amount);
@@ -101,7 +101,7 @@ export function formatCurrency(
  */
 export function formatCurrencyShort(
   amount: number,
-  currency: string,
+  currency: string | null,
   locale: string = DEFAULT_LOCALE
 ): string {
   return new Intl.NumberFormat(locale, FORMAT_OPTIONS.SHORT).format(amount);
@@ -123,7 +123,7 @@ export function formatCurrencyShort(
  */
 export function formatCurrencyCompact(
   amount: number,
-  currency: string,
+  currency: string | null,
   locale: string = DEFAULT_LOCALE
 ): string {
   return new Intl.NumberFormat(locale, FORMAT_OPTIONS.COMPACT).format(amount);

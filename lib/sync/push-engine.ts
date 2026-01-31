@@ -17,7 +17,7 @@
  * @module sync/push-engine
  */
 
-import type { Database } from '@nozbe/watermelondb';
+import type { Database, Model } from '@nozbe/watermelondb';
 import { Q } from '@nozbe/watermelondb';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database as SupabaseDatabase, Json } from '@/types/supabase';
@@ -47,6 +47,11 @@ import {
 } from './constants';
 import type { SyncConfig } from './types';
 import { SyncLockManager, getSyncLockManager } from './sync-lock-manager';
+import {
+  assertIntegerCents,
+  isCentsField,
+  type SyncableModelFields,
+} from './type-utils';
 
 /**
  * Push Engine
@@ -246,9 +251,8 @@ export class PushEngine {
       )
       .fetch();
 
-    // Using 'as any' for WatermelonDB model type compatibility
-    return records.map((record: any) =>
-      this.toPendingRecord(tableName, record, true)
+    return records.map((record: Model) =>
+      this.toPendingRecord(tableName, this.extractModelRaw(record), true)
     );
   }
 
@@ -272,10 +276,19 @@ export class PushEngine {
       )
       .fetch();
 
-    // Using 'as any' for WatermelonDB model type compatibility
-    return records.map((record: any) =>
-      this.toPendingRecord(tableName, record, false)
+    return records.map((record: Model) =>
+      this.toPendingRecord(tableName, this.extractModelRaw(record), false)
     );
+  }
+
+  /**
+   * Extract raw data from WatermelonDB model
+   *
+   * WatermelonDB stores data in _raw property. We extract it for type-safe access.
+   */
+  private extractModelRaw(model: Model): Record<string, unknown> {
+    const raw = (model as unknown as { _raw: Record<string, unknown> })._raw;
+    return { id: model.id, ...raw };
   }
 
   // ===========================================================================
@@ -374,12 +387,12 @@ export class PushEngine {
   private async updateRecordSyncStatus(
     tableName: TableName,
     id: string,
-    status: string,
+    status: SyncStatus,
     serverVersion?: number
   ): Promise<void> {
     try {
       const record = await this.database.get(tableName).find(id);
-      // Using 'as any' for WatermelonDB model callback type compatibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WatermelonDB callback type
       await record.update((r: any) => {
         r.localSyncStatus = status;
         if (serverVersion !== undefined) {
@@ -419,11 +432,16 @@ export class PushEngine {
             .get(update.tableName)
             .find(update.id);
 
-          // Using 'as any' for WatermelonDB model callback type compatibility
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WatermelonDB callback type
           await record.update((r: any) => {
-            // Apply the buffered update data
+            // Apply the buffered update data with cents validation
             for (const [key, value] of Object.entries(update.updateData)) {
-              r[key] = value;
+              // CTO MANDATE: Validate cents fields at sync boundary
+              if (isCentsField(key) && typeof value === 'number') {
+                r[key] = assertIntegerCents(value, key);
+              } else {
+                r[key] = value;
+              }
             }
             // Re-mark as pending for next sync cycle
             r.localSyncStatus = SYNC_STATUS.PENDING;

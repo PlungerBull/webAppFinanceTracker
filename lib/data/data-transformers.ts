@@ -269,7 +269,7 @@ export function dbTransactionToDomain(
     amountHomeCents: toSafeIntegerOrZero(dbTransaction.amount_home_cents), // BIGINT → safe number
     // NOTE: currency_original removed from table - now derived from account via transactions_view
     // @deprecated Use dbTransactionViewToDomain with transactions_view instead
-    currencyOriginal: '',  // SENTINEL: Raw table lacks currency - use view for currency access
+    currencyOriginal: null,  // Raw table lacks currency - use view for currency access
     exchangeRate: dbTransaction.exchange_rate,
     description: dbTransaction.description,
     notes: dbTransaction.notes,
@@ -377,8 +377,8 @@ export function dbTransactionViewToDomain(
     amountCents: Number(dbView.amount_cents ?? 0),
     amountHomeCents: Number(dbView.amount_home_cents ?? 0),
 
-    // Currency and exchange (view provides currency via JOIN; empty string fallback if JOIN fails)
-    currencyOriginal: dbView.currency_original ?? '',
+    // Currency and exchange (view provides currency via JOIN; null if JOIN fails)
+    currencyOriginal: dbView.currency_original ?? null,
     exchangeRate: Number(dbView.exchange_rate ?? 1),
 
     // Transfer and reconciliation
@@ -933,11 +933,24 @@ export function domainReconciliationToDbUpdate(data: {
 }
 
 /**
+ * Raw reconciliation summary shape from RPC (JSONB response)
+ * Types match toSafeIntegerOrZero input: string | number | bigint | null | undefined
+ */
+interface ReconciliationSummaryRaw {
+  beginningBalanceCents?: string | number | bigint | null;
+  endingBalanceCents?: string | number | bigint | null;
+  linkedSumCents?: string | number | bigint | null;
+  linkedCount?: string | number | bigint | null;
+  differenceCents?: string | number | bigint | null;
+  isBalanced?: boolean | null;
+}
+
+/**
  * Transforms RPC reconciliation summary to domain type
  * HARDENED: RPC returns BIGINT cents, domain stores in cents
  */
 export function dbReconciliationSummaryToDomain(
-  dbSummary: any  // JSONB from RPC - not strictly typed
+  dbSummary: ReconciliationSummaryRaw
 ): ReconciliationSummary {
   return {
     // HARDENED: All values in cents from BIGINT RPC
@@ -1067,7 +1080,7 @@ export function inboxItemViewToTransactionView(
     // Amount fields (Sacred Integer Arithmetic)
     amountCents: item.amountCents ?? 0,
     amountHomeCents: item.amountCents ?? 0, // No home currency conversion for inbox
-    currencyOriginal: item.currencyCode ?? '',
+    currencyOriginal: item.currencyCode ?? null,
     exchangeRate: item.exchangeRate ?? 1.0,
 
     // Dates

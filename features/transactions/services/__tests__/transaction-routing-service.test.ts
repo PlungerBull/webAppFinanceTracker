@@ -13,7 +13,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TransactionRoutingService } from '../transaction-routing-service';
 import type { ITransactionService } from '../transaction-service.interface';
-import type { InboxService } from '@/features/inbox/services/inbox-service';
+import type { IInboxOperations } from '@/domain/inbox';
 import type { TransactionRouteInputDTO, TransactionRequiredField } from '../../domain/types';
 import type { TransactionViewEntity } from '../../domain/entities';
 
@@ -32,15 +32,12 @@ const mockTransactionService: ITransactionService = {
   getChangesSince: vi.fn(),
 };
 
-// Mock InboxService
-const mockInboxService = {
-  getPendingPaginated: vi.fn(),
-  getById: vi.fn(),
+// Mock InboxOperations (using domain interface for loose coupling)
+const mockInboxService: IInboxOperations = {
   create: vi.fn(),
   update: vi.fn(),
   promote: vi.fn(),
-  dismiss: vi.fn(),
-} as unknown as InboxService;
+};
 
 // Helper to create input DTO with defaults
 function createInput(

@@ -46,7 +46,8 @@
       "Bash(git mv:*)",
       "Bash(tree:*)",
       "Bash(npm view:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { GroupedAccount } from '@/lib/hooks/use-grouped-accounts';
-import type { AccountViewEntity } from '@/features/accounts/hooks/use-accounts';
+import type { AccountViewEntity } from '@/domain/accounts';
 
 /**
  * Input shape for transfer resolution (subset of TransferFormData)

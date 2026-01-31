@@ -19,6 +19,20 @@ import { toast } from 'sonner';
 import { useTransactionService } from './use-transaction-service';
 import type { TransactionViewEntity, CreateTransactionDTO, UpdateTransactionDTO } from '../domain';
 import type { TransactionFilters, BulkUpdateTransactionDTO, BulkUpdateResult } from '../domain/types';
+import type {
+  TransactionInfiniteCache,
+  InfinitePage,
+} from '@/lib/query/cache-types';
+
+/**
+ * Legacy account cache shape (uses decimal balance, not cents)
+ * TODO: Migrate to AccountViewEntity with currentBalanceCents
+ */
+interface AccountCacheItem {
+  id: string;
+  currentBalance: number; // Decimal, NOT cents (legacy shape)
+  [key: string]: unknown;
+}
 
 /**
  * Hook for fetching paginated transactions with infinite scroll
@@ -144,7 +158,7 @@ export function useAddTransaction() {
         description: data.description ?? null,
         amountCents: data.amountCents, // INTEGER CENTS
         amountHomeCents: data.amountCents, // Simplified - will be calculated by server
-        currencyOriginal: '', // Will be set by server
+        currencyOriginal: null, // Will be set by server
         exchangeRate: 1, // Will be calculated by server
         date: data.date,
         notes: data.notes ?? null,
@@ -173,7 +187,7 @@ export function useAddTransaction() {
           predicate: (query) =>
             query.queryKey[0] === 'transactions' && query.queryKey[1] === 'infinite',
         },
-        (old: any) => {
+        (old: TransactionInfiniteCache | undefined) => {
           if (!old) return old;
 
           // Add to first page (most recent transactions)
@@ -200,10 +214,10 @@ export function useAddTransaction() {
         amountCents: data.amountCents,
       });
 
-      queryClient.setQueryData(['accounts'], (old: any) => {
+      queryClient.setQueryData<AccountCacheItem[]>(['accounts'], (old) => {
         if (!old) return old;
 
-        return old.map((account: any) => {
+        return old.map((account: AccountCacheItem) => {
           if (account.id !== balanceDelta.accountId) return account;
 
           const currentBalanceCents = toCents(account.currentBalance ?? 0);
@@ -217,7 +231,7 @@ export function useAddTransaction() {
       return { previousInfinite, previousAccounts, optimisticId };
     },
 
-    onError: (err: any, variables, context) => {
+    onError: (err: Error, variables, context) => {
       // Rollback on failure
       if (context?.previousInfinite) {
         queryClient.setQueryData(['transactions', 'infinite'], context.previousInfinite);
@@ -306,12 +320,12 @@ export function useUpdateTransaction() {
           predicate: (query) =>
             query.queryKey[0] === 'transactions' && query.queryKey[1] === 'infinite',
         },
-        (old: any) => {
+        (old: TransactionInfiniteCache | undefined) => {
           if (!old) return old;
 
           return {
             ...old,
-            pages: old.pages.map((page: any) => ({
+            pages: old.pages.map((page: InfinitePage<TransactionViewEntity>) => ({
               ...page,
               data: page.data.map((txn: TransactionViewEntity) =>
                 txn.id === id ? { ...txn, ...optimisticUpdate } : txn
@@ -322,7 +336,7 @@ export function useUpdateTransaction() {
       );
 
       // Update single transaction query
-      queryClient.setQueryData(['transactions', id], (old: any) => {
+      queryClient.setQueryData<TransactionViewEntity>(['transactions', id], (old) => {
         if (!old) return old;
         return { ...old, ...optimisticUpdate };
       });
@@ -330,10 +344,10 @@ export function useUpdateTransaction() {
       // 6. Optimistically update account balance if needed
       // balanceDeltas is an array (may have 1 or 2 entries for account changes)
       if (balanceDeltas && balanceDeltas.length > 0) {
-        queryClient.setQueryData(['accounts'], (old: any) => {
+        queryClient.setQueryData<AccountCacheItem[]>(['accounts'], (old) => {
           if (!old) return old;
 
-          return old.map((account: any) => {
+          return old.map((account: AccountCacheItem) => {
             // Find any delta for this account
             const delta = balanceDeltas.find((d) => d.accountId === account.id);
             if (!delta) return account;
@@ -350,7 +364,7 @@ export function useUpdateTransaction() {
       return { previousInfinite, previousSingle, previousAccounts };
     },
 
-    onError: (err: any, variables, context) => {
+    onError: (err: Error, variables, context) => {
       // Rollback on failure
       if (context?.previousInfinite) {
         queryClient.setQueryData(['transactions', 'infinite'], context.previousInfinite);
@@ -415,12 +429,12 @@ export function useDeleteTransaction() {
           predicate: (query) =>
             query.queryKey[0] === 'transactions' && query.queryKey[1] === 'infinite',
         },
-        (old: any) => {
+        (old: TransactionInfiniteCache | undefined) => {
           if (!old) return old;
 
           return {
             ...old,
-            pages: old.pages.map((page: any) => ({
+            pages: old.pages.map((page: InfinitePage<TransactionViewEntity>) => ({
               ...page,
               data: page.data.filter((txn: TransactionViewEntity) => txn.id !== id),
               count: Math.max(0, (page.count ?? 0) - 1),
@@ -437,10 +451,10 @@ export function useDeleteTransaction() {
           amountCents: deletedTxn.amountCents,
         });
 
-        queryClient.setQueryData(['accounts'], (old: any) => {
+        queryClient.setQueryData<AccountCacheItem[]>(['accounts'], (old) => {
           if (!old) return old;
 
-          return old.map((account: any) => {
+          return old.map((account: AccountCacheItem) => {
             if (account.id !== balanceDelta.accountId) return account;
 
             const currentBalanceCents = toCents(account.currentBalance ?? 0);
@@ -455,7 +469,7 @@ export function useDeleteTransaction() {
       return { previousInfinite, previousAccounts, deletedTxn };
     },
 
-    onError: (err: any, variables, context) => {
+    onError: (err: Error, variables, context) => {
       // Rollback on failure
       if (context?.previousInfinite) {
         queryClient.setQueryData(['transactions', 'infinite'], context.previousInfinite);

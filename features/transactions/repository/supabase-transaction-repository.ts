@@ -84,10 +84,17 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
 
   /**
    * Applies transaction filters to Supabase query
+   *
+   * Note: Using explicit any for query builder due to complex
+   * PostgrestFilterBuilder generics that vary by table/view.
+   * Type safety maintained through consistent filter field names
+   * matching database schema.
    */
   private applyFilters(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     query: any,
     filters?: TransactionFilters
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): any {
     let result = query;
 

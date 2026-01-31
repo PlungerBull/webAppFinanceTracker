@@ -14,7 +14,7 @@
  * @module transaction-list
  */
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2 } from 'lucide-react';
 import { TRANSACTIONS, PAGINATION } from '@/lib/constants';
@@ -120,19 +120,23 @@ export function TransactionList({
   variant = 'default',
 }: TransactionListProps) {
   // Normalize transactions to ensure decimal amounts for display
-  const normalizedTransactions: TransactionListRow[] = transactions.map((t) => {
-    const hasAmountCents = 'amountCents' in t;
+  const normalizedTransactions = useMemo<TransactionListRow[]>(
+    () =>
+      transactions.map((t) => {
+        const hasAmountCents = 'amountCents' in t;
 
-    return {
-      ...t,
-      displayAmount: hasAmountCents
-        ? (t as TransactionViewEntity).amountCents / 100
-        : (t as TransactionListRow).displayAmount,
-      amountHome: hasAmountCents
-        ? (t as TransactionViewEntity).amountHomeCents / 100
-        : (t as TransactionListRow).amountHome,
-    } as TransactionListRow;
-  });
+        return {
+          ...t,
+          displayAmount: hasAmountCents
+            ? (t as TransactionViewEntity).amountCents / 100
+            : (t as TransactionListRow).displayAmount,
+          amountHome: hasAmountCents
+            ? (t as TransactionViewEntity).amountHomeCents / 100
+            : (t as TransactionListRow).amountHome,
+        } as TransactionListRow;
+      }),
+    [transactions]
+  );
 
   // Parent ref for virtualizer
   const parentRef = useRef<HTMLDivElement>(null);
@@ -140,11 +144,15 @@ export function TransactionList({
   // Detect mobile viewport for virtualizer recalculation
   const isMobile = useIsMobile();
 
+  // Memoized callbacks for virtualizer stability
+  const getScrollElement = useCallback(() => parentRef.current, []);
+  const estimateSize = useCallback(() => PAGINATION.VIRTUAL_ITEM_SIZE_ESTIMATE, []);
+
   // Initialize virtualizer
   const virtualizer = useVirtualizer({
     count: normalizedTransactions.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => PAGINATION.VIRTUAL_ITEM_SIZE_ESTIMATE,
+    getScrollElement,
+    estimateSize,
     overscan: PAGINATION.OVERSCAN,
   });
 

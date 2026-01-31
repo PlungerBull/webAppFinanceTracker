@@ -5,12 +5,6 @@
 - [ ] **Import Optimization:** Fix timeouts on large Excel/CSV imports
 
 
----
-
-## Technical Hardening (Remaining)
-
-- [x] **Purge Remaining `any`:** Update `appearance-settings.tsx` to type the promise array as `Promise<void>[]` instead of `Promise<any>[]`
-
 
 ---
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,37 +34,43 @@ export function InboxCard({ item }: InboxCardProps) {
   const canApprove = selectedAccountId && selectedCategoryId;
 
   // FIX: Auto-save account selection (prevents "lost work" bug)
-  const handleAccountChange = async (accountId: string) => {
-    setSelectedAccountId(accountId);
+  const handleAccountChange = useCallback(
+    async (accountId: string) => {
+      setSelectedAccountId(accountId);
 
-    try {
-      await updateDraft.mutateAsync({
-        id: item.id,
-        updates: { accountId },
-      });
-    } catch (error) {
-      console.error('Failed to save account selection:', error);
-      // Silent fail - user can still proceed, will be saved on promote
-    }
-  };
+      try {
+        await updateDraft.mutateAsync({
+          id: item.id,
+          updates: { accountId },
+        });
+      } catch (error) {
+        console.error('Failed to save account selection:', error);
+        // Silent fail - user can still proceed, will be saved on promote
+      }
+    },
+    [item.id, updateDraft]
+  );
 
   // FIX: Auto-save category selection (prevents "lost work" bug)
-  const handleCategoryChange = async (categoryId: string) => {
-    setSelectedCategoryId(categoryId);
-    setIsCategoryPopoverOpen(false);
+  const handleCategoryChange = useCallback(
+    async (categoryId: string) => {
+      setSelectedCategoryId(categoryId);
+      setIsCategoryPopoverOpen(false);
 
-    try {
-      await updateDraft.mutateAsync({
-        id: item.id,
-        updates: { categoryId },
-      });
-    } catch (error) {
-      console.error('Failed to save category selection:', error);
-      // Silent fail - user can still proceed, will be saved on promote
-    }
-  };
+      try {
+        await updateDraft.mutateAsync({
+          id: item.id,
+          updates: { categoryId },
+        });
+      } catch (error) {
+        console.error('Failed to save category selection:', error);
+        // Silent fail - user can still proceed, will be saved on promote
+      }
+    },
+    [item.id, updateDraft]
+  );
 
-  const handleApprove = async () => {
+  const handleApprove = useCallback(async () => {
     if (!canApprove) return;
 
     try {
@@ -77,16 +83,16 @@ export function InboxCard({ item }: InboxCardProps) {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : INBOX.API.ERRORS.PROMOTE_FAILED);
     }
-  };
+  }, [canApprove, item.id, selectedAccountId, selectedCategoryId, promoteItem]);
 
-  const handleDismiss = async () => {
+  const handleDismiss = useCallback(async () => {
     try {
       await dismissItem.mutateAsync(item.id);
       toast.success(INBOX.UI.MESSAGES.DISMISS_SUCCESS);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : INBOX.API.ERRORS.DISMISS_FAILED);
     }
-  };
+  }, [item.id, dismissItem]);
 
   return (
     <Card className="hover:shadow-md transition-shadow">

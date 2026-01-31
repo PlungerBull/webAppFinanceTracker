@@ -4,6 +4,17 @@ import { useState, ReactNode } from 'react';
 import { useForm, FieldValues, UseFormReturn, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { ZodSchema } from 'zod';
+
+/**
+ * Create typed zodResolver for react-hook-form.
+ * Workaround for Zod v4 / @hookform/resolvers type incompatibility.
+ * See: https://github.com/react-hook-form/resolvers/issues/451
+ */
+function createTypedResolver<T extends FieldValues>(
+  schema: ZodSchema<T>
+): Resolver<T> {
+  return zodResolver(schema as Parameters<typeof zodResolver>[0]) as Resolver<T>;
+}
 import {
   Dialog,
   DialogContent,
@@ -53,11 +64,8 @@ export function FormModal<TFormData extends FieldValues>({
   const [success, setSuccess] = useState(false);
 
   const form = useForm<TFormData>({
-    // CTO Note: Cast needed due to Zod v4 + react-hook-form resolver type mismatch
-    // @hookform/resolvers types expect Zod v3 but we use Zod v4
-    // The runtime behavior is correct - this is purely a type-level incompatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(schema as any) as Resolver<TFormData>,
+    // CTO Note: Typed resolver wrapper handles Zod v4 + react-hook-form type mismatch
+    resolver: createTypedResolver(schema),
   });
 
   const {

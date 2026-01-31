@@ -29,8 +29,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { TransactionForm, type TransactionFormData } from './transaction-form';
 import { useTransactionRouting } from '../hooks/use-transaction-routing';
-import { useCategories } from '@/features/categories/hooks/use-categories';
-import { useAccounts } from '@/features/accounts/hooks/use-accounts';
+import { useCategoriesData, useAccountsData } from '@/lib/hooks/use-reference-data';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { TransactionRouteInputDTO } from '../domain/types';
@@ -105,8 +104,8 @@ export const LedgerTransactionModalContent = memo(function LedgerTransactionModa
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // Data hooks
-  const { data: categories = [] } = useCategories();
-  const { data: flatAccounts = [] } = useAccounts();
+  const { categories } = useCategoriesData();
+  const { accounts: flatAccounts } = useAccountsData();
 
   // Routing hook with callbacks
   const { submit, determineRoute, isSubmitting } = useTransactionRouting({

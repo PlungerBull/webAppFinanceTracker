@@ -29,7 +29,7 @@ export interface TransactionRowData {
   description: string | null;
   date: string;
   displayAmount: number | null;
-  currencyOriginal: string;
+  currencyOriginal: string | null;
   categoryName: string | null;
   categoryColor: string | null;
   accountId: string;
@@ -215,7 +215,7 @@ export const TransactionRow = React.memo(
 
             {/* Currency Label */}
             <p className="text-xs md:text-[10px] text-gray-400 mt-0.5">
-              {transaction.accountId ? transaction.currencyOriginal : 'SELECT ACCOUNT'}
+              {transaction.accountId ? (transaction.currencyOriginal ?? '—') : 'SELECT ACCOUNT'}
             </p>
           </div>
         </div>

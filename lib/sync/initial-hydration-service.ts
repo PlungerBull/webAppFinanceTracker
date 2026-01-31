@@ -34,6 +34,7 @@ import {
   TABLE_NAMES,
   SYNC_STATUS,
 } from '@/lib/local-db';
+import { getVersion, type VersionedRow } from './type-utils';
 
 // ============================================================================
 // TYPES
@@ -338,7 +339,7 @@ export class InitialHydrationService implements IInitialHydrationService {
           record.currentBalanceCents = this.toCents(row.current_balance);
 
           // Sync fields - mark as synced (came from server)
-          record.version = (row as any).version ?? 1;
+          record.version = getVersion(row as VersionedRow);
           record.deletedAt = null;
           record.localSyncStatus = SYNC_STATUS.SYNCED;
         });
@@ -375,7 +376,7 @@ export class InitialHydrationService implements IInitialHydrationService {
           record.parentId = row.parent_id;
 
           // Sync fields - mark as synced (came from server)
-          record.version = (row as any).version ?? 1;
+          record.version = getVersion(row as VersionedRow);
           record.deletedAt = null;
           record.localSyncStatus = SYNC_STATUS.SYNCED;
         });
@@ -431,7 +432,7 @@ export class InitialHydrationService implements IInitialHydrationService {
             record.reconciliationId = row.reconciliation_id;
 
             // Sync fields - mark as synced (came from server)
-            record.version = (row as any).version ?? 1;
+            record.version = getVersion(row as VersionedRow);
             record.deletedAt = null;
             record.localSyncStatus = SYNC_STATUS.SYNCED;
           });
@@ -479,7 +480,7 @@ export class InitialHydrationService implements IInitialHydrationService {
           record.status = row.status as InboxModel['status'];
 
           // Sync fields - mark as synced (came from server)
-          record.version = (row as any).version ?? 1;
+          record.version = getVersion(row as VersionedRow);
           record.deletedAt = null;
           record.localSyncStatus = SYNC_STATUS.SYNCED;
         });
@@ -505,9 +506,11 @@ export class InitialHydrationService implements IInitialHydrationService {
     try {
       // Note: This RPC is defined in 20260126000004_global_version_rpc.sql
       // Type assertion needed until types are regenerated after migration
-      const { data, error } = await (this.supabase.rpc as any)('get_max_version_for_user', {
-        p_user_id: userId,
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (this.supabase.rpc as any)(
+        'get_max_version_for_user',
+        { p_user_id: userId }
+      );
 
       if (!error && data) {
         maxVersion = (data as { maxVersion: number }).maxVersion || 0;
