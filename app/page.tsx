@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { isServerAuthenticated } from '@/lib/auth';
+import { isServerAuthenticated } from '@/lib/auth/server';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Shield, Zap, Globe } from 'lucide-react';
 import { LANDING } from '@/lib/constants';

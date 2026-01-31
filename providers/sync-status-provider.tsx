@@ -39,6 +39,11 @@ function collectConflictIds(
 export function SyncStatusProvider({ children }: SyncStatusProviderProps) {
   const userId = useAuthStore((state) => state.user?.id);
 
+  /* react-compiler-ignore: DEBOUNCE_METADATA
+   * Toast debounce ref for tracking notified conflict IDs.
+   * Ref mutations occur INSIDE the onSyncComplete callback (not render phase).
+   * This is silent metadata for deduplication - should NOT trigger UI re-renders.
+   */
   // CTO Mandate: Track conflict IDs (Set) not count
   // Prevents "Toast Spam" when total count stays same but IDs change
   const notifiedIdsRef = useRef<Set<string>>(new Set());

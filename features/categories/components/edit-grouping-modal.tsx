@@ -110,6 +110,13 @@ export function EditGroupingModal({ open, onOpenChange, category }: EditGrouping
         defaultValue: '',
     });
 
+    /* react-compiler-ignore: MODAL_RESET
+     * Inline ref mutation + setState during render for modal state reset.
+     * This is acceptable debt for modals - less performance critical than
+     * always-visible components like TransactionDetailPanel.
+     * The modal unmounts frequently, so cascading renders are not noticeable.
+     * Future improvement: Convert to useLayoutEffect pattern if needed.
+     */
     // KEY RESET PATTERN: Reset selection state when modal opens with new category
     const prevResetKeyRef = useRef<string | null>(null);
     const resetKey = open && category ? category.id : null;

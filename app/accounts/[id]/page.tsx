@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { isServerAuthenticated } from '@/lib/auth';
+import { isServerAuthenticated } from '@/lib/auth/server';
 
 interface AccountPageProps {
   params: Promise<{

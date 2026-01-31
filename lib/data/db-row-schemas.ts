@@ -57,10 +57,8 @@ const ReconciliationStatusEnum = z.enum(['draft', 'completed']);
 /**
  * bank_accounts table Row
  *
- * NOTE: Sync fields (version, deleted_at) are added by migration but NOT yet
- * in the auto-generated database.types.ts. The transformers access them via
- * type assertions. We use .optional() for these since the auto-generated types
- * don't include them and older rows may not have them.
+ * Sync fields (version, deleted_at) are now in auto-generated database.types.ts
+ * current_balance_cents stores balance in integer cents (Sacred Integer Arithmetic)
  */
 export const BankAccountRowSchema = z.object({
   id: uuid,
@@ -71,12 +69,11 @@ export const BankAccountRowSchema = z.object({
   currency_code: z.string(),
   color: z.string(),
   is_visible: z.boolean(),
-  current_balance: z.number(),
+  current_balance_cents: z.number().int(),
   created_at: timestamptz,
   updated_at: timestamptz,
-  // Sync fields — optional because not in auto-generated types yet
-  version: z.number().int().min(0).optional(),
-  deleted_at: z.string().nullable().optional(),
+  version: z.number().int().min(0),
+  deleted_at: z.string().nullable(),
 });
 
 /**

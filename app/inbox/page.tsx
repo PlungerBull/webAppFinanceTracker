@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { isServerAuthenticated } from '@/lib/auth';
+import { isServerAuthenticated } from '@/lib/auth/server';
 import { InboxTable } from '@/features/inbox/components/inbox-table';
 import { SentryErrorBoundary } from '@/components/sentry-error-boundary';
 

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { isServerAuthenticated } from '@/lib/auth';
+import { isServerAuthenticated } from '@/lib/auth/server';
 import { AllTransactionsTable } from '@/features/transactions/components/all-transactions-table';
 import { SentryErrorBoundary } from '@/components/sentry-error-boundary';
 

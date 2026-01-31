@@ -32,7 +32,7 @@
 
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useCategoryService } from '@/features/categories/hooks/use-category-service';
 import {
   isCategoryDuplicateNameError,
@@ -136,6 +136,11 @@ async function withErrorMapping<T>(fn: () => Promise<T>): Promise<T> {
  * CTO MANDATE: Orchestrator Rule
  * Returns null until local database is ready.
  *
+ * REACT COMPILER COMPLIANCE:
+ * useMemo returns a pure computation - no ref mutations.
+ * The service reference from useCategoryService is stable after WatermelonDB
+ * initialization, so useMemo's dependency tracking provides natural stability.
+ *
  * @returns ICategoryOperations implementation or null if not ready
  *
  * @example
@@ -171,48 +176,38 @@ async function withErrorMapping<T>(fn: () => Promise<T>): Promise<T> {
 export function useCategoryOperations(): ICategoryOperations | null {
   const service = useCategoryService();
 
-  // useRef for stable object identity across re-renders
-  // This prevents cascading re-renders in consuming components
-  const operationsRef = useRef<ICategoryOperations | null>(null);
-  const serviceRef = useRef(service);
-
+  // S-TIER: Pure useMemo - no ref mutations
+  // useMemo already provides stable object identity when service is stable.
+  // The service reference from WatermelonDB is stable after initialization.
   return useMemo(() => {
     // CTO MANDATE: Orchestrator Rule
     // Don't create operations until service is ready
     if (!service) {
-      operationsRef.current = null;
       return null;
     }
 
-    // Only create new operations object if service reference changed
-    // This ensures stable object identity for memoization
-    if (serviceRef.current !== service || !operationsRef.current) {
-      serviceRef.current = service;
+    // Pure computation - object created only when service changes
+    return {
+      getGroupings: () => withErrorMapping(() => service.getGroupings()),
 
-      operationsRef.current = {
-        getGroupings: () => withErrorMapping(() => service.getGroupings()),
+      getByParentId: (parentId) =>
+        withErrorMapping(() => service.getByParentId(parentId)),
 
-        getByParentId: (parentId) =>
-          withErrorMapping(() => service.getByParentId(parentId)),
+      createGrouping: (data) =>
+        withErrorMapping(() => service.createGrouping(data)),
 
-        createGrouping: (data) =>
-          withErrorMapping(() => service.createGrouping(data)),
+      updateGrouping: (id, data) =>
+        withErrorMapping(() => service.updateGrouping(id, data)),
 
-        updateGrouping: (id, data) =>
-          withErrorMapping(() => service.updateGrouping(id, data)),
+      createSubcategory: (data) =>
+        withErrorMapping(() => service.createSubcategory(data)),
 
-        createSubcategory: (data) =>
-          withErrorMapping(() => service.createSubcategory(data)),
+      reassignSubcategory: (data) =>
+        withErrorMapping(() => service.reassignSubcategory(data)),
 
-        reassignSubcategory: (data) =>
-          withErrorMapping(() => service.reassignSubcategory(data)),
-
-        delete: (id, version) =>
-          withErrorMapping(() => service.delete(id, version)),
-      };
-    }
-
-    return operationsRef.current;
+      delete: (id, version) =>
+        withErrorMapping(() => service.delete(id, version)),
+    };
   }, [service]);
 }
 

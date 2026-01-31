@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { isServerAuthenticated } from '@/lib/auth';
+import { isServerAuthenticated } from '@/lib/auth/server';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { DashboardContent } from '@/features/dashboard/components/dashboard-content';
 import { SentryErrorBoundary } from '@/components/sentry-error-boundary';

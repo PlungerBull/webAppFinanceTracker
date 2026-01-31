@@ -1,7 +1,7 @@
 'use client';
 
 import { changePasswordSchema, type ChangePasswordFormData } from '@/features/auth/schemas/profile.schema';
-import { getAuthApi } from '@/lib/auth';
+import { getAuthApi } from '@/lib/auth/client';
 import { FormModal } from '@/components/ui/form-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

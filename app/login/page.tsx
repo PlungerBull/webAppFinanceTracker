@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { getAuthApi } from '@/lib/auth';
+import { getAuthApi } from '@/lib/auth/client';
 import { loginSchema, type LoginFormData } from '@/features/auth/schemas/auth.schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

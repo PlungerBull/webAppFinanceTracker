@@ -18,10 +18,16 @@ import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import { createSupabaseCredentialProvider } from '@/lib/auth/supabase-credential-provider';
-import { initAuthApi, isAuthApiInitialized } from '@/lib/auth';
+import { initAuthApi, isAuthApiInitialized } from '@/lib/auth/client';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setUser, initialize } = useAuthStore();
+
+  /* react-compiler-ignore: SSR_GUARD
+   * Standard React Strict Mode double-render prevention pattern.
+   * The ref mutation occurs INSIDE useEffect body (not render phase).
+   * This is acceptable technical debt - the pattern is idiomatic React.
+   */
   const initializedRef = useRef(false);
 
   useEffect(() => {

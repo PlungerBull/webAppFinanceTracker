@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useAccountsData } from '@/lib/hooks/use-reference-data';
 import { useUpdateAccountVisibility } from '@/features/settings/hooks/use-update-account-visibility';
 import { useUserSettings, useUpdateMainCurrency } from '@/features/settings/hooks/use-user-settings';
@@ -21,69 +21,73 @@ export function AppearanceSettings() {
     const { data: userSettings } = useUserSettings();
     const { mutateAsync: updateMainCurrency, isPending: isSavingCurrency } = useUpdateMainCurrency();
 
-    // Local state for pending changes
-    const [pendingVisibility, setPendingVisibility] = useState<Record<string, boolean>>({});
-    const [selectedCurrency, setSelectedCurrency] = useState<string>('');
+    // S-TIER: Track only LOCAL changes, derive full state from server + local
+    // This eliminates setState-in-effect anti-pattern by never syncing server state
+    const [localVisibilityChanges, setLocalVisibilityChanges] = useState<Record<string, boolean>>({});
+    const [localCurrencyOverride, setLocalCurrencyOverride] = useState<string | null>(null);
 
-    // Initialize pendingVisibility when accounts first load
-    /* eslint-disable react-hooks/set-state-in-effect -- One-time initialization from async data */
-    useEffect(() => {
-        if (accounts.length > 0) {
-            const initialVisibility: Record<string, boolean> = {};
-            accounts.forEach(acc => {
-                if (acc.id) {
-                    initialVisibility[acc.id] = acc.isVisible ?? true;
-                }
-            });
-            setPendingVisibility(initialVisibility);
+    // S-TIER: Derive pendingVisibility from server state + local changes
+    // Memoized with O(n) complexity boundary check for iOS Bridge saturation prevention
+    const pendingVisibility = useMemo(() => {
+        // BRIDGE SATURATION GUARD: For >100 accounts, consider Repository-level pagination
+        if (accounts.length > 100) {
+            console.warn('[AppearanceSettings] Large account list (%d) - consider Repository-level pagination', accounts.length);
         }
-    }, [accounts]);
 
-    // Initialize selectedCurrency when settings first load
-    useEffect(() => {
-        if (userSettings?.mainCurrency) {
-            setSelectedCurrency(userSettings.mainCurrency);
+        const base: Record<string, boolean> = {};
+        for (let i = 0; i < accounts.length; i++) {
+            const acc = accounts[i];
+            if (acc.id) {
+                base[acc.id] = acc.isVisible ?? true;
+            }
         }
-    }, [userSettings]);
-    /* eslint-enable react-hooks/set-state-in-effect */
+        // Overlay local changes on top of server state
+        return { ...base, ...localVisibilityChanges };
+    }, [accounts, localVisibilityChanges]);
 
-    // DERIVED STATE: Compute hasChanges from current state vs server state
+    // S-TIER: Derive selectedCurrency from server state + local override
+    const selectedCurrency = localCurrencyOverride ?? userSettings?.mainCurrency ?? '';
+
+    // DERIVED STATE: Compute hasChanges from local changes vs server state
     const hasChanges = useMemo(() => {
-        // Check account visibility changes
-        for (const acc of accounts) {
-            if (acc.id && pendingVisibility[acc.id] !== (acc.isVisible ?? true)) {
+        // Check account visibility changes (only look at local overrides)
+        for (const [accountId, localValue] of Object.entries(localVisibilityChanges)) {
+            const account = accounts.find(acc => acc.id === accountId);
+            const serverValue = account?.isVisible ?? true;
+            if (localValue !== serverValue) {
                 return true;
             }
         }
 
         // Check currency changes
-        if (selectedCurrency && selectedCurrency !== userSettings?.mainCurrency) {
+        if (localCurrencyOverride && localCurrencyOverride !== userSettings?.mainCurrency) {
             return true;
         }
 
         return false;
-    }, [pendingVisibility, selectedCurrency, userSettings, accounts]);
+    }, [localVisibilityChanges, localCurrencyOverride, userSettings, accounts]);
 
     const handleToggle = (accountId: string) => {
-        setPendingVisibility((prev) => ({
+        const currentValue = pendingVisibility[accountId] ?? true;
+        setLocalVisibilityChanges((prev) => ({
             ...prev,
-            [accountId]: !prev[accountId]
+            [accountId]: !currentValue
         }));
     };
 
     const handleCurrencyChange = (value: string) => {
-        setSelectedCurrency(value);
+        setLocalCurrencyOverride(value);
     };
 
     const handleSave = async () => {
         const promises: Promise<void>[] = [];
 
-        // Save account visibility changes
-        const visibilityUpdates = Object.entries(pendingVisibility)
-            .filter(([accountId, isVisible]) => {
+        // Save account visibility changes (only local overrides that differ from server)
+        const visibilityUpdates = Object.entries(localVisibilityChanges)
+            .filter(([accountId, localValue]) => {
                 const account = accounts.find(acc => acc.id === accountId);
-                const currentValue = account?.isVisible ?? true;
-                return isVisible !== currentValue;
+                const serverValue = account?.isVisible ?? true;
+                return localValue !== serverValue;
             })
             .map(([accountId, isVisible]) => ({ accountId, isVisible }));
 
@@ -92,16 +96,18 @@ export function AppearanceSettings() {
         }
 
         // Save currency changes
-        if (selectedCurrency && selectedCurrency !== userSettings?.mainCurrency) {
-            promises.push(updateMainCurrency(selectedCurrency).then(() => {}));
+        if (localCurrencyOverride && localCurrencyOverride !== userSettings?.mainCurrency) {
+            promises.push(updateMainCurrency(localCurrencyOverride).then(() => {}));
         }
 
         // Wait for all saves to complete
-        // Note: hasChanges is derived state - it will automatically become false
-        // when the server data refetches and matches our local state
         if (promises.length > 0) {
             try {
                 await Promise.all(promises);
+                // S-TIER: Clear local overrides after successful save
+                // Server state will be refetched, derived state will match
+                setLocalVisibilityChanges({});
+                setLocalCurrencyOverride(null);
             } catch (error) {
                 console.error('Error saving settings:', error);
             }

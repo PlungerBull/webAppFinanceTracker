@@ -1,68 +1,49 @@
 /**
- * Auth Provider Exports
+ * Auth Module - Type Exports Only
  *
- * Centralized exports for auth provider abstraction.
+ * This barrel file exports ONLY types and interfaces.
  *
- * @module auth-provider
+ * For runtime imports:
+ * - Client Components: import from '@/lib/auth/client'
+ * - Server Components: import from '@/lib/auth/server'
+ *
+ * @module auth
  */
 
 // ============================================================================
-// INTERFACES
+// INTERFACES (Type-only exports - safe for both client and server)
 // ============================================================================
 
-// Identity provider interface (all platforms)
-export * from './auth-provider.interface';
+export type { IAuthProvider } from './auth-provider.interface';
+export { AuthenticationError } from './auth-provider.interface';
 
-// Credential provider interface (web only)
-export * from './credential-auth-provider.interface';
+export type {
+  ICredentialAuthProvider,
+  CredentialSignUpData,
+  CredentialSignInData,
+  ResetPasswordData,
+  UpdatePasswordData,
+  ChangePasswordData,
+  ChangeEmailData,
+} from './credential-auth-provider.interface';
 
-// OAuth provider interface (iOS primarily)
-export * from './oauth-auth-provider.interface';
+export type { IOAuthAuthProvider, OAuthProvider } from './oauth-auth-provider.interface';
 
-// ============================================================================
-// IMPLEMENTATIONS
-// ============================================================================
-
-// Supabase identity provider
-export * from './supabase-auth-provider';
-
-// Supabase credential provider
-export * from './supabase-credential-provider';
-
-// ============================================================================
-// SERVER-SIDE HELPERS
-// ============================================================================
-
-export * from './server-auth';
-
-// ============================================================================
-// AUTH API (Singleton Facade)
-// ============================================================================
-
-export {
-  type AuthApi,
-  createAuthApi,
-  initAuthApi,
-  getAuthApi,
-  isAuthApiInitialized,
-} from './auth-api';
+export type { AuthApi } from './auth-api';
 
 // ============================================================================
 // RE-EXPORTED DOMAIN TYPES
 // ============================================================================
 
 export type {
-  // User and session entities
   AuthUserEntity,
   AuthSessionEntity,
   AuthEventType,
   AuthStateChangeCallback,
   AuthUnsubscribe,
-  // Auth method types
   AuthMethod,
   SignInResult,
   SignUpResult,
-  // Error types
   CredentialErrorCode,
   CredentialAuthError,
   OAuthErrorCode,

@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -39,7 +44,7 @@ export type Database = {
           color: string
           created_at: string
           currency_code: string
-          current_balance: number
+          current_balance_cents: number
           deleted_at: string | null
           group_id: string
           id: string
@@ -54,7 +59,7 @@ export type Database = {
           color?: string
           created_at?: string
           currency_code?: string
-          current_balance?: number
+          current_balance_cents?: number
           deleted_at?: string | null
           group_id?: string
           id?: string
@@ -69,7 +74,7 @@ export type Database = {
           color?: string
           created_at?: string
           currency_code?: string
-          current_balance?: number
+          current_balance_cents?: number
           deleted_at?: string | null
           group_id?: string
           id?: string
@@ -175,42 +180,48 @@ export type Database = {
       reconciliations: {
         Row: {
           account_id: string
-          beginning_balance: number
+          beginning_balance_cents: number
           created_at: string
           date_end: string | null
           date_start: string | null
-          ending_balance: number
+          deleted_at: string | null
+          ending_balance_cents: number
           id: string
           name: string
           status: Database["public"]["Enums"]["reconciliation_status"]
           updated_at: string
           user_id: string
+          version: number
         }
         Insert: {
           account_id: string
-          beginning_balance: number
+          beginning_balance_cents?: number
           created_at?: string
           date_end?: string | null
           date_start?: string | null
-          ending_balance: number
+          deleted_at?: string | null
+          ending_balance_cents?: number
           id?: string
           name: string
           status?: Database["public"]["Enums"]["reconciliation_status"]
           updated_at?: string
           user_id: string
+          version?: number
         }
         Update: {
           account_id?: string
-          beginning_balance?: number
+          beginning_balance_cents?: number
           created_at?: string
           date_end?: string | null
           date_start?: string | null
-          ending_balance?: number
+          deleted_at?: string | null
+          ending_balance_cents?: number
           id?: string
           name?: string
           status?: Database["public"]["Enums"]["reconciliation_status"]
           updated_at?: string
           user_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -632,14 +643,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["account_currency"]
+            columns: ["currency_original"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
           },
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["currency_original"]
+            columns: ["account_currency"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
@@ -753,8 +764,8 @@ export type Database = {
       create_transfer:
         | {
             Args: {
-              p_amount_cents: number
-              p_amount_received_cents: number
+              p_amount: number
+              p_amount_received: number
               p_category_id?: string
               p_date: string
               p_description: string
@@ -767,8 +778,8 @@ export type Database = {
           }
         | {
             Args: {
-              p_amount: number
-              p_amount_received: number
+              p_amount_cents: number
+              p_amount_received_cents: number
               p_category_id?: string
               p_date: string
               p_description: string
@@ -797,6 +808,10 @@ export type Database = {
       }
       delete_category_with_version: {
         Args: { p_category_id: string; p_expected_version: number }
+        Returns: Json
+      }
+      delete_reconciliation_with_version: {
+        Args: { p_expected_version: number; p_reconciliation_id: string }
         Returns: Json
       }
       delete_transaction_with_version: {
@@ -883,17 +898,27 @@ export type Database = {
         Args: { p_since_version: number; p_user_id: string }
         Returns: Json
       }
-      import_transactions: {
-        Args: {
-          p_default_account_color: string
-          p_default_category_color: string
-          p_general_label?: string
-          p_transactions: Json
-          p_uncategorized_label?: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
+      import_transactions:
+        | {
+            Args: {
+              p_default_account_color: string
+              p_default_category_color: string
+              p_transactions: Json
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_default_account_color: string
+              p_default_category_color: string
+              p_general_label?: string
+              p_transactions: Json
+              p_uncategorized_label?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       link_transactions_to_reconciliation: {
         Args: { p_reconciliation_id: string; p_transaction_ids: string[] }
         Returns: Json
@@ -908,7 +933,6 @@ export type Database = {
               p_account_id: string
               p_category_id: string
               p_exchange_rate?: number
-              p_expected_version?: number
               p_final_amount?: number
               p_final_date?: string
               p_final_description?: string
@@ -921,6 +945,7 @@ export type Database = {
               p_account_id: string
               p_category_id: string
               p_exchange_rate?: number
+              p_expected_version?: number
               p_final_amount?: number
               p_final_date?: string
               p_final_description?: string
@@ -1162,4 +1187,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -206,6 +206,12 @@ export function useInitialHydration(userId: string | undefined): UseInitialHydra
   }, [performHydration]);
 
   // Auto-hydrate on mount when dependencies are ready
+  /* react-compiler-ignore: EXTERNAL_SYSTEM_SYNC
+   * WatermelonDB hydration is an external system sync pattern.
+   * setState calls orchestrate the hydration lifecycle (checking → hydrating → complete).
+   * This is the correct pattern for async initialization per ARCHITECTURE.md.
+   * The effect runs once on mount and when userId changes - not cascading renders.
+   */
   /* eslint-disable react-hooks/set-state-in-effect -- Database hydration is external system sync */
   useEffect(() => {
     // Wait for database to be ready

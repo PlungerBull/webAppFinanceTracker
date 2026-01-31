@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { getAuthApi } from '@/lib/auth';
+import { getAuthApi } from '@/lib/auth/client';
 import { updatePasswordSchema, type UpdatePasswordFormData } from '@/features/auth/schemas/auth.schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

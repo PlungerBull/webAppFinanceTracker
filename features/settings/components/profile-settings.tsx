@@ -8,7 +8,7 @@ import {
     updateProfileSchema,
     type UpdateProfileFormData,
 } from '@/lib/schemas/profile.schema';
-import { getAuthApi } from '@/lib/auth';
+import { getAuthApi } from '@/lib/auth/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

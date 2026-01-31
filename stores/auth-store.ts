@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AuthUserEntity } from '@/domain/auth';
-import { getAuthApi, isAuthApiInitialized } from '@/lib/auth';
+import { getAuthApi, isAuthApiInitialized } from '@/lib/auth/client';
 
 /**
  * Auth Store State
