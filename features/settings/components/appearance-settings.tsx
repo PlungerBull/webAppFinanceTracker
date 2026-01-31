@@ -17,9 +17,9 @@ import { CurrencySettings } from './currency-settings';
  */
 export function AppearanceSettings() {
     const { accounts, isLoading } = useAccountsData();
-    const { mutate: updateVisibility, isPending: isSavingVisibility } = useUpdateAccountVisibility();
+    const { mutateAsync: updateVisibility, isPending: isSavingVisibility } = useUpdateAccountVisibility();
     const { data: userSettings } = useUserSettings();
-    const { mutate: updateMainCurrency, isPending: isSavingCurrency } = useUpdateMainCurrency();
+    const { mutateAsync: updateMainCurrency, isPending: isSavingCurrency } = useUpdateMainCurrency();
 
     // Local state for pending changes
     const [pendingVisibility, setPendingVisibility] = useState<Record<string, boolean>>({});
@@ -78,7 +78,7 @@ export function AppearanceSettings() {
     };
 
     const handleSave = async () => {
-        const promises: Promise<any>[] = [];
+        const promises: Promise<void>[] = [];
 
         // Save account visibility changes
         const visibilityUpdates = Object.entries(pendingVisibility)
@@ -90,26 +90,12 @@ export function AppearanceSettings() {
             .map(([accountId, isVisible]) => ({ accountId, isVisible }));
 
         if (visibilityUpdates.length > 0) {
-            promises.push(
-                new Promise((resolve, reject) => {
-                    updateVisibility(visibilityUpdates, {
-                        onSuccess: resolve,
-                        onError: reject
-                    });
-                })
-            );
+            promises.push(updateVisibility(visibilityUpdates));
         }
 
         // Save currency changes
         if (selectedCurrency && selectedCurrency !== userSettings?.mainCurrency) {
-            promises.push(
-                new Promise((resolve, reject) => {
-                    updateMainCurrency(selectedCurrency, {
-                        onSuccess: resolve,
-                        onError: reject
-                    });
-                })
-            );
+            promises.push(updateMainCurrency(selectedCurrency).then(() => {}));
         }
 
         // Wait for all saves to complete
