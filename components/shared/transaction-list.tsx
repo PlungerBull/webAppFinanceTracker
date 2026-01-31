@@ -108,10 +108,10 @@ export function TransactionList({
   hasNextPage = false,
   fetchNextPage,
   selectedTransactionId,
-  onTransactionSelect,
+  // onTransactionSelect - intentionally not destructured (handled by parent)
   isBulkMode = false,
   selectedIds = new Set(),
-  onToggleBulkMode,
+  // onToggleBulkMode - intentionally not destructured (handled by parent)
   onToggleSelection,
   onEnterBulkMode,
   scrollToIndex,

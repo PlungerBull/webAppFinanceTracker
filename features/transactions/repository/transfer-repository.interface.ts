@@ -13,7 +13,7 @@
  */
 
 import type { DataResult } from '@/lib/data-patterns';
-import type { CreateTransferDTO, TransferResult } from '../domain';
+import type { CreateTransferDTO } from '../domain';
 
 /**
  * Transfer Creation Result (from RPC)

@@ -10,19 +10,52 @@
 
 ## Lint Cleanup (Tech Debt)
 
-**Summary:** 173 issues (90 errors, 83 warnings) across 77 files
+**Summary:** 65 issues (14 errors, 51 warnings) — *Updated after Phase 4 Hygiene*
 
-### Error Categories
+### Completed ✅
 
-| Type | Count | Severity |
-|------|-------|----------|
-| `@typescript-eslint/no-unused-vars` | 82 | warning |
-| `@typescript-eslint/no-explicit-any` | 48 | error |
-| `no-restricted-imports` (cross-feature) | 15 | error |
-| `react-hooks/set-state-in-effect` | 11 | error |
-| `react-compiler/react-compiler` (refs) | 6 | error |
-| `prefer-const` | 5 | error |
-| `react/no-unescaped-entities` | 4 | error |
+- [x] **Phase 4: Hygiene** — `prefer-const` (5→0), `unused-vars` (82→51), unused imports removed
+
+### Remaining Error Categories
+
+| Type | Count | Severity | Status |
+|------|-------|----------|--------|
+| `@typescript-eslint/no-unused-vars` | 51 | warning | Intentional `_` prefixes |
+| `@typescript-eslint/no-explicit-any` | 8 | error | **TODO** |
+| `react/no-unescaped-entities` | 4 | error | **TODO** |
+| `react-hooks/preserve-manual-memoization` | 1 | error | **TODO** |
+| `react-hooks/exhaustive-deps` | 1 | error | **TODO** |
+| `no-restricted-imports` (cross-feature) | ~15 | error | Architectural |
+| `react-hooks/set-state-in-effect` | ~11 | error | Architectural |
+
+### `@typescript-eslint/no-explicit-any` (8 errors)
+
+| File | Line | Context |
+|------|------|---------|
+| `features/inbox/repository/local-inbox-repository.ts` | 537 | WatermelonDB raw query |
+| `features/inbox/repository/supabase-inbox-repository.test.ts` | 17 | Mock Supabase client |
+| `features/transactions/api/filters.ts` | 55 | Supabase query builder generic |
+| `features/transactions/hooks/use-transaction-routing.ts` | 185, 222 | Service factory params |
+| `lib/data/__tests__/data-transformers.test.ts` | 105, 120, 148, 149 | Test edge cases |
+
+### `react/no-unescaped-entities` (4 errors)
+
+| File | Line | Fix |
+|------|------|-----|
+| `features/reconciliations/components/settings/reconciliation-settings.tsx` | 71 | Escape `"` with `&quot;` |
+| `features/reconciliations/components/settings/reconciliation-settings.tsx` | 102 | Escape `"` with `&quot;` |
+
+### `react-hooks/preserve-manual-memoization` (1 error)
+
+| File | Line | Issue |
+|------|------|-------|
+| `features/transactions/components/bulk-action-bar.tsx` | 119 | `reconciliations` dependency may be modified |
+
+### `react-hooks/exhaustive-deps` (1 error)
+
+| File | Line | Issue |
+|------|------|-------|
+| `lib/sync/hooks/use-delta-sync.ts` | 147 | Missing `mergedConfig` dependency |
 
 ### Hotspots by Directory
 
@@ -70,6 +103,7 @@ Files with cascading render issues:
 
 ## Known Bugs & Edge Cases
 
+- [ ] **Build Error - Auth Import Boundary:** `lib/auth/index.ts` re-exports server-side code (`server-auth.ts`) which uses `next/headers`. This is imported by client components (`components/settings/change-email-modal.tsx`), violating the Next.js client/server boundary. Fix: Split exports into `lib/auth/client.ts` and `lib/auth/server.ts`, or use dynamic imports.
 - [ ] **Main Currency Fix:** Resolve the bug where changing the "Main Currency" breaks existing balance calculations
 - [ ] **Duplicate Detection:** Improve fuzzy matching logic in Inbox to reduce false negatives on duplicates
 - [ ] **Import Edge Cases:** Better error handling for Excel files with malformed headers

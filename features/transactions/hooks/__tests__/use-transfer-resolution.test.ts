@@ -555,7 +555,7 @@ describe('useTransferResolution', () => {
         toGroupId: 'group-multi',
       };
 
-      let { result, rerender } = renderHook(
+      const { result, rerender } = renderHook(
         (props: TransferResolutionInput) =>
           useTransferResolution(props, groupedAccounts, rawAccounts),
         { initialProps: input }

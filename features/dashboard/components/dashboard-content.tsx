@@ -3,7 +3,6 @@
 import { PageHeader } from '@/components/layout/page-header';
 import { FinancialOverview } from './financial-overview';
 import { useSidebar } from '@/contexts/sidebar-context';
-import { cn } from '@/lib/utils';
 
 export function DashboardContent() {
   const { isCollapsed } = useSidebar();

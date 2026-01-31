@@ -3,7 +3,7 @@
 import { useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { TransactionDetailPanel as SharedPanel } from '@/components/shared/transaction-detail-panel';
-import type { PanelData, TransactionPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/components/shared/transaction-detail-panel';
+import type { TransactionPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/components/shared/transaction-detail-panel';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useDeleteTransaction } from '../hooks/use-transactions';
 import { useTransactionUpdate } from '../hooks/use-transaction-update';
@@ -26,7 +26,7 @@ interface TransactionDetailPanelProps {
 
 export function TransactionDetailPanel({
   transaction,
-  accountId,
+  // accountId - intentionally not destructured (lookup via transaction.accountId)
   categories,
   accounts,
   variant = 'desktop',

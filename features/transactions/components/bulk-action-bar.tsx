@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Hash, CreditCard, Calendar as CalendarIcon, FileText, Loader2, FileCheck } from 'lucide-react';
+import { X, Hash, CreditCard, Calendar as CalendarIcon, Loader2, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { SmartSelector } from './smart-selector';
@@ -54,8 +54,7 @@ export function BulkActionBar({
   onAccountChange,
   dateValue,
   onDateChange,
-  notesValue,
-  onNotesChange,
+  // notesValue, onNotesChange - intentionally not destructured (feature not yet implemented)
   reconciliationValue,
   onReconciliationChange,
   selectedIds,

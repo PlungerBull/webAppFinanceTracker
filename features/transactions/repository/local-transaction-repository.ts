@@ -31,7 +31,6 @@ import type {
 } from '../domain/types';
 import type { TransactionViewEntity } from '../domain/entities';
 import {
-  TransactionError,
   TransactionNotFoundError,
   TransactionVersionConflictError,
   TransactionRepositoryError,
@@ -376,8 +375,8 @@ export class LocalTransactionRepository implements ITransactionRepository {
         };
       }
 
-      // Get account for currency
-      const account = await this.database
+      // Get account for currency (reserved for future currency lookup)
+      const _account = await this.database
         .get<AccountModel>('bank_accounts')
         .find(data.accountId);
 
@@ -615,8 +614,8 @@ export class LocalTransactionRepository implements ITransactionRepository {
   }
 
   async bulkUpdate(
-    userId: string,
-    data: BulkUpdateTransactionDTO
+    _userId: string,
+    _data: BulkUpdateTransactionDTO
   ): Promise<DataResult<BulkUpdateResult>> {
     // TODO: Implement bulk update
     return {
@@ -886,7 +885,7 @@ export class LocalTransactionRepository implements ITransactionRepository {
     }
   }
 
-  async permanentlyDelete(userId: string, id: string): Promise<DataResult<void>> {
+  async permanentlyDelete(_userId: string, _id: string): Promise<DataResult<void>> {
     // ADMIN ONLY - not implemented for local
     return {
       success: false,

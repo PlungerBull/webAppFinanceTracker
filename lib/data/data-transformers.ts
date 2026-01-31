@@ -28,7 +28,6 @@ import type { TransactionViewEntity } from '@/features/transactions/domain/entit
 import type { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
 import type { AuthUserEntity, AuthSessionEntity, AuthEventType } from '@/domain/auth';
 import { toSafeInteger, toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
-import { toCents } from '@/lib/utils/cents-conversion';
 
 // ============================================================================
 // FINANCIAL OVERVIEW TYPES (RPC Response → Domain)
@@ -183,8 +182,8 @@ export function dbInboxItemToDomain(
     status: (dbInboxItem.status ?? 'pending') as 'pending' | 'processed' | 'ignored',
     createdAt: dbInboxItem.created_at ?? new Date().toISOString(),
     updatedAt: dbInboxItem.updated_at ?? new Date().toISOString(),
-    version: (dbInboxItem as any).version ?? 1,
-    deletedAt: (dbInboxItem as any).deleted_at ?? null,
+    version: dbInboxItem.version ?? 1,
+    deletedAt: dbInboxItem.deleted_at ?? null,
   };
 }
 
@@ -224,8 +223,8 @@ export function dbInboxItemViewToDomain(
     status: (dbInboxItemView.status ?? 'pending') as 'pending' | 'processed' | 'ignored',
     createdAt: dbInboxItemView.created_at ?? new Date().toISOString(),  // Fallback to now if missing
     updatedAt: dbInboxItemView.updated_at ?? new Date().toISOString(),  // Fallback to now if missing
-    version: (dbInboxItemView as any).version ?? 1,
-    deletedAt: (dbInboxItemView as any).deleted_at ?? null,
+    version: dbInboxItemView.version ?? 1,
+    deletedAt: dbInboxItemView.deleted_at ?? null,
 
     // Joined display data (from view columns) - these use undefined for "not present"
     // This is valid because the entity type declares these as optional
@@ -307,32 +306,27 @@ type DbAccountViewRow = Database['public']['Tables']['bank_accounts']['Row'] & {
  * - currencySymbol: null if JOIN failed (not '' or '$')
  * - id, userId, groupId: pass through (NOT NULL in schema)
  *
- * SYNC FIELDS (Phase 2a):
+ * SYNC FIELDS:
  * - version: Optimistic concurrency control
  * - deletedAt: Tombstone pattern
  */
 export function dbAccountViewToDomain(
   dbRow: DbAccountViewRow
 ): AccountViewEntity {
-  const syncRow = dbRow as DbAccountViewRow & {
-    version?: number;
-    deleted_at?: string | null;
-  };
-
   return {
     id: dbRow.id,
-    version: syncRow.version ?? 1,
+    version: dbRow.version ?? 1,
     userId: dbRow.user_id,
     groupId: dbRow.group_id,
     name: dbRow.name,
     type: dbRow.type as AccountViewEntity['type'],
     currencyCode: dbRow.currency_code,
     color: dbRow.color,
-    currentBalanceCents: toCents(dbRow.current_balance),
+    currentBalanceCents: dbRow.current_balance_cents,
     isVisible: dbRow.is_visible,
     createdAt: dbRow.created_at,
     updatedAt: dbRow.updated_at,
-    deletedAt: syncRow.deleted_at ?? null,
+    deletedAt: dbRow.deleted_at ?? null,
     currencySymbol: dbRow.global_currencies?.symbol ?? null,
   };
 }

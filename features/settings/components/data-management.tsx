@@ -178,7 +178,7 @@ export function DataManagement() {
                                     const { DataExportService } = await import('@/features/import-export/services/data-export-service');
                                     const service = new DataExportService(supabase, authProvider);
                                     await service.exportToExcel();
-                                } catch (err) {
+                                } catch {
                                     alert(SETTINGS.MESSAGES.ERROR.EXPORT_FAILED);
                                 }
                             }}

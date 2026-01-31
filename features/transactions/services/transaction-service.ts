@@ -28,10 +28,7 @@ import type {
   CategoryCounts,
 } from '../domain/types';
 import type { TransactionViewEntity } from '../domain/entities';
-import {
-  TransactionVersionConflictError,
-  TransactionNotFoundError,
-} from '../domain/errors';
+import { TransactionVersionConflictError } from '../domain/errors';
 
 /**
  * Transaction Service

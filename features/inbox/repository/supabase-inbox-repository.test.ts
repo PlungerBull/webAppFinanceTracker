@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SupabaseInboxRepository } from './supabase-inbox-repository';
-import { VersionConflictError, InboxNotFoundError } from '../domain/errors';
+import { VersionConflictError } from '../domain/errors';
 
 // Mock Supabase Client
 const mockSupabase = {

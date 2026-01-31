@@ -890,9 +890,9 @@ export class LocalCategoryRepository implements ICategoryRepository {
   }
 
   async mergeCategories(
-    userId: string,
-    sourceIds: string[],
-    targetId: string
+    _userId: string,
+    _sourceIds: string[],
+    _targetId: string
   ): Promise<CategoryDataResult<MergeCategoriesResult>> {
     // CTO: Merge is an atomic operation that requires server coordination
     // because it affects transactions and requires version bumping.

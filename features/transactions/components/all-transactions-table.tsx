@@ -15,7 +15,7 @@
  * @module all-transactions-table
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { MobileHeader } from '@/components/layout/mobile-header';
 import { useSearchParams } from 'next/navigation';
@@ -46,25 +46,26 @@ function TransactionsContent() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
   // === Sort Preference ===
+  // S-TIER: Derive sortBy from server state + local override
+  // Eliminates setState-in-effect anti-pattern
   const { data: userSettings, isLoading: isLoadingSettings } = useUserSettings();
   const updateSortPreference = useUpdateSortPreference();
 
-  const [sortBy, setSortBy] = useState<TransactionSortMode>(
-    userSettings?.transactionSortPreference || 'date'
-  );
+  // Track only local override, not synced server state
+  const [localSortOverride, setLocalSortOverride] = useState<TransactionSortMode | null>(null);
 
-  // Sync local state when settings load/change
-  /* eslint-disable react-hooks/set-state-in-effect -- Initialization from async settings */
-  useEffect(() => {
-    if (userSettings?.transactionSortPreference) {
-      setSortBy(userSettings.transactionSortPreference);
-    }
-  }, [userSettings?.transactionSortPreference]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  // Derived state: local override takes precedence, fallback to server, then default
+  const sortBy = localSortOverride ?? userSettings?.transactionSortPreference ?? 'date';
 
   const handleSortChange = (newSortBy: TransactionSortMode) => {
-    setSortBy(newSortBy);
-    updateSortPreference.mutate(newSortBy);
+    setLocalSortOverride(newSortBy);
+    // Optimistic: local override shows immediately while server persists
+    updateSortPreference.mutate(newSortBy, {
+      onSuccess: () => {
+        // After server confirms, clear local override so derived state uses server value
+        setLocalSortOverride(null);
+      },
+    });
   };
 
   // === Filters (Domain Hook) ===
@@ -88,7 +89,7 @@ function TransactionsContent() {
   });
 
   const { categories } = useCategoriesData();
-  const { data: accountsData = [] } = useGroupedAccounts();
+  useGroupedAccounts(); // Hook required for cache hydration
   const { accounts: flatAccounts } = useAccountsData();
 
   const { data: categoryCounts = {} } = useCategoryCounts({

@@ -7,7 +7,7 @@
  * @module use-inbox
  */
 
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getInboxService } from '../services/inbox-service';
 import { INBOX, PAGINATION } from '@/lib/constants';
 import type {

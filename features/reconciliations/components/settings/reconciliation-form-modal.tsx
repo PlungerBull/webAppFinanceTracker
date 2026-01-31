@@ -128,7 +128,7 @@ export function ReconciliationFormModal({
       }
       onOpenChange(false);
       reset();
-    } catch (error) {
+    } catch {
       // Error handled by mutation hooks
     }
   };

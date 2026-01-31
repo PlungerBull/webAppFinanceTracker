@@ -355,8 +355,8 @@ describe('Offline Scenarios', () => {
     });
 
     it('should not trigger sync when already online', () => {
-      let wasOffline = false;
-      let isOnline = true;
+      const wasOffline = false;
+      const isOnline = true;
       let syncTriggered = false;
 
       // Status remains online

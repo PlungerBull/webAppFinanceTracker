@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { TransactionDetailPanel as SharedPanel } from '@/components/shared/transaction-detail-panel';
-import type { PanelData, InboxPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/components/shared/transaction-detail-panel';
+import type { InboxPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/components/shared/transaction-detail-panel';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { useReferenceData } from '@/lib/hooks/use-reference-data';
 import type { InboxItemViewEntity } from '@/domain/inbox';

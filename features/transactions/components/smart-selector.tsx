@@ -24,7 +24,7 @@ export function SmartSelector({
   placeholder,
   isOpen,
   onOpenChange,
-  required = false,
+  // required - intentionally not destructured (not yet implemented in UI)
   error = false,
   children,
   className,

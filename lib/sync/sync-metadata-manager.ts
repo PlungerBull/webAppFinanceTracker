@@ -22,7 +22,6 @@ import {
   InboxModel,
 } from '@/lib/local-db';
 import { SYNCABLE_TABLES, DEFAULT_SYNC_CONFIG } from './constants';
-import type { TableName } from '@/lib/local-db/schema';
 
 /**
  * Result of tombstone pruning operation
@@ -53,10 +52,10 @@ export class SyncMetadataManager {
    * Returns the MINIMUM lastSyncedVersion across all tables.
    * This is conservative - ensures no changes are missed.
    *
-   * @param userId - User ID (for future multi-user support)
+   * @param _userId - User ID (for future multi-user support)
    * @returns The lowest lastSyncedVersion across all sync_metadata records
    */
-  async getLastSyncedVersion(userId: string): Promise<number> {
+  async getLastSyncedVersion(_userId: string): Promise<number> {
     const records = await this.database
       .get<SyncMetadataModel>(TABLE_NAMES.SYNC_METADATA)
       .query()

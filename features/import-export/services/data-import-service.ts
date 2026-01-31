@@ -56,7 +56,7 @@ export class DataImportService {
 
             // Pre-process dates to ensure they are strings before sending to RPC
             // RPC expects "Date" as text in YYYY-MM-DD format
-            const processedRows = rows.map((row, index) => {
+            const processedRows = rows.map((row, _index) => {
                 try {
                     let dateStr: string;
                     if (!row.Date) throw new Error(IMPORT_EXPORT.ERRORS.DATE_REQUIRED);
@@ -81,7 +81,7 @@ export class DataImportService {
                         ...row,
                         Date: dateStr
                     };
-                } catch (e) {
+                } catch {
                     return { ...row, Date: String(row.Date) };
                 }
             });

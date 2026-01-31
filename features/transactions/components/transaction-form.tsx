@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { CreditCard, Tag, Calendar as CalendarIcon } from 'lucide-react';
 import { SmartSelector } from './smart-selector';
 import { CategorySelector } from '@/components/shared/category-selector';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types/domain';
 import type { AccountViewEntity } from '@/features/accounts/domain';
@@ -38,7 +35,7 @@ export function TransactionForm({
   onChange,
   categories,
   flatAccounts,
-  isSubmitting,
+  // isSubmitting - intentionally not destructured (parent handles submit state UI)
   hasSubmitted,
 }: TransactionFormProps) {
   const selectedAccount = flatAccounts.find((a) => a.id === data.fromAccountId);

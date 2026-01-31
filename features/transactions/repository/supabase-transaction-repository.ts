@@ -36,7 +36,6 @@ import type {
 } from '../domain/types';
 import type { TransactionViewEntity } from '../domain/entities';
 import {
-  TransactionError,
   TransactionNotFoundError,
   TransactionVersionConflictError,
   TransactionRepositoryError,
@@ -476,8 +475,8 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
   }
 
   async bulkUpdate(
-    userId: string,
-    data: BulkUpdateTransactionDTO
+    _userId: string,
+    _data: BulkUpdateTransactionDTO
   ): Promise<DataResult<BulkUpdateResult>> {
     // TODO: Implement bulk update with version checking
     // This requires a new RPC function in the database
@@ -655,8 +654,8 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
   // ============================================================================
 
   async getChangesSince(
-    userId: string,
-    sinceVersion: number
+    _userId: string,
+    _sinceVersion: number
   ): Promise<DataResult<SyncResponse<TransactionChanges>>> {
     // TODO: Implement delta sync
     return {
@@ -667,8 +666,8 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
   }
 
   async permanentlyDelete(
-    userId: string,
-    id: string
+    _userId: string,
+    _id: string
   ): Promise<DataResult<void>> {
     // TODO: Implement permanent delete (ADMIN ONLY)
     return {

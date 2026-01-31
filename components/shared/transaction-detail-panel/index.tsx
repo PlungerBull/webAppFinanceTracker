@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { IdentityHeader } from './identity-header';
 import { FormSection } from './form-section';
 import { MissingInfoBanner } from './missing-info-banner';
@@ -17,7 +17,7 @@ export function TransactionDetailPanel(props: TransactionDetailPanelProps) {
     accounts,
     categories,
     onDelete,
-    onClose,
+    onClose: _onClose, // Shared modal pattern - reserved for future use
     isLoading = false,
   } = props;
 
@@ -38,15 +38,19 @@ export function TransactionDetailPanel(props: TransactionDetailPanelProps) {
     [editedFields]
   );
 
-  // KEY RESET PATTERN: Track previous ID to reset state on entity change
+  // S-TIER: Imperative reset via useLayoutEffect
+  // Avoids hard unmount/remount that key prop would cause (preserves native view recycling).
+  // useLayoutEffect runs synchronously before paint, resetting state while preserving
+  // the component instance - critical for 60fps iOS Native Port performance.
   const prevIdRef = useRef(data?.id);
-  if (data?.id !== prevIdRef.current) {
-    prevIdRef.current = data?.id;
-    // Reset inline during render (synchronous, no cascade)
-    if (Object.keys(editedFields).length > 0) {
+  /* eslint-disable react-hooks/set-state-in-effect -- S-TIER: useLayoutEffect reset pattern */
+  useLayoutEffect(() => {
+    if (data?.id !== prevIdRef.current) {
+      prevIdRef.current = data?.id;
       setEditedFields({});
     }
-  }
+  }, [data?.id]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Update a single field
   const handleFieldChange = (field: keyof EditedFields, value: string | number | undefined) => {

@@ -549,8 +549,8 @@ export class LocalInboxRepository implements IInboxRepository {
   // ============================================================================
 
   async promote(
-    userId: string,
-    data: PromoteInboxItemDTO
+    _userId: string,
+    _data: PromoteInboxItemDTO
   ): Promise<DataResult<PromoteResult>> {
     // CTO: Promotion requires atomic server operation
     // because it creates a transaction and updates inbox status

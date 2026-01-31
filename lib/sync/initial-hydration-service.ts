@@ -23,7 +23,6 @@
 import type { Database as WatermelonDatabase } from '@nozbe/watermelondb';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database as SupabaseDatabase } from '@/types/supabase';
-import { Q } from '@nozbe/watermelondb';
 import {
   AccountModel,
   CategoryModel,
@@ -335,8 +334,8 @@ export class InitialHydrationService implements IInitialHydrationService {
           record.currencyCode = row.currency_code;
           record.color = row.color;
           record.isVisible = row.is_visible;
-          // Convert decimal to cents (string-based for precision)
-          record.currentBalanceCents = this.toCents(row.current_balance);
+          // Balance is already in integer cents in the database
+          record.currentBalanceCents = row.current_balance_cents;
 
           // Sync fields - mark as synced (came from server)
           record.version = getVersion(row as VersionedRow);
@@ -505,15 +504,14 @@ export class InitialHydrationService implements IInitialHydrationService {
     let maxVersion = 0;
     try {
       // Note: This RPC is defined in 20260126000004_global_version_rpc.sql
-      // Type assertion needed until types are regenerated after migration
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (this.supabase.rpc as any)(
+      const { data, error } = await this.supabase.rpc(
         'get_max_version_for_user',
         { p_user_id: userId }
       );
 
       if (!error && data) {
-        maxVersion = (data as { maxVersion: number }).maxVersion || 0;
+        const result = data as { maxVersion: number };
+        maxVersion = result.maxVersion || 0;
         console.log(`[Hydration] Max server version: ${maxVersion}`);
       }
     } catch (err) {
