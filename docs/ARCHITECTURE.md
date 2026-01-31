@@ -1373,7 +1373,7 @@ SentryProvider          ← Outermost (error tracking + user context)
 - ❌ Use `Sentry.captureException()` for expected network errors (sync retries handle these)
 - ❌ Skip the PII scrubber by constructing events manually
 
-## 13. Cross-Feature IoC Pattern (IGroupingOperations)
+## 13. Cross-Feature IoC Pattern (ICategoryOperations)
 
 ### Overview
 
@@ -1395,32 +1395,32 @@ import { useCategoryService } from '@/features/categories/hooks/use-category-ser
 **Three-layer architecture:**
 
 1. **Sacred Domain (`@/domain/categories`)** — Platform-agnostic interface + error codes
-2. **Orchestrator Hook (`@/lib/hooks/use-grouping-operations`)** — Wraps service, translates errors
+2. **Orchestrator Hook (`@/lib/hooks/use-category-operations`)** — Wraps service, translates errors
 3. **Feature Hooks (`features/groupings/hooks/use-groupings`)** — Consumes orchestrator, never the service directly
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  features/groupings/hooks/use-groupings.ts                       │
 │  - Imports from @/domain/categories (types + error guards)       │
-│  - Imports from @/lib/hooks/use-grouping-operations (orchestrator)│
+│  - Imports from @/lib/hooks/use-category-operations (orchestrator)│
 │  - NEVER imports from @/features/categories/*                    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  lib/hooks/use-grouping-operations.ts (ORCHESTRATOR)             │
+│  lib/hooks/use-category-operations.ts (ORCHESTRATOR)             │
 │  - Wraps useCategoryService() internally                         │
-│  - Error translation: CategoryError → GroupingOperationError     │
+│  - Error translation: CategoryError → CategoryOperationError     │
 │  - Stable memoization via useRef                                 │
-│  - Returns IGroupingOperations | null (Orchestrator Rule)        │
+│  - Returns ICategoryOperations | null (Orchestrator Rule)        │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  domain/categories.ts (SACRED DOMAIN)                            │
-│  - IGroupingOperations interface                                 │
-│  - GroupingErrorCode union type                                  │
-│  - GroupingOperationError interface                              │
+│  - ICategoryOperations interface                                 │
+│  - CategoryErrorCode union type                                  │
+│  - CategoryOperationError interface                              │
 │  - DTOs: CreateGroupingDTO, UpdateGroupingDTO, etc.              │
 │  - Entities: GroupingEntity, CategoryWithCountEntity             │
 └─────────────────────────────────────────────────────────────────┘
@@ -1443,7 +1443,7 @@ Consumers handle errors with typed switch statements:
 
 ```typescript
 onError: (err) => {
-  if (isGroupingOperationError(err)) {
+  if (isCategoryOperationError(err)) {
     switch (err.code) {
       case 'DUPLICATE_NAME':
         toast.error('Grouping already exists');
@@ -1462,9 +1462,9 @@ onError: (err) => {
 The orchestrator uses `useRef` to maintain stable object identity:
 
 ```typescript
-export function useGroupingOperations(): IGroupingOperations | null {
+export function useCategoryOperations(): ICategoryOperations | null {
   const service = useCategoryService();
-  const operationsRef = useRef<IGroupingOperations | null>(null);
+  const operationsRef = useRef<ICategoryOperations | null>(null);
   const serviceRef = useRef(service);
 
   return useMemo(() => {
@@ -1484,7 +1484,7 @@ export function useGroupingOperations(): IGroupingOperations | null {
 }
 ```
 
-This prevents cascading re-renders when `useGroupingOperations()` is consumed by multiple hooks.
+This prevents cascading re-renders when `useCategoryOperations()` is consumed by multiple hooks.
 
 ### Error Type Standards for IoC Interfaces
 
@@ -1526,15 +1526,15 @@ Type 'InboxError' is not assignable to type 'Error'.
 | Interface | Location | Error Type |
 |-----------|----------|------------|
 | `IInboxOperations` | `domain/inbox.ts` | `SerializableError` |
-| `IGroupingOperations` | `domain/categories.ts` | Uses error code translation (no DataResult) |
+| `ICategoryOperations` | `domain/categories.ts` | Uses error code translation (no DataResult) |
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `domain/categories.ts` | `IGroupingOperations`, `GroupingErrorCode`, `GroupingOperationError`, DTOs |
+| `domain/categories.ts` | `ICategoryOperations`, `CategoryErrorCode`, `CategoryOperationError`, DTOs |
 | `domain/inbox.ts` | `IInboxOperations` with `SerializableError`-typed DataResult returns |
-| `lib/hooks/use-grouping-operations.ts` | Orchestrator hook with error translation |
+| `lib/hooks/use-category-operations.ts` | Orchestrator hook with error translation |
 | `lib/hooks/use-inbox-operations.ts` | Orchestrator hook wrapping InboxService |
 | `features/groupings/hooks/use-groupings.ts` | Consumer hooks (queries + mutations) |
 

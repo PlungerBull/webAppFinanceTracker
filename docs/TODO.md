@@ -36,7 +36,7 @@
 
 - [x] **Library Hook Migration:** Move `useBulkSelection` and `useCurrencies` hooks from feature folders to `@/lib/hooks/` to act as neutral orchestrators.
 
-- [ ] **Create Category IoC Interface:** Implement an `ICategoryOperations` interface in `@/domain/categories`. Refactor `add-category-modal.tsx` to depend on this interface rather than importing hooks directly from the groupings feature.
+- [x] **Create Category IoC Interface:** Implemented `ICategoryOperations` interface in `@/domain/categories` (strategic rename from `IGroupingOperations`). Refactored `add-category-modal.tsx` and `edit-grouping-modal.tsx` to use local mutation hooks via the `useCategoryOperations()` orchestrator, eliminating cross-feature imports.
 
 - [ ] **Auth API Abstraction:** Move `authApi` from `features/auth/api/` to `lib/auth/` and ensure `ProfileSettings` utilizes the `IAuthProvider` interface for all metadata updates.
 

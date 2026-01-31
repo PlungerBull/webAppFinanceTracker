@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAddGrouping } from '@/features/groupings/hooks/use-groupings';
+import { useCreateGroupingMutation } from '../hooks/use-category-mutations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -28,7 +28,7 @@ const categorySchema = z.object({
 type CategoryFormData = z.infer<typeof categorySchema>;
 
 export function AddCategoryModal({ open, onOpenChange }: AddCategoryModalProps) {
-    const addGroupingMutation = useAddGrouping();
+    const addGroupingMutation = useCreateGroupingMutation();
     const [categoryType, setCategoryType] = useState<'income' | 'expense'>('expense');
     const [isColorPopoverOpen, setIsColorPopoverOpen] = useState(false);
 

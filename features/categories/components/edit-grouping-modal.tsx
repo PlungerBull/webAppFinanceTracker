@@ -5,7 +5,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCategories } from '../hooks/use-categories';
-import { useUpdateGrouping, useReassignSubcategory } from '@/features/groupings/hooks/use-groupings';
+import { useUpdateGroupingMutation, useReassignSubcategoryMutation } from '../hooks/use-category-mutations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,8 +45,8 @@ const categorySchema = z.object({
 type CategoryFormData = z.infer<typeof categorySchema>;
 
 export function EditGroupingModal({ open, onOpenChange, category }: EditGroupingModalProps) {
-    const updateGroupingMutation = useUpdateGrouping();
-    const reassignSubcategoryMutation = useReassignSubcategory();
+    const updateGroupingMutation = useUpdateGroupingMutation();
+    const reassignSubcategoryMutation = useReassignSubcategoryMutation();
     const { data: allCategories = [] } = useCategories();
 
     // State for subcategory management

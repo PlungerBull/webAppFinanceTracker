@@ -1,11 +1,11 @@
 /**
- * Grouping Operations Orchestrator Hook
+ * Category Operations Orchestrator Hook
  *
- * Provides IGroupingOperations interface for cross-feature use.
+ * Provides ICategoryOperations interface for cross-feature use.
  * Wraps the category service implementation without creating direct feature coupling.
  *
  * ARCHITECTURE PATTERN:
- * - Components import from @/lib/hooks/use-grouping-operations
+ * - Components import from @/lib/hooks/use-category-operations
  * - This hook internally uses the category service
  * - Features never import from @/features/categories/hooks
  * - Error translation: Feature errors → Sacred Domain error codes
@@ -16,18 +16,18 @@
  *
  * Swift Mirror:
  * ```swift
- * class GroupingOperationsAdapter: GroupingOperationsProtocol {
+ * class CategoryOperationsAdapter: CategoryOperationsProtocol {
  *     private let categoryService: CategoryServiceProtocol
  *
  *     init(categoryService: CategoryServiceProtocol) {
  *         self.categoryService = categoryService
  *     }
  *
- *     // ... adapter methods that map CategoryError to GroupingOperationError
+ *     // ... adapter methods that map CategoryError to CategoryOperationError
  * }
  * ```
  *
- * @module lib/hooks/use-grouping-operations
+ * @module lib/hooks/use-category-operations
  */
 
 'use client';
@@ -43,9 +43,9 @@ import {
   isCategoryNotFoundError,
 } from '@/features/categories/domain';
 import type {
-  IGroupingOperations,
-  GroupingOperationError,
-  GroupingErrorCode,
+  ICategoryOperations,
+  CategoryOperationError,
+  CategoryErrorCode,
 } from '@/domain/categories';
 
 // ============================================================================
@@ -53,17 +53,17 @@ import type {
 // ============================================================================
 
 /**
- * Creates a GroupingOperationError with the given code and message.
+ * Creates a CategoryOperationError with the given code and message.
  *
  * Uses Object.assign to add the code property to an Error instance,
  * ensuring instanceof Error checks still work.
  */
-function createGroupingError(
-  code: GroupingErrorCode,
+function createCategoryError(
+  code: CategoryErrorCode,
   message: string,
   childCount?: number
-): GroupingOperationError {
-  const error = new Error(message) as GroupingOperationError;
+): CategoryOperationError {
+  const error = new Error(message) as CategoryOperationError;
   return Object.assign(error, { code, childCount });
 }
 
@@ -73,40 +73,40 @@ function createGroupingError(
  * This translation layer keeps error handling in the orchestrator,
  * allowing consumers to handle errors using only Sacred Domain types.
  */
-function mapToGroupingError(error: unknown): GroupingOperationError {
+function mapToCategoryError(error: unknown): CategoryOperationError {
   // Version conflict (optimistic concurrency control)
   if (isCategoryVersionConflictError(error)) {
-    return createGroupingError('VERSION_CONFLICT', error.message);
+    return createCategoryError('VERSION_CONFLICT', error.message);
   }
 
   // Duplicate name within same parent
   if (isCategoryDuplicateNameError(error)) {
-    return createGroupingError('DUPLICATE_NAME', error.message);
+    return createCategoryError('DUPLICATE_NAME', error.message);
   }
 
   // Parent has children (cannot delete)
   if (isCategoryHasChildrenError(error)) {
-    return createGroupingError('HAS_CHILDREN', error.message, error.childCount);
+    return createCategoryError('HAS_CHILDREN', error.message, error.childCount);
   }
 
   // Category has transactions (cannot delete)
   if (isCategoryHasTransactionsError(error)) {
-    return createGroupingError('HAS_TRANSACTIONS', error.message);
+    return createCategoryError('HAS_TRANSACTIONS', error.message);
   }
 
   // Hierarchy constraint violation
   if (isCategoryHierarchyError(error)) {
-    return createGroupingError('INVALID_HIERARCHY', error.message);
+    return createCategoryError('INVALID_HIERARCHY', error.message);
   }
 
   // Category not found
   if (isCategoryNotFoundError(error)) {
-    return createGroupingError('NOT_FOUND', error.message);
+    return createCategoryError('NOT_FOUND', error.message);
   }
 
   // Unknown error - preserve message
   const message = error instanceof Error ? error.message : String(error);
-  return createGroupingError('NOT_FOUND', message);
+  return createCategoryError('NOT_FOUND', message);
 }
 
 /**
@@ -118,7 +118,7 @@ async function withErrorMapping<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (error) {
-    throw mapToGroupingError(error);
+    throw mapToCategoryError(error);
   }
 }
 
@@ -127,21 +127,21 @@ async function withErrorMapping<T>(fn: () => Promise<T>): Promise<T> {
 // ============================================================================
 
 /**
- * Hook that provides IGroupingOperations interface.
+ * Hook that provides ICategoryOperations interface.
  *
- * Creates an adapter around the CategoryService that implements IGroupingOperations.
- * This allows features to use grouping functionality without directly importing
+ * Creates an adapter around the CategoryService that implements ICategoryOperations.
+ * This allows features to use category functionality without directly importing
  * from the categories feature.
  *
  * CTO MANDATE: Orchestrator Rule
  * Returns null until local database is ready.
  *
- * @returns IGroupingOperations implementation or null if not ready
+ * @returns ICategoryOperations implementation or null if not ready
  *
  * @example
  * ```typescript
- * function GroupingList() {
- *   const operations = useGroupingOperations();
+ * function CategoryList() {
+ *   const operations = useCategoryOperations();
  *
  *   // Guard with enabled flag for queries
  *   const { data } = useQuery({
@@ -155,10 +155,10 @@ async function withErrorMapping<T>(fn: () => Promise<T>): Promise<T> {
  *     try {
  *       await operations?.createGrouping(data);
  *     } catch (err) {
- *       if (isGroupingOperationError(err)) {
+ *       if (isCategoryOperationError(err)) {
  *         switch (err.code) {
  *           case 'DUPLICATE_NAME':
- *             toast.error('Grouping already exists');
+ *             toast.error('Category already exists');
  *             break;
  *           // ... handle other codes
  *         }
@@ -168,12 +168,12 @@ async function withErrorMapping<T>(fn: () => Promise<T>): Promise<T> {
  * }
  * ```
  */
-export function useGroupingOperations(): IGroupingOperations | null {
+export function useCategoryOperations(): ICategoryOperations | null {
   const service = useCategoryService();
 
   // useRef for stable object identity across re-renders
   // This prevents cascading re-renders in consuming components
-  const operationsRef = useRef<IGroupingOperations | null>(null);
+  const operationsRef = useRef<ICategoryOperations | null>(null);
   const serviceRef = useRef(service);
 
   return useMemo(() => {
@@ -215,3 +215,7 @@ export function useGroupingOperations(): IGroupingOperations | null {
     return operationsRef.current;
   }, [service]);
 }
+
+// Legacy alias for backward compatibility during migration
+/** @deprecated Use useCategoryOperations instead */
+export const useGroupingOperations = useCategoryOperations;

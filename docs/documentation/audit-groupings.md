@@ -12,7 +12,7 @@
 The `features/groupings` folder demonstrates **production-grade code quality** with full compliance across all four technical audit pillars. **Significant architectural improvements** have been made since the previous audit:
 
 1. **Sacred Domain Pattern** - Types now imported from `@/domain/categories` (root-level sacred domain)
-2. **IGroupingOperations IoC Interface** - Cross-feature decoupling via `useGroupingOperations()` hook
+2. **ICategoryOperations IoC Interface** - Cross-feature decoupling via `useCategoryOperations()` hook
 3. **Error Translation Layer** - Feature errors mapped to Sacred Domain error codes
 4. **Hybrid Repository** - Offline-first with WatermelonDB + Supabase fallback
 
@@ -26,8 +26,8 @@ The `features/groupings` folder demonstrates **production-grade code quality** w
 **Key Findings:**
 - Zero type safety violations (`any`, `unknown`, or unsafe assertions)
 - **NEW**: Sacred Domain imports from `@/domain/categories` (not feature-level)
-- **NEW**: IGroupingOperations interface for cross-feature IoC
-- **NEW**: Typed error codes (`GroupingOperationError`) for error handling
+- **NEW**: ICategoryOperations interface for cross-feature IoC
+- **NEW**: Typed error codes (`CategoryOperationError`) for error handling
 - Full Sacred Mandate compliance on all four pillars
 - React Compiler compatible with proper memoization patterns
 
@@ -65,8 +65,8 @@ features/groupings/
 | `CreateSubcategoryDTO` | DTO | `@/domain/categories` | Create child category input |
 | `UpdateGroupingDTO` | DTO | `@/domain/categories` | Update parent category input |
 | `ReassignSubcategoryDTO` | DTO | `@/domain/categories` | Move subcategory to different parent |
-| `GroupingOperationError` | Error | `@/domain/categories` | **NEW** - Typed error with error codes |
-| `isGroupingOperationError` | Type Guard | `@/domain/categories` | **NEW** - Error type guard |
+| `CategoryOperationError` | Error | `@/domain/categories` | **NEW** - Typed error with error codes |
+| `isCategoryOperationError` | Type Guard | `@/domain/categories` | **NEW** - Error type guard |
 
 **Evidence - Sacred Domain Import:**
 ```typescript
@@ -79,7 +79,7 @@ import type {
   GroupingEntity,
   CategoryWithCountEntity,
 } from '@/domain/categories';
-import { isGroupingOperationError } from '@/domain/categories';
+import { isCategoryOperationError } from '@/domain/categories';
 ```
 
 ### Error Code Registry (NEW)
@@ -100,7 +100,7 @@ The Sacred Domain defines typed error codes for cross-platform error handling:
 ```typescript
 // use-groupings.ts:261-287
 onError: (err) => {
-  if (isGroupingOperationError(err)) {
+  if (isCategoryOperationError(err)) {
     switch (err.code) {
       case 'HAS_CHILDREN':
         toast.error('Cannot delete grouping', {
@@ -176,7 +176,7 @@ type SubcategoryFormData = z.infer<typeof subcategorySchema>;
 | `@/domain/categories` | `use-groupings.ts` | ✅ **Sacred Domain** | Types & error guards |
 | `@/features/categories/domain` | 4 component files | ✅ Allowed | `GroupingEntity` type-only import |
 | `@/features/categories/components` | `grouping-list.tsx` | ✅ Allowed | Shared modals |
-| `@/lib/hooks/use-grouping-operations` | `use-groupings.ts` | ✅ **IoC Pattern** | Operations interface |
+| `@/lib/hooks/use-category-operations` | `use-groupings.ts` | ✅ **IoC Pattern** | Operations interface |
 | Other `@/features/*` | None | ✅ No violations | Clean isolation |
 | `@/lib/*` | Multiple | ✅ Appropriate | Shared utilities |
 | `@/components/shared` | Multiple | ✅ Appropriate | UI components |
@@ -187,10 +187,10 @@ type SubcategoryFormData = z.infer<typeof subcategorySchema>;
 ```typescript
 // Sacred Domain imports
 import type { ... } from '@/domain/categories';
-import { isGroupingOperationError } from '@/domain/categories';
+import { isCategoryOperationError } from '@/domain/categories';
 
 // IoC Interface hook
-import { useGroupingOperations } from '@/lib/hooks/use-grouping-operations';
+import { useCategoryOperations } from '@/lib/hooks/use-category-operations';
 
 // React Query & utilities
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -208,15 +208,15 @@ import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { ResourceListItem } from '@/components/ui/resource-list-item';
 ```
 
-### IGroupingOperations Interface (NEW)
+### ICategoryOperations Interface (NEW)
 
-**Location:** `@/lib/hooks/use-grouping-operations.ts`
+**Location:** `@/lib/hooks/use-category-operations.ts`
 
 This hook provides the IoC interface that decouples features from direct CategoryService usage:
 
 ```typescript
-// lib/hooks/use-grouping-operations.ts:171
-export function useGroupingOperations(): IGroupingOperations | null {
+// lib/hooks/use-category-operations.ts:171
+export function useCategoryOperations(): ICategoryOperations | null {
   const service = useCategoryService();
   // ...error translation layer...
   return operations;
@@ -225,7 +225,7 @@ export function useGroupingOperations(): IGroupingOperations | null {
 
 **Interface Contract (from @/domain/categories):**
 ```typescript
-export interface IGroupingOperations {
+export interface ICategoryOperations {
   getGroupings(): Promise<GroupingEntity[]>;
   getByParentId(parentId: string): Promise<CategoryWithCountEntity[]>;
   createGrouping(data: CreateGroupingDTO): Promise<CategoryEntity>;
@@ -249,7 +249,7 @@ export interface IGroupingOperations {
 Database Row
   → HybridCategoryRepository (local/remote)
   → Transformer (dbParentCategoryWithCountToDomain)
-  → IGroupingOperations.getGroupings()
+  → ICategoryOperations.getGroupings()
   → Error Translation Layer
   → GroupingEntity
   → useGroupings() hook
@@ -358,17 +358,17 @@ const subcategoryName = useWatch({
 | Pattern | File | Status | Details |
 |---------|------|--------|---------|
 | `useMemo` | `add-subcategory-modal.tsx:40` | ✅ Correct | `[manualParentSelection, parentGrouping]` |
-| `useMemo` | `use-grouping-operations.ts:179` | ✅ Correct | `[service]` - stable object identity |
+| `useMemo` | `use-category-operations.ts:179` | ✅ Correct | `[service]` - stable object identity |
 | `useCallback` | `use-grouping-navigation.ts:29` | ✅ Correct | `[router, searchParams, currentGroupingId]` |
 | `useCallback` | `use-grouping-navigation.ts:54` | ✅ Correct | `[router, searchParams]` |
 | `useCallback` | `use-grouping-navigation.ts:63` | ✅ Correct | `[currentGroupingId]` |
-| `useRef` | `use-grouping-operations.ts:176` | ✅ Correct | Stable operations reference |
+| `useRef` | `use-category-operations.ts:176` | ✅ Correct | Stable operations reference |
 | `useEffect` | All components | ✅ None found | Clean state management |
 
 **useMemo Example (Stable Object Identity):**
 ```typescript
-// use-grouping-operations.ts:174-189
-const operationsRef = useRef<IGroupingOperations | null>(null);
+// use-category-operations.ts:174-189
+const operationsRef = useRef<ICategoryOperations | null>(null);
 const serviceRef = useRef(service);
 
 return useMemo(() => {
@@ -398,7 +398,7 @@ return useMemo(() => {
 ```typescript
 // use-groupings.ts:64-75
 export function useGroupings() {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
 
   return useQuery({
     queryKey: QUERY_KEYS.GROUPINGS,
@@ -438,7 +438,7 @@ return {
 
 **Dependencies Audited:**
 - `@/domain/categories` (Sacred Domain types & error guards)
-- `@/lib/hooks/use-grouping-operations.ts` (IoC adapter)
+- `@/lib/hooks/use-category-operations.ts` (IoC adapter)
 - `@/features/categories/hooks/use-category-service.ts` (Service factory)
 - `@/features/categories/domain/errors.ts` (Feature-level errors)
 - `@/lib/data/data-transformers.ts` (Boundary transformers)
@@ -461,7 +461,7 @@ import type { GroupingEntity } from '@/domain/categories';
 
 **Impact:** Cross-feature type sharing without feature coupling.
 
-### 2. IGroupingOperations IoC Interface
+### 2. ICategoryOperations IoC Interface
 
 **Before:**
 ```typescript
@@ -474,7 +474,7 @@ return useQuery({
 
 **After:**
 ```typescript
-const operations = useGroupingOperations();
+const operations = useCategoryOperations();
 return useQuery({
   queryFn: () => operations.getGroupings(),
   enabled: !!operations,
@@ -487,10 +487,10 @@ return useQuery({
 
 **Before:** Caught `CategoryHasChildrenError` directly.
 
-**After:** Catches `GroupingOperationError` with typed `code` property.
+**After:** Catches `CategoryOperationError` with typed `code` property.
 
 ```typescript
-if (isGroupingOperationError(err)) {
+if (isCategoryOperationError(err)) {
   switch (err.code) {
     case 'HAS_CHILDREN': /* ... */
     case 'VERSION_CONFLICT': /* ... */
@@ -583,7 +583,7 @@ The `use-groupings.ts` file now includes comprehensive JSDoc with:
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
-import { useGroupingOperations } from '@/lib/hooks/use-grouping-operations';
+import { useCategoryOperations } from '@/lib/hooks/use-category-operations';
 import type {
   CreateGroupingDTO,
   CreateSubcategoryDTO,
@@ -592,7 +592,7 @@ import type {
   GroupingEntity,
   CategoryWithCountEntity,
 } from '@/domain/categories';
-import { isGroupingOperationError } from '@/domain/categories';
+import { isCategoryOperationError } from '@/domain/categories';
 ```
 
 ### use-grouping-navigation.ts

@@ -393,3 +393,186 @@ export function useMergeCategories() {
     isReady: !!service,
   };
 }
+
+// ============================================================================
+// GROUPING MUTATIONS (via ICategoryOperations - Sacred Domain Compliant)
+// ============================================================================
+
+import { useCategoryOperations } from '@/lib/hooks/use-category-operations';
+import {
+  isCategoryOperationError,
+  type CreateGroupingDTO,
+  type UpdateGroupingDTO,
+  type ReassignSubcategoryDTO,
+} from '@/domain/categories';
+
+/**
+ * Use Create Grouping Mutation
+ *
+ * Mutation hook for creating a new parent category (grouping).
+ * Uses ICategoryOperations via orchestrator hook for Sacred Domain compliance.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if operations are available.
+ *
+ * @example
+ * ```typescript
+ * const { mutateAsync, isPending, isReady } = useCreateGroupingMutation();
+ *
+ * // Guard against unready state
+ * if (!isReady) return <LoadingSpinner />;
+ *
+ * await mutateAsync({ name: 'Food & Dining', color: '#22c55e', type: 'expense' });
+ * ```
+ */
+export function useCreateGroupingMutation() {
+  const operations = useCategoryOperations();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (data: CreateGroupingDTO) => {
+      if (!operations) {
+        throw new Error('Category operations not ready');
+      }
+      return operations.createGrouping(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
+    },
+    onError: (err) => {
+      if (isCategoryOperationError(err)) {
+        switch (err.code) {
+          case 'DUPLICATE_NAME':
+            toast.error('Grouping already exists', {
+              description: err.message,
+            });
+            break;
+          default:
+            toast.error('Failed to create grouping', {
+              description: err.message,
+            });
+        }
+      } else {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        toast.error('Failed to create grouping', {
+          description: errorMessage,
+        });
+      }
+    },
+  });
+
+  return {
+    ...mutation,
+    isReady: !!operations,
+  };
+}
+
+/**
+ * Use Update Grouping Mutation
+ *
+ * Mutation hook for updating a parent category (grouping).
+ * Uses ICategoryOperations via orchestrator hook for Sacred Domain compliance.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if operations are available.
+ */
+export function useUpdateGroupingMutation() {
+  const operations = useCategoryOperations();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateGroupingDTO }) => {
+      if (!operations) {
+        throw new Error('Category operations not ready');
+      }
+      return operations.updateGrouping(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
+    },
+    onError: (err) => {
+      if (isCategoryOperationError(err)) {
+        switch (err.code) {
+          case 'DUPLICATE_NAME':
+            toast.error('Grouping already exists', {
+              description: err.message,
+            });
+            break;
+          case 'VERSION_CONFLICT':
+            toast.error('Conflict detected', {
+              description: 'This grouping was modified elsewhere. Please refresh and try again.',
+            });
+            break;
+          default:
+            toast.error('Failed to update grouping', {
+              description: err.message,
+            });
+        }
+      } else {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        toast.error('Failed to update grouping', {
+          description: errorMessage,
+        });
+      }
+    },
+  });
+
+  return {
+    ...mutation,
+    isReady: !!operations,
+  };
+}
+
+/**
+ * Use Reassign Subcategory Mutation
+ *
+ * Mutation hook for moving a subcategory to a different parent.
+ * Uses ICategoryOperations via orchestrator hook for Sacred Domain compliance.
+ *
+ * CTO MANDATE: Orchestrator Rule
+ * Returns isReady flag to indicate if operations are available.
+ */
+export function useReassignSubcategoryMutation() {
+  const operations = useCategoryOperations();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (data: ReassignSubcategoryDTO) => {
+      if (!operations) {
+        throw new Error('Category operations not ready');
+      }
+      return operations.reassignSubcategory(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
+    },
+    onError: (err) => {
+      if (isCategoryOperationError(err)) {
+        switch (err.code) {
+          case 'INVALID_HIERARCHY':
+            toast.error('Invalid reassignment', {
+              description: err.message,
+            });
+            break;
+          default:
+            toast.error('Failed to reassign subcategory', {
+              description: err.message,
+            });
+        }
+      } else {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        toast.error('Failed to reassign subcategory', {
+          description: errorMessage,
+        });
+      }
+    },
+  });
+
+  return {
+    ...mutation,
+    isReady: !!operations,
+  };
+}

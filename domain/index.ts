@@ -32,13 +32,20 @@ export {
   type UpdateGroupingDTO,
   type CreateSubcategoryDTO,
   type ReassignSubcategoryDTO,
+  // New canonical names
+  type CategoryErrorCode,
+  type CategoryOperationError,
+  type ICategoryOperations,
+  isCategoryOperationError,
+  // Legacy aliases (deprecated)
   type GroupingErrorCode,
   type GroupingOperationError,
   type IGroupingOperations,
+  isGroupingOperationError,
+  // Type guards
   isGrouping,
   isSubcategory,
   isLeafCategory,
-  isGroupingOperationError,
 } from './categories';
 
 // Inbox Domain

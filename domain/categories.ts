@@ -291,14 +291,14 @@ export interface ReassignSubcategoryDTO {
 // ============================================================================
 
 /**
- * Grouping Error Codes
+ * Category Error Codes
  *
- * Standardized error codes for IGroupingOperations.
+ * Standardized error codes for ICategoryOperations.
  * Consumers can handle errors without importing from @/features/categories.
  *
  * Swift Mirror:
  * ```swift
- * enum GroupingErrorCode: String, Codable {
+ * enum CategoryErrorCode: String, Codable {
  *     case versionConflict = "VERSION_CONFLICT"
  *     case duplicateName = "DUPLICATE_NAME"
  *     case hasChildren = "HAS_CHILDREN"
@@ -309,7 +309,7 @@ export interface ReassignSubcategoryDTO {
  * }
  * ```
  */
-export type GroupingErrorCode =
+export type CategoryErrorCode =
   | 'VERSION_CONFLICT'
   | 'DUPLICATE_NAME'
   | 'HAS_CHILDREN'
@@ -319,47 +319,56 @@ export type GroupingErrorCode =
   | 'SERVICE_NOT_READY';
 
 /**
- * Grouping Operation Error
+ * Category Operation Error
  *
- * Typed error for grouping operations with standardized error codes.
+ * Typed error for category operations with standardized error codes.
  *
  * Swift Mirror:
  * ```swift
- * struct GroupingOperationError: Error {
- *     let code: GroupingErrorCode
+ * struct CategoryOperationError: Error {
+ *     let code: CategoryErrorCode
  *     let message: String
  *     let childCount: Int?
  * }
  * ```
  */
-export interface GroupingOperationError extends Error {
-  readonly code: GroupingErrorCode;
+export interface CategoryOperationError extends Error {
+  readonly code: CategoryErrorCode;
   /** For HAS_CHILDREN errors - number of children blocking deletion */
   readonly childCount?: number;
 }
 
 /**
- * Type guard for GroupingOperationError
+ * Type guard for CategoryOperationError
  */
-export function isGroupingOperationError(
+export function isCategoryOperationError(
   error: unknown
-): error is GroupingOperationError {
+): error is CategoryOperationError {
   return (
     error instanceof Error &&
     'code' in error &&
-    typeof (error as GroupingOperationError).code === 'string'
+    typeof (error as CategoryOperationError).code === 'string'
   );
+
 }
+
+// Legacy aliases for backward compatibility during migration
+/** @deprecated Use CategoryErrorCode instead */
+export type GroupingErrorCode = CategoryErrorCode;
+/** @deprecated Use CategoryOperationError instead */
+export type GroupingOperationError = CategoryOperationError;
+/** @deprecated Use isCategoryOperationError instead */
+export const isGroupingOperationError = isCategoryOperationError;
 
 // ============================================================================
 // IOC INTERFACE
 // ============================================================================
 
 /**
- * IGroupingOperations - Inversion of Control Interface
+ * ICategoryOperations - Inversion of Control Interface
  *
  * Features depend on this interface, not concrete CategoryService.
- * Errors are thrown as GroupingOperationError with typed codes.
+ * Errors are thrown as CategoryOperationError with typed codes.
  *
  * CTO MANDATE: Orchestrator Rule
  * - Hook returning this interface may return null until ready
@@ -367,7 +376,7 @@ export function isGroupingOperationError(
  *
  * Swift Mirror:
  * ```swift
- * protocol GroupingOperationsProtocol {
+ * protocol CategoryOperationsProtocol {
  *     func getGroupings() async throws -> [GroupingEntity]
  *     func getByParentId(_ parentId: String) async throws -> [CategoryWithCountEntity]
  *     func createGrouping(_ data: CreateGroupingDTO) async throws -> CategoryEntity
@@ -378,7 +387,7 @@ export function isGroupingOperationError(
  * }
  * ```
  */
-export interface IGroupingOperations {
+export interface ICategoryOperations {
   /** Get all groupings (parent categories) with child counts */
   getGroupings(): Promise<GroupingEntity[]>;
 
@@ -400,3 +409,6 @@ export interface IGroupingOperations {
   /** Delete a category (soft delete for sync) */
   delete(id: string, version: number): Promise<void>;
 }
+
+/** @deprecated Use ICategoryOperations instead */
+export type IGroupingOperations = ICategoryOperations;

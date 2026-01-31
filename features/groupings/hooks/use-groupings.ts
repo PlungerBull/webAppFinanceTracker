@@ -2,12 +2,12 @@
  * Grouping Query and Mutation Hooks
  *
  * React Query hooks for grouping (parent category) operations.
- * Uses IGroupingOperations via orchestrator hook for decoupled service access.
+ * Uses ICategoryOperations via orchestrator hook for decoupled service access.
  *
  * CTO MANDATES:
  * - Orchestrator Rule: Operations may be null, queries/mutations must guard
  * - Sacred Domain: Types imported from @/domain, not @/features
- * - Error Codes: Handle typed errors from IGroupingOperations
+ * - Error Codes: Handle typed errors from ICategoryOperations
  *
  * @module use-groupings
  */
@@ -15,7 +15,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
-import { useGroupingOperations } from '@/lib/hooks/use-grouping-operations';
+import { useCategoryOperations } from '@/lib/hooks/use-category-operations';
 import type {
   CreateGroupingDTO,
   CreateSubcategoryDTO,
@@ -24,7 +24,7 @@ import type {
   GroupingEntity,
   CategoryWithCountEntity,
 } from '@/domain/categories';
-import { isGroupingOperationError } from '@/domain/categories';
+import { isCategoryOperationError } from '@/domain/categories';
 
 // Re-export types for consumers (from Sacred Domain)
 export type { GroupingEntity, CategoryWithCountEntity };
@@ -59,7 +59,7 @@ export type { GroupingEntity, CategoryWithCountEntity };
  * ```
  */
 export function useGroupings() {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
 
   return useQuery({
     queryKey: QUERY_KEYS.GROUPINGS,
@@ -86,7 +86,7 @@ export function useGroupings() {
  * @returns Query result with child categories array
  */
 export function useGroupingChildren(parentId: string) {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
 
   return useQuery({
     queryKey: ['grouping-children', parentId],
@@ -120,7 +120,7 @@ export function useGroupingChildren(parentId: string) {
  * ```
  */
 export function useAddGrouping() {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -135,7 +135,7 @@ export function useAddGrouping() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isGroupingOperationError(err)) {
+      if (isCategoryOperationError(err)) {
         switch (err.code) {
           case 'DUPLICATE_NAME':
             toast.error('Grouping already exists', {
@@ -181,7 +181,7 @@ export function useAddGrouping() {
  * ```
  */
 export function useUpdateGrouping() {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -196,7 +196,7 @@ export function useUpdateGrouping() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isGroupingOperationError(err)) {
+      if (isCategoryOperationError(err)) {
         switch (err.code) {
           case 'DUPLICATE_NAME':
             toast.error('Grouping already exists', {
@@ -248,7 +248,7 @@ export function useUpdateGrouping() {
  * ```
  */
 export function useDeleteGrouping() {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -260,7 +260,7 @@ export function useDeleteGrouping() {
     },
     onError: (err) => {
       // CTO Mandate: Use error codes for type-safe error handling
-      if (isGroupingOperationError(err)) {
+      if (isCategoryOperationError(err)) {
         switch (err.code) {
           case 'HAS_CHILDREN':
             toast.error('Cannot delete grouping', {
@@ -327,7 +327,7 @@ export function useDeleteGrouping() {
  * ```
  */
 export function useAddSubcategory() {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -342,7 +342,7 @@ export function useAddSubcategory() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isGroupingOperationError(err)) {
+      if (isCategoryOperationError(err)) {
         switch (err.code) {
           case 'DUPLICATE_NAME':
             toast.error('Subcategory already exists', {
@@ -396,7 +396,7 @@ export function useAddSubcategory() {
  * ```
  */
 export function useReassignSubcategory() {
-  const operations = useGroupingOperations();
+  const operations = useCategoryOperations();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -411,7 +411,7 @@ export function useReassignSubcategory() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
     },
     onError: (err) => {
-      if (isGroupingOperationError(err)) {
+      if (isCategoryOperationError(err)) {
         switch (err.code) {
           case 'INVALID_HIERARCHY':
             toast.error('Invalid reassignment', {
