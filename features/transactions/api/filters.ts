@@ -27,6 +27,16 @@ export interface TransactionFilters {
 }
 
 /**
+ * Minimal interface for Supabase query builder filter methods.
+ * Used to type-constrain applyTransactionFilters without coupling to full Supabase types.
+ */
+interface FilterableQuery {
+  eq(column: string, value: string): this;
+  in(column: string, values: string[]): this;
+  ilike(column: string, pattern: string): this;
+}
+
+/**
  * Applies standard transaction filters to a Supabase query
  *
  * Centralizes filter logic to prevent duplication between getAllPaginated()
@@ -48,11 +58,11 @@ export interface TransactionFilters {
  * const { data } = await query;
  * ```
  */
-export function applyTransactionFilters<T>(
+export function applyTransactionFilters<T extends FilterableQuery>(
   query: T,
   filters?: TransactionFilters
 ): T {
-  let result = query as any;
+  let result = query;
 
   // Filter: Single category
   if (filters?.categoryId) {

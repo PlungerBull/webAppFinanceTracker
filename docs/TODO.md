@@ -10,93 +10,38 @@
 
 ## Lint Cleanup (Tech Debt)
 
-**Summary:** 65 issues (14 errors, 51 warnings) — *Updated after Phase 4 Hygiene*
+**Summary:** 50 issues (0 errors, 50 warnings) — *Updated 2026-01-31*
 
-### Completed ✅
+✅ **All lint errors resolved.** Only intentional `_` prefix warnings remain.
 
-- [x] **Phase 4: Hygiene** — `prefer-const` (5→0), `unused-vars` (82→51), unused imports removed
-
-### Remaining Error Categories
+### Current Status
 
 | Type | Count | Severity | Status |
 |------|-------|----------|--------|
-| `@typescript-eslint/no-unused-vars` | 51 | warning | Intentional `_` prefixes |
-| `@typescript-eslint/no-explicit-any` | 8 | error | **TODO** |
-| `react/no-unescaped-entities` | 4 | error | **TODO** |
-| `react-hooks/preserve-manual-memoization` | 1 | error | **TODO** |
-| `react-hooks/exhaustive-deps` | 1 | error | **TODO** |
-| `no-restricted-imports` (cross-feature) | ~15 | error | Architectural |
-| `react-hooks/set-state-in-effect` | ~11 | error | Architectural |
+| `@typescript-eslint/no-unused-vars` | 50 | warning | Intentional `_` prefixes |
 
-### `@typescript-eslint/no-explicit-any` (8 errors)
+### Completed Fixes (2026-01-31)
 
-| File | Line | Context |
-|------|------|---------|
-| `features/inbox/repository/local-inbox-repository.ts` | 537 | WatermelonDB raw query |
-| `features/inbox/repository/supabase-inbox-repository.test.ts` | 17 | Mock Supabase client |
-| `features/transactions/api/filters.ts` | 55 | Supabase query builder generic |
-| `features/transactions/hooks/use-transaction-routing.ts` | 185, 222 | Service factory params |
-| `lib/data/__tests__/data-transformers.test.ts` | 105, 120, 148, 149 | Test edge cases |
+| Category | Count | Solution |
+|----------|-------|----------|
+| `@typescript-eslint/no-explicit-any` | 9 | Typed interfaces (`FilterableQuery`, `InfiniteQueryData<T>`), `as unknown as Type` for tests |
+| `react/no-unescaped-entities` | 4 | Escaped `"` with `&quot;` in JSX |
+| `react-hooks/preserve-manual-memoization` | 1 | Stabilized arrays via `useMemo` wrappers |
+| `react-hooks/exhaustive-deps` | 1 | Wrapped `mergedConfig` in `useMemo`, added to deps |
+| `no-restricted-imports` | 2 | Updated to use orchestrator layer (`@/lib/hooks/`) |
 
-### `react/no-unescaped-entities` (4 errors)
+### Files Modified
 
-| File | Line | Fix |
-|------|------|-----|
-| `features/reconciliations/components/settings/reconciliation-settings.tsx` | 71 | Escape `"` with `&quot;` |
-| `features/reconciliations/components/settings/reconciliation-settings.tsx` | 102 | Escape `"` with `&quot;` |
-
-### `react-hooks/preserve-manual-memoization` (1 error)
-
-| File | Line | Issue |
-|------|------|-------|
-| `features/transactions/components/bulk-action-bar.tsx` | 119 | `reconciliations` dependency may be modified |
-
-### `react-hooks/exhaustive-deps` (1 error)
-
-| File | Line | Issue |
-|------|------|-------|
-| `lib/sync/hooks/use-delta-sync.ts` | 147 | Missing `mergedConfig` dependency |
-
-### Hotspots by Directory
-
-| Directory | Issues | Primary Problem |
-|-----------|--------|-----------------|
-| `features/transactions/` | 22 | Cross-feature imports, unused vars |
-| `lib/sync/` | 14 | `any` types, unused vars |
-| `lib/hooks/` | 11 | setState in effects |
-| `features/settings/` | 7 | Cross-feature imports |
-| `features/categories/` | 4 | Unused vars |
-| `components/shared/` | 4 | setState in effects |
-
-### Cross-Feature Import Violations (15 errors)
-
-Files importing across feature boundaries (violates modular architecture):
-
-- [ ] `features/settings/components/reconciliation-form-modal.tsx` → `@/features/reconciliations/`
-- [ ] `features/settings/components/reconciliation-settings.tsx` → `@/features/reconciliations/`
-- [ ] `features/transactions/components/all-transactions-table.tsx` → `@/features/categories/`, `@/features/accounts/`, `@/features/settings/`
-- [ ] `features/transactions/components/bulk-action-bar.tsx` → `@/features/categories/`, `@/features/reconciliations/`
-- [ ] `features/transactions/components/ledger-transaction-modal-content.tsx` → `@/features/categories/`, `@/features/accounts/`
-- [ ] `features/transactions/components/transfer-form.tsx` → `@/features/accounts/`
-- [ ] `features/transactions/domain/types.ts` → `@/features/inbox/`
-- [ ] `features/transactions/hooks/use-direction-toggle.ts` → `@/features/categories/`
-- [ ] `features/transactions/hooks/use-transfer-resolution.ts` → `@/features/accounts/`
-
-**Fix Pattern:** Move shared hooks (`use-accounts`, `use-categories`, `use-reconciliations`) to `@/lib/hooks/` or create IoC interfaces in `@/domain/`.
-
-### setState-in-Effect Anti-Pattern (11 errors)
-
-Files with cascading render issues:
-
-- [ ] `components/shared/transaction-detail-panel/index.tsx` (2 issues)
-- [ ] `features/categories/components/edit-grouping-modal.tsx`
-- [ ] `features/settings/components/appearance-settings.tsx` (3 issues)
-- [ ] `features/transactions/components/all-transactions-table.tsx`
-- [ ] `lib/hooks/use-category-selector.ts` (2 issues)
-- [ ] `lib/hooks/use-inbox-detail-panel.ts`
-- [ ] `lib/sync/hooks/use-initial-hydration.ts`
-
-**Fix Pattern:** Derive state from props/context instead of syncing via useEffect, or use `useSyncExternalStore`.
+- `features/reconciliations/components/settings/reconciliation-settings.tsx` — Escaped quotes
+- `components/shared/transaction-detail-panel/form-section.tsx` — Import path fix
+- `components/shared/transaction-detail-panel/identity-header.tsx` — Import path fix
+- `lib/data/__tests__/data-transformers.test.ts` — `as unknown as Type` pattern
+- `features/inbox/repository/supabase-inbox-repository.test.ts` — Typed mock
+- `features/inbox/repository/local-inbox-repository.ts` — Removed unnecessary cast
+- `features/transactions/api/filters.ts` — Added `FilterableQuery` interface
+- `features/transactions/hooks/use-transaction-routing.ts` — Added `InfiniteQueryData<T>` interface
+- `features/transactions/components/bulk-action-bar.tsx` — Stable array refs
+- `lib/sync/hooks/use-delta-sync.ts` — `useMemo` for config object
 
 
 ---

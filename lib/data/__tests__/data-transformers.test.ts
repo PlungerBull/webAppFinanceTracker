@@ -102,7 +102,7 @@ describe('dbMonthlySpendingToDomain', () => {
         category_name: 'Food',
         category_color: '#10B981',
         month_key: '2026-01',
-        total_amount: '5000' as any,  // RPC may return string from JSONB
+        total_amount: '5000' as unknown as number,  // RPC may return string from JSONB
       }];
 
       const result = dbMonthlySpendingToDomain(rows, baseLookup);
@@ -117,7 +117,7 @@ describe('dbMonthlySpendingToDomain', () => {
         category_name: 'Food',
         category_color: '#10B981',
         month_key: '2026-01',
-        total_amount: 'invalid' as any,
+        total_amount: 'invalid' as unknown as number,
       }];
 
       const result = dbMonthlySpendingToDomain(rows, baseLookup);
@@ -145,8 +145,8 @@ describe('dbMonthlySpendingToDomain', () => {
     });
 
     it('returns empty array for null-ish input', () => {
-      expect(dbMonthlySpendingToDomain(null as any, baseLookup)).toEqual([]);
-      expect(dbMonthlySpendingToDomain(undefined as any, baseLookup)).toEqual([]);
+      expect(dbMonthlySpendingToDomain(null as unknown as MonthlySpendingDbRow[], baseLookup)).toEqual([]);
+      expect(dbMonthlySpendingToDomain(undefined as unknown as MonthlySpendingDbRow[], baseLookup)).toEqual([]);
     });
   });
 

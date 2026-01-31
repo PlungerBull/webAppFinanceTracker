@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { useReconciliation } from '@/features/reconciliations/hooks/use-reconciliations';
+import { useReconciliation } from '@/lib/hooks/use-reconciliations';
 import type { PanelMode, EditedFields, PanelData, SelectableAccount } from './types';
 
 interface IdentityHeaderProps {

@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 import { SupabaseInboxRepository } from './supabase-inbox-repository';
 import { VersionConflictError } from '../domain/errors';
 
@@ -14,7 +16,7 @@ describe('SupabaseInboxRepository', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        repository = new SupabaseInboxRepository(mockSupabase as any);
+        repository = new SupabaseInboxRepository(mockSupabase as unknown as SupabaseClient<Database>);
     });
 
     describe('update', () => {

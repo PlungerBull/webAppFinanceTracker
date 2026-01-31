@@ -30,6 +30,15 @@ import type { TransactionViewEntity } from '../domain/entities';
 import type { InboxItemViewEntity } from '@/domain/inbox';
 
 /**
+ * React Query infinite query data structure.
+ * Used for type-safe cache updates without relying on `any`.
+ */
+interface InfiniteQueryData<T> {
+  pages: Array<{ data: T[]; count?: number }>;
+  pageParams: unknown[];
+}
+
+/**
  * Options for useTransactionRouting hook
  *
  * Callback pattern keeps service pure:
@@ -182,7 +191,7 @@ export function useTransactionRouting(
       }
 
       // Prepend to first page of infinite query
-      queryClient.setQueryData(['transactions', 'infinite'], (old: any) => {
+      queryClient.setQueryData(['transactions', 'infinite'], (old: InfiniteQueryData<TransactionViewEntity> | undefined) => {
         if (!old?.pages?.length) return old;
 
         const newPages = [...old.pages];
@@ -219,7 +228,7 @@ export function useTransactionRouting(
       }
 
       // Prepend to first page of infinite query
-      queryClient.setQueryData([INBOX.QUERY_KEYS.ALL, 'infinite'], (old: any) => {
+      queryClient.setQueryData([INBOX.QUERY_KEYS.ALL, 'infinite'], (old: InfiniteQueryData<InboxItemViewEntity> | undefined) => {
         if (!old?.pages?.length) return old;
 
         const newPages = [...old.pages];

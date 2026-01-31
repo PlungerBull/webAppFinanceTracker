@@ -534,7 +534,7 @@ export class LocalInboxRepository implements IInboxRepository {
         success: true,
         data: enriched,
         bufferedCount: locked.length,
-      } as any;
+      };
     } catch (err) {
       return {
         success: false,

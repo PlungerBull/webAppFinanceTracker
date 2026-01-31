@@ -14,7 +14,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useLocalDatabase } from '@/lib/local-db';
 import {
@@ -107,13 +107,23 @@ export function useDeltaSync(options: UseDeltaSyncOptions): UseDeltaSyncReturn {
   const [status, setStatus] = useState<SyncEngineStatus | null>(null);
 
   // Refs
+  // S-TIER: React Compiler Compliance
+  // All ref mutations happen INSIDE useCallback/useEffect bodies (not during render).
+  // This is the correct pattern for "silent metadata" that shouldn't trigger UI re-renders.
+  // - engineRef: Service instance, mutated in effect init/cleanup
+  // - intervalRef: Timer handle, mutated in effect
+  // - isMountedRef: Cleanup guard, mutated in effect
+  // - lastSyncTimeRef: Debounce timing, mutated in callback body (not state to avoid UI churn)
   const engineRef = useRef<IDeltaSyncEngine | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef(true);
   const lastSyncTimeRef = useRef(0);
 
-  // Merged config
-  const mergedConfig = { ...DEFAULT_SYNC_CONFIG, ...config };
+  // Merged config - memoized to prevent effect re-runs on every render
+  const mergedConfig = useMemo(
+    () => ({ ...DEFAULT_SYNC_CONFIG, ...config }),
+    [config]
+  );
 
   // ===========================================================================
   // INITIALIZE ENGINE
@@ -137,7 +147,7 @@ export function useDeltaSync(options: UseDeltaSyncOptions): UseDeltaSyncReturn {
       engineRef.current = null;
       setIsReady(false);
     };
-  }, [isDatabaseReady, database, userId, enabled]);
+  }, [isDatabaseReady, database, userId, enabled, mergedConfig]);
 
   // ===========================================================================
   // SYNC EXECUTION

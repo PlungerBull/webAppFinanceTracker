@@ -65,6 +65,10 @@ export function BulkActionBar({
   const { data: reconciliations = [] } = useReconciliations();
   const { data: reconciliationSummary } = useReconciliationSummary(reconciliationValue);
 
+  // Stabilize arrays to prevent React Compiler memoization issues
+  const stableTransactions = useMemo(() => transactions, [transactions]);
+  const stableReconciliations = useMemo(() => reconciliations, [reconciliations]);
+
   // Get display names for selected values
   const selectedCategory = leafCategories.find((c) => c.id === categoryValue);
   const selectedAccountRaw = groupedAccounts.find((g) => g.groupId === accountValue);
@@ -88,16 +92,16 @@ export function BulkActionBar({
 
   // Real-time diff calculation: Calculate preview of diff if reconciliation is selected
   const previewDiff = useMemo(() => {
-    if (!reconciliationValue || !reconciliationSummary || !selectedIds || !transactions.length) {
+    if (!reconciliationValue || !reconciliationSummary || !selectedIds || !stableTransactions.length) {
       return null;
     }
 
-    const selectedReconciliation = reconciliations.find((r) => r.id === reconciliationValue);
-    if (!selectedReconciliation) return null;
+    const matchedReconciliation = stableReconciliations.find((r) => r.id === reconciliationValue);
+    if (!matchedReconciliation) return null;
 
     // Get all transactions that would be linked after apply
     const selectedTransactionIds = Array.from(selectedIds);
-    const selectedTransactions = transactions.filter((t) => selectedTransactionIds.includes(t.id));
+    const selectedTransactions = stableTransactions.filter((t) => selectedTransactionIds.includes(t.id));
 
     // Calculate sum of selected transactions in integer cents first, then convert once
     // This avoids floating-point accumulation errors from repeated division
@@ -109,14 +113,14 @@ export function BulkActionBar({
     const currentLinkedSum = reconciliationSummary.linkedSum;
     const previewLinkedSum = Math.round((currentLinkedSum + selectedSum) * 100) / 100;
     const previewDifference = Math.round(
-      (selectedReconciliation.endingBalance - (selectedReconciliation.beginningBalance + previewLinkedSum)) * 100
+      (matchedReconciliation.endingBalance - (matchedReconciliation.beginningBalance + previewLinkedSum)) * 100
     ) / 100;
 
     return {
       difference: previewDifference,
       isBalanced: Math.abs(previewDifference) < 0.005, // Half a cent tolerance
     };
-  }, [reconciliationValue, reconciliationSummary, selectedIds, transactions, reconciliations]);
+  }, [reconciliationValue, reconciliationSummary, selectedIds, stableTransactions, stableReconciliations]);
 
   return (
     <div

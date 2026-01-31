@@ -68,7 +68,7 @@ export function ReconciliationSettings() {
                 Reconciliations
               </h1>
               <p className="text-sm text-gray-500">
-                The "Contract of Truth" between bank statements and your ledger
+                The &quot;Contract of Truth&quot; between bank statements and your ledger
               </p>
             </div>
             <Button
@@ -99,7 +99,7 @@ export function ReconciliationSettings() {
                 Welcome to Auditing
               </h3>
               <p className="text-sm text-gray-500 max-w-md mx-auto">
-                Create your first audit to establish the formal "Contract of Truth" between your bank statements and transaction ledger.
+                Create your first audit to establish the formal &quot;Contract of Truth&quot; between your bank statements and transaction ledger.
               </p>
             </div>
           </div>

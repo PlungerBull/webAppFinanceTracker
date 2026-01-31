@@ -20,7 +20,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useCurrency } from '@/contexts/currency-context';
-import { useReconciliation } from '@/features/reconciliations/hooks/use-reconciliations';
+import { useReconciliation } from '@/lib/hooks/use-reconciliations';
 import type { PanelMode, EditedFields, PanelData, SelectableAccount, SelectableCategory } from './types';
 
 interface FormSectionProps {
