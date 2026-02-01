@@ -76,7 +76,7 @@ export interface Currency {
 ### 1.4 Database Schema
 
 ```typescript
-// lib/supabase/database.types.ts
+// types/supabase.ts (authoritative generated types)
 global_currencies: {
   Row: {
     code: string;      // Primary key, ISO 4217

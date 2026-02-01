@@ -111,7 +111,7 @@ export const TransactionRowSchema = z.object({
 
 /**
  * categories table Row
- * Sync fields added by migration, not in auto-generated types
+ * Sync fields now in auto-generated types/supabase.ts
  */
 export const CategoryRowSchema = z.object({
   id: uuid,
@@ -128,7 +128,7 @@ export const CategoryRowSchema = z.object({
 
 /**
  * transaction_inbox table Row
- * Sync fields added by migration, not in auto-generated types
+ * Sync fields now in auto-generated types/supabase.ts
  */
 export const TransactionInboxRowSchema = z.object({
   id: uuid,
@@ -144,9 +144,8 @@ export const TransactionInboxRowSchema = z.object({
   status: z.string(),
   created_at: timestamptz,
   updated_at: timestamptz,
-  // Sync fields — optional because not in auto-generated types yet
-  version: z.number().int().min(0).optional(),
-  deleted_at: z.string().nullable().optional(),
+  // Sync fields — required (now in auto-generated types)
+  ...BaseSyncFields,
 });
 
 /**

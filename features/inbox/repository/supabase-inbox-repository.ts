@@ -50,6 +50,23 @@ const VersionCheckSchema = z.object({
 });
 
 /**
+ * Schema for version-checked RPC response (update_inbox_with_version, dismiss_inbox_with_version)
+ */
+const VersionRpcResponseSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
+  newVersion: z.number().int().optional(),
+  expectedVersion: z.number().int().optional(),
+  currentVersion: z.number().int().optional(),
+  currentData: z.object({
+    description: z.string().nullable().optional(),
+    amountCents: z.number().nullable().optional(),
+    date: z.string().nullable().optional(),
+  }).optional(),
+  message: z.string().optional(),
+});
+
+/**
  * Default pagination constants
  */
 const DEFAULT_LIMIT = 20;
@@ -213,42 +230,11 @@ export class SupabaseInboxRepository implements IInboxRepository {
     data: UpdateInboxItemDTO
   ): Promise<DataResult<InboxItemViewEntity>> {
     try {
-      // Build update object with only defined fields
-      const dbUpdates: Database['public']['Tables']['transaction_inbox']['Update'] = {};
+      // Version is required for OCC - if not provided, fetch current version first
+      let expectedVersion = data.lastKnownVersion;
 
-      if (data.amountCents !== undefined) dbUpdates.amount_cents = data.amountCents;
-      if (data.description !== undefined) dbUpdates.description = data.description;
-      if (data.date !== undefined) dbUpdates.date = data.date;
-      if (data.accountId !== undefined) dbUpdates.account_id = data.accountId;
-      if (data.categoryId !== undefined) dbUpdates.category_id = data.categoryId;
-      if (data.exchangeRate !== undefined) dbUpdates.exchange_rate = data.exchangeRate;
-      if (data.notes !== undefined) dbUpdates.notes = data.notes;
-
-      // Optimistic Concurrency Control
-      let query = this.supabase
-        .from('transaction_inbox')
-        .update(dbUpdates)
-        .eq('id', id)
-        .eq('user_id', userId);
-
-      // If lastKnownVersion is provided, enforce it
-      if (data.lastKnownVersion !== undefined) {
-        query = query.eq('version', data.lastKnownVersion);
-      }
-
-      const { data: updatedRows, error: updateError } = await query.select();
-
-      if (updateError) {
-        return {
-          success: false,
-          data: null,
-          error: new InboxRepositoryError(`Failed to update inbox item: ${updateError.message}`),
-        };
-      }
-
-      // If no rows updated, check why
-      if (!updatedRows || updatedRows.length === 0) {
-        // Fetch the item to distinguish between Not Found and Version Conflict
+      if (expectedVersion === undefined) {
+        // Fetch current version for backwards compatibility
         const { data: currentItem } = await this.supabase
           .from('transaction_inbox')
           .select('version')
@@ -263,17 +249,82 @@ export class SupabaseInboxRepository implements IInboxRepository {
             error: new InboxNotFoundError(id),
           };
         }
-
-        // Item exists, so it must be a version conflict
         const validated = validateOrThrow(VersionCheckSchema, currentItem, 'VersionCheck');
+        expectedVersion = validated.version;
+      }
+
+      // Build JSONB updates object for RPC (only include defined fields)
+      // RPC uses COALESCE so null means "keep existing value"
+      const updates: {
+        amount_cents?: number | null;
+        description?: string | null;
+        date?: string | null;
+        account_id?: string | null;
+        category_id?: string | null;
+        exchange_rate?: number | null;
+        notes?: string | null;
+      } = {};
+
+      if (data.amountCents !== undefined) updates.amount_cents = data.amountCents;
+      if (data.description !== undefined) updates.description = data.description;
+      if (data.date !== undefined) updates.date = data.date;
+      if (data.accountId !== undefined) updates.account_id = data.accountId;
+      if (data.categoryId !== undefined) updates.category_id = data.categoryId;
+      if (data.exchangeRate !== undefined) updates.exchange_rate = data.exchangeRate;
+      if (data.notes !== undefined) updates.notes = data.notes;
+
+      // Call version-checked RPC (SYNC-01: S-Tier OCC)
+      const { data: rpcResult, error: rpcError } = await this.supabase
+        .rpc('update_inbox_with_version', {
+          p_inbox_id: id,
+          p_expected_version: expectedVersion,
+          p_updates: updates,
+        });
+
+      if (rpcError) {
         return {
           success: false,
           data: null,
-          error: new VersionConflictError(id, data.lastKnownVersion ?? -1, validated.version),
+          error: new InboxRepositoryError(`Failed to update inbox item: ${rpcError.message}`),
         };
       }
 
-      // Read back from view for complete data (using ID from updated row)
+      // Validate RPC response
+      const validated = validateOrThrow(VersionRpcResponseSchema, rpcResult, 'UpdateInboxRpc');
+
+      if (!validated.success) {
+        // Handle specific error types
+        if (validated.error === 'not_found') {
+          return {
+            success: false,
+            data: null,
+            error: new InboxNotFoundError(id),
+          };
+        }
+
+        if (validated.error === 'version_conflict') {
+          return {
+            success: false,
+            data: null,
+            error: new VersionConflictError(
+              id,
+              expectedVersion,
+              validated.currentVersion ?? -1
+            ),
+          };
+        }
+
+        // Generic error (concurrent_modification or unknown)
+        return {
+          success: false,
+          data: null,
+          error: new InboxRepositoryError(
+            validated.message ?? 'Failed to update inbox item due to concurrent modification'
+          ),
+        };
+      }
+
+      // Read back from view for complete data
       return this.getById(userId, id);
     } catch (err) {
       return {
@@ -462,20 +513,72 @@ export class SupabaseInboxRepository implements IInboxRepository {
 
   async dismiss(userId: string, id: string): Promise<DataResult<void>> {
     try {
-      const { error } = await this.supabase
+      // Fetch current version for OCC (SYNC-01: S-Tier)
+      const { data: currentItem } = await this.supabase
         .from('transaction_inbox')
-        .update({
-          status: 'ignored',
-          deleted_at: new Date().toISOString() // Tombstone
-        })
+        .select('version')
         .eq('id', id)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .is('deleted_at', null) // Only active items
+        .single();
 
-      if (error) {
+      if (!currentItem) {
         return {
           success: false,
           data: null,
-          error: new InboxRepositoryError(`Failed to dismiss inbox item: ${error.message}`),
+          error: new InboxNotFoundError(id),
+        };
+      }
+
+      const validated = validateOrThrow(VersionCheckSchema, currentItem, 'VersionCheck');
+
+      // Call version-checked RPC (SYNC-01: S-Tier OCC)
+      const { data: rpcResult, error: rpcError } = await this.supabase
+        .rpc('dismiss_inbox_with_version', {
+          p_inbox_id: id,
+          p_expected_version: validated.version,
+        });
+
+      if (rpcError) {
+        return {
+          success: false,
+          data: null,
+          error: new InboxRepositoryError(`Failed to dismiss inbox item: ${rpcError.message}`),
+        };
+      }
+
+      // Validate RPC response
+      const rpcValidated = validateOrThrow(VersionRpcResponseSchema, rpcResult, 'DismissInboxRpc');
+
+      if (!rpcValidated.success) {
+        // Handle specific error types
+        if (rpcValidated.error === 'not_found') {
+          return {
+            success: false,
+            data: null,
+            error: new InboxNotFoundError(id),
+          };
+        }
+
+        if (rpcValidated.error === 'version_conflict') {
+          return {
+            success: false,
+            data: null,
+            error: new VersionConflictError(
+              id,
+              validated.version,
+              rpcValidated.currentVersion ?? -1
+            ),
+          };
+        }
+
+        // Generic error (concurrent_modification or unknown)
+        return {
+          success: false,
+          data: null,
+          error: new InboxRepositoryError(
+            rpcValidated.message ?? 'Failed to dismiss inbox item due to concurrent modification'
+          ),
         };
       }
 

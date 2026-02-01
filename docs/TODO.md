@@ -18,10 +18,18 @@
   - Why: Prevents unhandled crashes in the Swift/Native bridge
   - **Completed:** S-Tier implementation with isOperational flag, originalError preservation, and typed DomainError classes
 
-- [ ] **[SYNC-01] Hardening the Sync Schema**
+- [x] **[SYNC-01] Hardening the Sync Schema** ✅
   - Scope: Global (`types/supabase.ts`)
   - Task: Regenerate Supabase types to ensure `version` and `deleted_at` exist on all tables (specifically Accounts and Categories)
   - Why: The Delta Sync Engine will silently fail to sync deletions without these fields
+  - **Completed:** S-Tier implementation:
+    - Types already correct in `types/supabase.ts` (all syncable tables have `version` + `deleted_at`)
+    - Deleted stale type files (`types/database.types.ts`, `lib/supabase/database.types.ts`)
+    - Created `types/index.ts` for future-proof imports
+    - Added `update_inbox_with_version()` and `dismiss_inbox_with_version()` RPCs (migration applied to DEV)
+    - Supabase types regenerated via `supabase gen types typescript --linked`
+    - Updated inbox repository to use version-checked RPCs for OCC
+    - OCC Compliance: 100% on Accounts, Categories, Transactions, Inbox; Reconciliations has delete-only
 
 - [ ] **[ARCH-01] Break the Transaction/Grouping Cycle**
   - Scope: `features/transactions/hooks/use-transaction-filters.ts`
@@ -78,8 +86,8 @@
   - `UserSettingsService.getSettings()` ✅ Now returns DataResult
   - `useFinancialOverview` (Throws) - Dashboard scope, separate task
   - `ReconciliationsService` ✅ All 8 methods now return DataResult
-- [ ] **Schema Drift (Sync Critical):** `database.types.ts` missing `version` and `deleted_at` for Accounts and Categories
-  - Fix: Run `npx supabase gen types typescript` immediately
+- [x] **Schema Drift (Sync Critical):** ~~`database.types.ts` missing `version` and `deleted_at`~~ ✅
+  - **Resolved:** `types/supabase.ts` has all sync fields. Stale `database.types.ts` deleted.
 
 ---
 

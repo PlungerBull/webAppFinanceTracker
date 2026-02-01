@@ -149,19 +149,21 @@ export const CategoryRowSchema = z.object({
 
 ### 2.2 Supabase Generated Type
 
-**File**: `types/database.types.ts` (lines 92-102)
+**File**: `types/supabase.ts` (lines 93-158) - **UPDATED: Schema now includes sync fields**
 
 ```typescript
 categories: {
   Row: {
     color: string
     created_at: string
+    deleted_at: string | null  // ✅ Sync field present
     id: string
     name: string
     parent_id: string | null
     type: Database["public"]["Enums"]["transaction_type"]
     updated_at: string
     user_id: string | null
+    version: number            // ✅ Sync field present
   }
   // Insert and Update omitted for brevity
 }
@@ -179,19 +181,17 @@ categories: {
 | `parent_id` | `uuid.nullable()` | `string \| null` | YES |
 | `created_at` | `timestamptz` | `string` | YES |
 | `updated_at` | `timestamptz` | `string` | YES |
-| `version` | `z.number().int().min(0)` | **MISSING** | DRIFT |
-| `deleted_at` | `z.string().nullable()` | **MISSING** | DRIFT |
+| `version` | `z.number().int().min(0)` | `number` | YES ✅ |
+| `deleted_at` | `z.string().nullable()` | `string \| null` | YES ✅ |
 
 ### 2.4 Sync Field Status
 
 | Field | Status | Note |
 |-------|--------|------|
-| `version` | In Zod, not in generated types | Added by migration `20260126000001_categories_sync_hardening.sql` |
-| `deleted_at` | In Zod, not in generated types | Added by migration for tombstone pattern |
+| `version` | ✅ In both Zod and generated types | Added by migration, types regenerated |
+| `deleted_at` | ✅ In both Zod and generated types | Tombstone pattern fully supported |
 
-**Finding**: Schema drift detected. Zod schema includes sync fields that were added by migration but `database.types.ts` has not been regenerated. This is a **minor drift** - the Zod schema is the authoritative source.
-
-**Recommendation**: Run `npx supabase gen types typescript` to regenerate types.
+**Finding**: Schema drift RESOLVED. Types regenerated on 2026-02-01. Both Zod schemas and Supabase generated types now include all sync fields.
 
 ---
 
@@ -353,10 +353,10 @@ categories: {
 
 ### 6.1 Immediate Actions
 
-| Priority | Action | Effort |
-|----------|--------|--------|
-| P2 | Regenerate `database.types.ts` to include sync fields | Low |
-| P3 | Add JSDoc `@future` annotation to `createdAt`/`updatedAt` | Low |
+| Priority | Action | Effort | Status |
+|----------|--------|--------|--------|
+| P2 | ~~Regenerate `types/supabase.ts` to include sync fields~~ | Low | ✅ DONE |
+| P3 | Add JSDoc `@future` annotation to `createdAt`/`updatedAt` | Low | Pending |
 
 ### 6.2 Future Considerations
 

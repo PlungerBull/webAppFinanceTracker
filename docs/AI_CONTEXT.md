@@ -157,9 +157,6 @@ supabase gen types typescript --db-url "postgresql://postgres.iiatzixujzgoejtcir
 - `lib/constants/query.constants.ts` - Volatility Engine
 - `lib/utils/grouping-logic.ts` - Pure transformation engine
 
-### Blocked Items
-- Supabase type regeneration requires elevated access
-
 ---
 
-*Last updated: 2026-02-01 | Ghost Prop Audit Complete*
+*Last updated: 2026-02-01 | SYNC-01 Complete*

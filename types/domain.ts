@@ -2,10 +2,10 @@
  * Domain Types - Frontend camelCase Types
  *
  * These are the TRANSFORMED types that frontend components receive after data transformers.
- * They represent the OUTPUT of lib/types/data-transformers.ts
+ * They represent the OUTPUT of lib/data/data-transformers.ts
  *
  * CRITICAL DISTINCTION:
- * - database.types.ts = snake_case (PostgreSQL convention) - for Supabase client
+ * - types/supabase.ts = snake_case (PostgreSQL convention) - for Supabase client
  * - domain.ts (THIS FILE) = camelCase (JavaScript convention) - for React components
  *
  * When you use the API layer, you get these domain types, NOT database types!
