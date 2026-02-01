@@ -11,15 +11,18 @@
  * @module transaction-service
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { TransactionService } from './transaction-service';
 import { TransferService } from './transfer-service';
 import { TransactionRoutingService } from './transaction-routing-service';
+import { TransactionExportProvider } from './transaction-export-provider';
 import type { ITransactionService } from './transaction-service.interface';
 import type { ITransferService } from './transfer-service.interface';
 import type { ITransactionRoutingService } from './transaction-routing-service.interface';
 import type { ITransactionRepository, ITransferRepository } from '../repository';
 import type { IAuthProvider } from '@/lib/auth';
 import type { IInboxOperations } from '@/domain/inbox';
+import type { IExportProvider } from '@/domain';
 
 // Re-export interfaces
 export type { ITransactionService } from './transaction-service.interface';
@@ -127,4 +130,26 @@ export function createTransactionRoutingService(
   inboxOperations: IInboxOperations
 ): ITransactionRoutingService {
   return new TransactionRoutingService(transactionService, inboxOperations);
+}
+
+/**
+ * Creates a new transaction export provider instance
+ *
+ * Bridge Pattern: Allows transactions feature to volunteer data for export
+ * without the export service needing to import from transactions.
+ *
+ * @param supabase - Supabase client instance
+ * @returns IExportProvider implementation
+ *
+ * @example
+ * ```typescript
+ * const supabase = createClient();
+ * const providers = [createTransactionExportProvider(supabase)];
+ * const exportService = new DataExportService(providers, authProvider);
+ * ```
+ */
+export function createTransactionExportProvider(
+  supabase: SupabaseClient
+): IExportProvider {
+  return new TransactionExportProvider(supabase);
 }

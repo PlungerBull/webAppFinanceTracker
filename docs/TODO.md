@@ -30,8 +30,10 @@
 ## System-Wide Violations
 
 ### Cross-Feature Violations
-- [ ] **Import-Export ➔ Transactions:** `data-export-service.ts` imports `createTransactionRepository`
-  - Status: Exception Granted (cross-cutting concern). Add explicit comments justifying the exception
+- [x] **Import-Export ➔ Transactions:** Cross-feature coupling resolved via Bridge Pattern ✅
+  - **Resolution:** Implemented `IExportProvider` interface in `@/domain/export.ts`
+  - **Pattern:** Features implement provider, DataExportService depends only on domain contract
+  - **Reference:** MANIFESTO.md §5 "The Provider Exception"
 - [x] **Reconciliations Self-Reference:** `lib/hooks/use-bulk-selection.ts` imports from `features/reconciliations` ✅
   - Fix: Remap the import to the `@/lib` orchestrator - **Done**
 

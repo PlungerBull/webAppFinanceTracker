@@ -151,6 +151,35 @@ features/[domain]/
 - Cross-feature orchestration happens via hooks in `@/lib/hooks`
 - ESLint enforces import boundaries
 
+### The Provider Exception
+
+Cross-cutting features (like Import-Export or Search) may interact with other features
+**only via Interfaces defined in the `@/domain` layer**. Direct imports of Repository
+or Hook implementations from one feature to another remain strictly prohibited.
+
+**Pattern:** Define an `I<Concern>Provider` interface in `@/domain`. Features implement
+this interface within their own boundaries, then register with the cross-cutting service.
+
+**Example:** `IExportProvider` allows any feature to volunteer data for export without
+the Export service knowing the feature's internals.
+
+```typescript
+// domain/export.ts - The sacred contract
+export interface IExportProvider {
+  readonly featureId: string;
+  readonly sheetName: string;
+  getExportPayload(userId: string): Promise<DataResult<ExportRow[]>>;
+}
+
+// features/transactions/services/ - Feature implements within its boundary
+export class TransactionExportProvider implements IExportProvider { ... }
+
+// features/import-export/services/ - Cross-cutting service depends on interface
+export class DataExportService {
+  constructor(private providers: IExportProvider[]) {}
+}
+```
+
 ---
 
 ## 6. Entity Relationships

@@ -176,8 +176,18 @@ export function DataManagement() {
                             size="sm"
                             onClick={async () => {
                                 try {
+                                    // Bridge Pattern: Compose providers at runtime
+                                    // DataExportService only depends on IExportProvider interface
                                     const { DataExportService } = await import('@/features/import-export/services/data-export-service');
-                                    const service = new DataExportService(supabase, authProvider);
+                                    const { createTransactionExportProvider } = await import('@/features/transactions/services');
+
+                                    const providers = [
+                                        createTransactionExportProvider(supabase),
+                                        // Future: createAccountExportProvider(supabase),
+                                        // Future: createCategoryExportProvider(supabase),
+                                    ];
+
+                                    const service = new DataExportService(providers, authProvider);
                                     await service.exportToExcel();
                                 } catch {
                                     alert(SETTINGS.MESSAGES.ERROR.EXPORT_FAILED);

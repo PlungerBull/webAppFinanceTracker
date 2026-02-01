@@ -88,3 +88,9 @@ export {
   type UserSettings,
   type TransactionSortMode,
 } from './settings';
+
+// Export Domain (Cross-Feature Provider Pattern)
+export {
+  type ExportRow,
+  type IExportProvider,
+} from './export';
