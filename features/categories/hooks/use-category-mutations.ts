@@ -14,6 +14,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QUERY_KEYS } from '@/lib/constants';
+import { useAuthStore } from '@/stores/auth-store';
+import { createOptimisticCategory } from '@/domain/categories';
 import { useCategoryService } from './use-category-service';
 import type {
   CreateCategoryDTO,
@@ -36,10 +38,15 @@ import type { MergeCategoriesResult } from '../services';
  * Use Add Category
  *
  * Mutation hook for creating a new category.
- * Invalidates categories and groupings cache on success.
+ * Includes S-Tier optimistic updates for Zero-Latency UX.
  *
  * CTO MANDATE: Orchestrator Rule
  * Returns isReady flag to indicate if service is available.
+ *
+ * S-Tier Features:
+ * - Multi-key cache synchronization (cancels all related queries)
+ * - Auth integrity (uses real userId from auth store)
+ * - Pure factory pattern (uses createOptimisticCategory from Sacred Domain)
  *
  * @example
  * ```typescript
@@ -59,6 +66,7 @@ import type { MergeCategoriesResult } from '../services';
 export function useAddCategory() {
   const service = useCategoryService();
   const queryClient = useQueryClient();
+  const userId = useAuthStore((state) => state.user?.id ?? ''); // S-Tier: Auth Integrity
 
   const mutation = useMutation({
     mutationFn: (data: CreateCategoryDTO) => {
@@ -67,11 +75,46 @@ export function useAddCategory() {
       }
       return service.create(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
+
+    // S-Tier: Optimistic update with multi-key sync
+    onMutate: async (data) => {
+      // 1. S-Tier: Cancel ALL related queries to prevent race conditions
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: QUERY_KEYS.CATEGORIES }),
+        queryClient.cancelQueries({ queryKey: [...QUERY_KEYS.CATEGORIES, 'categorized'] }),
+        queryClient.cancelQueries({ queryKey: [...QUERY_KEYS.CATEGORIES, 'leaf'] }),
+        queryClient.cancelQueries({ queryKey: [...QUERY_KEYS.CATEGORIES, 'with-counts'] }),
+        queryClient.cancelQueries({ queryKey: QUERY_KEYS.GROUPINGS }),
+      ]);
+
+      // 2. Snapshot base list for rollback
+      const previousCategories = queryClient.getQueryData<CategoryEntity[]>(
+        QUERY_KEYS.CATEGORIES
+      );
+
+      // 3. S-Tier: Create optimistic entity via Pure Factory with Auth Integrity
+      const optimisticCategory = createOptimisticCategory(data, userId);
+
+      // 4. Optimistically add to base cache
+      if (previousCategories) {
+        queryClient.setQueryData<CategoryEntity[]>(
+          QUERY_KEYS.CATEGORIES,
+          [...previousCategories, optimisticCategory]
+        );
+      }
+
+      return { previousCategories, optimisticId: optimisticCategory.id };
     },
-    onError: (err) => {
+
+    // Rollback on error with user-friendly toast
+    // CTO Mandate: Use instanceof for type-safe error handling (NOT string matching)
+    onError: (err, _variables, context) => {
+      // Rollback optimistic update
+      if (context?.previousCategories) {
+        queryClient.setQueryData(QUERY_KEYS.CATEGORIES, context.previousCategories);
+      }
+
+      // Type-safe error handling via type guards
       if (isCategoryDuplicateNameError(err)) {
         toast.error('Category already exists', {
           description: err.message,
@@ -86,6 +129,12 @@ export function useAddCategory() {
           description: errorMessage,
         });
       }
+    },
+
+    // S-Tier: Always invalidate on settle (success OR error)
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPINGS });
     },
   });
 

@@ -387,6 +387,29 @@ export const isGroupingOperationError = isCategoryOperationError;
  * }
  * ```
  */
+/**
+ * Category Deletion Validation Result
+ *
+ * S-TIER: Return type for canDelete validation.
+ * Used by delete-category-dialog to check constraints before deletion.
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct CategoryDeletionValidation {
+ *     let canDelete: Bool
+ *     let error: String?
+ *     let childCount: Int?
+ *     let transactionCount: Int?
+ * }
+ * ```
+ */
+export interface CategoryDeletionValidation {
+  readonly canDelete: boolean;
+  readonly error?: string;
+  readonly childCount?: number;
+  readonly transactionCount?: number;
+}
+
 export interface ICategoryOperations {
   /** Get all groupings (parent categories) with child counts */
   getGroupings(): Promise<GroupingEntity[]>;
@@ -408,7 +431,112 @@ export interface ICategoryOperations {
 
   /** Delete a category (soft delete for sync) */
   delete(id: string, version: number): Promise<void>;
+
+  /**
+   * Check if a category can be deleted.
+   *
+   * S-TIER: Orchestrator fetches data in parallel, validates with pure logic.
+   * Returns validation result without throwing.
+   *
+   * Swift Mirror:
+   * ```swift
+   * func canDelete(categoryId: String) async -> CategoryDeletionValidation
+   * ```
+   */
+  canDelete(categoryId: string): Promise<CategoryDeletionValidation>;
 }
 
 /** @deprecated Use ICategoryOperations instead */
 export type IGroupingOperations = ICategoryOperations;
+
+// ============================================================================
+// OPTIMISTIC UPDATE FACTORIES (S-Tier Zero-Latency UX)
+// ============================================================================
+
+/**
+ * Create Category DTO
+ *
+ * Input for creating a new category.
+ * Defined in Sacred Domain for factory usage without circular imports.
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct CreateCategoryDTO: Codable {
+ *     let id: String?         // Optional: Client-generated UUID for offline-first
+ *     let name: String
+ *     let color: String
+ *     let type: CategoryType
+ *     let parentId: String?   // nil = create as grouping
+ * }
+ * ```
+ */
+export interface CreateCategoryDTO {
+  /**
+   * Optional client-generated UUID.
+   *
+   * CTO Mandate: For offline-first, clients must generate UUIDs.
+   * If provided, this ID is used; otherwise, server generates one.
+   */
+  readonly id?: string;
+
+  /** Category name (e.g., "Groceries") */
+  readonly name: string;
+
+  /** Hex color code (e.g., "#ef4444") */
+  readonly color: string;
+
+  /** Category type - income or expense */
+  readonly type: CategoryType;
+
+  /**
+   * Parent category ID
+   *
+   * - null = create as parent category (grouping)
+   * - string = create as child under this parent
+   */
+  readonly parentId: string | null;
+}
+
+/**
+ * Create Optimistic Category Entity
+ *
+ * S-Tier Factory for generating optimistic CategoryEntity from CreateCategoryDTO.
+ * Ensures consistent entity shape across Web and future iOS port.
+ *
+ * SYNC STATE MACHINE (version field):
+ * - version: 0 = Optimistic/Pending (local-only, no server authority)
+ * - version: 1+ = Confirmed (server-assigned, authoritative)
+ *
+ * This allows the iOS WatermelonDB sync engine to identify "Orphaned" records
+ * after a hard-close and either retry the push or discard the ghost.
+ *
+ * @param data - CreateCategoryDTO input
+ * @param userId - Authenticated user ID (from useAuthStore)
+ * @returns CategoryEntity with client-generated fields (version: 0)
+ *
+ * Swift Mirror:
+ * ```swift
+ * static func createOptimisticCategory(
+ *     data: CreateCategoryDTO,
+ *     userId: String
+ * ) -> CategoryEntity
+ * ```
+ */
+export function createOptimisticCategory(
+  data: CreateCategoryDTO,
+  userId: string
+): CategoryEntity {
+  const now = new Date().toISOString();
+  return {
+    id: data.id ?? crypto.randomUUID(),
+    userId,
+    name: data.name,
+    color: data.color,
+    type: data.type,
+    parentId: data.parentId,
+    createdAt: now,
+    updatedAt: now,
+    version: 0, // S-Tier: Optimistic state - no server authority yet
+    deletedAt: null,
+  };
+}
