@@ -77,29 +77,12 @@ export function useGroupings() {
 /**
  * Use Grouping Children
  *
- * Query hook for fetching children of a specific parent.
+ * Re-exported from @/lib/hooks for S-Tier Inversion of Control.
+ * The lib orchestrator is the source of truth; features consume it.
  *
- * CTO MANDATE: Orchestrator Rule
- * Query is disabled until operations are ready.
- *
- * @param parentId - Parent category ID
- * @returns Query result with child categories array
+ * @see lib/hooks/use-grouping-children.ts
  */
-export function useGroupingChildren(parentId: string) {
-  const operations = useCategoryOperations();
-
-  return useQuery({
-    queryKey: ['grouping-children', parentId],
-    queryFn: () => {
-      if (!operations) {
-        throw new Error('Grouping operations not ready');
-      }
-      return operations.getByParentId(parentId);
-    },
-    ...createQueryOptions('STRUCTURAL'),
-    enabled: !!operations && !!parentId, // CTO MANDATE: Orchestrator Rule
-  });
-}
+export { useGroupingChildren } from '@/lib/hooks/use-grouping-children';
 
 /**
  * Use Add Grouping

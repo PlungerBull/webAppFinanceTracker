@@ -16,7 +16,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { useGroupingChildren } from '@/features/groupings/hooks/use-groupings';
+import { useGroupingChildren } from '@/lib/hooks/use-grouping-children';
 
 /**
  * Options for useTransactionFilters hook
