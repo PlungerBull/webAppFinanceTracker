@@ -110,25 +110,14 @@ export interface InboxItemEntity {
 /**
  * Inbox Item View Entity
  *
- * Extended entity with joined account and category data.
- * Used for UI display.
+ * Identical to InboxItemEntity. The "View" suffix is kept for API consistency
+ * with TransactionViewEntity, but inbox items don't need joined data because
+ * UI components fetch reference data via useAccountsData() and useReferenceData().
+ *
+ * CLEAN-02: Removed ghost props `account` and `category` (never used in UI,
+ * expensive to serialize for iOS bridge).
  */
-export interface InboxItemViewEntity extends InboxItemEntity {
-  /** Joined account data */
-  readonly account?: {
-    readonly id: string;
-    readonly name: string | null;
-    readonly currencyCode: string | null;
-    readonly currencySymbol: string | null;
-  };
-
-  /** Joined category data */
-  readonly category?: {
-    readonly id: string;
-    readonly name: string | null;
-    readonly color: string | null;
-  };
-}
+export type InboxItemViewEntity = InboxItemEntity;
 
 // ============================================================================
 // TYPE GUARDS

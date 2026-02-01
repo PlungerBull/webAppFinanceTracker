@@ -182,29 +182,18 @@ export function localTransactionViewsToDomain(
 /**
  * Transforms a WatermelonDB InboxModel to InboxItemViewEntity.
  *
- * Requires pre-fetched maps for batch efficiency (No N+1).
+ * CLEAN-02: Simplified - no longer requires pre-fetched maps since ghost props
+ * (account, category) were removed. UI components fetch reference data via hooks.
  *
  * @param model - WatermelonDB InboxModel instance
- * @param accountMap - Map of account ID → AccountModel (batch-fetched)
- * @param categoryMap - Map of category ID → CategoryModel (batch-fetched)
- * @param currencyMap - Map of currency code → CurrencyModel (batch-fetched)
  * @returns InboxItemViewEntity identical to dbInboxItemViewToDomain() output
  */
-export function localInboxItemViewToDomain(
-  model: InboxModel,
-  accountMap: Map<string, AccountModel>,
-  categoryMap: Map<string, CategoryModel>,
-  currencyMap: Map<string, CurrencyModel>
-): InboxItemViewEntity {
-  const account = model.accountId ? accountMap.get(model.accountId) : null;
-  const category = model.categoryId ? categoryMap.get(model.categoryId) : null;
-  const currency = account ? currencyMap.get(account.currencyCode) : null;
-
-  const entity: InboxItemViewEntity = {
+export function localInboxItemViewToDomain(model: InboxModel): InboxItemViewEntity {
+  return {
     id: model.id,
     userId: model.userId,
     amountCents: model.amountCents !== null ? Math.round(model.amountCents) : null,
-    currencyCode: account?.currencyCode ?? null,
+    currencyCode: null, // Derived from account lookup in UI via hooks
     description: model.description,
     date: model.date?.toISOString() ?? null,
     sourceText: model.sourceText,
@@ -217,32 +206,15 @@ export function localInboxItemViewToDomain(
     updatedAt: model.updatedAt.toISOString(),
     version: model.version,
     deletedAt: model.deletedAt ? new Date(model.deletedAt).toISOString() : null,
-
-    // Joined display data — null for missing, not magic strings
-    account: account ? {
-      id: account.id,
-      name: account.name,
-      currencyCode: account.currencyCode,
-      currencySymbol: currency?.symbol ?? null,
-    } : undefined,
-    category: category ? {
-      id: category.id,
-      name: category.name,
-      color: category.color,
-    } : undefined,
+    // CLEAN-02: Removed ghost props `account` and `category` - never used in UI
   };
-
-  return entity;
 }
 
 /**
  * Batch transform InboxModels to InboxItemViewEntities.
+ *
+ * CLEAN-02: Simplified signature - no longer requires account/category/currency maps.
  */
-export function localInboxItemViewsToDomain(
-  models: InboxModel[],
-  accountMap: Map<string, AccountModel>,
-  categoryMap: Map<string, CategoryModel>,
-  currencyMap: Map<string, CurrencyModel>
-): InboxItemViewEntity[] {
-  return models.map((m) => localInboxItemViewToDomain(m, accountMap, categoryMap, currencyMap));
+export function localInboxItemViewsToDomain(models: InboxModel[]): InboxItemViewEntity[] {
+  return models.map(localInboxItemViewToDomain);
 }

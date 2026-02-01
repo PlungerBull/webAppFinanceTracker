@@ -67,8 +67,7 @@ const testInboxItem: InboxItemViewEntity = {
   updatedAt: '2024-01-15T10:00:00.000Z',
   version: 1,
   deletedAt: null,
-  account: { id: 'acc-1', name: 'Checking', currencyCode: 'USD', currencySymbol: '$' },
-  category: { id: 'cat-1', name: 'Food', color: '#ff0000' },
+  // CLEAN-02: Removed ghost props `account` and `category`
 };
 
 describe('InboxService', () => {

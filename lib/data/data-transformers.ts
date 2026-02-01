@@ -225,20 +225,7 @@ export function dbInboxItemViewToDomain(
     updatedAt: dbInboxItemView.updated_at ?? new Date().toISOString(),  // Fallback to now if missing
     version: dbInboxItemView.version ?? 1,
     deletedAt: dbInboxItemView.deleted_at ?? null,
-
-    // Joined display data (from view columns) - these use undefined for "not present"
-    // This is valid because the entity type declares these as optional
-    account: dbInboxItemView.account_id ? {
-      id: dbInboxItemView.account_id,
-      name: dbInboxItemView.account_name ?? null,
-      currencyCode: dbInboxItemView.currency_original ?? null,
-      currencySymbol: null,
-    } : undefined,
-    category: dbInboxItemView.category_id ? {
-      id: dbInboxItemView.category_id,
-      name: dbInboxItemView.category_name ?? null,
-      color: dbInboxItemView.category_color ?? null,
-    } : undefined,
+    // CLEAN-02: Removed ghost props `account` and `category` - never used in UI
   };
 }
 
@@ -1067,9 +1054,8 @@ export function inboxItemViewToTransactionView(
 
     // Account fields
     accountId: item.accountId ?? '',
-    accountName: item.account?.name ?? 'Unassigned',
-    accountColor: null, // Inbox items don't have account color joined yet
-    // REMOVED: accountCurrency (Ghost Prop - use currencyOriginal instead)
+    accountName: null, // CLEAN-02: Ghost props removed - UI uses hooks for reference data
+    accountColor: null,
 
     // Amount fields (Sacred Integer Arithmetic)
     amountCents: item.amountCents ?? 0,
@@ -1085,9 +1071,9 @@ export function inboxItemViewToTransactionView(
 
     // Category fields
     categoryId: item.categoryId,
-    categoryName: item.category?.name ?? null,
-    categoryColor: item.category?.color ?? null,
-    categoryType: null, // Inbox items don't have category type
+    categoryName: null, // CLEAN-02: Ghost props removed - UI uses hooks for reference data
+    categoryColor: null,
+    categoryType: null,
 
     // Transfer fields
     transferId: null, // Inbox items are never transfers

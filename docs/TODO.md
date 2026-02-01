@@ -10,9 +10,10 @@
 
 ### Priority 2: Optimization (Ghost Props & Cleanup)
 
-- [ ] **[CLEAN-02] Inbox Ghost Props**
+- [x] **[CLEAN-02] Inbox Ghost Props** ✅
   - Scope: `InboxItemViewEntity`
   - Task: Deprecate `account` and `category` objects on the entity. They are expensive to serialize and never used in the UI
+  - **Completed:** Removed ghost props from `InboxItemViewEntity`, simplified transformers in `data-transformers.ts` and `local-data-transformers.ts`, removed unnecessary batch-fetching in `local-inbox-repository.ts`
 
 ---
 

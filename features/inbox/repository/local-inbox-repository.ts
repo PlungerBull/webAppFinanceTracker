@@ -33,9 +33,6 @@ import {
 } from '../domain/errors';
 import {
   InboxModel,
-  AccountModel,
-  CategoryModel,
-  CurrencyModel,
   activeTombstoneFilter,
   generateEntityId,
   getInitialSyncStatus,
@@ -65,62 +62,13 @@ export class LocalInboxRepository implements IInboxRepository {
   // ============================================================================
 
   /**
-   * Enrich inbox items with joined account/category data
+   * Transform inbox items to domain entities.
    *
-   * CTO MANDATE: No N+1 Queries
-   * Batch-fetches all related data in ONE query each,
-   * then delegates to shared local-data-transformers.
+   * CLEAN-02: Simplified - no longer fetches account/category/currency data
+   * since ghost props were removed. UI components fetch reference data via hooks.
    */
-  private async enrichWithJoinedData(
-    items: InboxModel[]
-  ): Promise<InboxItemViewEntity[]> {
-    if (items.length === 0) {
-      return [];
-    }
-
-    // Collect unique IDs
-    const accountIds = [
-      ...new Set(items.map((i) => i.accountId).filter((id): id is string => id !== null)),
-    ];
-    const categoryIds = [
-      ...new Set(items.map((i) => i.categoryId).filter((id): id is string => id !== null)),
-    ];
-
-    // Batch fetch accounts
-    const accounts =
-      accountIds.length > 0
-        ? await this.database
-            .get<AccountModel>('bank_accounts')
-            .query(Q.where('id', Q.oneOf(accountIds)))
-            .fetch()
-        : [];
-
-    // Batch fetch categories
-    const categories =
-      categoryIds.length > 0
-        ? await this.database
-            .get<CategoryModel>('categories')
-            .query(Q.where('id', Q.oneOf(categoryIds)))
-            .fetch()
-        : [];
-
-    // Batch fetch currencies
-    const currencyCodes = [...new Set(accounts.map((a) => a.currencyCode))];
-    const currencies =
-      currencyCodes.length > 0
-        ? await this.database
-            .get<CurrencyModel>('global_currencies')
-            .query(Q.where('code', Q.oneOf(currencyCodes)))
-            .fetch()
-        : [];
-
-    // Create lookup maps
-    const accountMap = new Map(accounts.map((a) => [a.id, a]));
-    const categoryMap = new Map(categories.map((c) => [c.id, c]));
-    const currencyMap = new Map(currencies.map((c) => [c.code, c]));
-
-    // Delegate to shared transformer (CTO: Single Interface Rule)
-    return localInboxItemViewsToDomain(items, accountMap, categoryMap, currencyMap);
+  private transformToDomain(items: InboxModel[]): InboxItemViewEntity[] {
+    return localInboxItemViewsToDomain(items);
   }
 
   // ============================================================================
@@ -152,7 +100,7 @@ export class LocalInboxRepository implements IInboxRepository {
         .fetch();
 
       // Enrich with joined data
-      const enriched = await this.enrichWithJoinedData(items);
+      const enriched = this.transformToDomain(items);
 
       return {
         success: true,
@@ -198,7 +146,7 @@ export class LocalInboxRepository implements IInboxRepository {
       }
 
       // Enrich with joined data
-      const [enriched] = await this.enrichWithJoinedData([item]);
+      const [enriched] = this.transformToDomain([item]);
 
       return {
         success: true,
@@ -264,7 +212,7 @@ export class LocalInboxRepository implements IInboxRepository {
       }
 
       // Enrich with joined data
-      const [enriched] = await this.enrichWithJoinedData([createdItem]);
+      const [enriched] = this.transformToDomain([createdItem]);
 
       return {
         success: true,
@@ -343,7 +291,7 @@ export class LocalInboxRepository implements IInboxRepository {
       );
       if (lockResult.isLocked) {
         // Return projected data for optimistic UI
-        const [currentEnriched] = await this.enrichWithJoinedData([item]);
+        const [currentEnriched] = this.transformToDomain([item]);
         const projected: InboxItemViewEntity = {
           ...currentEnriched,
           amountCents: data.amountCents !== undefined
@@ -396,7 +344,7 @@ export class LocalInboxRepository implements IInboxRepository {
         .find(id);
 
       // Enrich with joined data
-      const [enriched] = await this.enrichWithJoinedData([updated]);
+      const [enriched] = this.transformToDomain([updated]);
 
       return {
         success: true,
@@ -450,7 +398,7 @@ export class LocalInboxRepository implements IInboxRepository {
       });
 
       // Enrich with joined data
-      const enriched = await this.enrichWithJoinedData(createdItems);
+      const enriched = this.transformToDomain(createdItems);
 
       return {
         success: true,
@@ -528,7 +476,7 @@ export class LocalInboxRepository implements IInboxRepository {
       });
 
       // Enrich with joined data
-      const enriched = await this.enrichWithJoinedData(updatedItems);
+      const enriched = this.transformToDomain(updatedItems);
 
       return {
         success: true,
@@ -648,7 +596,7 @@ export class LocalInboxRepository implements IInboxRepository {
         )
         .fetch();
 
-      const enriched = await this.enrichWithJoinedData(pending);
+      const enriched = this.transformToDomain(pending);
 
       return {
         success: true,
@@ -676,7 +624,7 @@ export class LocalInboxRepository implements IInboxRepository {
         )
         .fetch();
 
-      const enriched = await this.enrichWithJoinedData(conflicts);
+      const enriched = this.transformToDomain(conflicts);
 
       return {
         success: true,
