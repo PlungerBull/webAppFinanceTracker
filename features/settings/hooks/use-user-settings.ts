@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { createUserSettingsService } from '../api/user-settings';
-import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
+import { QUERY_KEYS, createQueryOptions } from '@/lib/constants';
 
 function useUserSettingsService() {
     return useMemo(() => {
@@ -20,7 +20,7 @@ export function useUserSettings() {
     return useQuery({
         queryKey: QUERY_KEYS.USER_SETTINGS,
         queryFn: () => service.getSettings(),
-        staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+        ...createQueryOptions('STRUCTURAL'),
     });
 }
 

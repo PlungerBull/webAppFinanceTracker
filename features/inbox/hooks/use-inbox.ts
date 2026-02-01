@@ -9,7 +9,7 @@
 
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getInboxService } from '../services/inbox-service';
-import { INBOX, PAGINATION } from '@/lib/constants';
+import { INBOX, PAGINATION, createQueryOptions } from '@/lib/constants';
 import type {
   CreateInboxItemDTO,
   UpdateInboxItemDTO,
@@ -54,6 +54,7 @@ export function useInboxItems() {
     },
     initialPageParam: 0,
     placeholderData: (previousData) => previousData,
+    ...createQueryOptions('TRANSACTIONAL'),
   });
 
   // Flatten pages for UI consumption

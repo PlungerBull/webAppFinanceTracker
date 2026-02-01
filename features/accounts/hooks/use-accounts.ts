@@ -14,7 +14,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/lib/constants';
+import { QUERY_KEYS, createQueryOptions } from '@/lib/constants';
 import { useAccountService } from './use-account-service';
 import type { AccountFilters } from '../domain';
 
@@ -64,6 +64,7 @@ export function useAccounts(filters?: AccountFilters) {
       }
       return service.getAll(filters);
     },
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
@@ -102,6 +103,7 @@ export function useAccount(id: string) {
       }
       return service.getById(id);
     },
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service && !!id, // CTO MANDATE: Orchestrator Rule
   });
 }
@@ -128,6 +130,7 @@ export function useAccountsByGroup(groupId: string) {
       }
       return service.getByGroupId(groupId);
     },
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service && !!groupId, // CTO MANDATE: Orchestrator Rule
   });
 }

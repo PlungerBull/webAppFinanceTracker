@@ -11,7 +11,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEYS, QUERY_CONFIG } from '@/lib/constants';
+import { QUERY_KEYS, createQueryOptions } from '@/lib/constants';
 import { useCategoryService } from './use-category-service';
 import type { CategoryFilters } from '../domain';
 
@@ -65,7 +65,7 @@ export function useCategories(filters?: CategoryFilters) {
       }
       return service.getAll(filters);
     },
-    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
@@ -91,7 +91,7 @@ export function useCategoriesWithCounts() {
       }
       return service.getAllWithCounts();
     },
-    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
@@ -130,6 +130,7 @@ export function useCategory(id: string) {
       }
       return service.getById(id);
     },
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service && !!id, // CTO MANDATE: Orchestrator Rule
   });
 }
@@ -160,7 +161,7 @@ export function useLeafCategoriesQuery() {
       }
       return service.getLeafCategories();
     },
-    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }
@@ -186,7 +187,7 @@ export function useCategorizedCategories() {
       }
       return service.getCategorizedCategories();
     },
-    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!service, // CTO MANDATE: Orchestrator Rule
   });
 }

@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
-import { QUERY_CONFIG } from '@/lib/constants';
+import { createQueryOptions } from '@/lib/constants';
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -10,10 +10,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Increase staleTime to reduce background refetches during optimistic updates
-            // Higher staleTime prevents UI flicker between optimistic and server state
-            staleTime: QUERY_CONFIG.STALE_TIME.LONG, // 10 minutes (was 1 minute)
-            refetchOnWindowFocus: false,
+            // S-TIER: Use STRUCTURAL volatility as safe fallback for any unconfigured queries
+            // Individual hooks should use createQueryOptions() for explicit volatility
+            ...createQueryOptions('STRUCTURAL'),
             retry: 3, // Explicit retry count for queries
           },
           mutations: {

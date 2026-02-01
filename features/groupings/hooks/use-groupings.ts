@@ -14,7 +14,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { QUERY_CONFIG, QUERY_KEYS } from '@/lib/constants';
+import { QUERY_KEYS, createQueryOptions } from '@/lib/constants';
 import { useCategoryOperations } from '@/lib/hooks/use-category-operations';
 import type {
   CreateGroupingDTO,
@@ -69,7 +69,7 @@ export function useGroupings() {
       }
       return operations.getGroupings();
     },
-    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!operations, // CTO MANDATE: Orchestrator Rule
   });
 }
@@ -96,8 +96,8 @@ export function useGroupingChildren(parentId: string) {
       }
       return operations.getByParentId(parentId);
     },
+    ...createQueryOptions('STRUCTURAL'),
     enabled: !!operations && !!parentId, // CTO MANDATE: Orchestrator Rule
-    staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,
   });
 }
 

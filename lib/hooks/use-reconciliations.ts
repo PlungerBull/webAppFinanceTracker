@@ -18,6 +18,7 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { createReconciliationsService } from '@/features/reconciliations/api/reconciliations';
+import { createQueryOptions } from '@/lib/constants';
 import { toast } from 'sonner';
 
 const QUERY_KEYS = {
@@ -47,6 +48,7 @@ export function useReconciliations(accountId?: string) {
       ? QUERY_KEYS.RECONCILIATIONS.BY_ACCOUNT(accountId)
       : QUERY_KEYS.RECONCILIATIONS.ALL,
     queryFn: () => service.getAll(accountId),
+    ...createQueryOptions('TRANSACTIONAL'),
   });
 }
 
@@ -59,6 +61,7 @@ export function useReconciliation(id: string | null | undefined) {
   return useQuery({
     queryKey: QUERY_KEYS.RECONCILIATIONS.BY_ID(id || 'none'),
     queryFn: () => service.getById(id!),
+    ...createQueryOptions('TRANSACTIONAL'),
     enabled: !!id,
   });
 }
@@ -76,6 +79,7 @@ export function useReconciliationSummary(reconciliationId: string | null | undef
   return useQuery({
     queryKey: QUERY_KEYS.RECONCILIATIONS.SUMMARY(reconciliationId || 'none'),
     queryFn: () => service.getSummary(reconciliationId!),
+    ...createQueryOptions('TRANSACTIONAL'),
     enabled: !!reconciliationId,
     // NO refetchInterval - invalidation handles updates
   });

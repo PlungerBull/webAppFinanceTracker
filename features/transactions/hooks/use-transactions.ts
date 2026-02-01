@@ -13,7 +13,7 @@
  */
 
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PAGINATION } from '@/lib/constants';
+import { PAGINATION, createQueryOptions } from '@/lib/constants';
 import { calculateBalanceDeltas, calculateCreateDelta, calculateDeleteDelta, toCents, fromCents } from '@/lib/utils/balance-logic';
 import { toast } from 'sonner';
 import { useTransactionService } from './use-transaction-service';
@@ -73,6 +73,7 @@ export function useTransactions(filters?: TransactionFilters) {
     },
     initialPageParam: 0,
     placeholderData: (previousData) => previousData,
+    ...createQueryOptions('TRANSACTIONAL'),
     // CTO MANDATE: Orchestrator Rule - wait for service
     enabled: !!service,
   });
@@ -103,6 +104,7 @@ export function useTransaction(id: string) {
   return useQuery({
     queryKey: ['transactions', id],
     queryFn: () => service!.getById(id),
+    ...createQueryOptions('TRANSACTIONAL'),
     // CTO MANDATE: Orchestrator Rule - wait for service AND id
     enabled: !!id && !!service,
   });
@@ -648,6 +650,7 @@ export function useCategoryCounts(filters?: TransactionFilters) {
   return useQuery({
     queryKey: ['transactions', 'category-counts', filters],
     queryFn: () => service!.getCategoryCounts(filters),
+    ...createQueryOptions('TRANSACTIONAL'),
     // CTO MANDATE: Orchestrator Rule - wait for service
     enabled: !!service,
   });
