@@ -104,23 +104,6 @@ export interface Reconciliation {
 }
 
 /**
- * Reconciliation View Entity
- *
- * Extended entity with joined account display data.
- * Used in Settings Manager to show account name/currency alongside reconciliation.
- */
-export interface ReconciliationWithAccount extends Reconciliation {
-  /** Account display name */
-  readonly accountName: string;
-
-  /** Account color for visual identification */
-  readonly accountColor: string;
-
-  /** Account currency code (e.g., "USD", "PEN") */
-  readonly accountCurrency: string;
-}
-
-/**
  * Reconciliation Summary
  *
  * Real-time reconciliation math summary.

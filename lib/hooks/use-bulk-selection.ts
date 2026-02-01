@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useTransactionSelection } from '@/stores/transaction-selection-store';
 import { useBulkUpdateTransactions } from '@/features/transactions/hooks/use-transactions';
-import { useLinkTransactions, useUnlinkTransactions } from '@/features/reconciliations/hooks/use-reconciliations';
+import { useLinkTransactions, useUnlinkTransactions } from '@/lib/hooks/use-reconciliations';
 import type { TransactionViewEntity } from '@/features/transactions/domain';
 
 /**

@@ -206,5 +206,4 @@ export type BankAccount = Account;
 // Import from @/domain/reconciliations for:
 // - ReconciliationStatus
 // - Reconciliation
-// - ReconciliationWithAccount
 // - ReconciliationSummary

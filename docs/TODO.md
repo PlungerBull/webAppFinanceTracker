@@ -8,50 +8,7 @@
 
 ## Architecture Audit (A- Grade)
 
-> **Executive Verdict:** The "clean architecture" is largely intact. However, three systemic failures threaten integrity: the "Result Pattern" Schism, "Sync Schema" Drift, and "Cross-Feature" Leaks.
-
-### Priority 1: Critical (Financial Safety & Crash Prevention)
-
-- [x] **[TYPE-01] Global Result Pattern Standardization** ✅
-  - Scope: `features/currencies`, `features/settings`, `features/reconciliations`
-  - Task: Refactor all Service/API methods to catch try/catch blocks and return `{ success: true, data: T }` or `{ success: false, error: DomainError }`
-  - Why: Prevents unhandled crashes in the Swift/Native bridge
-  - **Completed:** S-Tier implementation with isOperational flag, originalError preservation, and typed DomainError classes
-
-- [x] **[SYNC-01] Hardening the Sync Schema** ✅
-  - Scope: Global (`types/supabase.ts`)
-  - Task: Regenerate Supabase types to ensure `version` and `deleted_at` exist on all tables (specifically Accounts and Categories)
-  - Why: The Delta Sync Engine will silently fail to sync deletions without these fields
-  - **Completed:** S-Tier implementation:
-    - Types already correct in `types/supabase.ts` (all syncable tables have `version` + `deleted_at`)
-    - Deleted stale type files (`types/database.types.ts`, `lib/supabase/database.types.ts`)
-    - Created `types/index.ts` for future-proof imports
-    - Added `update_inbox_with_version()` and `dismiss_inbox_with_version()` RPCs (migration applied to DEV)
-    - Supabase types regenerated via `supabase gen types typescript --linked`
-    - Updated inbox repository to use version-checked RPCs for OCC
-    - OCC Compliance: 100% on Accounts, Categories, Transactions, Inbox; Reconciliations has delete-only
-
-- [x] **[ARCH-01] Break the Transaction/Grouping Cycle** ✅
-  - Scope: `features/transactions/hooks/use-transaction-filters.ts`
-  - Task: Extract `useGroupingChildren` logic into `@/lib/hooks`. Update both features to import from `@/lib`
-  - Why: Breaks a circular dependency that threatens the bundler
-  - **Completed:** S-Tier Inversion of Control implementation:
-    - Created `lib/hooks/use-grouping-children.ts` using `useCategoryOperations` directly (service layer)
-    - Added `GROUPING_CHILDREN` query key factory to `lib/constants/query.constants.ts`
-    - Groupings feature now re-exports from `@/lib` (feature consumes library, not vice versa)
-    - Transactions feature imports from `@/lib/hooks` (zero cross-feature imports)
-
 ### Priority 2: Optimization (Ghost Props & Cleanup)
-
-- [ ] **[OPT-01] The "Ghost Prop" Audit Trail**
-  - Scope: All Entities (`createdAt`, `updatedAt`, `userId`)
-  - Task: Do not remove these properties. Instead, apply a standardized JSDoc annotation: `/** @internal Infrastructure field - Audit Trail */`
-  - Why: Satisfies the "unused variable" linter while preserving data integrity for future features
-
-- [ ] **[CLEAN-01] Settings "Spaghetti" Cleanup**
-  - Scope: `features/settings/components/data-management.tsx`
-  - Task: Extract the direct RPC call (`clear_user_data`) into a `DataManagementService`
-  - Why: Enforces the Service Layer pattern in the weakest feature
 
 - [ ] **[CLEAN-02] Inbox Ghost Props**
   - Scope: `InboxItemViewEntity`
@@ -61,39 +18,25 @@
 
 ## Weakest Links (Scalability & Sync Bottlenecks)
 
-### Weak Link #1: Settings (`features/settings`)
-- **Risk: High** - Manages critical user state (Currency, Profile)
-- Violates Result Pattern (throws errors), bypasses services to call RPCs directly, uses lazy imports to patch over dependency cycles
-
-### Weak Link #2: Reconciliations (`features/reconciliations`)
+### Weak Link #2: Reconciliations (`features/reconciliations`) ✅
 - **Risk: Medium** - Financial integrity relies on reconciliations
-- Throws errors instead of returning results, uses `any` in filters, has unused "Ghost Entity" (`ReconciliationWithAccount`)
-
-### Weak Link #3: Transactions (`features/transactions`)
-- **Risk: Low** - Cross-feature violation resolved ✅
-- ~~`use-transaction-filters.ts` imports `useGroupingChildren` from `features/groupings`~~ Fixed via ARCH-01
+- ~~Throws errors instead of returning results~~ ✅ Fixed (TYPE-01 - Service uses DataResult pattern)
+- ~~uses `any` in filters~~ ✅ False positive (`step="any"` is HTML attribute, not TypeScript)
+- ~~has unused "Ghost Entity" (`ReconciliationWithAccount`)~~ ✅ Removed from domain
 
 ---
 
 ## System-Wide Violations
 
 ### Cross-Feature Violations
-- [x] **Transactions ➔ Groupings:** `use-transaction-filters.ts` imports `useGroupingChildren` from `features/groupings` ✅
-  - Fix: Move shared logic to orchestrator hook in `@/lib/hooks/use-grouping-children.ts`
-  - **Resolved:** S-Tier IoC - lib hook uses service layer directly, both features consume it
 - [ ] **Import-Export ➔ Transactions:** `data-export-service.ts` imports `createTransactionRepository`
   - Status: Exception Granted (cross-cutting concern). Add explicit comments justifying the exception
-- [ ] **Reconciliations Self-Reference:** `lib/hooks/use-bulk-selection.ts` imports from `features/reconciliations`
-  - Fix: Remap the import to the `@/lib` orchestrator
+- [x] **Reconciliations Self-Reference:** `lib/hooks/use-bulk-selection.ts` imports from `features/reconciliations` ✅
+  - Fix: Remap the import to the `@/lib` orchestrator - **Done**
 
 ### Type Inconsistencies
-- [x] **The "Throw" Violation:** Refactor to return `DataResult<T>`: ✅
-  - `currenciesApi.getAll()` ✅ Now returns DataResult
-  - `UserSettingsService.getSettings()` ✅ Now returns DataResult
+- [ ] **The "Throw" Violation:** Refactor to return `DataResult<T>`:
   - `useFinancialOverview` (Throws) - Dashboard scope, separate task
-  - `ReconciliationsService` ✅ All 8 methods now return DataResult
-- [x] **Schema Drift (Sync Critical):** ~~`database.types.ts` missing `version` and `deleted_at`~~ ✅
-  - **Resolved:** `types/supabase.ts` has all sync fields. Stale `database.types.ts` deleted.
 
 ---
 
@@ -111,7 +54,7 @@
 
 - [ ] **Remove:** `features/auth/schemas/profile.schema.ts` - marked `@deprecated` but still exists as re-export wrapper
 - [ ] **Remove:** `features/inbox/domain/entities.ts` - deprecated re-export wrapper
-- [ ] **Fix:** `features/reconciliations/hooks/use-reconciliations.ts` - deprecated but still imported by `lib/hooks/use-bulk-selection.ts`
+- [x] **Fix:** `features/reconciliations/hooks/use-reconciliations.ts` - deprecated but still imported by `lib/hooks/use-bulk-selection.ts` ✅ **Deleted**
 - Why: New developers might import from the "Zombie" file instead of the correct source
 
 ### 3. Ghost Prop Documentation
@@ -124,7 +67,6 @@
 ### 4. Direct Logic Leak (Minor Spaghetti)
 > **Rule:** Logic belongs in hooks/services, not components
 
-- [ ] **Settings:** Extract `supabase.rpc('clear_user_data')` from `data-management.tsx` into a service
 - [ ] **Settings:** Refactor `use-update-account-visibility.ts` to use a repository instead of direct `supabase.from(...).update(...)` call
 - [ ] **Transactions:** Extract ~30 lines of reconciliation math from `bulk-action-bar.tsx` `useMemo` block into a service
 - Why: These are "hard-to-test" pockets of logic that will be difficult to port to native mobile
@@ -174,7 +116,7 @@
 ### 11. Dead Model Pollution
 > **Rule:** If a type exists in the Domain, it must be used
 
-- [ ] **Reconciliations:** Remove or utilize `ReconciliationWithAccount` interface - currently never used, code manually looks up accounts instead
+- [x] **Reconciliations:** Remove or utilize `ReconciliationWithAccount` interface - currently never used, code manually looks up accounts instead ✅ **Removed**
 - Why: Confuses new developers ("Should I be using this interface?") and adds noise to the codebase
 
 ---

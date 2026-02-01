@@ -65,7 +65,6 @@ export {
 export {
   type ReconciliationStatus,
   type Reconciliation,
-  type ReconciliationWithAccount,
   type ReconciliationSummary,
   isDraftReconciliation,
   isCompletedReconciliation,
