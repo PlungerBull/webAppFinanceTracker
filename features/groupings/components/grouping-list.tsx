@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useGroupings } from '../hooks/use-groupings';
 import { useGroupingNavigation } from '../hooks/use-grouping-navigation';
-import { AddCategoryModal } from '@/features/categories/components/add-category-modal';
-import { EditGroupingModal } from '@/features/categories/components/edit-grouping-modal';
+import { EntityModal } from '@/components/shared/entity-modal';
+import { AddGroupingForm } from './add-grouping-form';
+import { EditGroupingForm } from './edit-grouping-form';
 import { DeleteGroupingDialog } from './delete-grouping-dialog';
 import { AddSubcategoryModal } from './add-subcategory-modal';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { GROUPING } from '@/lib/constants';
-import type { GroupingEntity } from '@/features/categories/domain';
+import type { GroupingEntity } from '@/domain/categories';
 
 export function GroupingList() {
   const { data: groupings = [], isLoading } = useGroupings();
@@ -87,17 +88,30 @@ export function GroupingList() {
         )}
       </div>
 
-      {/* Modals */}
-      <AddCategoryModal
+      {/* Modals - Composition Pattern: Shell + Form */}
+      <EntityModal
         open={isAddGroupingModalOpen}
         onOpenChange={setIsAddGroupingModalOpen}
-      />
+        title="New Grouping"
+        description="Create a new category grouping with name, color, and type"
+      >
+        <AddGroupingForm onSuccess={() => setIsAddGroupingModalOpen(false)} />
+      </EntityModal>
 
-      <EditGroupingModal
-        open={!!editingGrouping}
-        onOpenChange={(open) => !open && setEditingGrouping(null)}
-        category={editingGrouping}
-      />
+      {editingGrouping && (
+        <EntityModal
+          open={!!editingGrouping}
+          onOpenChange={(open) => !open && setEditingGrouping(null)}
+          title="Edit Grouping"
+          description="Edit grouping name, color, type, and manage subcategories"
+          maxWidth="max-w-lg"
+        >
+          <EditGroupingForm
+            initialData={editingGrouping}
+            onSuccess={() => setEditingGrouping(null)}
+          />
+        </EntityModal>
+      )}
 
       <DeleteGroupingDialog
         open={!!deletingGrouping}

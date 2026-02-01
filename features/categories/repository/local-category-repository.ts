@@ -89,9 +89,9 @@ export class LocalCategoryRepository implements ICategoryRepository {
   }
 
   /**
-   * Get child count for a category
+   * Get child count for a category (internal helper without userId)
    */
-  private async getChildCount(categoryId: string): Promise<number> {
+  private async getChildCountInternal(categoryId: string): Promise<number> {
     return this.database
       .get<CategoryModel>('categories')
       .query(
@@ -365,7 +365,7 @@ export class LocalCategoryRepository implements ICategoryRepository {
       const result = await Promise.all(
         groupings.map(async (g) => {
           // Get child count
-          const childCount = await this.getChildCount(g.id);
+          const childCount = await this.getChildCountInternal(g.id);
 
           // Get total transaction count across all children
           const children = await this.database
@@ -413,6 +413,33 @@ export class LocalCategoryRepository implements ICategoryRepository {
         data: null,
         error: new CategoryRepositoryError(
           `Failed to fetch groupings: ${(err as Error).message}`,
+          err
+        ),
+      };
+    }
+  }
+
+  async getChildCount(
+    userId: string,
+    parentId: string
+  ): Promise<CategoryDataResult<number>> {
+    try {
+      const count = await this.database
+        .get<CategoryModel>('categories')
+        .query(
+          Q.where('parent_id', parentId),
+          Q.where('user_id', userId),
+          ...activeTombstoneFilter()
+        )
+        .fetchCount();
+
+      return { success: true, data: count };
+    } catch (err) {
+      return {
+        success: false,
+        data: null,
+        error: new CategoryRepositoryError(
+          `Failed to get child count for category ${parentId}: ${(err as Error).message}`,
           err
         ),
       };
@@ -763,7 +790,7 @@ export class LocalCategoryRepository implements ICategoryRepository {
       }
 
       // Check for children
-      const childCount = await this.getChildCount(id);
+      const childCount = await this.getChildCountInternal(id);
       if (childCount > 0) {
         return {
           success: false,

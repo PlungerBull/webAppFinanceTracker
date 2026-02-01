@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDeleteCategory } from '../hooks/use-category-mutations';
+import { useCategoryOperations } from '@/lib/hooks/use-category-operations';
 import { CATEGORY } from '@/lib/constants';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
-import { canDeleteParent } from '../utils/validation';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +31,7 @@ export function DeleteCategoryDialog({
     const [isChecking, setIsChecking] = useState(false);
     const [checkError, setCheckError] = useState<string | null>(null);
 
+    const operations = useCategoryOperations();
     const deleteCategoryMutation = useDeleteCategory();
     const isDeleting = deleteCategoryMutation.isPending;
     const deleteError = deleteCategoryMutation.error
@@ -40,28 +41,25 @@ export function DeleteCategoryDialog({
         : null;
 
     const checkDeletability = useCallback(async () => {
-        if (!category) return;
+        if (!category || !operations) return;
 
-        // Only check for parents (parentId is null)
-        if (category.parentId === null) {
-            setIsChecking(true);
-            try {
-                const result = await canDeleteParent(category.id!);
-                if (!result.canDelete) {
-                    setCheckError(result.error || "Cannot delete parent category.");
-                } else {
-                    setCheckError(null);
-                }
-            } catch (err) {
-                console.error("Failed to check category deletability", err);
-                setCheckError("Failed to verify if category can be deleted.");
-            } finally {
-                setIsChecking(false);
+        // S-TIER: Use orchestrator's canDelete for all categories
+        // This validates both parent (has children) and leaf (has transactions) constraints
+        setIsChecking(true);
+        try {
+            const result = await operations.canDelete(category.id!);
+            if (!result.canDelete) {
+                setCheckError(result.error || "Cannot delete category.");
+            } else {
+                setCheckError(null);
             }
-        } else {
-            setCheckError(null);
+        } catch (err) {
+            console.error("Failed to check category deletability", err);
+            setCheckError("Failed to verify if category can be deleted.");
+        } finally {
+            setIsChecking(false);
         }
-    }, [category]);
+    }, [category, operations]);
 
     useEffect(() => {
         if (open && category) {

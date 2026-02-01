@@ -88,6 +88,23 @@ export interface ITransactionService {
    */
   getCategoryCounts(filters?: TransactionFilters): Promise<CategoryCounts>;
 
+  /**
+   * Get transaction count for a specific category
+   *
+   * S-TIER: Exposed for cross-feature orchestration (category deletion validation).
+   * Keeps transaction queries inside Transaction module.
+   *
+   * Swift Mirror:
+   * ```swift
+   * func getCountByCategory(categoryId: String) async throws -> Int
+   * ```
+   *
+   * @param categoryId - Category ID (UUID)
+   * @returns Transaction count
+   * @throws {TransactionError} On error
+   */
+  getCountByCategory(categoryId: string): Promise<number>;
+
   // ============================================================================
   // WRITE OPERATIONS
   // ============================================================================

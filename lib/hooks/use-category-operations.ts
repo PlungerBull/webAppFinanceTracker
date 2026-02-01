@@ -34,6 +34,7 @@
 
 import { useMemo } from 'react';
 import { useCategoryService } from '@/features/categories/hooks/use-category-service';
+import { useTransactionOperations } from './use-transaction-operations';
 import {
   isCategoryDuplicateNameError,
   isCategoryHasChildrenError,
@@ -42,10 +43,12 @@ import {
   isCategoryVersionConflictError,
   isCategoryNotFoundError,
 } from '@/features/categories/domain';
+import type { CategoryValidationContext } from '@/features/categories/domain';
 import type {
   ICategoryOperations,
   CategoryOperationError,
   CategoryErrorCode,
+  CategoryDeletionValidation,
 } from '@/domain/categories';
 
 // ============================================================================
@@ -175,14 +178,15 @@ async function withErrorMapping<T>(fn: () => Promise<T>): Promise<T> {
  */
 export function useCategoryOperations(): ICategoryOperations | null {
   const service = useCategoryService();
+  const transactionOps = useTransactionOperations();
 
   // S-TIER: Pure useMemo - no ref mutations
   // useMemo already provides stable object identity when service is stable.
   // The service reference from WatermelonDB is stable after initialization.
   return useMemo(() => {
     // CTO MANDATE: Orchestrator Rule
-    // Don't create operations until service is ready
-    if (!service) {
+    // Don't create operations until both services are ready
+    if (!service || !transactionOps) {
       return null;
     }
 
@@ -207,8 +211,64 @@ export function useCategoryOperations(): ICategoryOperations | null {
 
       delete: (id, version) =>
         withErrorMapping(() => service.delete(id, version)),
+
+      /**
+       * S-TIER: Orchestrator handles Effect (fetching), delegates to Pure Logic.
+       *
+       * Flow:
+       * 1. FETCH PHASE: Parallel data fetching (optimized for mobile bridge)
+       * 2. LOGIC PHASE: Pass to pure synchronous validation
+       * 3. RETURN: CategoryDeletionValidation result
+       */
+      canDelete: async (categoryId: string): Promise<CategoryDeletionValidation> => {
+        try {
+          // 1. FETCH PHASE: Fetch category first
+          const category = await service.getById(categoryId);
+
+          // 2. FETCH PHASE: Parallel data fetching (Promise.all for performance)
+          const [childCount, transactionCount] = await Promise.all([
+            service.getChildCount(categoryId),
+            transactionOps.getCountByCategory(categoryId),
+          ]);
+
+          // 3. LOGIC PHASE: Build validation context
+          const context: CategoryValidationContext = {
+            childCount,
+            transactionCount,
+            parentCategory: null, // Not needed for deletion validation
+          };
+
+          // 4. LOGIC PHASE: Pass to pure synchronous validation
+          const result = service.validateDeletion(category, context);
+
+          // 5. RETURN: Map validation result to CategoryDeletionValidation
+          if (result.isValid) {
+            return { canDelete: true };
+          }
+
+          // Map violation code to user-friendly message
+          const errorMessages: Record<string, string> = {
+            HAS_CHILDREN: 'Cannot delete parent category with subcategories. Move or delete subcategories first.',
+            HAS_TRANSACTIONS: 'Cannot delete category with transactions. Reassign or delete transactions first.',
+          };
+
+          return {
+            canDelete: false,
+            error: errorMessages[result.code ?? ''] ?? 'Cannot delete category.',
+            childCount: result.metadata?.childCount as number | undefined,
+            transactionCount: result.metadata?.transactionCount as number | undefined,
+          };
+        } catch (error) {
+          // Handle fetch errors gracefully
+          const message = error instanceof Error ? error.message : 'Failed to validate category deletion.';
+          return {
+            canDelete: false,
+            error: message,
+          };
+        }
+      },
     };
-  }, [service]);
+  }, [service, transactionOps]);
 }
 
 // Legacy alias for backward compatibility during migration

@@ -59,6 +59,77 @@ export type HierarchyViolationReason =
   | 'max_depth'
   | 'parent_is_child';
 
+// ============================================================================
+// VALIDATION TYPES (S-Tier Pure Logic Support)
+// ============================================================================
+
+/**
+ * Category Violation Codes
+ *
+ * Exhaustive codes for validation failures.
+ * Maps 1:1 to Swift enum for iOS port.
+ *
+ * Swift Mirror:
+ * ```swift
+ * enum CategoryViolationCode: String, Codable {
+ *     case hasChildren = "HAS_CHILDREN"
+ *     case hasTransactions = "HAS_TRANSACTIONS"
+ *     case hierarchyDepthExceeded = "HIERARCHY_DEPTH_EXCEEDED"
+ *     case circularReference = "CIRCULAR_REFERENCE"
+ *     case parentNotFound = "PARENT_NOT_FOUND"
+ *     case promotionBlocked = "PROMOTION_BLOCKED"
+ *     case notSubcategory = "NOT_SUBCATEGORY"
+ * }
+ * ```
+ */
+export type CategoryViolationCode =
+  | 'HAS_CHILDREN'
+  | 'HAS_TRANSACTIONS'
+  | 'HIERARCHY_DEPTH_EXCEEDED'
+  | 'CIRCULAR_REFERENCE'
+  | 'PARENT_NOT_FOUND'
+  | 'PROMOTION_BLOCKED'
+  | 'NOT_SUBCATEGORY';
+
+/**
+ * Category Validation Result
+ *
+ * Return type for pure validation methods.
+ * Used by orchestrator hooks to check constraints before operations.
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct CategoryValidationResult: Codable {
+ *     let isValid: Bool
+ *     let code: CategoryViolationCode?
+ *     let metadata: [String: Any]?
+ * }
+ * ```
+ */
+export interface CategoryValidationResult {
+  readonly isValid: boolean;
+  readonly code?: CategoryViolationCode;
+  readonly metadata?: Record<string, unknown>;
+}
+
+/**
+ * Category Validation Context
+ *
+ * Context data fetched by orchestrator and passed to pure validation logic.
+ * Enables synchronous validation without DB calls in the service layer.
+ *
+ * S-Tier Principle: The service is a "Pure Logic Engine" that doesn't
+ * know where data comes from; it only knows what the rules are.
+ */
+export interface CategoryValidationContext {
+  readonly childCount: number;
+  readonly transactionCount: number;
+  readonly parentCategory?: {
+    readonly id: string;
+    readonly parentId: string | null;
+  } | null;
+}
+
 /**
  * Category Hierarchy Error
  *

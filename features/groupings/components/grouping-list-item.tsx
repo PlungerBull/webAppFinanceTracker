@@ -3,7 +3,7 @@
 import { Pencil, Trash2, Plus, Archive } from 'lucide-react';
 import { ResourceListItem } from '@/components/ui/resource-list-item';
 import { GROUPING } from '@/lib/constants';
-import type { GroupingEntity } from '@/features/categories/domain';
+import type { GroupingEntity } from '@/domain/categories';
 
 interface GroupingListItemProps {
     grouping: GroupingEntity;

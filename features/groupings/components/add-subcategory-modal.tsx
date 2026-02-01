@@ -14,7 +14,7 @@ import { VALIDATION, GROUPING } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import type { GroupingEntity } from '@/features/categories/domain';
+import type { GroupingEntity } from '@/domain/categories';
 
 interface AddSubcategoryModalProps {
     open: boolean;

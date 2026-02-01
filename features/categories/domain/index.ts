@@ -57,7 +57,13 @@ export {
   isCategoryMergeError,
   isCategoryVersionConflictError,
 } from './errors';
-export type { HierarchyViolationReason, MergeErrorReason } from './errors';
+export type {
+  HierarchyViolationReason,
+  MergeErrorReason,
+  CategoryViolationCode,
+  CategoryValidationResult,
+  CategoryValidationContext,
+} from './errors';
 
 // Constants
 export {

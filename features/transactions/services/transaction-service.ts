@@ -108,6 +108,17 @@ export class TransactionService implements ITransactionService {
     return result.data;
   }
 
+  async getCountByCategory(categoryId: string): Promise<number> {
+    const userId = await this.getCurrentUserId();
+    const result = await this.repository.getCountByCategory(userId, categoryId);
+
+    if (!result.success) {
+      throw result.error;
+    }
+
+    return result.data;
+  }
+
   // ============================================================================
   // WRITE OPERATIONS
   // ============================================================================

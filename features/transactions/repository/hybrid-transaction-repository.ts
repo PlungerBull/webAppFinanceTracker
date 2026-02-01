@@ -84,6 +84,13 @@ export class HybridTransactionRepository implements ITransactionRepository {
     return this.localRepository.getCategoryCounts(userId, filters);
   }
 
+  async getCountByCategory(
+    userId: string,
+    categoryId: string
+  ): Promise<DataResult<number>> {
+    return this.localRepository.getCountByCategory(userId, categoryId);
+  }
+
   // ============================================================================
   // WRITE OPERATIONS - Delegate to Local (marked 'pending')
   // ============================================================================

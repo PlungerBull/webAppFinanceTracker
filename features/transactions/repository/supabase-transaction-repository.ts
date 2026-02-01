@@ -289,6 +289,40 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
     }
   }
 
+  async getCountByCategory(
+    userId: string,
+    categoryId: string
+  ): Promise<DataResult<number>> {
+    try {
+      const { count, error } = await this.supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('category_id', categoryId)
+        .is('deleted_at', null);
+
+      if (error) {
+        return {
+          success: false,
+          data: null,
+          error: new TransactionRepositoryError(
+            `Failed to get transaction count for category ${categoryId}: ${error.message}`
+          ),
+        };
+      }
+
+      return { success: true, data: count || 0 };
+    } catch (err) {
+      return {
+        success: false,
+        data: null,
+        error: new TransactionRepositoryError(
+          `Unexpected error getting category count: ${(err as Error).message}`
+        ),
+      };
+    }
+  }
+
   // ============================================================================
   // WRITE OPERATIONS (Create, Update, Delete)
   // ============================================================================

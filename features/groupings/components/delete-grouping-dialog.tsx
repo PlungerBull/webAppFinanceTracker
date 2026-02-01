@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useDeleteGrouping, useGroupingChildren } from '../hooks/use-groupings';
 import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { GROUPING } from '@/lib/constants';
-import type { GroupingEntity } from '@/features/categories/domain';
+import type { GroupingEntity } from '@/domain/categories';
 
 interface DeleteGroupingDialogProps {
     open: boolean;

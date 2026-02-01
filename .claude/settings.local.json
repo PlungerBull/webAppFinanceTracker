@@ -48,7 +48,8 @@
       "Bash(npm view:*)",
       "Bash(sort:*)",
       "Bash(git rm:*)",
-      "Bash(du:*)"
+      "Bash(du:*)",
+      "Bash(pnpm typecheck:*)"
     ],
     "deny": [],
     "ask": []

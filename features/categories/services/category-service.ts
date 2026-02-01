@@ -33,6 +33,8 @@ import type {
   LeafCategoryEntity,
   GroupingEntity,
   CategorizedCategories,
+  CategoryValidationResult,
+  CategoryValidationContext,
 } from '../domain';
 import {
   CategoryValidationError,
@@ -195,6 +197,87 @@ export class CategoryService implements ICategoryService {
     }
 
     return result.data;
+  }
+
+  async getChildCount(parentId: string): Promise<number> {
+    const userId = await this.getCurrentUserId();
+    const result = await this.repository.getChildCount(userId, parentId);
+
+    if (!result.success) {
+      throw result.error;
+    }
+
+    return result.data;
+  }
+
+  // ===========================================================================
+  // PURE VALIDATION METHODS (S-Tier Architecture)
+  // ===========================================================================
+  // These methods are SYNCHRONOUS and receive all data as arguments.
+  // The orchestrator fetches data, passes to these pure logic methods.
+
+  validateDeletion(
+    _category: CategoryEntity,
+    context: CategoryValidationContext
+  ): CategoryValidationResult {
+    // Rule: Cannot delete parent with children
+    if (context.childCount > 0) {
+      return {
+        isValid: false,
+        code: 'HAS_CHILDREN',
+        metadata: { childCount: context.childCount },
+      };
+    }
+
+    // Rule: Cannot delete category with transactions
+    if (context.transactionCount > 0) {
+      return {
+        isValid: false,
+        code: 'HAS_TRANSACTIONS',
+        metadata: { transactionCount: context.transactionCount },
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  validateHierarchyChange(
+    category: CategoryEntity,
+    newParentId: string | null,
+    context: CategoryValidationContext
+  ): CategoryValidationResult {
+    // Rule: Self-parenting prevention
+    if (newParentId === category.id) {
+      return { isValid: false, code: 'CIRCULAR_REFERENCE' };
+    }
+
+    // Rule: Parent must exist (if setting one)
+    if (newParentId !== null && !context.parentCategory) {
+      return { isValid: false, code: 'PARENT_NOT_FOUND' };
+    }
+
+    // Rule: Two-level hierarchy (parent cannot have a parent)
+    if (context.parentCategory && context.parentCategory.parentId !== null) {
+      return { isValid: false, code: 'HIERARCHY_DEPTH_EXCEEDED' };
+    }
+
+    // Rule: Promotion prevention (subcategory with txns cannot become parent)
+    if (newParentId === null && context.transactionCount > 0) {
+      return {
+        isValid: false,
+        code: 'PROMOTION_BLOCKED',
+        metadata: { transactionCount: context.transactionCount },
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  validateIsSubcategory(category: CategoryEntity): CategoryValidationResult {
+    if (category.parentId === null) {
+      return { isValid: false, code: 'NOT_SUBCATEGORY' };
+    }
+    return { isValid: true };
   }
 
   // ===========================================================================

@@ -108,6 +108,13 @@ export class HybridCategoryRepository implements ICategoryRepository {
     return this.localRepository.getCategorizedCategories(userId);
   }
 
+  async getChildCount(
+    userId: string,
+    parentId: string
+  ): Promise<CategoryDataResult<number>> {
+    return this.localRepository.getChildCount(userId, parentId);
+  }
+
   // ============================================================================
   // WRITE OPERATIONS - Delegate to Local (marked 'pending')
   // ============================================================================

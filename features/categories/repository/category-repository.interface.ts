@@ -147,6 +147,26 @@ export interface ICategoryRepository {
     userId: string
   ): Promise<CategoryDataResult<CategorizedCategories>>;
 
+  /**
+   * Get count of child categories under a parent.
+   *
+   * S-TIER: Only queries categories table (no cross-feature access).
+   * Used by orchestrator for deletion validation.
+   *
+   * Swift Mirror:
+   * ```swift
+   * func getChildCount(userId: String, parentId: String) async -> DataResult<Int>
+   * ```
+   *
+   * @param userId - User ID
+   * @param parentId - Parent category ID
+   * @returns DataResult with child count
+   */
+  getChildCount(
+    userId: string,
+    parentId: string
+  ): Promise<CategoryDataResult<number>>;
+
   // ==========================================================================
   // WRITE OPERATIONS
   // ==========================================================================

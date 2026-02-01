@@ -564,6 +564,38 @@ export class SupabaseCategoryRepository implements ICategoryRepository {
     }
   }
 
+  async getChildCount(
+    _userId: string, // RLS handles user filtering
+    parentId: string
+  ): Promise<CategoryDataResult<number>> {
+    try {
+      const { count, error } = await this.supabase
+        .from('categories')
+        .select('*', { count: 'exact', head: true })
+        .eq('parent_id', parentId)
+        .is('deleted_at', null);
+
+      if (error) {
+        return {
+          success: false,
+          data: null,
+          error: this.mapDatabaseError(error, { categoryId: parentId }),
+        };
+      }
+
+      return { success: true, data: count || 0 };
+    } catch (err) {
+      return {
+        success: false,
+        data: null,
+        error: new CategoryRepositoryError(
+          `Failed to get child count for category ${parentId}`,
+          err
+        ),
+      };
+    }
+  }
+
   async getCategorizedCategories(
     userId: string
   ): Promise<CategoryDataResult<CategorizedCategories>> {

@@ -330,6 +330,32 @@ export class LocalTransactionRepository implements ITransactionRepository {
     }
   }
 
+  async getCountByCategory(
+    userId: string,
+    categoryId: string
+  ): Promise<DataResult<number>> {
+    try {
+      const count = await this.database
+        .get<TransactionModel>('transactions')
+        .query(
+          Q.where('user_id', userId),
+          Q.where('category_id', categoryId),
+          ...activeTombstoneFilter()
+        )
+        .fetchCount();
+
+      return { success: true, data: count };
+    } catch (err) {
+      return {
+        success: false,
+        data: null,
+        error: new TransactionRepositoryError(
+          `Failed to get transaction count for category ${categoryId}: ${(err as Error).message}`
+        ),
+      };
+    }
+  }
+
   // ============================================================================
   // WRITE OPERATIONS (Create, Update, Delete)
   // ============================================================================
