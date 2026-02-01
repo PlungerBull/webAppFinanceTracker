@@ -131,10 +131,16 @@ UI → React Query Hook → Service Layer → Repository → Database
 - **Dev:** `finance-tracker-dev.vercel.app` (branch: `dev`)
 - **Prod:** `finance-tracker.vercel.app` (branch: `main`)
 
+### Supabase Projects
+| Environment | Project ID | Usage |
+|-------------|------------|-------|
+| **DEV** | `iiatzixujzgoejtcirsu` | All testing and development |
+| **PROD** | `psjkuwzpdtmhmszqbmok` | Production only |
+
 ### Schema Changes
 ```bash
-# Generate types after DB changes
-supabase gen types typescript --project-id [id] > types/supabase.ts
+# Generate types from DEV database (use DB URL method)
+supabase gen types typescript --db-url "postgresql://postgres.iiatzixujzgoejtcirsu:[PASSWORD]@aws-1-us-east-1.pooler.supabase.com:6543/postgres" > types/supabase.ts
 ```
 
 ---

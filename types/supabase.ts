@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -611,7 +606,6 @@ export type Database = {
       transactions_view: {
         Row: {
           account_color: string | null
-          account_currency: string | null
           account_id: string | null
           account_name: string | null
           amount_cents: number | null
@@ -644,13 +638,6 @@ export type Database = {
           {
             foreignKeyName: "bank_accounts_currency_code_fkey"
             columns: ["currency_original"]
-            isOneToOne: false
-            referencedRelation: "global_currencies"
-            referencedColumns: ["code"]
-          },
-          {
-            foreignKeyName: "bank_accounts_currency_code_fkey"
-            columns: ["account_currency"]
             isOneToOne: false
             referencedRelation: "global_currencies"
             referencedColumns: ["code"]
@@ -836,7 +823,6 @@ export type Database = {
         Args: { p_since_version?: number; p_user_id: string }
         Returns: {
           account_color: string
-          account_currency: string
           account_id: string
           account_name: string
           amount_cents: number
@@ -1187,3 +1173,4 @@ export const Constants = {
     },
   },
 } as const
+

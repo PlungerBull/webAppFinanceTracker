@@ -185,10 +185,6 @@ export const TransactionsViewRowSchema = z.object({
   user_id: z.string().nullable(),
   account_id: z.string().nullable(),
   account_name: z.string().nullable(),
-  // Ghost Prop: account_currency is redundant with currency_original
-  // Kept for type compatibility with generated Supabase types until DB migration runs
-  // NOT mapped to domain entity (transformer ignores this field)
-  account_currency: z.string().nullable(),
   account_color: z.string().nullable(),
   category_id: z.string().nullable(),
   category_name: z.string().nullable(),
