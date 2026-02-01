@@ -81,13 +81,17 @@ export function useReferenceData(): ReferenceData {
     isLoading: isLoadingCategories,
   } = useLeafCategoriesQuery();
 
-  // Currencies
+  // Currencies - S-Tier: Unwrap DataResult
   const {
     data: currencies = [],
     isLoading: isLoadingCurrencies,
   } = useQuery({
     queryKey: QUERY_KEYS.CURRENCIES,
-    queryFn: currenciesApi.getAll,
+    queryFn: async () => {
+      const result = await currenciesApi.getAll();
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     staleTime: QUERY_CONFIG.STALE_TIME.LONG,
   });
 
@@ -140,9 +144,14 @@ export function useCurrenciesData(): {
   currencies: Currency[];
   isLoading: boolean;
 } {
+  // S-Tier: Unwrap DataResult
   const { data: currencies = [], isLoading } = useQuery({
     queryKey: QUERY_KEYS.CURRENCIES,
-    queryFn: currenciesApi.getAll,
+    queryFn: async () => {
+      const result = await currenciesApi.getAll();
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     staleTime: QUERY_CONFIG.STALE_TIME.LONG,
   });
   return { currencies, isLoading };

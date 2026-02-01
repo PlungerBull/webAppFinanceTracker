@@ -35,6 +35,14 @@
  *   toast.error(messages[err.reason]);
  * }
  * ```
+ *
+ * Swift Mirror:
+ * ```swift
+ * protocol DomainError: LocalizedError {
+ *     var code: String { get }
+ *     var isOperational: Bool { get }
+ * }
+ * ```
  */
 export abstract class DomainError extends Error {
   /**
@@ -43,8 +51,22 @@ export abstract class DomainError extends Error {
    */
   abstract readonly code: string;
 
-  constructor(message: string) {
+  /**
+   * Operational errors are expected failures (network, validation, conflicts).
+   * Non-operational errors are programmer bugs (syntax, type errors).
+   * Sentry only alerts on isOperational: false.
+   */
+  readonly isOperational: boolean = true;
+
+  /**
+   * Original error for debugging and Sentry stack traces.
+   * Preserved for root cause analysis without leaking to UI.
+   */
+  readonly originalError?: unknown;
+
+  constructor(message: string, originalError?: unknown) {
     super(message);
+    this.originalError = originalError;
     // Ensure proper prototype chain for instanceof checks
     this.name = this.constructor.name;
     Object.setPrototypeOf(this, new.target.prototype);

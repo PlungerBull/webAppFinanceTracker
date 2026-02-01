@@ -35,12 +35,35 @@ const SEVERITY_MAP: Record<string, SeverityLevel> = {
   NOT_FOUND: 'error',
   ALREADY_PROCESSED: 'warning',
   PROMOTION_FAILED: 'error',
+
+  // Currency errors
+  CURRENCY_REPOSITORY_ERROR: 'fatal',
+  CURRENCY_VALIDATION_ERROR: 'warning',
+
+  // Settings errors
+  SETTINGS_REPOSITORY_ERROR: 'fatal',
+  SETTINGS_NOT_FOUND: 'error',
+  SETTINGS_VALIDATION_ERROR: 'warning',
+  SETTINGS_AUTHENTICATION_ERROR: 'error',
+
+  // Reconciliation errors
+  RECONCILIATION_REPOSITORY_ERROR: 'fatal',
+  RECONCILIATION_NOT_FOUND: 'error',
+  RECONCILIATION_VALIDATION_ERROR: 'warning',
+  RECONCILIATION_VERSION_CONFLICT: 'warning',
+  RECONCILIATION_COMPLETED: 'warning',
+  RECONCILIATION_LINK_FAILED: 'error',
 };
 
-type ErrorWithCode = Error & { code?: string };
+type ErrorWithCode = Error & { code?: string; isOperational?: boolean };
 
 /**
  * Report a domain error to Sentry with appropriate severity and tags.
+ *
+ * Severity is determined by:
+ * 1. isOperational: false → always 'fatal' (programmer error)
+ * 2. Error code → mapped via SEVERITY_MAP
+ * 3. Default → 'error'
  *
  * @param error - The error to report
  * @param domain - Feature domain (e.g., 'transactions', 'inbox', 'accounts')
@@ -51,14 +74,23 @@ export function reportError(
   domain: string,
   extra?: Record<string, unknown>
 ): void {
-  const code = (error as ErrorWithCode).code;
-  const level = code ? (SEVERITY_MAP[code] ?? 'error') : 'error';
+  const typedError = error as ErrorWithCode;
+  const code = typedError.code;
+  const isOperational = typedError.isOperational ?? true;
+
+  // Non-operational errors (programmer bugs) are always fatal
+  const level: SeverityLevel = !isOperational
+    ? 'fatal'
+    : code
+      ? (SEVERITY_MAP[code] ?? 'error')
+      : 'error';
 
   Sentry.captureException(error, {
     level,
     tags: {
       domain,
       ...(code ? { 'error.code': code } : {}),
+      'error.operational': String(isOperational),
     },
     extra,
   });

@@ -4,6 +4,9 @@
  * Provides reconciliation operations for cross-feature use.
  * Wraps the reconciliations feature implementation without creating direct feature coupling.
  *
+ * S-Tier Pattern: Unwraps DataResult and throws actual DomainError
+ * for React Query error handling with preserved instanceof checks.
+ *
  * ARCHITECTURE PATTERN:
  * - Components import from @/lib/hooks/use-reconciliations
  * - This hook internally uses the reconciliations feature API
@@ -20,6 +23,11 @@ import { createClient } from '@/lib/supabase/client';
 import { createReconciliationsService } from '@/features/reconciliations/api/reconciliations';
 import { createQueryOptions } from '@/lib/constants';
 import { toast } from 'sonner';
+import {
+  isReconciliationVersionConflictError,
+  isReconciliationCompletedError,
+  isReconciliationNotFoundError,
+} from '@/features/reconciliations/domain/errors';
 
 const QUERY_KEYS = {
   RECONCILIATIONS: {
@@ -39,6 +47,8 @@ function useReconciliationsService() {
 
 /**
  * Fetch all reconciliations (optionally filtered by account)
+ *
+ * S-Tier: Throws actual DomainError for type-safe error handling.
  */
 export function useReconciliations(accountId?: string) {
   const service = useReconciliationsService();
@@ -47,20 +57,30 @@ export function useReconciliations(accountId?: string) {
     queryKey: accountId
       ? QUERY_KEYS.RECONCILIATIONS.BY_ACCOUNT(accountId)
       : QUERY_KEYS.RECONCILIATIONS.ALL,
-    queryFn: () => service.getAll(accountId),
+    queryFn: async () => {
+      const result = await service.getAll(accountId);
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     ...createQueryOptions('TRANSACTIONAL'),
   });
 }
 
 /**
  * Fetch single reconciliation
+ *
+ * S-Tier: Throws actual DomainError for type-safe error handling.
  */
 export function useReconciliation(id: string | null | undefined) {
   const service = useReconciliationsService();
 
   return useQuery({
     queryKey: QUERY_KEYS.RECONCILIATIONS.BY_ID(id || 'none'),
-    queryFn: () => service.getById(id!),
+    queryFn: async () => {
+      const result = await service.getById(id!);
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     ...createQueryOptions('TRANSACTIONAL'),
     enabled: !!id,
   });
@@ -68,6 +88,8 @@ export function useReconciliation(id: string | null | undefined) {
 
 /**
  * Fetch reconciliation summary (real-time math)
+ *
+ * S-Tier: Throws actual DomainError for type-safe error handling.
  *
  * IMPORTANT: NO POLLING - uses query invalidation instead
  * CTO Directive: Rely on TanStack Query invalidation upon mutation success
@@ -78,7 +100,11 @@ export function useReconciliationSummary(reconciliationId: string | null | undef
 
   return useQuery({
     queryKey: QUERY_KEYS.RECONCILIATIONS.SUMMARY(reconciliationId || 'none'),
-    queryFn: () => service.getSummary(reconciliationId!),
+    queryFn: async () => {
+      const result = await service.getSummary(reconciliationId!);
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     ...createQueryOptions('TRANSACTIONAL'),
     enabled: !!reconciliationId,
     // NO refetchInterval - invalidation handles updates
@@ -87,13 +113,19 @@ export function useReconciliationSummary(reconciliationId: string | null | undef
 
 /**
  * Create reconciliation
+ *
+ * S-Tier: Throws actual DomainError for typed error handling.
  */
 export function useCreateReconciliation() {
   const queryClient = useQueryClient();
   const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: (data: Parameters<typeof service.create>[0]) => service.create(data),
+    mutationFn: async (data: Parameters<typeof service.create>[0]) => {
+      const result = await service.create(data);
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     onSuccess: (data) => {
       // Invalidate reconciliation lists
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
@@ -110,16 +142,25 @@ export function useCreateReconciliation() {
 
 /**
  * Update reconciliation
+ *
+ * S-Tier: Throws actual DomainError for typed error handling.
  */
 export function useUpdateReconciliation() {
   const queryClient = useQueryClient();
   const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: ({ id, updates }: {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
       id: string;
-      updates: Parameters<typeof service.update>[1]
-    }) => service.update(id, updates),
+      updates: Parameters<typeof service.update>[1];
+    }) => {
+      const result = await service.update(id, updates);
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     onSuccess: (data) => {
       // Invalidate reconciliation lists and specific reconciliation
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
@@ -144,6 +185,8 @@ export function useUpdateReconciliation() {
 /**
  * Delete reconciliation (version-checked soft delete)
  *
+ * S-Tier: Uses typed DomainErrors for specific error handling.
+ *
  * CTO Mandate: Optimistic concurrency control prevents data loss from
  * concurrent modifications across devices.
  */
@@ -152,36 +195,37 @@ export function useDeleteReconciliation() {
   const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: ({ id, version }: { id: string; version: number }) =>
-      service.delete(id, version),
-    onSuccess: (result) => {
-      if (result.success) {
-        // Invalidate all reconciliation queries
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
-        // Invalidate transactions (they may have been unlinked)
-        queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        toast.success('Reconciliation deleted successfully');
-      } else {
-        // Handle specific errors
-        if (result.error === 'version_conflict') {
-          toast.error('This reconciliation was modified. Please refresh and try again.');
-        } else if (result.error === 'reconciliation_completed') {
-          toast.error('Cannot delete a completed reconciliation. Change status to draft first.');
-        } else if (result.error === 'not_found') {
-          toast.error('Reconciliation not found or already deleted.');
-        } else {
-          toast.error(`Failed to delete reconciliation: ${result.error}`);
-        }
-      }
+    mutationFn: async ({ id, version }: { id: string; version: number }) => {
+      const result = await service.delete(id, version);
+      if (!result.success) throw result.error;
+      return result.data;
+    },
+    onSuccess: () => {
+      // Invalidate all reconciliation queries
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.RECONCILIATIONS.ALL });
+      // Invalidate transactions (they may have been unlinked)
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast.success('Reconciliation deleted successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete reconciliation: ${error.message}`);
+      // S-Tier: Use instanceof checks for typed error handling
+      if (isReconciliationVersionConflictError(error)) {
+        toast.error('This reconciliation was modified. Please refresh and try again.');
+      } else if (isReconciliationCompletedError(error)) {
+        toast.error('Cannot delete a completed reconciliation. Change status to draft first.');
+      } else if (isReconciliationNotFoundError(error)) {
+        toast.error('Reconciliation not found or already deleted.');
+      } else {
+        toast.error(`Failed to delete reconciliation: ${error.message}`);
+      }
     },
   });
 }
 
 /**
  * Link transactions to reconciliation
+ *
+ * S-Tier: Throws actual DomainError for typed error handling.
  *
  * CRITICAL: Invalidates reconciliation summary on success for instant HUD updates
  */
@@ -190,17 +234,24 @@ export function useLinkTransactions() {
   const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: ({ reconciliationId, transactionIds }: {
+    mutationFn: async ({
+      reconciliationId,
+      transactionIds,
+    }: {
       reconciliationId: string;
       transactionIds: string[];
-    }) => service.linkTransactions(reconciliationId, transactionIds),
-    onSuccess: (result, { reconciliationId }) => {
+    }) => {
+      const result = await service.linkTransactions(reconciliationId, transactionIds);
+      if (!result.success) throw result.error;
+      return { ...result.data, reconciliationId };
+    },
+    onSuccess: (result) => {
       // CRITICAL: Invalidate transactions query (to refresh cleared flags)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
 
       // CRITICAL: Invalidate reconciliation summary (for instant HUD math update)
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.RECONCILIATIONS.SUMMARY(reconciliationId),
+        queryKey: QUERY_KEYS.RECONCILIATIONS.SUMMARY(result.reconciliationId),
       });
 
       // Show appropriate toast based on results
@@ -210,9 +261,8 @@ export function useLinkTransactions() {
         const uniqueErrors = [...new Set(errorMessages)];
 
         // Show detailed error for Sacred Ledger violations and other specific errors
-        const errorDetail = uniqueErrors.length === 1
-          ? uniqueErrors[0]
-          : `${uniqueErrors.join(', ')}`;
+        const errorDetail =
+          uniqueErrors.length === 1 ? uniqueErrors[0] : `${uniqueErrors.join(', ')}`;
 
         toast.error(
           `Linked ${result.successCount} transactions, ${result.errorCount} failed: ${errorDetail}`,
@@ -231,6 +281,8 @@ export function useLinkTransactions() {
 /**
  * Unlink transactions from reconciliation
  *
+ * S-Tier: Throws actual DomainError for typed error handling.
+ *
  * CRITICAL: Invalidates reconciliation summary on success for instant HUD updates
  */
 export function useUnlinkTransactions() {
@@ -238,7 +290,11 @@ export function useUnlinkTransactions() {
   const service = useReconciliationsService();
 
   return useMutation({
-    mutationFn: (transactionIds: string[]) => service.unlinkTransactions(transactionIds),
+    mutationFn: async (transactionIds: string[]) => {
+      const result = await service.unlinkTransactions(transactionIds);
+      if (!result.success) throw result.error;
+      return result.data;
+    },
     onSuccess: (result) => {
       // CRITICAL: Invalidate transactions query (to refresh cleared flags)
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -253,9 +309,8 @@ export function useUnlinkTransactions() {
         const uniqueErrors = [...new Set(errorMessages)];
 
         // Show detailed error messages
-        const errorDetail = uniqueErrors.length === 1
-          ? uniqueErrors[0]
-          : `${uniqueErrors.join(', ')}`;
+        const errorDetail =
+          uniqueErrors.length === 1 ? uniqueErrors[0] : `${uniqueErrors.join(', ')}`;
 
         toast.error(
           `Unlinked ${result.successCount} transactions, ${result.errorCount} failed: ${errorDetail}`,

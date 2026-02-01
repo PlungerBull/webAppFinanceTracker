@@ -8,52 +8,53 @@ import { Upload, Download, Trash2, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { IMPORT_EXPORT, SETTINGS, QUERY_KEYS } from '@/lib/constants';
+import { useClearUserData } from '../hooks/use-user-settings';
 
 export function DataManagement() {
-    const router = useRouter();
-    const [importError, setImportError] = useState<string | null>(null);
-    const [importSuccess, setImportSuccess] = useState<string | null>(null);
-    const queryClient = useQueryClient();
+  const router = useRouter();
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const clearUserDataMutation = useClearUserData();
 
-    const { supabase, authProvider } = useMemo(() => {
-        const sb = createClient();
-        return { supabase: sb, authProvider: createSupabaseAuthProvider(sb) };
-    }, []);
+  const { supabase, authProvider } = useMemo(() => {
+    const sb = createClient();
+    return { supabase: sb, authProvider: createSupabaseAuthProvider(sb) };
+  }, []);
 
-    const handleClearData = async () => {
-        try {
-            const userId = await authProvider.getCurrentUserId();
+  /**
+   * S-Tier: Uses service layer with DataResult pattern via useClearUserData hook
+   */
+  const handleClearData = async () => {
+    try {
+      await clearUserDataMutation.mutateAsync();
+      alert(SETTINGS.MESSAGES.SUCCESS.DATA_CLEARED);
 
-            const { error } = await supabase.rpc('clear_user_data', { p_user_id: userId });
-            if (error) throw error;
+      // Invalidate all data queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CURRENCIES }),
+      ]);
 
-            alert(SETTINGS.MESSAGES.SUCCESS.DATA_CLEARED);
-
-            // Invalidate all data queries
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRANSACTIONS.ALL }),
-                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ACCOUNTS }),
-                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES }),
-                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CURRENCIES }),
-            ]);
-
-            router.refresh();
-        } catch (error) {
-            console.error('Failed to clear data:', error);
-            alert(SETTINGS.MESSAGES.ERROR.CLEAR_FAILED);
-        }
-    };
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      alert(SETTINGS.MESSAGES.ERROR.CLEAR_FAILED);
+    }
+  };
 
     return (
         <div className="space-y-8">
