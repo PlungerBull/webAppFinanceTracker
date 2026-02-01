@@ -5,6 +5,8 @@ import { Loader2, ChevronDown, ChevronRight, ArrowRightLeft } from 'lucide-react
 import { useFinancialOverview, type CategoryMonthlyData } from '../hooks/use-financial-overview';
 import { formatCurrencyShort } from '@/lib/hooks/use-formatted-balance';
 import { UI } from '@/lib/constants';
+import { groupCategoriesByParent } from '@/lib/utils/grouping-logic';
+import { checkCategoryGuardrails, measurePerf } from '@/lib/utils/perf-guard';
 import { startOfMonth, subMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { fromCents } from '@/lib/utils/cents-conversion';
@@ -33,29 +35,38 @@ export function FinancialOverview() {
   }, []);
 
   // Grouping logic (parent-child hierarchy)
+  // S-TIER: Uses pure function from grouping-logic.ts for iOS parity
   const groupCategories = useMemo(() => {
     return (categories: CategoryMonthlyData[]): CategoryGroup[] => {
-      const parents = categories.filter(cat => !cat.parentId);
-      const children = categories.filter(cat => cat.parentId);
+      // Guardrail check inside memo to avoid overhead on every render
+      checkCategoryGuardrails(categories);
+
+      // O(n) single-pass grouping via pure function
+      const { parents, childrenByParentId } = measurePerf(
+        'groupCategoriesByParent',
+        () => groupCategoriesByParent(categories)
+      );
 
       return parents.map(parent => {
-        const groupChildren = children.filter(child => child.parentId === parent.categoryId);
+        // O(1) lookup instead of O(n) filter
+        const groupChildren = childrenByParentId.get(parent.categoryId) || [];
 
         // Calculate totals for the parent row (Sum of children)
         // HARDENED: Data is now in integer cents - pure integer arithmetic
         const totals: Record<string, number> = {};
-        months.forEach(month => {
+        for (const month of months) {
           const monthKey = month.toISOString().slice(0, 7);
-          const childrenSum = groupChildren.reduce((sum, child) => {
-            return sum + (child.monthlyAmounts[monthKey] || 0);
-          }, 0);
-          totals[monthKey] = childrenSum;  // No Math.round needed - integer cents
-        });
+          let childrenSum = 0;
+          for (const child of groupChildren) {
+            childrenSum += child.monthlyAmounts[monthKey] || 0;
+          }
+          totals[monthKey] = childrenSum; // No Math.round needed - integer cents
+        }
 
         return {
           parent,
           children: groupChildren,
-          totals
+          totals,
         };
       });
     };

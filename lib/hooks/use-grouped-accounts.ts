@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useAccounts, type AccountViewEntity } from '@/features/accounts/hooks/use-accounts';
 import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
+import { groupAccountsByGroupId } from '@/lib/utils/grouping-logic';
+import { checkAccountGuardrails, measurePerf } from '@/lib/utils/perf-guard';
 
 /**
  * Hook to group account balances by group_id
@@ -23,13 +25,15 @@ import { ACCOUNT, ACCOUNT_UI } from '@/lib/constants';
 export function useGroupedAccounts() {
   const { data: accounts = [], isLoading } = useAccounts();
 
+  // S-TIER: Uses pure function from grouping-logic.ts for iOS parity
   const groupedAccounts = useMemo(() => {
-    const grouped = new Map<string, AccountViewEntity[]>();
+    // Guardrail check inside memo to avoid overhead on every render
+    checkAccountGuardrails(accounts);
 
-    accounts.forEach((account) => {
-      const existing = grouped.get(account.groupId) || [];
-      grouped.set(account.groupId, [...existing, account]);
-    });
+    // O(a) single-pass grouping via pure function (no array spread!)
+    const grouped = measurePerf('groupAccountsByGroupId', () =>
+      groupAccountsByGroupId(accounts)
+    );
 
     return Array.from(grouped.entries()).map(([groupId, groupAccounts]) => {
       const first = groupAccounts[0];
@@ -41,9 +45,9 @@ export function useGroupedAccounts() {
         type: first.type,
         balances: groupAccounts
           .map((acc) => ({
-            accountId: acc.id,  // Use id, not accountId
+            accountId: acc.id, // Use id, not accountId
             currency: acc.currencyCode,
-            amountCents: acc.currentBalanceCents,  // Use integer cents, not decimal
+            amountCents: acc.currentBalanceCents, // Use integer cents, not decimal
           }))
           .sort((a, b) => a.currency.localeCompare(b.currency)),
       };
