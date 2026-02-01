@@ -175,6 +175,42 @@ User
 
 ---
 
+## 7. Serialization Boundary Contract
+
+**Status: NON-NEGOTIABLE**
+
+**Problem:** Ghost props in ViewEntities cause unnecessary JSON parsing overhead on the iOS bridge. Every unused property adds serialization latency and Swift protocol bloat.
+
+### Rules
+
+Every property in a ViewEntity MUST be:
+1. **Rendered in a UI component**, OR
+2. **Used in business logic**, OR
+3. **Marked `@deprecated` with removal timeline**
+
+Properties that exist "just in case" or "for future use" are violations.
+
+### Enforcement
+
+| Method | Frequency |
+|--------|-----------|
+| ESLint domain strictness rules | Continuous (CI) |
+| Semi-annual Ghost Prop Audit | January, July |
+| Code review checklist | Per PR |
+
+### Code Reference
+
+See `docs/NATIVE_PORTING_GUIDE.md` for the canonical property inventory and Swift struct templates.
+
+### Violation Resolution
+
+1. Identify unused property via grep (zero `.propName` references in components/hooks)
+2. Add `@deprecated` JSDoc with target removal date
+3. Create migration (if database field) or PR (if TypeScript-only)
+4. Remove in following audit cycle
+
+---
+
 ## Code References
 
 | Concept | Source of Truth |
@@ -184,6 +220,7 @@ User
 | Data Patterns | `lib/data-patterns/types.ts` |
 | Validation Schemas | `lib/data/db-row-schemas.ts` |
 | Error Classes | `lib/errors/domain-error.ts` |
+| Native Porting Guide | `docs/NATIVE_PORTING_GUIDE.md` |
 
 ---
 

@@ -155,7 +155,7 @@ export function localTransactionViewToDomain(
 
     // Joined display fields — null, NOT magic strings
     accountName: account?.name ?? null,
-    accountCurrency: account?.currencyCode ?? null,
+    // REMOVED: accountCurrency (Ghost Prop - use currencyOriginal instead)
     accountColor: account?.color ?? null,
     categoryName: category?.name ?? null,
     categoryColor: category?.color ?? null,

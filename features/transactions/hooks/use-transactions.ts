@@ -174,7 +174,7 @@ export function useAddTransaction() {
         deletedAt: null,
         // View-specific fields (will be populated by server)
         accountName: '',
-        accountCurrency: '',
+        // REMOVED: accountCurrency (Ghost Prop - use currencyOriginal instead)
         accountColor: null,
         categoryName: null,
         categoryColor: null,

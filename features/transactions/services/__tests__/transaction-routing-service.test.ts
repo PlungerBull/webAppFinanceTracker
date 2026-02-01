@@ -22,6 +22,7 @@ const mockTransactionService: ITransactionService = {
   getAllPaginated: vi.fn(),
   getById: vi.fn(),
   getCategoryCounts: vi.fn(),
+  getCountByCategory: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   updateBatch: vi.fn(),
@@ -75,7 +76,7 @@ function createMockTransaction(id: string): TransactionViewEntity {
     reconciliationId: null,
     cleared: false,
     accountName: 'Test Account',
-    accountCurrency: 'USD',
+    // REMOVED: accountCurrency (Ghost Prop - use currencyOriginal instead)
     accountColor: '#3b82f6',
     categoryName: 'Food',
     categoryColor: '#ef4444',

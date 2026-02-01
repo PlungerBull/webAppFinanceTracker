@@ -189,7 +189,13 @@ export interface CategoryFilters {
   /** Filter by parent ID (null = root categories only) */
   readonly parentId?: string | null;
 
-  /** Only return leaf categories (assignable to transactions) */
+  /**
+   * Only return leaf categories (assignable to transactions)
+   *
+   * @deprecated Use `getLeafCategories()` method instead.
+   * This filter is redundant - the dedicated method is preferred (12+ usages).
+   * Ghost Prop Audit (2026-02-01): Marked for removal in next audit cycle.
+   */
   readonly leafOnly?: boolean;
 }
 

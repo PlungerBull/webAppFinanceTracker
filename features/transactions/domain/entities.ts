@@ -274,7 +274,7 @@ export interface TransactionEntity {
  *
  *     // Joined fields
  *     let accountName: String
- *     let accountCurrency: String
+ *     // REMOVED: accountCurrency (Ghost Prop - use currencyOriginal instead)
  *     let accountColor: String?
  *     let categoryName: String?
  *     let categoryColor: String?
@@ -291,12 +291,8 @@ export interface TransactionViewEntity extends TransactionEntity {
    */
   readonly accountName: string | null;
 
-  /**
-   * Account currency code (from bank_accounts table)
-   * Null if JOIN failed (data integrity issue).
-   * Same as currencyOriginal - included for convenience
-   */
-  readonly accountCurrency: string | null;
+  // REMOVED: accountCurrency (Ghost Prop - redundant with currencyOriginal)
+  // Use currencyOriginal instead for currency display
 
   /**
    * Account color (from bank_accounts table)

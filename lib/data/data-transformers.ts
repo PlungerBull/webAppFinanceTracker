@@ -394,7 +394,7 @@ export function dbTransactionViewToDomain(
 
     // Joined display fields — null, NOT magic strings
     accountName: dbView.account_name ?? null,
-    accountCurrency: dbView.account_currency ?? null,
+    // REMOVED: accountCurrency (Ghost Prop - redundant with currencyOriginal)
     accountColor: dbView.account_color ?? null,
     categoryName: dbView.category_name ?? null,
     categoryColor: dbView.category_color ?? null,
@@ -1069,7 +1069,7 @@ export function inboxItemViewToTransactionView(
     accountId: item.accountId ?? '',
     accountName: item.account?.name ?? 'Unassigned',
     accountColor: null, // Inbox items don't have account color joined yet
-    accountCurrency: item.currencyCode ?? 'USD',
+    // REMOVED: accountCurrency (Ghost Prop - use currencyOriginal instead)
 
     // Amount fields (Sacred Integer Arithmetic)
     amountCents: item.amountCents ?? 0,

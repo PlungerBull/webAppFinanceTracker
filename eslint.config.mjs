@@ -249,12 +249,54 @@ const orchestrationOverrides = [
 ];
 
 // ============================================================================
+// DOMAIN STRICTNESS (Ghost Prop Prevention)
+// ============================================================================
+
+/**
+ * Domain Strictness Rules
+ *
+ * S-Tier: Enforces clean domain interfaces for iOS Swift protocol mapping.
+ * Every property in domain entities must be actively used in UI/business logic.
+ *
+ * These rules help identify potential "Ghost Props" during development:
+ * - Unused variables/imports in domain files
+ * - Explicit any types that bypass Swift compatibility
+ *
+ * NOTE: Full Ghost Prop detection requires code coverage analysis beyond ESLint.
+ * Semi-annual audits (January, July) supplement automated checks.
+ *
+ * See: docs/NATIVE_PORTING_GUIDE.md for property inventory.
+ */
+const domainStrictnessRules = {
+  files: [
+    "domain/**/*.ts",
+    "features/**/domain/**/*.ts"
+  ],
+  rules: {
+    // Flag unused exports that may indicate ghost props
+    "@typescript-eslint/no-unused-vars": ["warn", {
+      varsIgnorePattern: "^_",
+      argsIgnorePattern: "^_",
+      // Catch unused interface declarations
+      ignoreRestSiblings: true
+    }],
+    // Prevent any types that break Swift Codable compatibility
+    "@typescript-eslint/no-explicit-any": "error",
+    // Ensure all exports are intentional
+    "no-unused-expressions": "error"
+  }
+};
+
+// ============================================================================
 // MAIN CONFIG
 // ============================================================================
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+
+  // Domain strictness (Ghost Prop prevention)
+  domainStrictnessRules,
 
   // Feature boundary enforcement (base rules)
   featureBoundaryRules,

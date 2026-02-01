@@ -149,6 +149,34 @@ export interface ITransactionRepository {
     filters?: TransactionFilters
   ): Promise<DataResult<CategoryCounts>>;
 
+  /**
+   * Get transaction count for a specific category
+   *
+   * S-TIER: Keeps transaction queries inside Transaction module.
+   * Used by category orchestrator for deletion validation.
+   *
+   * Swift Mirror:
+   * ```swift
+   * func getCountByCategory(userId: String, categoryId: String) async -> DataResult<Int>
+   * ```
+   *
+   * @param userId - User ID (UUID)
+   * @param categoryId - Category ID (UUID)
+   * @returns DataResult with transaction count or error
+   *
+   * @example
+   * ```typescript
+   * const result = await repository.getCountByCategory(userId, categoryId);
+   * if (result.success && result.data > 0) {
+   *   console.log('Category has transactions');
+   * }
+   * ```
+   */
+  getCountByCategory(
+    userId: string,
+    categoryId: string
+  ): Promise<DataResult<number>>;
+
   // ============================================================================
   // WRITE OPERATIONS (Create, Update, Delete)
   // ============================================================================
@@ -368,33 +396,26 @@ export interface ITransactionRepository {
   // ============================================================================
 
   // ============================================================================
-  // DELTA SYNC OPERATIONS (Future - Phase 2)
+  // DELTA SYNC OPERATIONS
+  // ============================================================================
+  // Ghost Prop Audit (2026-02-01): These methods are also defined in ISyncRepository
+  // for cleaner domain isolation. New code should prefer ISyncRepository.
+  // See: sync-repository.interface.ts
   // ============================================================================
 
   /**
    * Get all changes since version (for full delta sync)
    *
+   * @beta Phase 2 - Offline-First Architecture
+   * @see ISyncRepository.getChangesSince for preferred interface
+   *
    * CTO Mandate #2: Version-Based Sync
    * - Returns created, updated, AND deleted transactions
    * - Used for delta sync: "what changed since last sync?"
    *
-   * Future enhancement for Phase 2 (offline-first architecture).
-   *
    * @param userId - User ID (UUID)
    * @param sinceVersion - Version number (get changes after this version)
    * @returns DataResult with sync response (all changes + currentServerVersion)
-   *
-   * @example
-   * ```typescript
-   * const result = await repository.getChangesSince(userId, lastSyncVersion);
-   * if (result.success) {
-   *   const { created, updated, deleted } = result.data.data;
-   *   // Apply to local cache
-   *   created.forEach(txn => localCache.insert(txn));
-   *   updated.forEach(txn => localCache.update(txn));
-   *   deleted.forEach(txn => localCache.remove(txn.id));
-   * }
-   * ```
    */
   getChangesSince(
     userId: string,
@@ -402,13 +423,16 @@ export interface ITransactionRepository {
   ): Promise<DataResult<SyncResponse<TransactionChanges>>>;
 
   // ============================================================================
-  // ADMIN OPERATIONS (Future)
+  // ADMIN OPERATIONS
   // ============================================================================
 
   /**
    * Permanently delete transaction (physical DELETE)
    *
-   * ADMIN ONLY - removes record from database permanently.
+   * @internal ADMIN ONLY
+   * @see ISyncRepository.permanentlyDelete for preferred interface
+   *
+   * Removes record from database permanently.
    * Normal delete operations should use soft delete.
    *
    * @param userId - User ID (UUID)
@@ -417,3 +441,6 @@ export interface ITransactionRepository {
    */
   permanentlyDelete(userId: string, id: string): Promise<DataResult<void>>;
 }
+
+// Re-export ISyncRepository for discoverability
+export type { ISyncRepository } from './sync-repository.interface';

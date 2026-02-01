@@ -29,7 +29,12 @@ import type {
   LeafCategoryEntity,
   GroupingEntity,
   CategorizedCategories,
+  CategoryValidationResult,
+  CategoryValidationContext,
 } from '../domain';
+
+// Re-export from repository interface (Single Source of Truth)
+export type { MergeCategoriesResult } from '../repository/category-repository.interface';
 
 /**
  * Category Service Interface
@@ -96,6 +101,103 @@ export interface ICategoryService {
    * @returns Categorized structure grouped by type
    */
   getCategorizedCategories(): Promise<CategorizedCategories>;
+
+  /**
+   * Get count of child categories under a parent.
+   *
+   * S-TIER: Exposed for orchestrator to call before pure validation.
+   *
+   * @param parentId - Parent category ID
+   * @returns Number of child categories
+   */
+  getChildCount(parentId: string): Promise<number>;
+
+  // ===========================================================================
+  // PURE VALIDATION METHODS (S-Tier Architecture)
+  // ===========================================================================
+  // These methods are SYNCHRONOUS and receive all data as arguments.
+  // The orchestrator fetches data, passes to these pure logic methods.
+  // This enables:
+  // - Unit testing without DB mocks (<1ms)
+  // - iOS Swift port without TransactionModule coupling
+  // - Bridge performance optimization (no async in logic layer)
+
+  /**
+   * Validate if a category can be deleted.
+   *
+   * PURE LOGIC: Synchronous, no DB calls.
+   * Called by orchestrator with pre-fetched data.
+   *
+   * Rules:
+   * - Cannot delete parent with children (HAS_CHILDREN)
+   * - Cannot delete category with transactions (HAS_TRANSACTIONS)
+   *
+   * Swift Mirror:
+   * ```swift
+   * func validateDeletion(
+   *     category: CategoryEntity,
+   *     context: CategoryValidationContext
+   * ) -> CategoryValidationResult
+   * ```
+   *
+   * @param category - Category to validate
+   * @param context - Validation context with counts
+   * @returns Validation result (isValid, code, metadata)
+   */
+  validateDeletion(
+    category: CategoryEntity,
+    context: CategoryValidationContext
+  ): CategoryValidationResult;
+
+  /**
+   * Validate hierarchy change before update.
+   *
+   * PURE LOGIC: Synchronous validation of hierarchy rules.
+   * Called by orchestrator with pre-fetched data.
+   *
+   * Rules:
+   * - Cannot set self as parent (CIRCULAR_REFERENCE)
+   * - Parent must exist if provided (PARENT_NOT_FOUND)
+   * - Parent cannot be a child category (HIERARCHY_DEPTH_EXCEEDED)
+   * - Cannot promote subcategory with transactions to parent (PROMOTION_BLOCKED)
+   *
+   * Swift Mirror:
+   * ```swift
+   * func validateHierarchyChange(
+   *     category: CategoryEntity,
+   *     newParentId: String?,
+   *     context: CategoryValidationContext
+   * ) -> CategoryValidationResult
+   * ```
+   *
+   * @param category - Category being updated
+   * @param newParentId - New parent ID (null = promote to parent)
+   * @param context - Validation context with counts and parent info
+   * @returns Validation result
+   */
+  validateHierarchyChange(
+    category: CategoryEntity,
+    newParentId: string | null,
+    context: CategoryValidationContext
+  ): CategoryValidationResult;
+
+  /**
+   * Validate category is assignable to transactions (is a subcategory).
+   *
+   * PURE LOGIC: Synchronous, no DB calls.
+   *
+   * Rules:
+   * - Category must have parentId (NOT_SUBCATEGORY)
+   *
+   * Swift Mirror:
+   * ```swift
+   * func validateIsSubcategory(category: CategoryEntity) -> CategoryValidationResult
+   * ```
+   *
+   * @param category - Category to validate
+   * @returns Validation result
+   */
+  validateIsSubcategory(category: CategoryEntity): CategoryValidationResult;
 
   // ===========================================================================
   // WRITE OPERATIONS
@@ -207,19 +309,5 @@ export interface ICategoryService {
   mergeCategories(
     sourceCategoryIds: string[],
     targetCategoryId: string
-  ): Promise<MergeCategoriesResult>;
-}
-
-/**
- * Result of a category merge operation
- */
-export interface MergeCategoriesResult {
-  /** Number of transactions reassigned to target category */
-  readonly affectedTransactionCount: number;
-
-  /** Number of source categories deleted */
-  readonly mergedCategoryCount: number;
-
-  /** ID of the target category that received the transactions */
-  readonly targetCategoryId: string;
+  ): Promise<import('../repository/category-repository.interface').MergeCategoriesResult>;
 }

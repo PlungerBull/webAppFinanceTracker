@@ -203,7 +203,18 @@ export interface BulkUpdateTransactionDTO {
  * Bulk Update Result
  *
  * Response from bulk update operations.
- * Includes both successful and failed IDs.
+ * UI only displays counts in toast messages.
+ *
+ * Ghost Prop Audit (2026-02-01): Removed successIds and failures array.
+ * These were never accessed in UI - only counts are displayed.
+ *
+ * Swift Mirror:
+ * ```swift
+ * struct BulkUpdateResult: Codable {
+ *     let successCount: Int
+ *     let failureCount: Int
+ * }
+ * ```
  */
 export interface BulkUpdateResult {
   /** Number of transactions successfully updated */
@@ -211,15 +222,6 @@ export interface BulkUpdateResult {
 
   /** Number of transactions that failed to update */
   readonly failureCount: number;
-
-  /** IDs of successfully updated transactions */
-  readonly successIds: string[];
-
-  /** IDs of transactions that failed (with error messages) */
-  readonly failures: Array<{
-    readonly id: string;
-    readonly error: string;
-  }>;
 }
 
 /**

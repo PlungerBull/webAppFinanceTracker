@@ -6,11 +6,17 @@
 
 ## Current Mission
 
-**Sprint Focus:** Repository Pattern completion and iOS foundation work.
+**Sprint Focus:** iOS Swift protocol mapping preparation and reliability hardening.
 
 **Active Tasks:**
-- Complete delta sync engine testing
-- Infrastructure documentation reset
+- Import optimization (fix timeouts on large Excel/CSV)
+- Delta sync engine production readiness
+
+**Recently Completed:**
+- Ghost Prop Audit (S-Tier Continuous Constraint System)
+- Volatility Engine for query caching
+- Optimistic updates for categories
+- Scalability guardrails for dashboard
 
 ---
 
@@ -117,8 +123,8 @@ UI → React Query Hook → Service Layer → Repository → Database
 ## Active Constraints
 
 ### Known Issues
-- 173 linting issues across 77 files (tracked in `docs/TODO.md`)
 - setState-in-Effect anti-patterns pending cleanup
+- See `docs/TODO.md` for tracked items
 
 ### Environment
 - **Local:** `localhost:3000` with local Supabase
@@ -135,15 +141,19 @@ supabase gen types typescript --project-id [id] > types/supabase.ts
 
 ## Sprint Notes
 
-*Update this section with current implementation details.*
-
 ### Current Focus
-- Delta sync engine: `lib/sync/`
-- Repository pattern: `features/transactions/repository/`
+- Import optimization: `features/import-export/`
+- Ghost Prop prevention: `eslint.config.mjs` (domainStrictnessRules)
+
+### Recently Added
+- `docs/NATIVE_PORTING_GUIDE.md` - Swift protocol mapping reference
+- `features/transactions/repository/sync-repository.interface.ts` - Phase 2 sync ops
+- `lib/constants/query.constants.ts` - Volatility Engine
+- `lib/utils/grouping-logic.ts` - Pure transformation engine
 
 ### Blocked Items
-- None currently
+- Supabase type regeneration requires elevated access
 
 ---
 
-*Last updated: 2026-01-31 | Infrastructure Reset*
+*Last updated: 2026-02-01 | Ghost Prop Audit Complete*
