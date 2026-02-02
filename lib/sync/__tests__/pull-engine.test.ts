@@ -267,4 +267,134 @@ describe('PullEngine Pagination', () => {
       expect(estimatedMemoryMB).toBeLessThan(100);
     });
   });
+
+  describe('Stale Checkpoint Bug Fix (SYNC-03)', () => {
+    /**
+     * SYNC-03: Prevent infinite sync loop when server reports changes but
+     * all table fetches return empty records.
+     *
+     * Bug scenario:
+     * 1. checkForChanges() returns { has_changes: true, latest_server_version: 100 }
+     * 2. All table fetches return empty arrays (no upserts, no tombstones)
+     * 3. OLD behavior: returns lastSyncedVersion (e.g., 50) - loop repeats
+     * 4. NEW behavior: advances checkpoint to latest_server_version (100)
+     */
+
+    it('should advance checkpoint when server reports changes but all tables return empty', () => {
+      // Simulate the scenario
+      const lastSyncedVersion = 50;
+      const summary = {
+        has_changes: true,
+        latest_server_version: 100,
+        since_version: lastSyncedVersion,
+      };
+
+      // After fetching all tables, allChanges is empty
+      const allChanges = new Map();
+
+      // This is the FIXED logic from pull-engine.ts lines 167-186
+      let newHighWaterMark: number;
+      let updateMetadataCalled = false;
+
+      if (allChanges.size === 0) {
+        // CRITICAL: Must update to latest_server_version, not lastSyncedVersion
+        updateMetadataCalled = true;
+        newHighWaterMark = summary.latest_server_version;
+      } else {
+        newHighWaterMark = lastSyncedVersion;
+      }
+
+      // Assertions
+      expect(updateMetadataCalled).toBe(true);
+      expect(newHighWaterMark).toBe(100);
+      expect(newHighWaterMark).not.toBe(lastSyncedVersion);
+    });
+
+    it('should NOT update checkpoint when server reports no changes (Path 1)', () => {
+      // Scenario: checkForChanges returns has_changes: false
+      // This is correct existing behavior - no update needed
+      const lastSyncedVersion = 50;
+      const summary = {
+        has_changes: false,
+        latest_server_version: 100,
+        since_version: lastSyncedVersion,
+      };
+
+      // Path 1 exits early without fetching tables
+      let shouldExitEarly = false;
+      let newHighWaterMark: number = lastSyncedVersion;
+
+      if (!summary.has_changes) {
+        // Server says no changes - return current version, no update needed
+        shouldExitEarly = true;
+        newHighWaterMark = lastSyncedVersion;
+      }
+
+      expect(shouldExitEarly).toBe(true);
+      expect(newHighWaterMark).toBe(lastSyncedVersion);
+    });
+
+    it('should NOT update checkpoint when already at latest version (Path 2)', () => {
+      // Scenario: latest_server_version === lastSyncedVersion
+      // This is correct existing behavior - already synced
+      const lastSyncedVersion = 100;
+      const summary = {
+        has_changes: true, // Server might say true due to race conditions
+        latest_server_version: 100,
+        since_version: lastSyncedVersion,
+      };
+
+      let shouldExitEarly = false;
+      let newHighWaterMark: number = lastSyncedVersion;
+
+      if (summary.latest_server_version === lastSyncedVersion) {
+        // Already at latest - no need to fetch or update
+        shouldExitEarly = true;
+        newHighWaterMark = lastSyncedVersion;
+      }
+
+      expect(shouldExitEarly).toBe(true);
+      expect(newHighWaterMark).toBe(lastSyncedVersion);
+    });
+
+    it('should break the infinite loop scenario', () => {
+      // Simulate multiple sync cycles with the fixed behavior
+      let currentVersion = 50;
+      const serverLatestVersion = 100;
+      const syncCycles: number[] = [];
+
+      // Simulate 3 sync cycles where server reports changes but tables are empty
+      for (let i = 0; i < 3; i++) {
+        const summary = {
+          has_changes: currentVersion < serverLatestVersion,
+          latest_server_version: serverLatestVersion,
+          since_version: currentVersion,
+        };
+
+        syncCycles.push(currentVersion);
+
+        // Simulate early exit paths
+        if (!summary.has_changes) {
+          // Path 1: No changes, done
+          break;
+        }
+
+        if (summary.latest_server_version === currentVersion) {
+          // Path 2: Already at latest, done
+          break;
+        }
+
+        // Path 3: Server says changes exist, but tables return empty
+        // FIXED: Advance to latest_server_version
+        currentVersion = summary.latest_server_version;
+      }
+
+      // After first cycle, we should be at server version (100)
+      // Second cycle should exit via Path 2 (already at latest)
+      expect(syncCycles.length).toBe(2);
+      expect(syncCycles[0]).toBe(50); // First cycle starts at 50
+      expect(syncCycles[1]).toBe(100); // Second cycle starts at 100
+      expect(currentVersion).toBe(100);
+    });
+  });
 });

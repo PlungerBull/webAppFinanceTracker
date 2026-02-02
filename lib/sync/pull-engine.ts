@@ -164,13 +164,25 @@ export class PullEngine {
         }
       }
 
-      // No changes to apply
+      // No changes to apply - but server reported changes existed
+      // CRITICAL: Update checkpoint to prevent sync loop (SYNC-03 fix)
       if (allChanges.size === 0) {
+        console.debug(
+          `[PullEngine] Server reported changes but no records to apply. ` +
+            `Advancing checkpoint from ${lastSyncedVersion} to ${summary.latest_server_version}`
+        );
+
+        // Update checkpoint to latest_server_version to prevent infinite loop
+        await this.metadataManager.updateLastSyncedVersion(
+          userId,
+          summary.latest_server_version
+        );
+
         return {
           success: true,
           noChanges: true,
           tableStats: [],
-          newHighWaterMark: lastSyncedVersion,
+          newHighWaterMark: summary.latest_server_version,
           durationMs: Date.now() - startTime,
         };
       }
