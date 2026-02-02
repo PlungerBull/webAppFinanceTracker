@@ -47,6 +47,7 @@ import {
 } from './constants';
 import type { SyncConfig } from './types';
 import { SyncLockManager, getSyncLockManager } from './sync-lock-manager';
+import type { SyncableModelMutation } from './syncable-model';
 import {
   assertIntegerCents,
   isCentsField,
@@ -300,8 +301,7 @@ export class PushEngine {
       await this.database.write(async () => {
         for (const record of invalidRecords) {
           await record.update((r) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (r as any).localSyncStatus = SYNC_STATUS.CONFLICT;
+            (r as unknown as SyncableModelMutation).localSyncStatus = SYNC_STATUS.CONFLICT;
           });
         }
       });
@@ -424,11 +424,11 @@ export class PushEngine {
   ): Promise<void> {
     try {
       const record = await this.database.get(tableName).find(id);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WatermelonDB callback type
-      await record.update((r: any) => {
-        r.localSyncStatus = status;
+      await record.update((r) => {
+        const model = r as unknown as SyncableModelMutation;
+        model.localSyncStatus = status;
         if (serverVersion !== undefined) {
-          r.version = serverVersion;
+          model.version = serverVersion;
         }
       });
     } catch (error) {
@@ -464,19 +464,19 @@ export class PushEngine {
             .get(update.tableName)
             .find(update.id);
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WatermelonDB callback type
-          await record.update((r: any) => {
+          await record.update((r) => {
+            const model = r as unknown as SyncableModelMutation;
             // Apply the buffered update data with cents validation
             for (const [key, value] of Object.entries(update.updateData)) {
               // CTO MANDATE: Validate cents fields at sync boundary
               if (isCentsField(key) && typeof value === 'number') {
-                r[key] = assertIntegerCents(value, key);
+                model[key] = assertIntegerCents(value, key);
               } else {
-                r[key] = value;
+                model[key] = value;
               }
             }
             // Re-mark as pending for next sync cycle
-            r.localSyncStatus = SYNC_STATUS.PENDING;
+            model.localSyncStatus = SYNC_STATUS.PENDING;
           });
         } catch (error) {
           console.error(

@@ -226,7 +226,23 @@ export class LocalAccountRepository implements IAccountRepository {
     data: CreateAccountDTO
   ): Promise<AccountDataResult<CreateAccountGroupResult>> {
     try {
-      // Validate input
+      // =========================================================================
+      // VALIDATION GATES: Fail fast if preconditions not met
+      // CTO MANDATE: Architecture violations throw, not return error
+      // =========================================================================
+
+      if (!userId) {
+        throw new Error(
+          '[AccountFactory] Architecture Violation: userId is required'
+        );
+      }
+
+      if (!data.name?.trim()) {
+        throw new Error(
+          '[AccountFactory] Architecture Violation: name is required'
+        );
+      }
+
       if (!data.currencies || data.currencies.length === 0) {
         return {
           success: false,
@@ -238,7 +254,7 @@ export class LocalAccountRepository implements IAccountRepository {
         };
       }
 
-      // Generate group ID
+      // Generate group ID BEFORE transaction - ensures atomicity
       const groupId = generateEntityId();
       const createdAccounts: AccountModel[] = [];
 

@@ -3,6 +3,27 @@
 ## Reliability & Go-Live Readiness
 
 - [ ] **Import Optimization:** Fix timeouts on large Excel/CSV imports
+- [ ] **Transaction View Latency:** Optimize `transactions_view` in Supabase to handle larger datasets more efficiently
+
+---
+
+## Sync Hardening Backlog (Post S-Tier Sprint)
+
+> **Context:** During the S-Tier Sync Infrastructure Hardening sprint (2026-02-02), these items were identified but intentionally deferred to maintain focus on core sync reliability.
+
+### Pre-existing Test Failures
+- [ ] **db-row-schemas.test.ts:** Fix 9 failing schema validation tests that predate the sync-hardening sprint
+- [ ] **supabase-inbox-repository.test.ts:** Fix 3 failing tests related to inbox repository logic (version conflict handling, tombstone dismissal)
+
+### Sync Conflict UI - Incomplete Actions
+- [ ] **"Delete Locally" Action:** Implement logic to safely prune a conflicted record from WatermelonDB (placeholder at `sync-conflict-modal.tsx:131-134`)
+- [ ] **"Retry-by-Item" Granularity:** Current "Retry Sync" triggers full `forceSync()`; add ability to retry individual conflicted records
+
+### Technical Debt - Next Hardening Phase
+- [ ] **syncError Model Field:** Add dedicated field to WatermelonDB models to store specific error messages from the database (currently uses generic CONFLICT status)
+- [ ] **Category FK Audit:** Apply same multi-layer defensive validation to `category_id` that was applied to `account_id` and `group_id`
+- [ ] **E2E Conflict Resolution Tests:** Add Playwright tests simulating a user physically resolving a conflict via the Sync Conflict Modal UI
+- [ ] **Conflict Count Sidebar Badge:** Add visual indicator in sidebar showing number of unresolved sync conflicts
 
 ---
 

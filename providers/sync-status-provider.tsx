@@ -5,6 +5,7 @@
  *
  * Manages sync lifecycle and user notifications.
  * Wires the useDeltaSync hook to the Sonner toast system.
+ * Exposes sync state via context for UI components (banner, modal).
  *
  * CTO MANDATES:
  * - Toast Debounce: Track conflict IDs (Set), not counts - notify on NEW IDs only
@@ -15,12 +16,50 @@
  * @module providers/sync-status-provider
  */
 
-import { useRef } from 'react';
+import { createContext, useContext, useRef } from 'react';
 import { toast } from 'sonner';
 import * as Sentry from '@sentry/nextjs';
 import { useAuthStore } from '@/stores/auth-store';
 import { useDeltaSync } from '@/lib/sync';
 import type { ReactNode } from 'react';
+import type { ConflictRecord, SyncCycleResult } from '@/lib/sync';
+
+// ============================================================================
+// CONTEXT
+// ============================================================================
+
+interface SyncStatusContextValue {
+  /** Number of records in conflict state */
+  conflictCount: number;
+  /** Whether a sync is currently in progress */
+  isSyncing: boolean;
+  /** Last successful sync timestamp (ISO string) */
+  lastSyncedAt: string | null;
+  /** Number of records pending sync */
+  pendingCount: number;
+  /** Get detailed conflict records for resolution UI */
+  getConflicts: () => Promise<ConflictRecord[]>;
+  /** Force an immediate sync cycle */
+  forceSync: () => Promise<SyncCycleResult | null>;
+}
+
+const SyncStatusContext = createContext<SyncStatusContextValue | null>(null);
+
+/**
+ * Hook to access sync status from context.
+ * Must be used within SyncStatusProvider.
+ */
+export function useSyncStatus(): SyncStatusContextValue {
+  const context = useContext(SyncStatusContext);
+  if (!context) {
+    throw new Error('useSyncStatus must be used within SyncStatusProvider');
+  }
+  return context;
+}
+
+// ============================================================================
+// PROVIDER
+// ============================================================================
 
 interface SyncStatusProviderProps {
   children: ReactNode;
@@ -48,7 +87,7 @@ export function SyncStatusProvider({ children }: SyncStatusProviderProps) {
   // Prevents "Toast Spam" when total count stays same but IDs change
   const notifiedIdsRef = useRef<Set<string>>(new Set());
 
-  useDeltaSync({
+  const syncState = useDeltaSync({
     userId,
     onSyncComplete: (result) => {
       // 🛡️ Capture silent sync failures (success:false without a thrown exception)
@@ -104,5 +143,19 @@ export function SyncStatusProvider({ children }: SyncStatusProviderProps) {
     },
   });
 
-  return <>{children}</>;
+  // Build context value from sync state
+  const contextValue: SyncStatusContextValue = {
+    conflictCount: syncState.conflictCount,
+    isSyncing: syncState.isSyncing,
+    lastSyncedAt: syncState.lastSyncedAt,
+    pendingCount: syncState.pendingCount,
+    getConflicts: syncState.getConflicts,
+    forceSync: syncState.forceSync,
+  };
+
+  return (
+    <SyncStatusContext.Provider value={contextValue}>
+      {children}
+    </SyncStatusContext.Provider>
+  );
 }
