@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 import { centsToDisplayAmount } from '@/lib/utils/cents-parser';
+import { calculateReconciliationPreviewDiff } from '@/lib/utils/reconciliation-math';
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -91,6 +92,7 @@ export function BulkActionBar({
   const draftReconciliations = reconciliations.filter((r) => r.status === 'draft');
 
   // Real-time diff calculation: Calculate preview of diff if reconciliation is selected
+  // Logic extracted to lib/utils/reconciliation-math.ts for testability
   const previewDiff = useMemo(() => {
     if (!reconciliationValue || !reconciliationSummary || !selectedIds || !stableTransactions.length) {
       return null;
@@ -99,27 +101,19 @@ export function BulkActionBar({
     const matchedReconciliation = stableReconciliations.find((r) => r.id === reconciliationValue);
     if (!matchedReconciliation) return null;
 
-    // Get all transactions that would be linked after apply
+    // Get selected transaction amounts in cents
     const selectedTransactionIds = Array.from(selectedIds);
-    const selectedTransactions = stableTransactions.filter((t) => selectedTransactionIds.includes(t.id));
+    const selectedAmountsCents = stableTransactions
+      .filter((t) => selectedTransactionIds.includes(t.id))
+      .map((t) => t.amountHomeCents);
 
-    // Calculate sum of selected transactions in integer cents first, then convert once
-    // This avoids floating-point accumulation errors from repeated division
-    const selectedSumCents = selectedTransactions.reduce((sum, t) => sum + t.amountHomeCents, 0);
-    const selectedSum = centsToDisplayAmount(selectedSumCents);
-
-    // Calculate preview difference with rounding to prevent float drift
-    // Formula: Ending Balance - (Beginning Balance + Current Linked Sum + Selected Sum)
-    const currentLinkedSum = reconciliationSummary.linkedSum;
-    const previewLinkedSum = Math.round((currentLinkedSum + selectedSum) * 100) / 100;
-    const previewDifference = Math.round(
-      (matchedReconciliation.endingBalance - (matchedReconciliation.beginningBalance + previewLinkedSum)) * 100
-    ) / 100;
-
-    return {
-      difference: previewDifference,
-      isBalanced: Math.abs(previewDifference) < 0.005, // Half a cent tolerance
-    };
+    // Calculate preview diff using pure utility (all in integer cents)
+    return calculateReconciliationPreviewDiff({
+      beginningBalanceCents: matchedReconciliation.beginningBalance,
+      endingBalanceCents: matchedReconciliation.endingBalance,
+      currentLinkedSumCents: reconciliationSummary.linkedSum,
+      selectedAmountsCents,
+    });
   }, [reconciliationValue, reconciliationSummary, selectedIds, stableTransactions, stableReconciliations]);
 
   return (
@@ -306,7 +300,7 @@ export function BulkActionBar({
               <div className="flex items-center gap-2 px-2 md:px-3 py-1.5 bg-slate-800 rounded-lg">
                 <div className="text-xs text-slate-300">
                   <span className="font-mono">
-                    Diff: {(previewDiff?.difference ?? reconciliationSummary?.difference ?? 0).toFixed(2)}
+                    Diff: {centsToDisplayAmount(previewDiff?.differenceCents ?? reconciliationSummary?.difference ?? 0).toFixed(2)}
                   </span>
                   {(previewDiff?.isBalanced ?? reconciliationSummary?.isBalanced) && (
                     <span className="ml-2 text-green-400">✓</span>
