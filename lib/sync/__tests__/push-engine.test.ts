@@ -453,9 +453,10 @@ describe('PushEngine', () => {
       });
 
       // Data should include server field names (snake_case)
-      expect(record.data.id).toBe('tx-1');
-      expect(record.data.account_id).toBe('acc-1');
-      expect(record.data.category_id).toBe('cat-1');
+      expect(record.data).not.toBeNull();
+      expect(record.data!.id).toBe('tx-1');
+      expect(record.data!.account_id).toBe('acc-1');
+      expect(record.data!.category_id).toBe('cat-1');
     });
   });
 

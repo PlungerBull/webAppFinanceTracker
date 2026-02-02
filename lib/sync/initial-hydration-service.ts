@@ -32,6 +32,7 @@ import {
   SyncMetadataModel,
   TABLE_NAMES,
   SYNC_STATUS,
+  generateEntityId,
 } from '@/lib/local-db';
 import { getVersion, type VersionedRow } from './type-utils';
 
@@ -327,7 +328,9 @@ export class InitialHydrationService implements IInitialHydrationService {
       for (const row of data) {
         await collection.create((record) => {
           record._raw.id = row.id;
-          record.groupId = row.group_id;
+          // Self-healing: If server sends null group_id (legacy data),
+          // generate one locally so the UI doesn't break
+          record.groupId = row.group_id ?? generateEntityId();
           record.userId = row.user_id;
           record.name = row.name;
           record.type = row.type as AccountModel['type'];

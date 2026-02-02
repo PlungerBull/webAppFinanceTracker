@@ -32,7 +32,7 @@ import {
   SyncMetadataManager,
   createSyncMetadataManager,
 } from './sync-metadata-manager';
-import { TABLE_NAMES, SYNC_STATUS } from '@/lib/local-db';
+import { TABLE_NAMES, SYNC_STATUS, generateEntityId } from '@/lib/local-db';
 import {
   PULL_ORDER,
   DEFAULT_SYNC_CONFIG,
@@ -481,7 +481,9 @@ export class PullEngine {
   ): void {
     switch (tableName) {
       case TABLE_NAMES.BANK_ACCOUNTS:
-        model.groupId = data.group_id;
+        // Self-healing: If server sends null group_id (legacy data),
+        // generate one locally so the UI doesn't break
+        model.groupId = data.group_id ?? generateEntityId();
         model.userId = data.user_id;
         model.name = data.name;
         model.type = data.type;

@@ -1,17 +1,11 @@
 -- ============================================================================
--- MIGRATION: Batch Upsert Transactions for Delta Sync Push Engine
--- Purpose: Push multiple transactions in a single request with per-item error handling
--- Date: 2026-01-27
+-- MIGRATION: Add account_id Validation Gate to batch_upsert_transactions
+-- Purpose: Reject transactions with null account_id instead of letting them crash
+-- Date: 2026-02-02
 --
--- CTO MANDATES:
--- - Push Engine MUST use batching (1 request for N records)
--- - Per-item error granularity (exception handling per record)
--- - 1 bad record should NOT fail 49 good ones
---
--- FIX: Removed dynamic EXECUTE SAVEPOINT commands that caused PostgreSQL 0A000 error
--- via PostgREST. BEGIN...EXCEPTION...END blocks provide per-item isolation.
---
--- Returns: { synced_ids: uuid[], conflict_ids: uuid[], error_map: {id: error} }
+-- CTO MANDATE: "Permissive Schema, Strict Ledger"
+-- - Main ledger transactions MUST have account_id
+-- - Returns friendly error in error_map instead of constraint violation
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION batch_upsert_transactions(
@@ -146,12 +140,3 @@ BEGIN
   );
 END;
 $$;
-
--- Grant execute to authenticated users
-GRANT EXECUTE ON FUNCTION batch_upsert_transactions(UUID, JSONB[]) TO authenticated;
-
-COMMENT ON FUNCTION batch_upsert_transactions(UUID, JSONB[]) IS
-'Batch upsert for Delta Sync Push Engine.
-Processes multiple transactions in one request with per-item error handling.
-Uses BEGIN...EXCEPTION...END per record so 1 failure does not fail the entire batch.
-Returns synced_ids, conflict_ids, and error_map for per-item results.';

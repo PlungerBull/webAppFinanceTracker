@@ -79,8 +79,8 @@ export interface PendingRecord {
   deletedAt: number | null;
   /** Whether this is a delete operation (for pruning phase) */
   isDelete: boolean;
-  /** Serialized record data for server */
-  data: Record<string, unknown>;
+  /** Serialized record data for server (null if validation failed) */
+  data: Record<string, unknown> | null;
 }
 
 /**

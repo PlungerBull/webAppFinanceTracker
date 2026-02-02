@@ -262,6 +262,9 @@ export class PushEngine {
    * Returns records where:
    * - deleted_at IS NULL (active)
    * - local_sync_status = 'pending'
+   *
+   * CTO MANDATE: Records failing validation are marked as 'conflict'
+   * to stop infinite retry loops (they need manual resolution).
    */
   private async getUpsertPending(
     userId: string,
@@ -276,9 +279,38 @@ export class PushEngine {
       )
       .fetch();
 
-    return records.map((record: Model) =>
-      this.toPendingRecord(tableName, this.extractModelRaw(record), false)
-    );
+    const validRecords: PendingRecord[] = [];
+    const invalidRecords: Model[] = [];
+
+    for (const record of records) {
+      const raw = this.extractModelRaw(record);
+      const pendingRecord = this.toPendingRecord(tableName, raw, false);
+
+      // Guardrail: Check if extractRecordData returned null (validation failed)
+      if (pendingRecord.data === null) {
+        invalidRecords.push(record);
+        continue;
+      }
+
+      validRecords.push(pendingRecord);
+    }
+
+    // Mark invalid records as 'conflict' to stop retry loop
+    if (invalidRecords.length > 0) {
+      await this.database.write(async () => {
+        for (const record of invalidRecords) {
+          await record.update((r) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (r as any).localSyncStatus = SYNC_STATUS.CONFLICT;
+          });
+        }
+      });
+      console.warn(
+        `[PushEngine] Marked ${invalidRecords.length} ${tableName} records as CONFLICT due to missing required fields`
+      );
+    }
+
+    return validRecords;
   }
 
   /**
@@ -485,7 +517,7 @@ export class PushEngine {
   private extractRecordData(
     tableName: SyncableTableName,
     record: Record<string, unknown>
-  ): Record<string, unknown> {
+  ): Record<string, unknown> | null {
     // Common fields
     const baseData: Record<string, unknown> = {
       id: record.id,
@@ -517,6 +549,13 @@ export class PushEngine {
         };
 
       case TABLE_NAMES.TRANSACTIONS:
+        // Guardrail: Block transactions without account_id
+        if (!record.accountId) {
+          console.error(
+            `[PushEngine] Blocked sync for transaction ${record.id}: Missing Account ID`
+          );
+          return null;
+        }
         return {
           ...baseData,
           account_id: record.accountId,
