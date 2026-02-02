@@ -39,6 +39,11 @@ interface SyncStatusContextValue {
   pendingCount: number;
   /** Get detailed conflict records for resolution UI */
   getConflicts: () => Promise<ConflictRecord[]>;
+  /** Delete a conflict record permanently from local storage */
+  deleteConflict: (
+    id: string,
+    tableName: string
+  ) => Promise<{ success: boolean; error?: string }>;
   /** Force an immediate sync cycle */
   forceSync: () => Promise<SyncCycleResult | null>;
 }
@@ -150,6 +155,7 @@ export function SyncStatusProvider({ children }: SyncStatusProviderProps) {
     lastSyncedAt: syncState.lastSyncedAt,
     pendingCount: syncState.pendingCount,
     getConflicts: syncState.getConflicts,
+    deleteConflict: syncState.deleteConflict,
     forceSync: syncState.forceSync,
   };
 

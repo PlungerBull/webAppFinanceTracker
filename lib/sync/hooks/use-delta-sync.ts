@@ -67,6 +67,11 @@ export interface UseDeltaSyncReturn {
   forceSync: () => Promise<SyncCycleResult | null>;
   /** Get conflict records for resolution UI */
   getConflicts: () => Promise<ConflictRecord[]>;
+  /** Delete a conflict record permanently from local storage */
+  deleteConflict: (
+    id: string,
+    tableName: string
+  ) => Promise<{ success: boolean; error?: string }>;
   /** Current sync status */
   status: SyncEngineStatus | null;
 }
@@ -245,6 +250,36 @@ export function useDeltaSync(options: UseDeltaSyncOptions): UseDeltaSyncReturn {
     return engineRef.current.getConflicts();
   }, []);
 
+  /**
+   * Delete a conflict record (exposed to consumers)
+   *
+   * Permanently removes the conflicted local record.
+   * After deletion, triggers a status refresh to update conflict count.
+   */
+  const deleteConflict = useCallback(
+    async (
+      id: string,
+      tableName: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      if (!engineRef.current) {
+        return { success: false, error: 'Sync engine not initialized' };
+      }
+
+      const result = await engineRef.current.deleteConflictRecord(id, tableName);
+
+      // Refresh status to update conflict count
+      if (result.success && isMountedRef.current && engineRef.current) {
+        const newStatus = await engineRef.current.getSyncStatusAsync();
+        setStatus(newStatus);
+        setPendingCount(newStatus.pendingCount);
+        setConflictCount(newStatus.conflictCount);
+      }
+
+      return result;
+    },
+    []
+  );
+
   // ===========================================================================
   // INTERVAL SYNC
   // ===========================================================================
@@ -349,6 +384,7 @@ export function useDeltaSync(options: UseDeltaSyncOptions): UseDeltaSyncReturn {
     conflictCount,
     forceSync,
     getConflicts,
+    deleteConflict,
     status,
   };
 }

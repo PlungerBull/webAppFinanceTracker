@@ -21,7 +21,6 @@ import { SupabaseSettingsRepository } from '../repository';
 import { currenciesApi } from '@/features/currencies/api/currencies';
 import {
   SettingsRepositoryError,
-  SettingsNotFoundError,
   SettingsValidationError,
   SettingsAuthenticationError,
 } from '../domain/errors';
@@ -46,9 +45,10 @@ export class UserSettingsService {
   }
 
   /**
-   * Get user settings for the current user
+   * Get user settings for the current user.
+   * Self-healing: If settings don't exist, they are auto-provisioned with defaults.
    */
-  async getSettings(): Promise<DataResult<UserSettings, SettingsRepositoryError | SettingsNotFoundError | SettingsAuthenticationError>> {
+  async getSettings(): Promise<DataResult<UserSettings, SettingsRepositoryError | SettingsAuthenticationError>> {
     const userIdResult = await this.getCurrentUserId();
     if (!userIdResult.success) {
       return userIdResult;

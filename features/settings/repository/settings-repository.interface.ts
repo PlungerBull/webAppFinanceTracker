@@ -15,10 +15,7 @@
 
 import type { DataResult } from '@/lib/data-patterns';
 import type { UserSettings } from '@/types/domain';
-import type {
-  SettingsRepositoryError,
-  SettingsNotFoundError,
-} from '../domain/errors';
+import type { SettingsRepositoryError } from '../domain/errors';
 
 /**
  * Settings Repository Interface
@@ -38,12 +35,15 @@ export interface ISettingsRepository {
   /**
    * Get user settings for a user.
    *
+   * Self-healing: If settings don't exist, they are auto-provisioned with defaults.
+   * This prevents PGRST116 (406) errors on cold start.
+   *
    * @param userId - User ID
-   * @returns DataResult with user settings
+   * @returns DataResult with user settings (always succeeds if user exists)
    */
   getSettings(
     userId: string
-  ): Promise<DataResult<UserSettings, SettingsRepositoryError | SettingsNotFoundError>>;
+  ): Promise<DataResult<UserSettings, SettingsRepositoryError>>;
 
   /**
    * Update the main currency preference.

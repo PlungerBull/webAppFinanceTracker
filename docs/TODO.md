@@ -12,11 +12,12 @@
 > **Context:** During the S-Tier Sync Infrastructure Hardening sprint (2026-02-02), these items were identified but intentionally deferred to maintain focus on core sync reliability.
 
 ### Pre-existing Test Failures
-- [ ] **db-row-schemas.test.ts:** Fix 9 failing schema validation tests that predate the sync-hardening sprint
-- [ ] **supabase-inbox-repository.test.ts:** Fix 3 failing tests related to inbox repository logic (version conflict handling, tombstone dismissal)
+- [x] **db-row-schemas.test.ts:** Fix 9 failing schema validation tests that predate the sync-hardening sprint
+- [x] **supabase-inbox-repository.test.ts:** Fix 3 failing tests related to inbox repository logic (version conflict handling, tombstone dismissal)
 
 ### Sync Conflict UI - Incomplete Actions
-- [ ] **"Delete Locally" Action:** Implement logic to safely prune a conflicted record from WatermelonDB (placeholder at `sync-conflict-modal.tsx:131-134`)
+- [x] **"Delete Locally" Action:** Implement logic to safely prune a conflicted record from WatermelonDB (placeholder at `sync-conflict-modal.tsx:131-134`)
+  - *Completed 2026-02-02: Added `deleteConflictRecord()` to DeltaSyncEngine with race condition protection, threaded through useDeltaSync hook and SyncStatusProvider, added DeleteDialog confirmation UI*
 - [ ] **"Retry-by-Item" Granularity:** Current "Retry Sync" triggers full `forceSync()`; add ability to retry individual conflicted records
 
 ### Technical Debt - Next Hardening Phase

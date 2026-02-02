@@ -54,6 +54,10 @@ export interface IDeltaSyncEngine {
   getSyncStatus(): SyncEngineStatus;
   getSyncStatusAsync(): Promise<SyncEngineStatus>;
   getConflicts(): Promise<ConflictRecord[]>;
+  deleteConflictRecord(
+    id: string,
+    tableName: string
+  ): Promise<{ success: boolean; error?: string }>;
   setOnlineStatus(isOnline: boolean): void;
   pruneTombstones(): Promise<{ pruned: number }>;
 }
@@ -407,6 +411,63 @@ export class DeltaSyncEngine implements IDeltaSyncEngine {
     }
 
     return conflicts;
+  }
+
+  /**
+   * Delete a conflict record permanently from local WatermelonDB
+   *
+   * Used when user chooses to discard local changes in favor of server version.
+   *
+   * CTO REQUIREMENT: IDEMPOTENT
+   * Returns success if record is already deleted (race condition safe).
+   */
+  async deleteConflictRecord(
+    id: string,
+    tableName: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const collection = this.database.get(tableName);
+
+      let record;
+      try {
+        record = await collection.find(id);
+      } catch (findError) {
+        // RACE CONDITION PROTECTION: Record already deleted by concurrent call
+        // Return success for idempotent behavior
+        if (
+          findError instanceof Error &&
+          findError.message.toLowerCase().includes('not found')
+        ) {
+          return { success: true };
+        }
+        throw findError;
+      }
+
+      // Safety: Only allow deletion of conflict records
+      const raw = record._raw as Record<string, unknown>;
+      if (raw.local_sync_status !== 'conflict') {
+        return {
+          success: false,
+          error: `Record is not in conflict state (status: ${raw.local_sync_status})`,
+        };
+      }
+
+      await this.database.write(async () => {
+        await record.destroyPermanently();
+      });
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Sentry.captureException(error, {
+        tags: { operation: 'deleteConflictRecord', tableName },
+        extra: { recordId: id },
+      });
+      return {
+        success: false,
+        error: message,
+      };
+    }
   }
 
   // ===========================================================================

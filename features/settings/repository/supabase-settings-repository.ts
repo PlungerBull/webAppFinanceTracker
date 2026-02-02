@@ -16,10 +16,7 @@ import { dbUserSettingsToDomain } from '@/lib/data/data-transformers';
 import { validateOrThrow } from '@/lib/data/validate';
 import { UserSettingsRowSchema } from '@/lib/data/db-row-schemas';
 import { reportError } from '@/lib/sentry/reporter';
-import {
-  SettingsRepositoryError,
-  SettingsNotFoundError,
-} from '../domain/errors';
+import { SettingsRepositoryError } from '../domain/errors';
 
 /**
  * Supabase implementation of the Settings Repository.
@@ -37,23 +34,17 @@ export class SupabaseSettingsRepository implements ISettingsRepository {
 
   async getSettings(
     userId: string
-  ): Promise<DataResult<UserSettings, SettingsRepositoryError | SettingsNotFoundError>> {
+  ): Promise<DataResult<UserSettings, SettingsRepositoryError>> {
     try {
+      // PGRST116 PROTECTION: Use .maybeSingle() to return null instead of 406
+      // when no settings row exists (e.g., cold start scenario)
       const { data, error } = await this.supabase
         .from('user_settings')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        // PGRST116 = "JSON object requested, multiple (or no) rows returned"
-        if (error.code === 'PGRST116') {
-          return {
-            success: false,
-            data: null,
-            error: new SettingsNotFoundError('User settings not found', error),
-          };
-        }
         return {
           success: false,
           data: null,
@@ -62,6 +53,11 @@ export class SupabaseSettingsRepository implements ISettingsRepository {
             error
           ),
         };
+      }
+
+      // Self-healing: If trigger failed or row is truly missing, create it on the fly
+      if (!data) {
+        return this.initializeDefaultSettings(userId);
       }
 
       const validated = validateOrThrow(UserSettingsRowSchema, data, 'UserSettingsRow');
@@ -80,6 +76,53 @@ export class SupabaseSettingsRepository implements ISettingsRepository {
         data: null,
         error: new SettingsRepositoryError(
           'Unexpected error fetching settings',
+          err
+        ),
+      };
+    }
+  }
+
+  /**
+   * Self-healing: Initialize default settings for a user who doesn't have them.
+   * This is a fallback in case the database trigger fails or settings are deleted.
+   */
+  private async initializeDefaultSettings(
+    userId: string
+  ): Promise<DataResult<UserSettings, SettingsRepositoryError>> {
+    try {
+      const { data, error } = await this.supabase
+        .from('user_settings')
+        .insert({ user_id: userId })
+        .select()
+        .single();
+
+      if (error) {
+        return {
+          success: false,
+          data: null,
+          error: new SettingsRepositoryError(
+            error.message || 'Failed to initialize user settings',
+            error
+          ),
+        };
+      }
+
+      const validated = validateOrThrow(UserSettingsRowSchema, data, 'UserSettingsRow');
+      return {
+        success: true,
+        data: dbUserSettingsToDomain(validated),
+      };
+    } catch (err) {
+      reportError(
+        err instanceof Error ? err : new Error(String(err)),
+        'settings',
+        { operation: 'initializeDefaultSettings', userId }
+      );
+      return {
+        success: false,
+        data: null,
+        error: new SettingsRepositoryError(
+          'Unexpected error initializing settings',
           err
         ),
       };

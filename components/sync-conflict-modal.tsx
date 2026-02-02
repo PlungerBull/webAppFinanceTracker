@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { DeleteDialog } from '@/components/shared/delete-dialog';
 import { useSyncStatus } from '@/providers/sync-status-provider';
 import type { ConflictRecord } from '@/lib/sync/types';
 
@@ -30,10 +32,13 @@ interface SyncConflictModalProps {
 }
 
 export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
-  const { getConflicts, forceSync } = useSyncStatus();
+  const { getConflicts, forceSync, deleteConflict } = useSyncStatus();
   const [conflicts, setConflicts] = useState<ConflictRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ConflictRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Load conflicts when modal opens
   useEffect(() => {
@@ -60,6 +65,40 @@ export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
       console.error('[SyncConflictModal] Retry failed:', error);
     } finally {
       setIsRetrying(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const result = await deleteConflict(deleteTarget.id, deleteTarget.tableName);
+
+      if (result.success) {
+        // Remove from local state
+        setConflicts((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+        setDeleteTarget(null);
+
+        toast.success('Conflict resolved', {
+          description: 'The local version has been discarded.',
+        });
+
+        // If no more conflicts, close the modal
+        if (conflicts.length === 1) {
+          onClose();
+        }
+      } else {
+        setDeleteError(result.error || 'Failed to delete conflict');
+      }
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : 'An unexpected error occurred'
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -128,10 +167,7 @@ export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      // TODO: Implement delete locally
-                      console.log('Delete locally:', conflict.id);
-                    }}
+                    onClick={() => setDeleteTarget(conflict)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -159,6 +195,42 @@ export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
             )}
           </Button>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <DeleteDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteTarget(null);
+              setDeleteError(null);
+            }
+          }}
+          title="Discard Local Changes?"
+          description={
+            <>
+              <p>
+                This will permanently delete the local version of this{' '}
+                <strong>
+                  {deleteTarget ? getTableDisplayName(deleteTarget.tableName) : 'item'}
+                </strong>
+                .
+              </p>
+              <p className="mt-2">
+                {deleteTarget?.serverData
+                  ? 'The server version will be preserved.'
+                  : 'This data exists only locally and will be lost.'}
+              </p>
+              <p className="mt-2 text-amber-600 dark:text-amber-400">
+                This action cannot be undone.
+              </p>
+            </>
+          }
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
+          error={deleteError}
+          confirmLabel="Discard Local"
+          cancelLabel="Keep"
+        />
       </DialogContent>
     </Dialog>
   );
