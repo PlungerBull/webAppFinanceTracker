@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useAddGrouping } from '../hooks/use-groupings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Pencil, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ACCOUNT, VALIDATION, ACCOUNTS } from '@/lib/constants';
+import { ACCOUNT } from '@/lib/constants';
+import { groupingSchema, type GroupingFormData } from '../schemas/grouping.schema';
 import type { CategoryType } from '@/domain/categories';
 
 /**
@@ -23,14 +23,6 @@ interface AddGroupingFormProps {
     /** Called when an error occurs (optional) */
     onError?: (error: Error) => void;
 }
-
-// Schema for the form
-const groupingSchema = z.object({
-    name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, VALIDATION.MESSAGES.CATEGORY_NAME_REQUIRED),
-    color: z.string().regex(ACCOUNT.COLOR_REGEX, ACCOUNTS.MESSAGES.ERROR.VALIDATION_COLOR_INVALID),
-});
-
-type GroupingFormData = z.infer<typeof groupingSchema>;
 
 /**
  * AddGroupingForm - Headless form for creating a new grouping (parent category).

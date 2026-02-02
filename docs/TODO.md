@@ -38,19 +38,23 @@
   - Fix: Remap the import to the `@/lib` orchestrator - **Done**
 
 ### Type Inconsistencies
-- [ ] **The "Throw" Violation:** Refactor to return `DataResult<T>`:
-  - `useFinancialOverview` (Throws) - Dashboard scope, separate task
+- [x] **The "Throw" Violation:** Refactor to return `DataResult<T>`: ✅
+  - ~~`useFinancialOverview` (Throws)~~ - Refactored to S-Tier DataResult pattern via `financialOverviewApi`
 
 ---
 
 ## Code Consistency Issues
 
-### 1. Schema Definition Inconsistency
+### 1. Schema Definition Inconsistency ✅
 > **Rule:** Zod schemas should live in a dedicated `schemas/` folder (e.g., `features/auth/schemas`)
 
-- [ ] **Groupings:** Move inline schemas from `add-grouping-form.tsx` and `add-subcategory-modal.tsx` to `features/groupings/schemas/`
-- [ ] **Reconciliations:** Move inline schema from `reconciliation-form-modal.tsx` to `features/reconciliations/schemas/`
-- Why: Makes validation logic harder to reuse and test in isolation
+- [x] **Groupings:** Move inline schemas from `add-grouping-form.tsx` and `add-subcategory-modal.tsx` to `features/groupings/schemas/` ✅
+  - Created `features/groupings/schemas/grouping.schema.ts` with centralized error messages
+  - Added UUID validation for `parentId` in `subcategorySchema` for referential integrity
+- [x] **Reconciliations:** Move inline schema from `reconciliation-form-modal.tsx` to `features/reconciliations/schemas/` ✅
+  - Created `features/reconciliations/schemas/reconciliation.schema.ts` with centralized error messages
+  - Added UUID validation for `accountId` for referential integrity
+- ~~Why: Makes validation logic harder to reuse and test in isolation~~
 
 ### 2. Deprecation "Zombie" Files
 > **Rule:** If a file is deprecated, it should be removed or empty
@@ -107,7 +111,9 @@
 ### 9. Runtime Safety Gap
 > **Rule:** Never trust the backend. Always validate RPC responses with Zod at the boundary
 
-- [ ] **Dashboard:** Add Zod validation to `useFinancialOverview` - currently casts RPC response (`as MonthlySpendingDbRow[]`) instead of validating
+- [x] **Dashboard:** Add Zod validation to `useFinancialOverview` ✅
+  - Added `MonthlySpendingRpcRowSchema` to `db-row-schemas.ts`
+  - API layer validates via `z.array(MonthlySpendingRpcRowSchema).parse()` before transformation
 - Why: If RPC response shape changes (e.g., `total_amount` becomes string), Dashboard will crash at runtime with obscure error rather than failing gracefully with validation message
 
 ### 10. Magic Number Leak

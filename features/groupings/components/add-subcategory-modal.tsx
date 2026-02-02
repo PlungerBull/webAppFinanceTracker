@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useFormModal } from '@/lib/hooks/use-form-modal';
-import { z } from 'zod';
 import { useAddSubcategory, useGroupings } from '../hooks/use-groupings';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronDown, Check, X, Pencil } from 'lucide-react';
-import { VALIDATION, GROUPING } from '@/lib/constants';
+import { GROUPING } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { subcategorySchema, type SubcategoryFormData } from '../schemas/grouping.schema';
 import type { GroupingEntity } from '@/domain/categories';
 
 interface AddSubcategoryModalProps {
@@ -21,13 +21,6 @@ interface AddSubcategoryModalProps {
     onOpenChange: (open: boolean) => void;
     parentGrouping: GroupingEntity | null;
 }
-
-// Schema for the form
-const subcategorySchema = z.object({
-    name: z.string().min(VALIDATION.MIN_LENGTH.REQUIRED, GROUPING.UI.MESSAGES.SUBCATEGORY_NAME_REQUIRED),
-});
-
-type SubcategoryFormData = z.infer<typeof subcategorySchema>;
 
 export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddSubcategoryModalProps) {
     const addSubcategoryMutation = useAddSubcategory();
@@ -51,13 +44,14 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
 
         await addSubcategoryMutation.mutateAsync({
             name: data.name,
-            parentId: selectedParent.id,
+            parentId: data.parentId,
             color: selectedParent.color, // Inherit parent color
         });
         onOpenChange(false);
     }, {
         defaultValues: {
             name: '',
+            parentId: parentGrouping?.id ?? '',
         },
     });
 
@@ -65,7 +59,15 @@ export function AddSubcategoryModal({ open, onOpenChange, parentGrouping }: AddS
         register,
         formState: { errors, isSubmitting },
         control,
+        setValue,
     } = form;
+
+    // Sync parentId in form when selectedParent changes
+    useEffect(() => {
+        if (selectedParent) {
+            setValue('parentId', selectedParent.id);
+        }
+    }, [selectedParent, setValue]);
 
     const subcategoryName = useWatch({
         control,

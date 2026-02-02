@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -32,17 +31,10 @@ import {
 } from '@/lib/hooks/use-reconciliations';
 import { cn } from '@/lib/utils';
 import { toCents, fromCents } from '@/lib/utils/cents-conversion';
-
-const reconciliationSchema = z.object({
-  accountId: z.string().min(1, 'Account is required'),
-  name: z.string().min(1, 'Name is required'),
-  beginningBalance: z.number(),
-  endingBalance: z.number(),
-  dateStart: z.string().nullable().optional(),
-  dateEnd: z.string().nullable().optional(),
-});
-
-type ReconciliationFormData = z.infer<typeof reconciliationSchema>;
+import {
+  reconciliationSchema,
+  type ReconciliationFormData,
+} from '../../schemas/reconciliation.schema';
 
 interface ReconciliationFormModalProps {
   open: boolean;
