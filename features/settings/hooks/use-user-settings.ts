@@ -63,7 +63,10 @@ export function useUpdateMainCurrency() {
       return result.data;
     },
     onSuccess: () => {
+      // Invalidate feature-specific settings cache
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_SETTINGS });
+      // Invalidate global main-currency cache (separate concern)
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MAIN_CURRENCY });
     },
   });
 }

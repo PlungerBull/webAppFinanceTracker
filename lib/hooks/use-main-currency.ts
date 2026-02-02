@@ -7,11 +7,16 @@
  * ARCHITECTURE:
  * - Lives in lib/ to avoid context → feature dependency
  * - Uses MainCurrencyService with IOC pattern
- * - Shares query key with useUserSettings for cache coherence
+ * - Uses dedicated MAIN_CURRENCY query key (separate from USER_SETTINGS)
+ *
+ * S-TIER SEPARATION:
+ * - main-currency is a global concern (lib/)
+ * - user-settings is a feature-specific concern (features/settings/)
+ * - Separate query keys prevent cache shape conflicts
  *
  * CACHE PULSE ALIGNMENT:
- * - staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM (5 min) - matches settings
- * - gcTime: QUERY_CONFIG.CACHE_TIME.MEDIUM (10 min) - prevents cache desync
+ * - staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM (5 min)
+ * - gcTime: QUERY_CONFIG.CACHE_TIME.MEDIUM (10 min)
  *
  * @module lib/hooks/use-main-currency
  */
@@ -54,14 +59,13 @@ export function useMainCurrency() {
   const service = useMainCurrencyService();
 
   const { data, isLoading, error } = useQuery({
-    // Share query key with useUserSettings for cache coherence
-    // When settings mutation invalidates USER_SETTINGS, this hook also refreshes
-    queryKey: QUERY_KEYS.USER_SETTINGS,
+    // S-TIER: Dedicated query key for global concern (separate from feature-specific settings)
+    queryKey: QUERY_KEYS.MAIN_CURRENCY,
     queryFn: () => service.getMainCurrency(),
     // CACHE PULSE ALIGNMENT: Explicit config from QUERY_CONFIG
     staleTime: QUERY_CONFIG.STALE_TIME.MEDIUM,  // 5 minutes
     gcTime: QUERY_CONFIG.CACHE_TIME.MEDIUM,      // 10 minutes (garbage collection)
-    // Select only mainCurrency to minimize re-renders when other settings change
+    // Select mainCurrency from result
     select: (result) => result.mainCurrency,
   });
 

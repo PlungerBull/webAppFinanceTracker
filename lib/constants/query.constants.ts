@@ -125,6 +125,7 @@ export const QUERY_KEYS = {
   CURRENCIES: ['currencies'] as const,
   GROUPINGS: ['groupings'] as const,
   GROUPING_CHILDREN: (parentId: string) => ['grouping-children', parentId] as const,
+  MAIN_CURRENCY: ['main-currency'] as const,
   USER_SETTINGS: ['user-settings'] as const,
   TRANSACTIONS: {
     ALL: ['transactions'] as const,
