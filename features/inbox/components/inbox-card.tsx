@@ -10,7 +10,7 @@ import { CategorySelector } from '@/components/shared/category-selector';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
 import { INBOX } from '@/lib/constants';
 import { toast } from 'sonner';
-import type { InboxItemViewEntity } from '../domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 import { Check, X, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCents } from '@/lib/utils/cents-conversion';

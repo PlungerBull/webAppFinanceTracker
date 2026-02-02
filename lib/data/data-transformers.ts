@@ -22,7 +22,7 @@ import type {
   ReconciliationStatus,
   ReconciliationSummary,
 } from '@/domain/reconciliations';
-import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 import type { AccountViewEntity } from '@/features/accounts/domain/entities';
 import type { TransactionViewEntity } from '@/features/transactions/domain/entities';
 import type { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
@@ -58,7 +58,19 @@ export interface CategoryMonthlyData {
   categoryType: 'income' | 'expense';
   parentId: string | null;
   monthlyAmounts: Record<string, number>;  // { 'YYYY-MM': cents }
-  isVirtualParent: boolean;  // True if injected for orphaned children
+  /**
+   * Internal provenance marker. True when this category was synthetically
+   * injected by `dbMonthlySpendingToDomain()` because a child references
+   * a parentId that doesn't exist in the categories lookup.
+   *
+   * NOT used in UI rendering. Kept for:
+   * - Debugging data transformation pipelines
+   * - Future native client implementations (iOS/Android)
+   * - Audit trails when investigating orphaned categories
+   *
+   * @see dbMonthlySpendingToDomain for injection logic
+   */
+  isVirtualParent: boolean;
 }
 
 // ============================================================================

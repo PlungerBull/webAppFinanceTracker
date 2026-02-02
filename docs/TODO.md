@@ -59,17 +59,19 @@
 ### 2. Deprecation "Zombie" Files
 > **Rule:** If a file is deprecated, it should be removed or empty
 
-- [ ] **Remove:** `features/auth/schemas/profile.schema.ts` - marked `@deprecated` but still exists as re-export wrapper
-- [ ] **Remove:** `features/inbox/domain/entities.ts` - deprecated re-export wrapper
+- [x] **Remove:** `features/auth/schemas/profile.schema.ts` - marked `@deprecated` but still exists as re-export wrapper ✅ **Deleted**
+- [x] **Remove:** `features/inbox/domain/entities.ts` - deprecated re-export wrapper ✅ **Deleted**
 - [x] **Fix:** `features/reconciliations/hooks/use-reconciliations.ts` - deprecated but still imported by `lib/hooks/use-bulk-selection.ts` ✅ **Deleted**
 - Why: New developers might import from the "Zombie" file instead of the correct source
 
-### 3. Ghost Prop Documentation
+### 3. Ghost Prop Documentation ✅
 > **Rule:** Unused properties in entities must be documented
 
-- [ ] **Dashboard:** Document `CategoryMonthlyData.isVirtualParent` - internal flag for transformer with no documentation explaining why it's unused in UI
-- [ ] **Inbox:** Remove or document `InboxItemViewEntity.currencySymbol` - noted as "ALWAYS NULL" and forbidden, yet remains in type definition
-- Why: Creates "noise" in the type system and makes iOS serialization payload heavier
+- [x] **Dashboard:** Document `CategoryMonthlyData.isVirtualParent` ✅
+  - Added JSDoc in `lib/data/data-transformers.ts` explaining internal provenance marker
+- [x] **Inbox:** `InboxItemViewEntity.currencySymbol` ✅ **Already resolved in CLEAN-02**
+  - Property was removed in commit `34e5d63`
+  - `InboxItemViewEntity` is now a clean type alias of `InboxItemEntity`
 
 ### 4. Direct Logic Leak (Minor Spaghetti)
 > **Rule:** Logic belongs in hooks/services, not components

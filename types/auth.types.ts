@@ -4,7 +4,7 @@ import type {
   UpdateProfileFormData,
   ChangePasswordFormData,
   ChangeEmailFormData,
-} from '@/features/auth/schemas/profile.schema';
+} from '@/lib/schemas/profile.schema';
 
 export interface SignUpData {
   firstName: string;

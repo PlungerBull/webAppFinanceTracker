@@ -313,6 +313,18 @@ export const ImportResultRpcSchema = z.object({
   errors: z.array(z.string()),
 });
 
+/**
+ * get_monthly_spending_by_category RPC response row
+ * Used by dashboardApi for financial overview
+ */
+export const MonthlySpendingRpcRowSchema = z.object({
+  category_id: uuid,
+  category_name: z.string(),
+  category_color: z.string(),
+  month_key: z.string(),
+  total_amount: z.number(),
+});
+
 // ============================================================================
 // SYNC RPC SCHEMAS (for pull-engine.ts)
 // The get_changes_since RPC returns renamed columns:

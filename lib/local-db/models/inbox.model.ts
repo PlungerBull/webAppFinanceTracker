@@ -14,7 +14,7 @@
 
 import { Model } from '@nozbe/watermelondb';
 import { field, date, readonly, relation } from '@nozbe/watermelondb/decorators';
-import type { InboxItemEntity } from '@/features/inbox/domain/entities';
+import type { InboxItemEntity } from '@/domain/inbox';
 import type { SyncStatus } from '../schema';
 import type { AccountModel } from './account.model';
 import type { CategoryModel } from './category.model';

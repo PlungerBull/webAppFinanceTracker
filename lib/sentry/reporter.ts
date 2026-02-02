@@ -53,6 +53,10 @@ const SEVERITY_MAP: Record<string, SeverityLevel> = {
   RECONCILIATION_VERSION_CONFLICT: 'warning',
   RECONCILIATION_COMPLETED: 'warning',
   RECONCILIATION_LINK_FAILED: 'error',
+
+  // Dashboard errors
+  DASHBOARD_REPOSITORY_ERROR: 'fatal',
+  DASHBOARD_VALIDATION_ERROR: 'warning',
 };
 
 type ErrorWithCode = Error & { code?: string; isOperational?: boolean };

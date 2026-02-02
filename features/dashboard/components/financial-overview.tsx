@@ -22,7 +22,7 @@ export function FinancialOverview() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Fetch data with main currency
-  const { data: overviewData, isLoading } = useFinancialOverview(UI.MONTHS_DISPLAY.SPENDING_TABLE);
+  const { data: overviewData, isLoading, error } = useFinancialOverview(UI.MONTHS_DISPLAY.SPENDING_TABLE);
 
   // CRITICAL: Generate 6-month skeleton FIRST (prevents grid collapse with sparse data)
   const months = useMemo(() => {
@@ -146,6 +146,17 @@ export function FinancialOverview() {
     return (
       <div className="flex justify-center items-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-rose-500 text-sm">
+        <p>Failed to load financial overview</p>
+        <p className="text-xs text-gray-400 mt-1">
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </p>
       </div>
     );
   }

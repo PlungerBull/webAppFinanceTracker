@@ -15,7 +15,7 @@ import type {
   UpdateInboxItemDTO,
   PromoteInboxItemDTO,
 } from '../domain/types';
-import type { InboxItemViewEntity } from '../domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 
 /**
  * Get the inbox service instance

@@ -10,7 +10,7 @@
  * @module inbox-types
  */
 
-import type { InboxItemEntity, InboxItemViewEntity } from './entities';
+import type { InboxItemEntity, InboxItemViewEntity } from '@/domain/inbox';
 
 // Import shared types from data-patterns module
 import type {

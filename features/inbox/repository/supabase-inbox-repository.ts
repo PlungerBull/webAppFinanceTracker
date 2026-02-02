@@ -39,7 +39,7 @@ import {
 import { dbInboxItemViewToDomain } from '@/lib/data/data-transformers';
 import { validateOrThrow, validateArrayOrThrow } from '@/lib/data/validate';
 import { TransactionInboxViewRowSchema } from '@/lib/data/db-row-schemas';
-import type { InboxItemViewEntity } from '../domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 import { z } from 'zod';
 
 /**

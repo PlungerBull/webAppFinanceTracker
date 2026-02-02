@@ -48,7 +48,7 @@ import type {
   PromoteInboxItemDTO,
   PromoteResult,
 } from '../domain/types';
-import type { InboxItemViewEntity } from '../domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 
 /**
  * Inbox Repository Interface

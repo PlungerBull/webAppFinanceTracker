@@ -21,7 +21,7 @@ import type { AccountModel, CategoryModel, TransactionModel, InboxModel, Currenc
 import type { AccountViewEntity } from '@/features/accounts/domain/entities';
 import type { CategoryEntity } from '@/features/categories/domain/entities';
 import type { TransactionViewEntity } from '@/features/transactions/domain/entities';
-import type { InboxItemViewEntity } from '@/features/inbox/domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 
 // ============================================================================
 // ACCOUNT TRANSFORMERS

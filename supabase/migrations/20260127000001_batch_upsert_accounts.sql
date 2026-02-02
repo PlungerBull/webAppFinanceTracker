@@ -5,8 +5,11 @@
 --
 -- CTO MANDATES:
 -- - Push Engine MUST use batching (1 request for N records)
--- - Per-item error granularity (SAVEPOINT per record)
+-- - Per-item error granularity (exception handling per record)
 -- - 1 bad record should NOT fail 49 good ones
+--
+-- FIX: Removed dynamic EXECUTE SAVEPOINT commands that caused PostgreSQL 0A000 error
+-- via PostgREST. BEGIN...EXCEPTION...END blocks provide per-item isolation.
 --
 -- Returns: { synced_ids: uuid[], conflict_ids: uuid[], error_map: {id: error} }
 -- ============================================================================
@@ -30,9 +33,8 @@ DECLARE
   v_current_version INTEGER;
   v_new_version INTEGER;
   v_deleted_at TIMESTAMPTZ;
-  v_savepoint_name TEXT;
 BEGIN
-  -- Process each record with individual SAVEPOINT
+  -- Process each record with individual exception handling
   FOREACH v_record IN ARRAY p_records
   LOOP
     v_id := (v_record->>'id')::UUID;
@@ -43,13 +45,7 @@ BEGIN
       ELSE NULL
     END;
 
-    -- Create savepoint name (remove dashes for valid identifier)
-    v_savepoint_name := 'sp_' || replace(v_id::text, '-', '_');
-
     BEGIN
-      -- SAVEPOINT per record for isolation
-      EXECUTE format('SAVEPOINT %I', v_savepoint_name);
-
       -- Check if record exists and get current version
       SELECT version INTO v_current_version
       FROM bank_accounts
@@ -59,7 +55,6 @@ BEGIN
         -- Record exists - check version for conflict
         IF v_current_version != v_expected_version THEN
           -- Version conflict
-          EXECUTE format('ROLLBACK TO SAVEPOINT %I', v_savepoint_name);
           v_conflict_ids := array_append(v_conflict_ids, v_id);
           CONTINUE;
         END IF;
@@ -106,19 +101,16 @@ BEGIN
         );
       END IF;
 
-      -- Success - release savepoint
-      EXECUTE format('RELEASE SAVEPOINT %I', v_savepoint_name);
+      -- Success
       v_synced_ids := array_append(v_synced_ids, v_id);
 
     EXCEPTION
       WHEN unique_violation THEN
         -- Unique constraint conflict (e.g., duplicate account name)
-        EXECUTE format('ROLLBACK TO SAVEPOINT %I', v_savepoint_name);
         v_conflict_ids := array_append(v_conflict_ids, v_id);
 
       WHEN OTHERS THEN
         -- Per-item error
-        EXECUTE format('ROLLBACK TO SAVEPOINT %I', v_savepoint_name);
         v_error_map := v_error_map || jsonb_build_object(v_id::text, SQLERRM);
     END;
   END LOOP;
@@ -137,4 +129,4 @@ GRANT EXECUTE ON FUNCTION batch_upsert_accounts(UUID, JSONB[]) TO authenticated;
 COMMENT ON FUNCTION batch_upsert_accounts(UUID, JSONB[]) IS
 'Batch upsert for Delta Sync Push Engine.
 Processes multiple accounts in one request with per-item error handling.
-Uses SAVEPOINT per record so 1 failure does not fail the entire batch.';
+Uses BEGIN...EXCEPTION...END per record so 1 failure does not fail the entire batch.';

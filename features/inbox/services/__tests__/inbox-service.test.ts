@@ -15,7 +15,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { IInboxRepository } from '../../repository/inbox-repository.interface';
 import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
-import type { InboxItemViewEntity } from '../../domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 import { InboxRepositoryError, VersionConflictError } from '../../domain/errors';
 import { InboxService } from '../inbox-service';
 

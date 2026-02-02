@@ -23,8 +23,8 @@ export type {
 } from './domain/types';
 
 // Domain Entities - InboxItemViewEntity is the canonical type (CTO Mandate: null semantics)
-export type { InboxItemEntity, InboxItemViewEntity } from './domain/entities';
-export { isPromotionReady } from './domain/entities';
+export type { InboxItemEntity, InboxItemViewEntity } from '@/domain/inbox';
+export { isPromotionReady } from '@/domain/inbox';
 
 // Domain Errors
 export {

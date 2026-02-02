@@ -17,7 +17,7 @@ import { InboxDetailPanel } from './inbox-detail-panel';
 import { useInboxItems } from '../hooks/use-inbox';
 import { useBulkSelection } from '@/lib/hooks/use-bulk-selection';
 import { inboxItemViewsToTransactionViews } from '@/lib/data/data-transformers';
-import type { InboxItemViewEntity } from '../domain/entities';
+import type { InboxItemViewEntity } from '@/domain/inbox';
 
 function InboxContent() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
