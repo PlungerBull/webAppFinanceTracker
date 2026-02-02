@@ -30,9 +30,11 @@ const validBankAccount = {
   currency_code: 'USD',
   color: '#3B82F6',
   is_visible: true,
-  current_balance: 105000,
+  current_balance_cents: 105000,
   created_at: TIMESTAMP,
   updated_at: TIMESTAMP,
+  version: 1,
+  deleted_at: null,
 };
 
 const validTransaction = {
@@ -66,6 +68,8 @@ const validCategory = {
   parent_id: null,
   created_at: TIMESTAMP,
   updated_at: TIMESTAMP,
+  version: 1,
+  deleted_at: null,
 };
 
 // ============================================================================
@@ -161,6 +165,8 @@ describe('TransactionInboxRowSchema', () => {
       status: 'pending',
       created_at: TIMESTAMP,
       updated_at: TIMESTAMP,
+      version: 1,
+      deleted_at: null,
     };
     expect(TransactionInboxRowSchema.parse(item)).toEqual(item);
   });
@@ -171,6 +177,7 @@ describe('TransactionInboxRowSchema', () => {
       date: null, source_text: null, account_id: null, category_id: null,
       exchange_rate: null, notes: null, status: 'pending',
       created_at: TIMESTAMP, updated_at: TIMESTAMP,
+      version: 1, deleted_at: null,
     };
     expect(TransactionInboxRowSchema.parse(item).amount_original).toBeNull();
   });
@@ -208,10 +215,11 @@ describe('ReconciliationRowSchema', () => {
   it('accepts valid reconciliation', () => {
     const recon = {
       id: UUID, user_id: UUID, account_id: UUID2,
-      name: 'Jan 2026', beginning_balance: 100000, ending_balance: 120000,
+      name: 'Jan 2026', beginning_balance_cents: 100000, ending_balance_cents: 120000,
       date_start: '2026-01-01', date_end: '2026-01-31',
       status: 'draft' as const,
       created_at: TIMESTAMP, updated_at: TIMESTAMP,
+      version: 1, deleted_at: null,
     };
     expect(ReconciliationRowSchema.parse(recon)).toEqual(recon);
   });
@@ -219,9 +227,10 @@ describe('ReconciliationRowSchema', () => {
   it('rejects float balance (integer cents enforcement)', () => {
     expect(() => ReconciliationRowSchema.parse({
       id: UUID, user_id: UUID, account_id: UUID2,
-      name: 'Test', beginning_balance: 100.5, ending_balance: 200,
+      name: 'Test', beginning_balance_cents: 100.5, ending_balance_cents: 200,
       date_start: null, date_end: null, status: 'draft',
       created_at: TIMESTAMP, updated_at: TIMESTAMP,
+      version: 1, deleted_at: null,
     })).toThrow();
   });
 });
@@ -233,9 +242,9 @@ describe('ReconciliationRowSchema', () => {
 describe('ReconciliationSummaryRpcSchema', () => {
   it('accepts valid summary', () => {
     const summary = {
-      beginningBalance: 100000, endingBalance: 120000,
-      linkedSum: 20000, linkedCount: 5,
-      difference: 0, isBalanced: true,
+      beginningBalanceCents: 100000, endingBalanceCents: 120000,
+      linkedSumCents: 20000, linkedCount: 5,
+      differenceCents: 0, isBalanced: true,
     };
     expect(ReconciliationSummaryRpcSchema.parse(summary)).toEqual(summary);
   });
