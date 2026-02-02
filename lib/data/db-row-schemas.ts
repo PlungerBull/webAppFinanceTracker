@@ -62,7 +62,7 @@ const ReconciliationStatusEnum = z.enum(['draft', 'completed']);
  */
 export const BankAccountRowSchema = z.object({
   id: uuid,
-  group_id: uuid,
+  group_id: uuid.nullable(),
   user_id: uuid,
   name: z.string(),
   type: AccountTypeEnum,
@@ -362,7 +362,7 @@ export const ChangesResponseSchema = z.object({
 export const SyncRecordSchemas = {
   bank_accounts: z.object({
     id: uuid,
-    group_id: uuid,
+    group_id: uuid.nullable(),
     user_id: uuid,
     name: z.string(),
     type: AccountTypeEnum,
