@@ -50,7 +50,9 @@
       "Bash(git rm:*)",
       "Bash(du:*)",
       "Bash(pnpm typecheck:*)",
-      "Bash(git -C /Users/ternero/Documents/webAppFinanceTracker show HEAD:docs/documentation/audit-categories.md)"
+      "Bash(git -C /Users/ternero/Documents/webAppFinanceTracker show HEAD:docs/documentation/audit-categories.md)",
+      "Bash(supabase migration --help:*)",
+      "Bash(pnpm tsc:*)"
     ],
     "deny": [],
     "ask": []
