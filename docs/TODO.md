@@ -11,21 +11,7 @@
 
 > **Context:** During the S-Tier Sync Infrastructure Hardening sprint (2026-02-02), these items were identified but intentionally deferred to maintain focus on core sync reliability.
 
-### Pre-existing Test Failures
-- [x] **db-row-schemas.test.ts:** Fix 9 failing schema validation tests that predate the sync-hardening sprint
-- [x] **supabase-inbox-repository.test.ts:** Fix 3 failing tests related to inbox repository logic (version conflict handling, tombstone dismissal)
-
-### Sync Conflict UI - Incomplete Actions
-- [x] **"Delete Locally" Action:** Implement logic to safely prune a conflicted record from WatermelonDB (placeholder at `sync-conflict-modal.tsx:131-134`)
-  - *Completed 2026-02-02: Added `deleteConflictRecord()` to DeltaSyncEngine with race condition protection, threaded through useDeltaSync hook and SyncStatusProvider, added DeleteDialog confirmation UI*
-- [x] **"Retry-by-Item" Granularity:** Current "Retry Sync" triggers full `forceSync()`; add ability to retry individual conflicted records
-  - *Completed 2026-02-02: Added `retryConflictRecord()` to DeltaSyncEngine, exposed via useDeltaSync hook and SyncStatusProvider, added per-item Retry button with loading state and UI Row Lock in sync-conflict-modal*
-
 ### Technical Debt - Next Hardening Phase
-- [x] **syncError Model Field:** Add dedicated field to WatermelonDB models to store specific error messages from the database (currently uses generic CONFLICT status)
-  - *Completed 2026-02-02: Added `sync_error` column to all syncable models (AccountModel, TransactionModel, CategoryModel, InboxModel) with schema migration v1→v2. Standardized error messages via `SYNC_ERROR_MESSAGES` constant. Sacred Ledger validation for missing account_id. Atomic error clearing on retry. Error displayed in sync-conflict-modal UI.*
-- [x] **Category FK Audit:** Apply same multi-layer defensive validation to `category_id` that was applied to `account_id` and `group_id`
-  - *Completed 2026-02-02: Created `validate_category_ownership()` and `validate_account_ownership()` helper functions. Hardened 4 RPCs: `promote_inbox_item` (both overloads), `create_transfer` (both overloads), `update_transaction_with_version`, `update_inbox_with_version`. Defense-in-depth for SECURITY DEFINER bypass. Migration: `20260202040000_add_category_ownership_validation.sql`*
 - [ ] **E2E Conflict Resolution Tests:** Add Playwright tests simulating a user physically resolving a conflict via the Sync Conflict Modal UI
 - [ ] **Conflict Count Sidebar Badge:** Add visual indicator in sidebar showing number of unresolved sync conflicts
 
