@@ -10,7 +10,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { createUserSettingsService } from '../api/user-settings';
+import { createUserSettingsService } from '../services';
 import { toast } from 'sonner';
 
 function useUserSettingsService() {

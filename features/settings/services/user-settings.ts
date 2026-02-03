@@ -7,7 +7,7 @@
  *
  * Returns DataResult for S-Tier error handling across Native Bridge.
  *
- * @module features/settings/api
+ * @module features/settings/services
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';

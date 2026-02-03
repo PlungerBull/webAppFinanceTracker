@@ -5,7 +5,7 @@
  *
  * CTO MANDATES:
  * - Atomic Transfer Protocol: MUST use create_transfer RPC exclusively
- * - Floating-point safe cents conversion (string-based)
+ * - Sacred Integer Arithmetic: Pass BIGINT cents directly to RPC (ADR 001)
  * - DataResult pattern (never throws)
  *
  * @module supabase-transfer-repository
@@ -50,16 +50,6 @@ export class TransferValidationError extends Error {
  */
 export class SupabaseTransferRepository implements ITransferRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) { }
-
-  /**
-   * Convert integer cents to decimal dollars for RPC
-   *
-   * The RPC expects decimal values (p_amount, p_amount_received).
-   * We store in cents internally but convert for DB operations.
-   */
-  private fromCents(cents: number): number {
-    return cents / 100;
-  }
 
   async create(
     userId: string,
@@ -127,11 +117,8 @@ export class SupabaseTransferRepository implements ITransferRepository {
       // The rate is metadata for display only - never used to derive amounts.
       const impliedExchangeRate = data.receivedAmountCents / data.sentAmountCents;
 
-      // Convert cents to dollars for RPC (DB uses decimal)
-      const sentAmount = this.fromCents(data.sentAmountCents);
-      const receivedAmount = this.fromCents(data.receivedAmountCents);
-
       // CTO Mandate: Use create_transfer RPC exclusively for atomicity
+      // S-TIER: Pass integer cents directly to RPC (ADR 001 - Sacred Integer Arithmetic)
       // VERIFIED: The RPC is plpgsql which wraps both INSERTs in an implicit transaction.
       // If either INSERT fails, the entire operation rolls back automatically.
       const { data: rpcResult, error: rpcError } = await this.supabase.rpc(
@@ -140,8 +127,8 @@ export class SupabaseTransferRepository implements ITransferRepository {
           p_user_id: userId,
           p_from_account_id: data.fromAccountId,
           p_to_account_id: data.toAccountId,
-          p_amount_cents: sentAmount,              // BIGINT parameter
-          p_amount_received_cents: receivedAmount, // BIGINT parameter
+          p_amount_cents: data.sentAmountCents,         // BIGINT cents - no conversion
+          p_amount_received_cents: data.receivedAmountCents, // BIGINT cents - no conversion
           p_exchange_rate: impliedExchangeRate,
           p_date: data.date,
           p_description: data.description || 'Transfer',

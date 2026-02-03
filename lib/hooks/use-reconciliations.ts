@@ -9,7 +9,7 @@
  *
  * ARCHITECTURE PATTERN:
  * - Components import from @/lib/hooks/use-reconciliations
- * - This hook internally uses the reconciliations feature API
+ * - This hook internally uses the reconciliations feature services
  * - Features never import from @/features/reconciliations/hooks
  *
  * @module lib/hooks/use-reconciliations
@@ -20,7 +20,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { createReconciliationsService } from '@/features/reconciliations/api/reconciliations';
+import { createReconciliationsService } from '@/features/reconciliations/services';
 import { createQueryOptions } from '@/lib/constants';
 import { toast } from 'sonner';
 import {

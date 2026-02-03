@@ -784,6 +784,20 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              p_amount_cents: number
+              p_amount_received_cents: number
+              p_category_id?: string
+              p_date: string
+              p_description: string
+              p_exchange_rate: number
+              p_from_account_id: string
+              p_to_account_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       create_transfer_transaction: {
         Args: {
           p_amount_cents: number

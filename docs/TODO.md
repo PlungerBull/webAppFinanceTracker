@@ -25,14 +25,34 @@
 - [ ] **Settings:** Fix `transactionSortPreference` - Domain type is strict union `'date' | 'created_at'` but Zod schema validates as generic `z.string()` with type cast in transformer
 - Why: Loses runtime validation for specific enum values
 
+### 8. Account groupId Nullability Mismatch
+> **Build Blocker:** TypeScript error in `lib/data/data-transformers.ts:319`
+
+- [ ] **Fix:** `Account.groupId` is typed as `string` but `DbAccountViewRow.group_id` from Supabase is `string | null`
+- **Error:** `Type 'string | null' is not assignable to type 'string'`
+- **Options:**
+  1. Make `Account.groupId` nullable in `types/domain.ts` (`groupId: string | null`)
+  2. Provide default fallback in transformer (`dbRow.group_id ?? dbRow.id`)
+- **Impact:** Build passes locally but Next.js strict type checking may fail on Vercel
+- Why: DB schema allows NULL for `group_id` but domain type doesn't reflect this
+
+### 9. Legacy create_transfer NUMERIC Signatures
+> **Technical Debt:** Old RPC signatures violate ADR 001 (Floating-Point Rejection)
+
+- [ ] **Drop:** Legacy `create_transfer` overloads that use NUMERIC (dollars) instead of BIGINT (cents)
+- **Location:** Two overloads in `current_live_snapshot.sql` lines 611-689 and 693+
+- **Blocked By:** Verify S-Tier BIGINT overload works in production first
+- **Migration:** Create `drop_legacy_create_transfer_numeric.sql` after validation period
+- Why: Maintains type symmetry and ADR 001 compliance (Sacred Integer Arithmetic)
+
 ### 7. Folder Structure Schism
 > **Rule:** Clean Architecture requires explicit layers: `repository/` (data access) and `services/` (business logic)
 
-- [ ] **Reconciliations:** Split `api/reconciliations.ts` - currently acts as both Repository and Service
-- [ ] **Settings:** Rename `api/user-settings.ts` to `services/user-settings.ts`
-- [ ] **Transactions:** Audit `api/filters.ts` alongside existing `repository/` and `services/`
+- [x] **Reconciliations:** Split `api/reconciliations.ts` into `repository/` + `services/` layers
+- [x] **Settings:** Move `api/user-settings.ts` to `services/user-settings.ts`
+- [x] **Transactions:** Delete `api/filters.ts` (dead code - was not imported anywhere)
 - Reference: Accounts & Categories follow the rule perfectly
-- Why: Inconsistent naming makes navigation unpredictable. A developer looking for "business logic" in Settings won't find a `services` folder
+- Status: **COMPLETED** - All features now follow Clean Architecture pattern
 
 ---
 

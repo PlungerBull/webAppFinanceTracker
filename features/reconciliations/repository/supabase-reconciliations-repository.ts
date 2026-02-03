@@ -1,17 +1,16 @@
 /**
- * Reconciliations Service
+ * Supabase Reconciliations Repository
  *
- * Service layer for reconciliation operations.
- * Returns DataResult for S-Tier error handling across Native Bridge.
+ * Data access layer for reconciliation operations.
+ * Handles Supabase queries, validation, and error mapping.
+ * Returns DataResult for S-Tier error handling.
  *
- * @module features/reconciliations/api
+ * @module features/reconciliations/repository
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import type { DataResult } from '@/lib/data-patterns';
 import type { Reconciliation, ReconciliationSummary } from '@/domain/reconciliations';
-import { createSupabaseAuthProvider } from '@/lib/auth/supabase-auth-provider';
 import {
   dbReconciliationToDomain,
   dbReconciliationsToDomain,
@@ -33,43 +32,17 @@ import {
   ReconciliationCompletedError,
   ReconciliationLinkError,
 } from '../domain/errors';
+import type {
+  IReconciliationsRepository,
+  LinkUnlinkResult,
+  CreateReconciliationInput,
+  UpdateReconciliationInput,
+} from './reconciliations-repository.interface';
 
-/** Result type for link/unlink operations */
-interface LinkUnlinkResult {
-  success: boolean;
-  successCount: number;
-  errorCount: number;
-  errors: Array<{ transactionId: string; error: string }>;
-}
+export class SupabaseReconciliationsRepository implements IReconciliationsRepository {
+  constructor(private readonly supabase: SupabaseClient) {}
 
-export class ReconciliationsService {
-  constructor(
-    private readonly supabase: SupabaseClient,
-    private readonly authProvider: IAuthProvider
-  ) {}
-
-  private async getCurrentUserId(): Promise<DataResult<string, ReconciliationRepositoryError>> {
-    try {
-      const userId = await this.authProvider.getCurrentUserId();
-      return { success: true, data: userId };
-    } catch (err) {
-      return {
-        success: false,
-        data: null,
-        error: new ReconciliationRepositoryError('User not authenticated', err),
-      };
-    }
-  }
-
-  /**
-   * Get all reconciliations for current user (optionally filtered by account)
-   * Filters out soft-deleted reconciliations (tombstone pattern)
-   *
-   * S-Tier: Empty array is a valid success state.
-   */
-  async getAll(
-    accountId?: string
-  ): Promise<DataResult<Reconciliation[], ReconciliationRepositoryError>> {
+  async getAll(accountId?: string): Promise<DataResult<Reconciliation[], ReconciliationRepositoryError>> {
     try {
       let query = this.supabase
         .from('reconciliations')
@@ -120,10 +93,6 @@ export class ReconciliationsService {
     }
   }
 
-  /**
-   * Get single reconciliation by ID
-   * Returns not found error if soft-deleted (tombstone pattern)
-   */
   async getById(
     id: string
   ): Promise<DataResult<Reconciliation, ReconciliationRepositoryError | ReconciliationNotFoundError>> {
@@ -176,26 +145,12 @@ export class ReconciliationsService {
     }
   }
 
-  /**
-   * Create new reconciliation
-   */
-  async create(data: {
-    accountId: string;
-    name: string;
-    beginningBalance: number;
-    endingBalance: number;
-    dateStart?: string | null;
-    dateEnd?: string | null;
-  }): Promise<DataResult<Reconciliation, ReconciliationRepositoryError>> {
+  async create(
+    data: CreateReconciliationInput
+  ): Promise<DataResult<Reconciliation, ReconciliationRepositoryError>> {
     try {
-      const userIdResult = await this.getCurrentUserId();
-      if (!userIdResult.success) {
-        return userIdResult;
-      }
-      const userId = userIdResult.data;
-
       const insertData = domainReconciliationToDbInsert({
-        userId,
+        userId: data.userId,
         accountId: data.accountId,
         name: data.name,
         beginningBalance: data.beginningBalance,
@@ -244,19 +199,9 @@ export class ReconciliationsService {
     }
   }
 
-  /**
-   * Update reconciliation
-   */
   async update(
     id: string,
-    updates: {
-      name?: string;
-      beginningBalance?: number;
-      endingBalance?: number;
-      dateStart?: string | null;
-      dateEnd?: string | null;
-      status?: 'draft' | 'completed';
-    }
+    updates: UpdateReconciliationInput
   ): Promise<DataResult<Reconciliation, ReconciliationRepositoryError | ReconciliationNotFoundError>> {
     try {
       const updateData = domainReconciliationToDbUpdate(updates);
@@ -296,25 +241,13 @@ export class ReconciliationsService {
     }
   }
 
-  /**
-   * Delete reconciliation (soft delete with version check)
-   *
-   * CTO Mandate: Use version-checked soft delete RPC (Tombstone Pattern)
-   * - Prevents concurrent modification conflicts
-   * - Enables distributed sync propagation
-   * - Automatically unlinks transactions
-   *
-   * S-Tier: Maps RPC errors to specific DomainErrors for typed handling.
-   */
   async delete(
     id: string,
     version: number
   ): Promise<
     DataResult<
       void,
-      | ReconciliationRepositoryError
-      | ReconciliationVersionConflictError
-      | ReconciliationCompletedError
+      ReconciliationRepositoryError | ReconciliationVersionConflictError | ReconciliationCompletedError
     >
   > {
     try {
@@ -387,12 +320,6 @@ export class ReconciliationsService {
     }
   }
 
-  /**
-   * Link transactions to reconciliation (bulk)
-   * Uses RPC function for atomic operation with validation
-   *
-   * S-Tier: Batch operation optimized for Native Bridge performance.
-   */
   async linkTransactions(
     reconciliationId: string,
     transactionIds: string[]
@@ -444,12 +371,6 @@ export class ReconciliationsService {
     }
   }
 
-  /**
-   * Unlink transactions from reconciliation (bulk)
-   * Uses RPC function for atomic operation with validation
-   *
-   * S-Tier: Batch operation optimized for Native Bridge performance.
-   */
   async unlinkTransactions(
     transactionIds: string[]
   ): Promise<DataResult<LinkUnlinkResult, ReconciliationRepositoryError | ReconciliationLinkError>> {
@@ -499,10 +420,6 @@ export class ReconciliationsService {
     }
   }
 
-  /**
-   * Get reconciliation summary (real-time math)
-   * Formula: Difference = Ending Balance - (Beginning Balance + Linked Sum)
-   */
   async getSummary(
     reconciliationId: string
   ): Promise<DataResult<ReconciliationSummary, ReconciliationRepositoryError>> {
@@ -555,12 +472,4 @@ export class ReconciliationsService {
       };
     }
   }
-}
-
-/**
- * Factory function to create ReconciliationsService with proper DI.
- */
-export function createReconciliationsService(supabase: SupabaseClient): ReconciliationsService {
-  const authProvider = createSupabaseAuthProvider(supabase);
-  return new ReconciliationsService(supabase, authProvider);
 }
