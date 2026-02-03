@@ -161,6 +161,37 @@ export class TransactionDeletedError extends TransactionError {
 }
 
 /**
+ * RPC Mismatch Error
+ *
+ * Thrown when client calls an RPC function with a signature that
+ * doesn't match any database overload. This is a programmer error
+ * (non-operational) that should alert Sentry.
+ *
+ * Common causes:
+ * - Migration added new parameters but client wasn't updated
+ * - Client sends combination of parameters no overload accepts
+ * - TypeScript types out of sync with database schema
+ */
+export class RpcMismatchError extends TransactionError {
+  /**
+   * Non-operational errors trigger Sentry alerts.
+   * This is a programmer bug, not a user-recoverable error.
+   */
+  readonly isOperational = false;
+
+  constructor(
+    public readonly functionName: string,
+    public readonly originalError?: unknown
+  ) {
+    super(
+      `RPC signature mismatch for ${functionName}. Client parameters don't match any database overload.`,
+      'RPC_MISMATCH'
+    );
+    this.name = 'RpcMismatchError';
+  }
+}
+
+/**
  * Type guard to check if error is a TransactionError
  */
 export function isTransactionError(error: unknown): error is TransactionError {

@@ -28,6 +28,9 @@ import type {
 } from '../domain/types';
 import type { TransactionViewEntity } from '../domain/entities';
 import type { InboxItemViewEntity } from '@/domain/inbox';
+import { VersionConflictError } from '@/features/inbox/domain/errors';
+import { RpcMismatchError } from '../domain/errors';
+import { reportError } from '@/lib/sentry/reporter';
 
 /**
  * React Query infinite query data structure.
@@ -329,7 +332,29 @@ export function useTransactionRouting(
       } catch (error) {
         // Rollback optimistic update on error
         rollback();
-        options.onError?.(error as Error);
+
+        const err = error as Error;
+
+        // Distinguish error types for appropriate handling
+        if (err instanceof VersionConflictError) {
+          // User-recoverable: show refresh prompt (handled by onError)
+          options.onError?.(err);
+        } else if (
+          err.message?.includes('function') &&
+          err.message?.includes('does not exist')
+        ) {
+          // Programmer error: RPC signature mismatch - alert Sentry
+          reportError(
+            new RpcMismatchError('promote_inbox_item', err),
+            'transactions',
+            { operation: 'submit' }
+          );
+          options.onError?.(err);
+        } else {
+          // Unknown error: report to Sentry and notify user
+          reportError(err, 'transactions', { operation: 'submit' });
+          options.onError?.(err);
+        }
       } finally {
         setIsSubmitting(false);
       }

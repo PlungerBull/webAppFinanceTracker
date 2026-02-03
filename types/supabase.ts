@@ -46,7 +46,7 @@ export type Database = {
           currency_code: string
           current_balance_cents: number
           deleted_at: string | null
-          group_id: string
+          group_id: string | null
           id: string
           is_visible: boolean
           name: string
@@ -61,7 +61,7 @@ export type Database = {
           currency_code?: string
           current_balance_cents?: number
           deleted_at?: string | null
-          group_id?: string
+          group_id?: string | null
           id?: string
           is_visible?: boolean
           name: string
@@ -76,7 +76,7 @@ export type Database = {
           currency_code?: string
           current_balance_cents?: number
           deleted_at?: string | null
-          group_id?: string
+          group_id?: string | null
           id?: string
           is_visible?: boolean
           name?: string
@@ -770,14 +770,16 @@ export type Database = {
           }
         | {
             Args: {
-              p_amount_cents: number
-              p_amount_received_cents: number
+              p_amount: number
+              p_amount_received: number
               p_category_id?: string
               p_date: string
               p_description: string
               p_exchange_rate: number
               p_from_account_id: string
+              p_from_currency: string
               p_to_account_id: string
+              p_to_currency: string
               p_user_id: string
             }
             Returns: Json
@@ -927,6 +929,17 @@ export type Database = {
             Args: {
               p_account_id: string
               p_category_id: string
+              p_final_amount?: number
+              p_final_date?: string
+              p_final_description?: string
+              p_inbox_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_account_id: string
+              p_category_id: string
               p_exchange_rate?: number
               p_final_amount?: number
               p_final_date?: string
@@ -953,6 +966,19 @@ export type Database = {
               p_account_id: string
               p_category_id: string
               p_exchange_rate?: number
+              p_final_amount_cents?: number
+              p_final_date?: string
+              p_final_description?: string
+              p_inbox_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_account_id: string
+              p_category_id: string
+              p_exchange_rate?: number
+              p_expected_version?: number
               p_final_amount_cents?: number
               p_final_date?: string
               p_final_description?: string
@@ -1013,6 +1039,14 @@ export type Database = {
           p_updates: Json
         }
         Returns: Json
+      }
+      validate_account_ownership: {
+        Args: { p_account_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      validate_category_ownership: {
+        Args: { p_category_id: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {

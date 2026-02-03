@@ -19,13 +19,6 @@
 
 ## Code Consistency Issues
 
-### 5. Test Co-location Inconsistency ✅
-> **Rule:** Tests should be located consistently
-
-- [x] **Audit:** Transactions has visible `__tests__` folders co-located inside `hooks/` and `services/`
-- [x] **Standardize:** Added `__tests__/` scaffolding to all features. Moved misplaced test file in inbox/repository/. See MANIFESTO.md Section 8 for documented convention.
-- Why: Inconsistent folder structures slow down developer navigation
-
 ### 6. Type Strictness Variance
 > **Rule:** Zod schemas should match Domain types exactly
 
@@ -40,14 +33,6 @@
 - [ ] **Transactions:** Audit `api/filters.ts` alongside existing `repository/` and `services/`
 - Reference: Accounts & Categories follow the rule perfectly
 - Why: Inconsistent naming makes navigation unpredictable. A developer looking for "business logic" in Settings won't find a `services` folder
-
-### 8. Serialization Bloat (Mobile Performance)
-> **Rule:** Entities should only carry data they actually use, especially for lists with hundreds of items
-
-- [ ] **Inbox:** Remove nested `account` and `category` objects from `InboxItemViewEntity`
-  - The UI (`inbox-card.tsx`) ignores these nested objects and fetches its own reference data via hooks (`useAccountsData`)
-  - Currently double-fetching and serializing data
-- Why: For the iOS bridge, passing thousands of redundant nested objects across the JSON boundary is a performance killer
 
 ---
 
