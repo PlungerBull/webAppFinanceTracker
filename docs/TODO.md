@@ -19,11 +19,11 @@
 
 ## Code Consistency Issues
 
-### 5. Test Co-location Inconsistency
+### 5. Test Co-location Inconsistency ✅
 > **Rule:** Tests should be located consistently
 
-- [ ] **Audit:** Transactions has visible `__tests__` folders co-located inside `hooks/` and `services/`
-- [ ] **Standardize:** Other features do not show visible test folders - ensure consistent test placement or add missing tests
+- [x] **Audit:** Transactions has visible `__tests__` folders co-located inside `hooks/` and `services/`
+- [x] **Standardize:** Added `__tests__/` scaffolding to all features. Moved misplaced test file in inbox/repository/. See MANIFESTO.md Section 8 for documented convention.
 - Why: Inconsistent folder structures slow down developer navigation
 
 ### 6. Type Strictness Variance

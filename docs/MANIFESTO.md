@@ -240,6 +240,55 @@ See `docs/NATIVE_PORTING_GUIDE.md` for the canonical property inventory and Swif
 
 ---
 
+## 8. Test Co-location Convention
+
+**Rule:** Tests live in `__tests__/` subdirectories adjacent to source code.
+
+### Structure
+
+```
+features/[domain]/
+├── hooks/
+│   ├── use-something.ts
+│   └── __tests__/
+│       └── use-something.test.ts
+├── services/
+│   ├── some-service.ts
+│   └── __tests__/
+│       └── some-service.test.ts
+└── repository/
+    ├── supabase-repository.ts
+    └── __tests__/
+        └── supabase-repository.test.ts
+```
+
+### Rules
+
+- All test files use `.test.ts` or `.test.tsx` extension (not `.spec.*`)
+- Test framework: Vitest
+- **Always use `@/` path aliases** in test imports (never relative paths)
+- Shared test fixtures go in `lib/__tests__/helpers/`
+
+### Shared Helpers
+
+Centralized mock providers live in `lib/__tests__/helpers/`:
+
+| Helper | Purpose |
+|--------|---------|
+| `mock-supabase.ts` | Mock Supabase client factory |
+| `mock-auth.ts` | Mock auth provider factory |
+
+Import via: `import { createMockSupabase, createMockAuthProvider } from '@/lib/__tests__/helpers'`
+
+### Why `__tests__/` Subdirectories
+
+1. **Clear separation:** Tests are visible but don't clutter source directories
+2. **Consistent navigation:** Developers know exactly where to find tests
+3. **IDE-friendly:** Test discovery works reliably across IDEs
+4. **Path alias stability:** `@/` imports work regardless of nesting depth
+
+---
+
 ## Code References
 
 | Concept | Source of Truth |
@@ -250,6 +299,7 @@ See `docs/NATIVE_PORTING_GUIDE.md` for the canonical property inventory and Swif
 | Validation Schemas | `lib/data/db-row-schemas.ts` |
 | Error Classes | `lib/errors/domain-error.ts` |
 | Native Porting Guide | `docs/NATIVE_PORTING_GUIDE.md` |
+| Test Helpers | `lib/__tests__/helpers/` |
 
 ---
 
