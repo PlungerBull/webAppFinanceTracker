@@ -24,7 +24,8 @@
 ### Technical Debt - Next Hardening Phase
 - [x] **syncError Model Field:** Add dedicated field to WatermelonDB models to store specific error messages from the database (currently uses generic CONFLICT status)
   - *Completed 2026-02-02: Added `sync_error` column to all syncable models (AccountModel, TransactionModel, CategoryModel, InboxModel) with schema migration v1→v2. Standardized error messages via `SYNC_ERROR_MESSAGES` constant. Sacred Ledger validation for missing account_id. Atomic error clearing on retry. Error displayed in sync-conflict-modal UI.*
-- [ ] **Category FK Audit:** Apply same multi-layer defensive validation to `category_id` that was applied to `account_id` and `group_id`
+- [x] **Category FK Audit:** Apply same multi-layer defensive validation to `category_id` that was applied to `account_id` and `group_id`
+  - *Completed 2026-02-02: Created `validate_category_ownership()` and `validate_account_ownership()` helper functions. Hardened 4 RPCs: `promote_inbox_item` (both overloads), `create_transfer` (both overloads), `update_transaction_with_version`, `update_inbox_with_version`. Defense-in-depth for SECURITY DEFINER bypass. Migration: `20260202040000_add_category_ownership_validation.sql`*
 - [ ] **E2E Conflict Resolution Tests:** Add Playwright tests simulating a user physically resolving a conflict via the Sync Conflict Modal UI
 - [ ] **Conflict Count Sidebar Badge:** Add visual indicator in sidebar showing number of unresolved sync conflicts
 
