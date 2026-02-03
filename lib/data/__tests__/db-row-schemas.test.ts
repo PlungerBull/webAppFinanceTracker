@@ -154,7 +154,7 @@ describe('TransactionInboxRowSchema', () => {
     const item = {
       id: UUID,
       user_id: UUID,
-      amount_original: 500,
+      amount_cents: 500,
       description: 'Gas',
       date: '2026-01-27',
       source_text: null,
@@ -171,15 +171,15 @@ describe('TransactionInboxRowSchema', () => {
     expect(TransactionInboxRowSchema.parse(item)).toEqual(item);
   });
 
-  it('accepts null amount_original (scratchpad mode)', () => {
+  it('accepts null amount_cents (scratchpad mode)', () => {
     const item = {
-      id: UUID, user_id: UUID, amount_original: null, description: null,
+      id: UUID, user_id: UUID, amount_cents: null, description: null,
       date: null, source_text: null, account_id: null, category_id: null,
       exchange_rate: null, notes: null, status: 'pending',
       created_at: TIMESTAMP, updated_at: TIMESTAMP,
       version: 1, deleted_at: null,
     };
-    expect(TransactionInboxRowSchema.parse(item).amount_original).toBeNull();
+    expect(TransactionInboxRowSchema.parse(item).amount_cents).toBeNull();
   });
 });
 

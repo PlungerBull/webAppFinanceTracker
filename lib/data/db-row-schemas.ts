@@ -133,7 +133,7 @@ export const CategoryRowSchema = z.object({
 export const TransactionInboxRowSchema = z.object({
   id: uuid,
   user_id: uuid,
-  amount_original: z.number().nullable(),
+  amount_cents: z.number().nullable(),
   description: z.string().nullable(),
   date: z.string().nullable(),
   source_text: z.string().nullable(),
@@ -154,7 +154,6 @@ export const TransactionInboxRowSchema = z.object({
 export const TransactionInboxViewRowSchema = z.object({
   id: z.string().nullable(),
   user_id: z.string().nullable(),
-  amount_original: z.number().nullable(),
   currency_original: z.string().nullable(),
   description: z.string().nullable(),
   date: z.string().nullable(),
