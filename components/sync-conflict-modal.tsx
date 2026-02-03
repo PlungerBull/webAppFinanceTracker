@@ -197,6 +197,12 @@ export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
                       Local v{conflict.localVersion} vs Server v
                       {conflict.serverVersion}
                     </p>
+                    {/* Display sync error message if present */}
+                    {conflict.syncError && (
+                      <p className="text-xs text-destructive mt-1 line-clamp-2">
+                        {conflict.syncError}
+                      </p>
+                    )}
                   </div>
                   {/* Retry Button */}
                   <Button

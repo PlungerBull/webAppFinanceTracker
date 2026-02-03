@@ -411,6 +411,7 @@ export class DeltaSyncEngine implements IDeltaSyncEngine {
           localVersion: raw.version as number,
           serverVersion: 0, // Would need separate fetch from server
           detectedAt: new Date().toISOString(),
+          syncError: (raw.sync_error as string | null) ?? null,
         });
       }
     }
@@ -520,9 +521,13 @@ export class DeltaSyncEngine implements IDeltaSyncEngine {
         };
       }
 
+      // CTO MANDATE: Atomic error clearing - syncError MUST be cleared
+      // in the same database.write block as status reset to PENDING
       await this.database.write(async () => {
         await record.update((r) => {
-          (r as unknown as SyncableModelMutation).localSyncStatus = SYNC_STATUS.PENDING;
+          const model = r as unknown as SyncableModelMutation;
+          model.localSyncStatus = SYNC_STATUS.PENDING;
+          model.syncError = null; // ATOMIC: cleared in same write block
         });
       });
 

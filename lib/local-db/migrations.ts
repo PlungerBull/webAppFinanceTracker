@@ -15,36 +15,41 @@
 
 import {
   schemaMigrations,
-  // Uncomment when adding migrations:
-  // createTable,
-  // addColumns,
-  // Migration,
+  addColumns,
 } from '@nozbe/watermelondb/Schema/migrations';
 
 /**
  * WatermelonDB Migrations Configuration
  *
- * Initial version: 1 (no migrations needed for first install)
- * Future migrations will be added here as the schema evolves.
- *
- * Example migration pattern (for version 2+):
- * ```
- * {
- *   toVersion: 2,
- *   steps: [
- *     addColumns({
- *       table: 'transactions',
- *       columns: [
- *         { name: 'new_field', type: 'string', isOptional: true },
- *       ],
- *     }),
- *   ],
- * }
- * ```
+ * Version History:
+ * - 1: Initial schema (bank_accounts, transactions, categories, transaction_inbox,
+ *      global_currencies, sync_metadata)
+ * - 2: Add sync_error field to all syncable models for per-record error tracking
  */
 export const migrations = schemaMigrations({
   migrations: [
-    // Version 1 is the initial schema - no migration needed
-    // Future migrations will be added here
+    {
+      // Version 2: Add sync_error field for per-record error messages
+      // CTO MANDATE: Enables users to see WHY a record is in CONFLICT status
+      toVersion: 2,
+      steps: [
+        addColumns({
+          table: 'bank_accounts',
+          columns: [{ name: 'sync_error', type: 'string', isOptional: true }],
+        }),
+        addColumns({
+          table: 'transactions',
+          columns: [{ name: 'sync_error', type: 'string', isOptional: true }],
+        }),
+        addColumns({
+          table: 'categories',
+          columns: [{ name: 'sync_error', type: 'string', isOptional: true }],
+        }),
+        addColumns({
+          table: 'transaction_inbox',
+          columns: [{ name: 'sync_error', type: 'string', isOptional: true }],
+        }),
+      ],
+    },
   ],
 });

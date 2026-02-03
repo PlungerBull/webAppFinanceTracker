@@ -540,6 +540,7 @@ export function createConflictRecord(
     localVersion: options.localVersion ?? 1,
     serverVersion: options.serverVersion ?? 2,
     detectedAt: new Date().toISOString(),
+    syncError: null,
   };
 }
 

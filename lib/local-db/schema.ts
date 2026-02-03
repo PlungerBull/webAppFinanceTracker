@@ -52,7 +52,7 @@ export const SYNC_STATUS = {
  * Current schema version
  * Increment this and add migration when schema changes
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /**
  * WatermelonDB App Schema
@@ -87,6 +87,7 @@ export const schema = appSchema({
         { name: 'version', type: 'number', isIndexed: true },
         { name: 'deleted_at', type: 'number', isOptional: true }, // Tombstone: null = active
         { name: 'local_sync_status', type: 'string' }, // State machine: synced | pending | conflict
+        { name: 'sync_error', type: 'string', isOptional: true }, // Error message when CONFLICT
         // Timestamps (updated_at indexed for Delta Sync queries)
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number', isIndexed: true },
@@ -117,6 +118,7 @@ export const schema = appSchema({
         { name: 'version', type: 'number', isIndexed: true },
         { name: 'deleted_at', type: 'number', isOptional: true }, // Tombstone: null = active
         { name: 'local_sync_status', type: 'string' }, // State machine: synced | pending | conflict
+        { name: 'sync_error', type: 'string', isOptional: true }, // Error message when CONFLICT
         // Timestamps (updated_at indexed for Delta Sync queries)
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number', isIndexed: true },
@@ -138,6 +140,7 @@ export const schema = appSchema({
         { name: 'version', type: 'number', isIndexed: true },
         { name: 'deleted_at', type: 'number', isOptional: true }, // Tombstone: null = active
         { name: 'local_sync_status', type: 'string' }, // State machine: synced | pending | conflict
+        { name: 'sync_error', type: 'string', isOptional: true }, // Error message when CONFLICT
         // Timestamps (updated_at indexed for Delta Sync queries)
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number', isIndexed: true },
@@ -164,6 +167,7 @@ export const schema = appSchema({
         { name: 'version', type: 'number', isIndexed: true },
         { name: 'deleted_at', type: 'number', isOptional: true }, // Tombstone: null = active
         { name: 'local_sync_status', type: 'string' }, // State machine: synced | pending | conflict
+        { name: 'sync_error', type: 'string', isOptional: true }, // Error message when CONFLICT
         // Timestamps (updated_at indexed for Delta Sync queries)
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number', isIndexed: true },

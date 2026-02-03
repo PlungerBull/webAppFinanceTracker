@@ -54,6 +54,7 @@ export class InboxModel extends Model {
   @field('version') version!: number;
   @field('deleted_at') deletedAt!: number | null;
   @field('local_sync_status') localSyncStatus!: SyncStatus;
+  @field('sync_error') syncError!: string | null;
 
   // Timestamps (readonly - managed by WatermelonDB)
   @readonly @date('created_at') createdAt!: Date;

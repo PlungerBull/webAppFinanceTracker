@@ -31,6 +31,9 @@ export interface SyncableModel {
 
   /** Current sync state machine position */
   localSyncStatus: SyncStatus;
+
+  /** Error message explaining why sync failed (null when synced/pending) */
+  syncError: string | null;
 }
 
 /**
@@ -61,6 +64,7 @@ export function isSyncableModel(obj: unknown): obj is SyncableModel {
   return (
     typeof model.version === 'number' &&
     (model.deletedAt === null || typeof model.deletedAt === 'number') &&
-    typeof model.localSyncStatus === 'string'
+    typeof model.localSyncStatus === 'string' &&
+    (model.syncError === null || typeof model.syncError === 'string')
   );
 }

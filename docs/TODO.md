@@ -22,7 +22,8 @@
   - *Completed 2026-02-02: Added `retryConflictRecord()` to DeltaSyncEngine, exposed via useDeltaSync hook and SyncStatusProvider, added per-item Retry button with loading state and UI Row Lock in sync-conflict-modal*
 
 ### Technical Debt - Next Hardening Phase
-- [ ] **syncError Model Field:** Add dedicated field to WatermelonDB models to store specific error messages from the database (currently uses generic CONFLICT status)
+- [x] **syncError Model Field:** Add dedicated field to WatermelonDB models to store specific error messages from the database (currently uses generic CONFLICT status)
+  - *Completed 2026-02-02: Added `sync_error` column to all syncable models (AccountModel, TransactionModel, CategoryModel, InboxModel) with schema migration v1→v2. Standardized error messages via `SYNC_ERROR_MESSAGES` constant. Sacred Ledger validation for missing account_id. Atomic error clearing on retry. Error displayed in sync-conflict-modal UI.*
 - [ ] **Category FK Audit:** Apply same multi-layer defensive validation to `category_id` that was applied to `account_id` and `group_id`
 - [ ] **E2E Conflict Resolution Tests:** Add Playwright tests simulating a user physically resolving a conflict via the Sync Conflict Modal UI
 - [ ] **Conflict Count Sidebar Badge:** Add visual indicator in sidebar showing number of unresolved sync conflicts

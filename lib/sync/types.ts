@@ -240,6 +240,8 @@ export interface ConflictRecord {
   serverVersion: number;
   /** When conflict was detected */
   detectedAt: string;
+  /** Error message explaining why sync failed (null if unknown) */
+  syncError: string | null;
 }
 
 /**

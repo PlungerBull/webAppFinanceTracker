@@ -137,3 +137,41 @@ export const IDLE_CALLBACK_TIMEOUT_MS = 5_000;
  * Minimum time between sync cycles (debounce)
  */
 export const MIN_SYNC_INTERVAL_MS = 5_000;
+
+// ============================================================================
+// SYNC ERROR MESSAGES
+// ============================================================================
+
+/**
+ * Standardized Sync Error Messages
+ *
+ * CTO MANDATE: All sync error assignments MUST use these constants.
+ * Prevents free-form strings and ensures consistent UI display.
+ */
+export const SYNC_ERROR_MESSAGES = {
+  /** Version conflict: another device modified this record */
+  VERSION_MISMATCH:
+    'Version conflict: Another device modified this record. Review and retry.',
+
+  /** Generic validation failure */
+  VALIDATION_FAILED: 'Validation failed: Record has invalid or missing fields.',
+
+  /** Sacred Ledger: Transaction missing account_id */
+  MISSING_ACCOUNT: 'Record blocked: Account is required for ledger integrity.',
+
+  /** Sacred Ledger: Transaction missing required fields */
+  MISSING_REQUIRED_FIELDS: 'Record blocked: Missing required fields for sync.',
+
+  /** Category missing name */
+  MISSING_CATEGORY_NAME: 'Record blocked: Category name is required.',
+
+  /** Account missing name */
+  MISSING_ACCOUNT_NAME: 'Record blocked: Account name is required.',
+
+  /** Generic server constraint violation (fallback) */
+  CONSTRAINT_VIOLATION:
+    'Database constraint violation. Please review the record.',
+} as const;
+
+export type SyncErrorMessage =
+  (typeof SYNC_ERROR_MESSAGES)[keyof typeof SYNC_ERROR_MESSAGES];

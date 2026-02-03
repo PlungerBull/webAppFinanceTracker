@@ -42,8 +42,10 @@ import {
   PLANT_ORDER,
   BATCH_UPSERT_RPC_NAMES,
   DEFAULT_SYNC_CONFIG,
+  SYNC_ERROR_MESSAGES,
   type SyncableTableName,
   type BatchUpsertRpcName,
+  type SyncErrorMessage,
 } from './constants';
 import type { SyncConfig } from './types';
 import { SyncLockManager, getSyncLockManager } from './sync-lock-manager';
@@ -297,11 +299,32 @@ export class PushEngine {
     }
 
     // Mark invalid records as 'conflict' to stop retry loop
+    // CTO MANDATE: Atomic error handling with Sacred Ledger validation
     if (invalidRecords.length > 0) {
       await this.database.write(async () => {
         for (const record of invalidRecords) {
+          const raw = this.extractModelRaw(record);
+
+          // Determine specific error message based on validation failure
+          let errorMessage: SyncErrorMessage = SYNC_ERROR_MESSAGES.VALIDATION_FAILED;
+
+          if (tableName === TABLE_NAMES.TRANSACTIONS) {
+            if (!raw.accountId) {
+              // Sacred Ledger: Account is required for ledger integrity
+              errorMessage = SYNC_ERROR_MESSAGES.MISSING_ACCOUNT;
+            } else {
+              errorMessage = SYNC_ERROR_MESSAGES.MISSING_REQUIRED_FIELDS;
+            }
+          } else if (tableName === TABLE_NAMES.CATEGORIES && !raw.name) {
+            errorMessage = SYNC_ERROR_MESSAGES.MISSING_CATEGORY_NAME;
+          } else if (tableName === TABLE_NAMES.BANK_ACCOUNTS && !raw.name) {
+            errorMessage = SYNC_ERROR_MESSAGES.MISSING_ACCOUNT_NAME;
+          }
+
           await record.update((r) => {
-            (r as unknown as SyncableModelMutation).localSyncStatus = SYNC_STATUS.CONFLICT;
+            const model = r as unknown as SyncableModelMutation;
+            model.localSyncStatus = SYNC_STATUS.CONFLICT;
+            model.syncError = errorMessage; // ATOMIC: both set together
           });
         }
       });
@@ -384,7 +407,13 @@ export class PushEngine {
         // Handle conflicts (409)
         for (const id of result.conflict_ids || []) {
           conflictIds.push(id);
-          await this.updateRecordSyncStatus(tableName, id, SYNC_STATUS.CONFLICT);
+          await this.updateRecordSyncStatus(
+            tableName,
+            id,
+            SYNC_STATUS.CONFLICT,
+            undefined,
+            SYNC_ERROR_MESSAGES.VERSION_MISMATCH
+          );
         }
 
         // Handle per-item errors (remain pending for retry)
@@ -415,18 +444,24 @@ export class PushEngine {
 
   /**
    * Update a single record's sync status
+   *
+   * CTO MANDATE: Atomic error handling - syncError is set/cleared
+   * in the same update as status to prevent orphaned error states.
    */
   private async updateRecordSyncStatus(
     tableName: TableName,
     id: string,
     status: SyncStatus,
-    serverVersion?: number
+    serverVersion?: number,
+    syncError?: string | null
   ): Promise<void> {
     try {
       const record = await this.database.get(tableName).find(id);
       await record.update((r) => {
         const model = r as unknown as SyncableModelMutation;
         model.localSyncStatus = status;
+        // ATOMIC: syncError is set/cleared in same update as status
+        model.syncError = status === SYNC_STATUS.CONFLICT ? (syncError ?? null) : null;
         if (serverVersion !== undefined) {
           model.version = serverVersion;
         }
