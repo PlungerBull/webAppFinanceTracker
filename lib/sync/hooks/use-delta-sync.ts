@@ -72,6 +72,11 @@ export interface UseDeltaSyncReturn {
     id: string,
     tableName: string
   ) => Promise<{ success: boolean; error?: string }>;
+  /** Retry a conflict record (reset to pending and trigger sync) */
+  retryConflict: (
+    id: string,
+    tableName: string
+  ) => Promise<{ success: boolean; error?: string; syncTriggered: boolean }>;
   /** Current sync status */
   status: SyncEngineStatus | null;
 }
@@ -280,6 +285,62 @@ export function useDeltaSync(options: UseDeltaSyncOptions): UseDeltaSyncReturn {
     []
   );
 
+  /**
+   * Retry a conflict record (exposed to consumers)
+   *
+   * Resets the record's local_sync_status from 'conflict' to 'pending',
+   * then triggers a sync cycle to push the change.
+   *
+   * @returns Object with success, optional error, and whether sync was triggered
+   */
+  const retryConflict = useCallback(
+    async (
+      id: string,
+      tableName: string
+    ): Promise<{ success: boolean; error?: string; syncTriggered: boolean }> => {
+      if (!engineRef.current) {
+        return {
+          success: false,
+          error: 'Sync engine not initialized',
+          syncTriggered: false,
+        };
+      }
+
+      // Step 1: Reset status to pending
+      const result = await engineRef.current.retryConflictRecord(id, tableName);
+
+      if (!result.success) {
+        return {
+          success: false,
+          error: result.error,
+          syncTriggered: false,
+        };
+      }
+
+      // Step 2: Trigger sync cycle (reset debounce for immediate feedback)
+      let syncTriggered = false;
+      try {
+        lastSyncTimeRef.current = 0; // Clear rate-limiter
+        const syncResult = await runSync();
+        syncTriggered = syncResult !== null;
+      } catch (error) {
+        // Sync failed but status was reset - will retry on next cycle
+        console.warn('[useDeltaSync] Sync after retry failed:', error);
+      }
+
+      // Step 3: Refresh status counts
+      if (isMountedRef.current && engineRef.current) {
+        const newStatus = await engineRef.current.getSyncStatusAsync();
+        setStatus(newStatus);
+        setPendingCount(newStatus.pendingCount);
+        setConflictCount(newStatus.conflictCount);
+      }
+
+      return { success: true, syncTriggered };
+    },
+    [runSync]
+  );
+
   // ===========================================================================
   // INTERVAL SYNC
   // ===========================================================================
@@ -385,6 +446,7 @@ export function useDeltaSync(options: UseDeltaSyncOptions): UseDeltaSyncReturn {
     forceSync,
     getConflicts,
     deleteConflict,
+    retryConflict,
     status,
   };
 }

@@ -18,7 +18,8 @@
 ### Sync Conflict UI - Incomplete Actions
 - [x] **"Delete Locally" Action:** Implement logic to safely prune a conflicted record from WatermelonDB (placeholder at `sync-conflict-modal.tsx:131-134`)
   - *Completed 2026-02-02: Added `deleteConflictRecord()` to DeltaSyncEngine with race condition protection, threaded through useDeltaSync hook and SyncStatusProvider, added DeleteDialog confirmation UI*
-- [ ] **"Retry-by-Item" Granularity:** Current "Retry Sync" triggers full `forceSync()`; add ability to retry individual conflicted records
+- [x] **"Retry-by-Item" Granularity:** Current "Retry Sync" triggers full `forceSync()`; add ability to retry individual conflicted records
+  - *Completed 2026-02-02: Added `retryConflictRecord()` to DeltaSyncEngine, exposed via useDeltaSync hook and SyncStatusProvider, added per-item Retry button with loading state and UI Row Lock in sync-conflict-modal*
 
 ### Technical Debt - Next Hardening Phase
 - [ ] **syncError Model Field:** Add dedicated field to WatermelonDB models to store specific error messages from the database (currently uses generic CONFLICT status)

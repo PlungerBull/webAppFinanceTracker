@@ -44,6 +44,11 @@ interface SyncStatusContextValue {
     id: string,
     tableName: string
   ) => Promise<{ success: boolean; error?: string }>;
+  /** Retry a conflict record (reset to pending and trigger sync) */
+  retryConflict: (
+    id: string,
+    tableName: string
+  ) => Promise<{ success: boolean; error?: string; syncTriggered: boolean }>;
   /** Force an immediate sync cycle */
   forceSync: () => Promise<SyncCycleResult | null>;
 }
@@ -156,6 +161,7 @@ export function SyncStatusProvider({ children }: SyncStatusProviderProps) {
     pendingCount: syncState.pendingCount,
     getConflicts: syncState.getConflicts,
     deleteConflict: syncState.deleteConflict,
+    retryConflict: syncState.retryConflict,
     forceSync: syncState.forceSync,
   };
 

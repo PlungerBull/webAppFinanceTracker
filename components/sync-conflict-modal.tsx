@@ -32,13 +32,14 @@ interface SyncConflictModalProps {
 }
 
 export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
-  const { getConflicts, forceSync, deleteConflict } = useSyncStatus();
+  const { getConflicts, forceSync, deleteConflict, retryConflict } = useSyncStatus();
   const [conflicts, setConflicts] = useState<ConflictRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ConflictRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   // Load conflicts when modal opens
   useEffect(() => {
@@ -99,6 +100,40 @@ export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
       );
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRetryItem = async (conflict: ConflictRecord) => {
+    setRetryingId(conflict.id);
+
+    try {
+      const result = await retryConflict(conflict.id, conflict.tableName);
+
+      if (result.success) {
+        // Remove from local state (it's now pending, not conflict)
+        setConflicts((prev) => prev.filter((c) => c.id !== conflict.id));
+
+        toast.success('Retry queued', {
+          description: result.syncTriggered
+            ? 'The item is being synced now.'
+            : 'The item will be synced shortly.',
+        });
+
+        // If no more conflicts, close the modal
+        if (conflicts.length === 1) {
+          onClose();
+        }
+      } else {
+        toast.error('Retry failed', {
+          description: result.error || 'Could not reset the record for retry.',
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast.error('Retry failed', { description: message });
+    } finally {
+      setRetryingId(null);
     }
   };
 
@@ -163,11 +198,27 @@ export function SyncConflictModal({ isOpen, onClose }: SyncConflictModalProps) {
                       {conflict.serverVersion}
                     </p>
                   </div>
+                  {/* Retry Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                    onClick={() => handleRetryItem(conflict)}
+                    disabled={retryingId === conflict.id}
+                  >
+                    {retryingId === conflict.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </Button>
+                  {/* Delete Button - ALSO disabled when retrying this row */}
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => setDeleteTarget(conflict)}
+                    disabled={retryingId === conflict.id}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

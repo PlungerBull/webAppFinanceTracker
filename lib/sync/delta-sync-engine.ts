@@ -41,7 +41,8 @@ import {
   getSyncLockManager,
 } from './sync-lock-manager';
 import { DEFAULT_SYNC_CONFIG, SYNCABLE_TABLES } from './constants';
-import { pendingSyncFilter, conflictFilter } from '@/lib/local-db';
+import { pendingSyncFilter, conflictFilter, SYNC_STATUS } from '@/lib/local-db';
+import type { SyncableModelMutation } from './syncable-model';
 import * as Sentry from '@sentry/nextjs';
 
 /**
@@ -55,6 +56,10 @@ export interface IDeltaSyncEngine {
   getSyncStatusAsync(): Promise<SyncEngineStatus>;
   getConflicts(): Promise<ConflictRecord[]>;
   deleteConflictRecord(
+    id: string,
+    tableName: string
+  ): Promise<{ success: boolean; error?: string }>;
+  retryConflictRecord(
     id: string,
     tableName: string
   ): Promise<{ success: boolean; error?: string }>;
@@ -461,6 +466,71 @@ export class DeltaSyncEngine implements IDeltaSyncEngine {
       const message = error instanceof Error ? error.message : String(error);
       Sentry.captureException(error, {
         tags: { operation: 'deleteConflictRecord', tableName },
+        extra: { recordId: id },
+      });
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
+   * Reset a conflict record to pending for retry
+   *
+   * Changes local_sync_status from 'conflict' back to 'pending'.
+   * The record will be pushed in the next sync cycle.
+   *
+   * CTO REQUIREMENT: IDEMPOTENT
+   * Returns success if record is already pending (race condition safe).
+   */
+  async retryConflictRecord(
+    id: string,
+    tableName: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const collection = this.database.get(tableName);
+
+      let record;
+      try {
+        record = await collection.find(id);
+      } catch (findError) {
+        // Record not found
+        if (
+          findError instanceof Error &&
+          findError.message.toLowerCase().includes('not found')
+        ) {
+          return { success: false, error: 'Record not found' };
+        }
+        throw findError;
+      }
+
+      const raw = record._raw as Record<string, unknown>;
+
+      // Idempotent: Already pending is success
+      if (raw.local_sync_status === SYNC_STATUS.PENDING) {
+        return { success: true };
+      }
+
+      // Safety: Only allow retry of conflict records
+      if (raw.local_sync_status !== SYNC_STATUS.CONFLICT) {
+        return {
+          success: false,
+          error: `Record is not in conflict state (status: ${raw.local_sync_status})`,
+        };
+      }
+
+      await this.database.write(async () => {
+        await record.update((r) => {
+          (r as unknown as SyncableModelMutation).localSyncStatus = SYNC_STATUS.PENDING;
+        });
+      });
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Sentry.captureException(error, {
+        tags: { operation: 'retryConflictRecord', tableName },
         extra: { recordId: id },
       });
       return {

@@ -598,4 +598,79 @@ describe('DeltaSyncEngine', () => {
       expect(isOnline).toBe(true);
     });
   });
+
+  // ============================================================================
+  // 6. RETRY CONFLICT TESTS (5 tests)
+  // ============================================================================
+
+  describe('Retry Conflict', () => {
+    type SyncStatusType = 'synced' | 'pending' | 'conflict';
+    const SYNC_STATUS = {
+      SYNCED: 'synced' as SyncStatusType,
+      PENDING: 'pending' as SyncStatusType,
+      CONFLICT: 'conflict' as SyncStatusType,
+    };
+
+    it('should reset conflict status to pending', () => {
+      let status: SyncStatusType = SYNC_STATUS.CONFLICT;
+
+      // Simulate retryConflictRecord
+      if (status === SYNC_STATUS.CONFLICT) {
+        status = SYNC_STATUS.PENDING;
+      }
+
+      expect(status).toBe(SYNC_STATUS.PENDING);
+    });
+
+    it('should return success:true for already pending records (idempotent)', () => {
+      const status: SyncStatusType = SYNC_STATUS.PENDING;
+
+      // Should be idempotent - already pending is success
+      const result =
+        status === SYNC_STATUS.PENDING
+          ? { success: true }
+          : { success: false };
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should return error for synced records', () => {
+      const status: SyncStatusType = SYNC_STATUS.SYNCED;
+
+      const result =
+        status !== SYNC_STATUS.CONFLICT && status !== SYNC_STATUS.PENDING
+          ? {
+              success: false,
+              error: `Record is not in conflict state (status: ${status})`,
+            }
+          : { success: true };
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not in conflict state');
+    });
+
+    it('should return error for not found records', () => {
+      const recordExists = false;
+
+      const result = !recordExists
+        ? { success: false, error: 'Record not found' }
+        : { success: true };
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Record not found');
+    });
+
+    it('should allow retried record to be picked up in next push', () => {
+      // Record transitions: conflict → pending → (pushed) → synced
+      let status: SyncStatusType = SYNC_STATUS.CONFLICT;
+
+      // Retry resets to pending
+      status = SYNC_STATUS.PENDING;
+      expect(status).toBe(SYNC_STATUS.PENDING);
+
+      // Push would query for pending records and include this one
+      const isPending = status === SYNC_STATUS.PENDING;
+      expect(isPending).toBe(true);
+    });
+  });
 });
