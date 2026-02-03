@@ -355,7 +355,15 @@ COMMENT ON FUNCTION "public"."promote_inbox_item"(
 -- ============================================================================
 -- Add category ownership check when p_category_id IS NOT NULL
 -- Note: Transfers allow NULL category (uncategorized transfer is valid)
+--
+-- IMPORTANT: Must DROP existing functions first because PostgreSQL does not
+-- allow changing parameter defaults via CREATE OR REPLACE.
 -- ============================================================================
+
+-- Drop all existing create_transfer overloads to allow signature changes
+DROP FUNCTION IF EXISTS "public"."create_transfer"("uuid", "uuid", "uuid", numeric, numeric, numeric, timestamp with time zone, "text", "uuid");
+DROP FUNCTION IF EXISTS "public"."create_transfer"("uuid", "uuid", "uuid", numeric, "text", "text", numeric, numeric, timestamp with time zone, "text", "uuid");
+DROP FUNCTION IF EXISTS "public"."create_transfer"("uuid", "uuid", "uuid", BIGINT, BIGINT, numeric, timestamp with time zone, "text", "uuid");
 
 CREATE OR REPLACE FUNCTION "public"."create_transfer"(
     "p_user_id" "uuid",
@@ -366,7 +374,7 @@ CREATE OR REPLACE FUNCTION "public"."create_transfer"(
     "p_exchange_rate" numeric,
     "p_date" timestamp with time zone,
     "p_description" "text",
-    "p_category_id" "uuid"
+    "p_category_id" "uuid" DEFAULT NULL
 ) RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -463,6 +471,7 @@ COMMENT ON FUNCTION "public"."create_transfer"(
 -- ============================================================================
 -- 6. HARDEN: create_transfer (11-parameter overload with currency codes)
 -- ============================================================================
+-- Note: DROP statements already executed above for all create_transfer overloads
 
 CREATE OR REPLACE FUNCTION "public"."create_transfer"(
     "p_user_id" "uuid",
@@ -475,7 +484,7 @@ CREATE OR REPLACE FUNCTION "public"."create_transfer"(
     "p_exchange_rate" numeric,
     "p_date" timestamp with time zone,
     "p_description" "text",
-    "p_category_id" "uuid"
+    "p_category_id" "uuid" DEFAULT NULL
 ) RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
