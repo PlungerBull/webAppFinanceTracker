@@ -303,7 +303,8 @@ type DbAccountViewRow = Database['public']['Tables']['bank_accounts']['Row'] & {
  *
  * CTO MANDATE: No magic display defaults in data layer.
  * - currencySymbol: null if JOIN failed (not '' or '$')
- * - id, userId, groupId: pass through (NOT NULL in schema)
+ * - id, userId: pass through (NOT NULL in schema)
+ * - groupId: fallback to id if null (standalone accounts are their own group)
  *
  * SYNC FIELDS:
  * - version: Optimistic concurrency control
@@ -316,7 +317,7 @@ export function dbAccountViewToDomain(
     id: dbRow.id,
     version: dbRow.version ?? 1,
     userId: dbRow.user_id,
-    groupId: dbRow.group_id,
+    groupId: dbRow.group_id ?? dbRow.id,
     name: dbRow.name,
     type: dbRow.type as AccountViewEntity['type'],
     currencyCode: dbRow.currency_code,
