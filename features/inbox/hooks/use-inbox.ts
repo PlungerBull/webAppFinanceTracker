@@ -113,7 +113,7 @@ export function usePromoteInboxItem() {
   return useMutation({
     mutationFn: async (params: PromoteInboxItemDTO | InboxItemViewEntity) => {
       // Convert InboxItemViewEntity to PromoteInboxItemDTO if needed
-      const dto: PromoteInboxItemDTO = 'inboxId' in params
+      let dto: PromoteInboxItemDTO = 'inboxId' in params
         ? params as PromoteInboxItemDTO
         : {
             inboxId: params.id,
@@ -125,6 +125,16 @@ export function usePromoteInboxItem() {
             exchangeRate: params.exchangeRate,
             lastKnownVersion: params.version,
           };
+
+      // S-Tier OCC Guard: Pull-before-promote when version is suspicious
+      // A version <= 0 indicates stale local state — fetch the real version from server
+      if (dto.lastKnownVersion === undefined || dto.lastKnownVersion <= 0) {
+        const freshResult = await inboxService.getById(dto.inboxId);
+        if (freshResult.success && freshResult.data.version > 0) {
+          dto = { ...dto, lastKnownVersion: freshResult.data.version };
+        }
+        // If fetch fails, proceed with original — the RPC trigger will enforce correctness
+      }
 
       const result = await inboxService.promote(dto);
 

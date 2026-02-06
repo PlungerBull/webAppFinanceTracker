@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { TransactionDetailPanel as SharedPanel } from '@/components/shared/transaction-detail-panel';
 import type { InboxPanelData, SelectableAccount, SelectableCategory, EditedFields } from '@/components/shared/transaction-detail-panel';
 import { usePromoteInboxItem, useDismissInboxItem, useUpdateInboxDraft } from '../hooks/use-inbox';
@@ -20,6 +21,7 @@ interface InboxDetailPanelProps {
  * Uses useReferenceData from lib/ to avoid feature-to-feature coupling.
  */
 export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
+  const queryClient = useQueryClient();
   const promoteMutation = usePromoteInboxItem();
   const dismissMutation = useDismissInboxItem();
   const updateDraftMutation = useUpdateInboxDraft();
@@ -114,6 +116,14 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
   // CTO MANDATE: EditedFields uses null semantics. No type weakening.
   const handlePromote = async (updates: EditedFields) => {
     if (!item) return;
+
+    // S-Tier OCC Guard: Block promotion when version is suspicious (ghost version)
+    // A version <= 0 indicates stale local state — force a data refresh before allowing promotion
+    if (!item.version || item.version <= 0) {
+      toast.error('Item data is stale. Refreshing — please try again.');
+      queryClient.invalidateQueries({ queryKey: INBOX.QUERY_KEYS.ALL });
+      return;
+    }
 
     // Extract final values: undefined = not edited, null = cleared, value = new value
     // For promotion, null means "use item value" (user cleared but we need a value)

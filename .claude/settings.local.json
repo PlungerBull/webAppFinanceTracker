@@ -55,7 +55,11 @@
       "Bash(pnpm tsc:*)",
       "Bash(supabase --help:*)",
       "Bash(supabase status:*)",
-      "Bash(/usr/bin/git status)"
+      "Bash(/usr/bin/git status)",
+      "Bash(for dir in /Users/ternero/Documents/webAppFinanceTracker/{app,components,features,lib,domain,types,contexts,providers,stores,public,scripts,docs,supabase})",
+      "Read(//Users/ternero/Documents/webAppFinanceTracker/**)",
+      "Bash(awk:*)",
+      "Bash(git -C /Users/ternero/Documents/webAppFinanceTracker ls-files:*)"
     ],
     "deny": [],
     "ask": []
