@@ -422,28 +422,6 @@ export function dbTransactionViewsToDomain(
 // ============================================================================
 
 /**
- * Transforms domain account data to database insert format
- * TODO: DEPRECATED - Use create_account_group RPC instead (container pattern)
- * This function is for old schema where accounts could be created without currency
- */
-// export function domainAccountToDbInsert(data: {
-//   name: string;
-//   color: string;
-//   userId: string;
-//   isVisible?: boolean;
-// }): Database['public']['Tables']['bank_accounts']['Insert'] {
-//   return {
-//     name: data.name,
-//     color: data.color,
-//     user_id: data.userId,
-//     is_visible: data.isVisible,
-//     // currency_code: MISSING - Required in new schema
-//     // group_id: MISSING - Required in new schema
-//     // type: MISSING - Required in new schema
-//   };
-// }
-
-/**
  * Transforms domain category data to database insert format
  */
 export function domainCategoryToDbInsert(data: {
@@ -495,21 +473,6 @@ export function domainInboxItemToDbInsert(data: {
     status: data.status,
   };
 }
-
-/**
- * Transforms domain account currency data to database insert format
- * TODO: DEPRECATED - account_currencies table no longer exists (container pattern)
- * Use create_account_group RPC to create account rows with currencies
- */
-// export function domainAccountCurrencyToDbInsert(data: {
-//   accountId: string;
-//   currencyCode: string;
-// }): Database['public']['Tables']['account_currencies']['Insert'] {
-//   return {
-//     account_id: data.accountId,
-//     currency_code: data.currencyCode,
-//   };
-// }
 
 /**
  * Transforms domain transaction data to database insert format
@@ -593,18 +556,6 @@ export function domainCategoryToDbUpdate(data: {
 
   return update;
 }
-
-/**
- * Transforms domain account currency data to database update format
- * TODO: DEPRECATED - account_currencies table no longer exists (container pattern)
- */
-// export function domainAccountCurrencyToDbUpdate(data: {
-//   currencyCode?: string;
-// }): Database['public']['Tables']['account_currencies']['Update'] {
-//   const update: Database['public']['Tables']['account_currencies']['Update'] = {};
-//   if (data.currencyCode !== undefined) update.currency_code = data.currencyCode;
-//   return update;
-// }
 
 /**
  * Transforms domain transaction data to database update format

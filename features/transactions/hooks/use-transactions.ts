@@ -14,7 +14,8 @@
 
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PAGINATION, createQueryOptions } from '@/lib/constants';
-import { calculateBalanceDeltas, calculateCreateDelta, calculateDeleteDelta, toCents, fromCents } from '@/lib/utils/balance-logic';
+import { calculateBalanceDeltas, calculateCreateDelta, calculateDeleteDelta } from '@/lib/utils/balance-logic';
+import { toCents, fromCents } from '@/lib/utils/cents-conversion';
 import { toast } from 'sonner';
 import { useTransactionService } from './use-transaction-service';
 import type { TransactionViewEntity, CreateTransactionDTO, UpdateTransactionDTO } from '../domain';

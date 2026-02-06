@@ -43,19 +43,19 @@
 > **Context:** Full codebase audit of 375 TS/TSX source files (541 total, 64k lines). Overall the codebase is moderately lean with clean architecture, but these specific areas need attention.
 
 ### Quick Wins (< 30 min)
-- [ ] **Gitignore `.next/` build output:** ~67 MB of build artifacts committed to repo. Add `.next/`, `tsconfig.tsbuildinfo`, `.DS_Store` to `.gitignore` and untrack
-- [ ] **Delete duplicate SQL snapshot:** Root-level `current_live_snapshot.sql` (3,005 lines) duplicates `supabase/current_live_snapshot.sql` (1,975 lines)
-- [ ] **Delete dead `cents-parser.ts`:** `lib/utils/cents-parser.ts` has zero imports anywhere in the codebase - entirely dead code
-- [ ] **Delete deprecated settings re-export shims:** `features/settings/components/reconciliation-form-modal.tsx` and `reconciliation-settings.tsx` are 6-line `@deprecated` re-exports that can be removed
-- [ ] **Remove deprecated type aliases:** `IGroupingOperations`, `GroupingErrorCode`, `GroupingOperationError`, `isGroupingOperationError` in `domain/categories.ts` have 0 active imports
-- [ ] **Remove unused Babel devDependencies:** `@babel/plugin-proposal-decorators` and `@babel/plugin-transform-class-properties` (~12 MB) - Next.js 16 handles transpilation natively
-- [ ] **Run `npm prune`:** 5 extraneous WASM packages (~20-30 MB) installed but not in package.json
+- [x] ~~**Gitignore `.next/` build output:**~~ Already gitignored and not tracked. No action needed.
+- [x] **Delete duplicate SQL snapshot:** Root-level `current_live_snapshot.sql` deleted (was 3,005-line duplicate of `supabase/` copy)
+- [x] ~~**Delete dead `cents-parser.ts`:**~~ FALSE — has 4 active imports (inbox-detail-panel, transaction-detail-panel, bulk-action-bar, use-transfer-calculation)
+- [x] **Delete deprecated settings re-export shims:** Deleted `reconciliation-form-modal.tsx` and `reconciliation-settings.tsx` from `features/settings/components/`
+- [x] **Remove deprecated type aliases:** Removed `IGroupingOperations`, `GroupingErrorCode`, `GroupingOperationError`, `isGroupingOperationError` from `domain/categories.ts` and `domain/index.ts`
+- [x] ~~**Remove unused Babel devDependencies:**~~ FALSE — actively required by `babel.config.js` for WatermelonDB decorator support
+- [x] **Run `npm prune`:** Removed 5 extraneous WASM packages (`@emnapi/core`, `@emnapi/runtime`, `@emnapi/wasi-threads`, `@napi-rs/wasm-runtime`, `@tybys/wasm-util`)
 
 ### Medium Effort (1-2 hours)
-- [ ] **Consolidate currency conversion utils:** `toCents()`/`fromCents()` defined in both `lib/utils/cents-conversion.ts` (primary, 4 imports) and `lib/utils/balance-logic.ts` (1 import) - pick single source of truth
-- [ ] **Clean deprecated data-transformers:** 3 functions in `lib/data/data-transformers.ts` marked `TODO: DEPRECATED` for RPC migration
-- [ ] **Remove `.gitkeep` stubs:** 15 `.gitkeep` files in directories that already have content
-- [ ] **Consolidate Sentry configs:** 3 separate files (`sentry.server.config.ts`, `sentry.client.config.ts`, `sentry.edge.config.ts`) could be consolidated
+- [x] **Consolidate currency conversion utils:** Deleted duplicate `toCents()`/`fromCents()` from `lib/utils/balance-logic.ts` (naive `Math.round` — IEEE 754 footgun). Repointed 2 imports to `lib/utils/cents-conversion.ts` (string-based parser, single source of truth per Manifesto §2)
+- [x] **Clean deprecated data-transformers:** Deleted 3 commented-out functions in `lib/data/data-transformers.ts` for removed `account_currencies` table (zero imports)
+- [x] ~~**Remove `.gitkeep` stubs:**~~ INVALID — All 15 `.gitkeep` files are in empty `__tests__/` directories (intentional scaffolding per Manifesto §8). Directories with actual tests don't have `.gitkeep`. No action needed.
+- [x] ~~**Consolidate Sentry configs:**~~ INVALID — 3 separate files are **required** by `@sentry/nextjs` SDK for 3 different runtimes (Node.js server, browser, Edge). `instrumentation.ts` conditionally imports by `NEXT_RUNTIME`. Not consolidatable.
 
 ### Large Effort (Future Sprint)
 - [ ] **Abstract shared repository base:** Local-vs-Supabase repository pattern duplicates ~3,500 lines of near-identical CRUD across categories (2,098 lines), transactions (1,736 lines), inbox (1,289 lines), and accounts (~1,000 lines)

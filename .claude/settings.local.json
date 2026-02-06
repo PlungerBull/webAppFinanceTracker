@@ -59,7 +59,9 @@
       "Bash(for dir in /Users/ternero/Documents/webAppFinanceTracker/{app,components,features,lib,domain,types,contexts,providers,stores,public,scripts,docs,supabase})",
       "Read(//Users/ternero/Documents/webAppFinanceTracker/**)",
       "Bash(awk:*)",
-      "Bash(git -C /Users/ternero/Documents/webAppFinanceTracker ls-files:*)"
+      "Bash(git -C /Users/ternero/Documents/webAppFinanceTracker ls-files:*)",
+      "Bash(npm prune:*)",
+      "Bash(npm why:*)"
     ],
     "deny": [],
     "ask": []

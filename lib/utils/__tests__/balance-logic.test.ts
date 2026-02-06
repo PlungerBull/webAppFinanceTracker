@@ -3,9 +3,8 @@ import {
   calculateBalanceDeltas,
   calculateDeleteDelta,
   calculateCreateDelta,
-  toCents,
-  fromCents,
 } from '../balance-logic';
+import { toCents, fromCents } from '@/lib/utils/cents-conversion';
 
 describe('Balance calculation logic', () => {
   describe('calculateBalanceDeltas', () => {

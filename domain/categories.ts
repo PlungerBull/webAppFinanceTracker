@@ -352,13 +352,7 @@ export function isCategoryOperationError(
 
 }
 
-// Legacy aliases for backward compatibility during migration
-/** @deprecated Use CategoryErrorCode instead */
-export type GroupingErrorCode = CategoryErrorCode;
-/** @deprecated Use CategoryOperationError instead */
-export type GroupingOperationError = CategoryOperationError;
-/** @deprecated Use isCategoryOperationError instead */
-export const isGroupingOperationError = isCategoryOperationError;
+
 
 // ============================================================================
 // IOC INTERFACE
@@ -446,8 +440,6 @@ export interface ICategoryOperations {
   canDelete(categoryId: string): Promise<CategoryDeletionValidation>;
 }
 
-/** @deprecated Use ICategoryOperations instead */
-export type IGroupingOperations = ICategoryOperations;
 
 // ============================================================================
 // OPTIMISTIC UPDATE FACTORIES (S-Tier Zero-Latency UX)

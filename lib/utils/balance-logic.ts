@@ -76,21 +76,3 @@ export function calculateCreateDelta(
   };
 }
 
-/**
- * Helper: Convert dollars to cents (integer arithmetic for precision)
- * Used to prevent floating-point errors like 0.1 + 0.2 = 0.30000000000000004
- *
- * ONLY USE at UI boundary when converting user input (dollars) to domain (cents)
- */
-export function toCents(amount: number): number {
-  return Math.round(amount * 100);
-}
-
-/**
- * Helper: Convert cents back to dollars
- *
- * ONLY USE at UI boundary when displaying to user
- */
-export function fromCents(cents: number): number {
-  return cents / 100;
-}
