@@ -90,6 +90,12 @@ export function LocalDbProvider({ children }: LocalDbProviderProps) {
         if (!mounted) return;
 
         if (database) {
+          // E2E Test Hook: Expose database instance for Playwright direct injection
+          // Gated behind NEXT_PUBLIC_E2E=true — dead code in production builds
+          if (process.env.NEXT_PUBLIC_E2E === 'true') {
+            (window as Window & { __watermelondb?: Database }).__watermelondb = database;
+          }
+
           setState({
             database,
             isReady: true,
