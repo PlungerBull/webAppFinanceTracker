@@ -22,8 +22,9 @@
 ### 6. Type Strictness Variance
 > **Rule:** Zod schemas should match Domain types exactly
 
-- [ ] **Settings:** Fix `transactionSortPreference` - Domain type is strict union `'date' | 'created_at'` but Zod schema validates as generic `z.string()` with type cast in transformer
+- [x] **Settings:** Fix `transactionSortPreference` - Domain type is strict union `'date' | 'created_at'` but Zod schema validates as generic `z.string()` with type cast in transformer
 - Why: Loses runtime validation for specific enum values
+- Status: **COMPLETED** - Zod schema now uses `z.enum(['date', 'created_at'])` with rejection test
 
 
 ### 9. Legacy create_transfer NUMERIC Signatures

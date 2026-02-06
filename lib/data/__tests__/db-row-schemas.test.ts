@@ -209,6 +209,19 @@ describe('UserSettingsRowSchema', () => {
     };
     expect(UserSettingsRowSchema.parse(settings).main_currency).toBeNull();
   });
+
+  it('rejects invalid transaction_sort_preference', () => {
+    const settings = {
+      user_id: UUID,
+      main_currency: 'USD',
+      start_of_week: 1,
+      theme: 'dark',
+      transaction_sort_preference: 'invalid_value',
+      created_at: TIMESTAMP,
+      updated_at: TIMESTAMP,
+    };
+    expect(() => UserSettingsRowSchema.parse(settings)).toThrow();
+  });
 });
 
 describe('ReconciliationRowSchema', () => {

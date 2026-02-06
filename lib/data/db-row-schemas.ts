@@ -217,7 +217,7 @@ export const UserSettingsRowSchema = z.object({
   main_currency: z.string().nullable(),
   start_of_week: z.number().int().nullable(),
   theme: z.string().nullable(),
-  transaction_sort_preference: z.string(),
+  transaction_sort_preference: z.enum(['date', 'created_at']),
   created_at: timestamptz,
   updated_at: timestamptz,
 });
