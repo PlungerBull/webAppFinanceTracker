@@ -166,6 +166,7 @@ export function InboxDetailPanel({ item }: InboxDetailPanelProps) {
         finalAmountCents: finalDisplayAmount !== null ? displayAmountToCents(finalDisplayAmount) : 0,  // Convert dollars to integer cents
         finalDate,
         exchangeRate: finalExchangeRate,
+        lastKnownVersion: item.version,
       });
       toast.success('Moved to transaction ledger');
     } catch (error) {

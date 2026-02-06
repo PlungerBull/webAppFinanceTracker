@@ -123,6 +123,7 @@ export function usePromoteInboxItem() {
             finalDate: params.date,
             finalAmountCents: params.amountCents,
             exchangeRate: params.exchangeRate,
+            lastKnownVersion: params.version,
           };
 
       const result = await inboxService.promote(dto);
