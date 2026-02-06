@@ -85,6 +85,8 @@ export {
 
 // Settings Domain
 export {
+  TRANSACTION_SORT_MODES,
+  DEFAULT_TRANSACTION_SORT_MODE,
   type UserSettings,
   type TransactionSortMode,
 } from './settings';

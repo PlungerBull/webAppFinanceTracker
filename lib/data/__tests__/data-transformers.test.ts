@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   dbMonthlySpendingToDomain,
+  dbUserSettingsToDomain,
   isValidMonthKey,
   type MonthlySpendingDbRow,
   type CategoryLookupEntry,
@@ -264,6 +265,56 @@ describe('dbMonthlySpendingToDomain', () => {
       const result = dbMonthlySpendingToDomain(rows, emptyLookup);
 
       expect(result[0].categoryType).toBe('expense');
+    });
+  });
+});
+
+// ============================================================================
+// dbUserSettingsToDomain TESTS — Sort Mode Safe Mapping
+// ============================================================================
+
+describe('dbUserSettingsToDomain', () => {
+  const baseRow = {
+    user_id: UUID,
+    main_currency: 'USD',
+    start_of_week: 1,
+    theme: 'dark',
+    transaction_sort_preference: 'date',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+
+  it('maps "date" sort preference correctly', () => {
+    const result = dbUserSettingsToDomain(baseRow);
+    expect(result.transactionSortPreference).toBe('date');
+  });
+
+  it('maps "created_at" sort preference correctly', () => {
+    const result = dbUserSettingsToDomain({
+      ...baseRow,
+      transaction_sort_preference: 'created_at',
+    });
+    expect(result.transactionSortPreference).toBe('created_at');
+  });
+
+  it('falls back to "date" for unknown sort preference', () => {
+    const result = dbUserSettingsToDomain({
+      ...baseRow,
+      transaction_sort_preference: 'unknown_garbage',
+    });
+    expect(result.transactionSortPreference).toBe('date');
+  });
+
+  it('transforms all fields to camelCase', () => {
+    const result = dbUserSettingsToDomain(baseRow);
+    expect(result).toEqual({
+      userId: UUID,
+      mainCurrency: 'USD',
+      startOfWeek: 1,
+      theme: 'dark',
+      transactionSortPreference: 'date',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     });
   });
 });

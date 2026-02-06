@@ -19,6 +19,7 @@
  */
 
 import { z } from 'zod';
+import { TRANSACTION_SORT_MODES } from '@/domain/settings';
 
 // ============================================================================
 // SHARED FRAGMENTS (DRY Base)
@@ -217,7 +218,7 @@ export const UserSettingsRowSchema = z.object({
   main_currency: z.string().nullable(),
   start_of_week: z.number().int().nullable(),
   theme: z.string().nullable(),
-  transaction_sort_preference: z.enum(['date', 'created_at']),
+  transaction_sort_preference: z.enum(TRANSACTION_SORT_MODES),
   created_at: timestamptz,
   updated_at: timestamptz,
 });

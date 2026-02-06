@@ -27,6 +27,11 @@ import type { AccountViewEntity } from '@/features/accounts/domain/entities';
 import type { TransactionViewEntity } from '@/features/transactions/domain/entities';
 import type { User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
 import type { AuthUserEntity, AuthSessionEntity, AuthEventType } from '@/domain/auth';
+import {
+  TRANSACTION_SORT_MODES,
+  DEFAULT_TRANSACTION_SORT_MODE,
+  type TransactionSortMode,
+} from '@/domain/settings';
 import { toSafeInteger, toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
 
 // ============================================================================
@@ -773,6 +778,11 @@ export function isValidMonthKey(value: unknown): value is string {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
+// O(1) lookup map derived from the canonical constant — no `as` cast needed
+const SORT_MODE_MAP: Record<string, TransactionSortMode> = Object.fromEntries(
+  TRANSACTION_SORT_MODES.map((m) => [m, m]),
+) as Record<string, TransactionSortMode>;
+
 /**
  * Transforms a database user_settings row to domain UserSettings type
  */
@@ -784,7 +794,8 @@ export function dbUserSettingsToDomain(
     mainCurrency: dbSettings.main_currency,
     startOfWeek: dbSettings.start_of_week,
     theme: dbSettings.theme,
-    transactionSortPreference: dbSettings.transaction_sort_preference as 'date' | 'created_at',
+    transactionSortPreference:
+      SORT_MODE_MAP[dbSettings.transaction_sort_preference] ?? DEFAULT_TRANSACTION_SORT_MODE,
     createdAt: dbSettings.created_at,
     updatedAt: dbSettings.updated_at,
   };

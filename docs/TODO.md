@@ -24,7 +24,7 @@
 
 - [x] **Settings:** Fix `transactionSortPreference` - Domain type is strict union `'date' | 'created_at'` but Zod schema validates as generic `z.string()` with type cast in transformer
 - Why: Loses runtime validation for specific enum values
-- Status: **COMPLETED** - Zod schema now uses `z.enum(['date', 'created_at'])` with rejection test
+- Status: **S-TIER COMPLETE** — Single source of truth (`TRANSACTION_SORT_MODES` in `domain/settings.ts`), Zod enum derived from constant, transformer uses safe O(1) map with fallback (no `as` cast), Postgres CHECK constraint already enforced
 
 
 ### 9. Legacy create_transfer NUMERIC Signatures

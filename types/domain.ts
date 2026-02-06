@@ -178,18 +178,19 @@ export interface Currency {
 // USER SETTINGS TYPES (Frontend camelCase)
 // ============================================================================
 
+// TransactionSortMode — derived from the canonical constant in @/domain/settings
+import type { TransactionSortMode } from '@/domain/settings';
+export type { TransactionSortMode };
+
 export interface UserSettings {
   userId: string;
   mainCurrency: string | null;
   startOfWeek: number | null;
   theme: string | null;
-  transactionSortPreference: 'date' | 'created_at';
+  transactionSortPreference: TransactionSortMode;
   createdAt: string;
   updatedAt: string;
 }
-
-// Transaction sort mode type alias
-export type TransactionSortMode = 'date' | 'created_at';
 
 // ============================================================================
 // TYPE ALIASES (For backward compatibility)
