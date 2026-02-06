@@ -25,16 +25,6 @@
 - [ ] **Settings:** Fix `transactionSortPreference` - Domain type is strict union `'date' | 'created_at'` but Zod schema validates as generic `z.string()` with type cast in transformer
 - Why: Loses runtime validation for specific enum values
 
-### 8. Account groupId Nullability Mismatch
-> **Build Blocker:** TypeScript error in `lib/data/data-transformers.ts:319`
-
-- [ ] **Fix:** `Account.groupId` is typed as `string` but `DbAccountViewRow.group_id` from Supabase is `string | null`
-- **Error:** `Type 'string | null' is not assignable to type 'string'`
-- **Options:**
-  1. Make `Account.groupId` nullable in `types/domain.ts` (`groupId: string | null`)
-  2. Provide default fallback in transformer (`dbRow.group_id ?? dbRow.id`)
-- **Impact:** Build passes locally but Next.js strict type checking may fail on Vercel
-- Why: DB schema allows NULL for `group_id` but domain type doesn't reflect this
 
 ### 9. Legacy create_transfer NUMERIC Signatures
 > **Technical Debt:** Old RPC signatures violate ADR 001 (Floating-Point Rejection)
