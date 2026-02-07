@@ -315,7 +315,7 @@ $$;
 ALTER FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_name" "text", "p_color" "text", "p_type" "public"."account_type", "p_currencies" "text"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") RETURNS json
+CREATE OR REPLACE FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount_cents" bigint, "p_amount_received_cents" bigint, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid" DEFAULT NULL) RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -328,14 +328,12 @@ BEGIN
   v_transfer_id := gen_random_uuid();
 
   -- Create Outbound Transaction (Source)
-  -- SACRED LEDGER FIX: Remove currency_original from INSERT
-  -- The enforce_sacred_ledger_currency trigger will derive it from p_from_account_id
+  -- SACRED LEDGER: Currency derived from account via trigger
   INSERT INTO transactions (
     user_id,
     account_id,
     category_id,
     amount_original,
-    -- currency_original REMOVED - trigger enforces from account
     description,
     notes,
     date,
@@ -345,8 +343,7 @@ BEGIN
     p_user_id,
     p_from_account_id,
     p_category_id,
-    -p_amount, -- Negative for leaving
-    -- p_from_currency REMOVED
+    -p_amount_cents,  -- Negative for outgoing, INTEGER cents
     p_description,
     'Transfer Out',
     p_date,
@@ -355,14 +352,12 @@ BEGIN
   ) RETURNING id INTO v_transaction_from_id;
 
   -- Create Inbound Transaction (Destination)
-  -- SACRED LEDGER FIX: Remove currency_original from INSERT
-  -- The enforce_sacred_ledger_currency trigger will derive it from p_to_account_id
+  -- SACRED LEDGER: Currency derived from account via trigger
   INSERT INTO transactions (
     user_id,
     account_id,
     category_id,
     amount_original,
-    -- currency_original REMOVED - trigger enforces from account
     description,
     notes,
     date,
@@ -372,10 +367,9 @@ BEGIN
     p_user_id,
     p_to_account_id,
     p_category_id,
-    p_amount_received, -- Positive for entering
-    -- p_to_currency REMOVED
+    p_amount_received_cents,  -- Positive for incoming, INTEGER cents
     p_description,
-    'Transfer In: ' || p_exchange_rate::text,
+    'Transfer In: ' || p_exchange_rate::TEXT,
     p_date,
     v_transfer_id,
     1.0
@@ -390,85 +384,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount_cents" bigint, "p_amount_received_cents" bigint, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") OWNER TO "postgres";
 
 
-COMMENT ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") IS 'SACRED LEDGER: Creates a transfer between two accounts with linked transactions. Currency is automatically derived from each account via trigger, ensuring correctness.';
-
-
-
-CREATE OR REPLACE FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") RETURNS json
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  v_transfer_id uuid;
-  v_transaction_from_id uuid;
-  v_transaction_to_id uuid;
-BEGIN
-  -- Generate a transfer ID to link the transactions
-  v_transfer_id := gen_random_uuid();
-
-  -- Create Outbound Transaction (Source)
-  INSERT INTO transactions (
-    user_id,
-    account_id,
-    category_id,
-    amount_original,
-    currency_original,
-    description,
-    notes,
-    date,
-    transfer_id,
-    exchange_rate
-  ) VALUES (
-    p_user_id,
-    p_from_account_id,
-    p_category_id,
-    -p_amount, -- Negative for leaving
-    p_from_currency,
-    p_description,
-    'Transfer Out',
-    p_date,
-    v_transfer_id,
-    1.0
-  ) RETURNING id INTO v_transaction_from_id;
-
-  -- Create Inbound Transaction (Destination)
-  INSERT INTO transactions (
-    user_id,
-    account_id,
-    category_id,
-    amount_original,
-    currency_original,
-    description,
-    notes,
-    date,
-    transfer_id,
-    exchange_rate
-  ) VALUES (
-    p_user_id,
-    p_to_account_id,
-    p_category_id,
-    p_amount_received, -- Positive for entering
-    p_to_currency,
-    p_description,
-    'Transfer In: ' || p_exchange_rate::text,
-    p_date,
-    v_transfer_id,
-    1.0
-  ) RETURNING id INTO v_transaction_to_id;
-
-  RETURN json_build_object(
-    'transfer_id', v_transfer_id,
-    'from_transaction_id', v_transaction_from_id,
-    'to_transaction_id', v_transaction_to_id
-  );
-END;
-$$;
-
-
-ALTER FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") OWNER TO "postgres";
+COMMENT ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount_cents" bigint, "p_amount_received_cents" bigint, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") IS 'S-TIER: Creates a transfer between two accounts using INTEGER CENTS (ADR 001 compliant). Currency is automatically derived from each account via trigger.';
 
 
 CREATE OR REPLACE FUNCTION "public"."delete_transfer"("p_user_id" "uuid", "p_transfer_id" "uuid") RETURNS "void"
@@ -1780,15 +1699,9 @@ GRANT ALL ON FUNCTION "public"."create_account_group"("p_user_id" "uuid", "p_nam
 
 
 
-GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount" numeric, "p_from_currency" "text", "p_to_currency" "text", "p_amount_received" numeric, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount_cents" bigint, "p_amount_received_cents" bigint, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount_cents" bigint, "p_amount_received_cents" bigint, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_transfer"("p_user_id" "uuid", "p_from_account_id" "uuid", "p_to_account_id" "uuid", "p_amount_cents" bigint, "p_amount_received_cents" bigint, "p_exchange_rate" numeric, "p_date" timestamp with time zone, "p_description" "text", "p_category_id" "uuid") TO "service_role";
 
 
 
