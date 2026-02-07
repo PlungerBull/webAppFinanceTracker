@@ -13,6 +13,7 @@
 - Delta sync engine production readiness
 
 **Recently Completed:**
+- Repository bloat audit — validated Strategy Pattern, no base class needed (see MANIFESTO.md Section 8)
 - Ghost Prop Audit (S-Tier Continuous Constraint System)
 - Volatility Engine for query caching
 - Optimistic updates for categories
@@ -91,7 +92,9 @@ features/[domain]/
 | Validation Schemas | `lib/data/db-row-schemas.ts` | Zod schemas at network boundary |
 | Data Patterns | `lib/data-patterns/types.ts` | DataResult<T>, PaginatedResult |
 | Error Classes | `lib/errors/domain-error.ts` | DomainError base class |
-| Transformers | `lib/data/data-transformers.ts` | snake_case ↔ camelCase |
+| Transformers | `lib/data/data-transformers.ts` | snake_case ↔ camelCase (Supabase) |
+| Local Transformers | `lib/data/local-data-transformers.ts` | WatermelonDB model → domain entity |
+| Repository Pattern | `features/*/repository/` | Strategy Pattern (MANIFESTO Section 8) |
 
 ---
 
@@ -103,6 +106,16 @@ UI → React Query Hook → Service Layer → Repository → Database
          ↓                    ↓              ↓
     Optimistic Updates   Business Logic   DECIMAL ↔ INT conversion
 ```
+
+### Repository Strategy Pattern
+```
+Interface (ICategoryRepository)  ←  Single contract
+    ├── LocalCategoryRepository      ←  WatermelonDB (offline reads/writes)
+    ├── SupabaseCategoryRepository   ←  PostgREST (remote persistence)
+    └── HybridCategoryRepository     ←  Mediator (local-first + remote fallback)
+        └── createHybridCategoryRepository()  ←  Factory with graceful degradation
+```
+Same pattern for: Categories, Transactions, Inbox, Accounts. Local and Supabase implementations share zero business logic divergence — differences are purely storage API. Both produce identical domain entities via shared transformers. **Do NOT propose a base class** — evaluated and rejected (see MANIFESTO.md Section 8).
 
 ### Critical Rules
 
@@ -159,4 +172,4 @@ supabase gen types typescript --db-url "postgresql://postgres.iiatzixujzgoejtcir
 
 ---
 
-*Last updated: 2026-02-01 | SYNC-01 Complete*
+*Last updated: 2026-02-05 | Repository bloat audit complete*

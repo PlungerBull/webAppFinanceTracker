@@ -240,7 +240,61 @@ See `docs/NATIVE_PORTING_GUIDE.md` for the canonical property inventory and Swif
 
 ---
 
-## 8. Test Co-location Convention
+## 8. Repository Strategy Pattern
+
+**Status: ASSESSED & VALIDATED (2026-02-05)**
+
+Each feature's `repository/` layer uses a **four-layer Strategy Pattern** to support offline-first operation without duplicating business logic.
+
+### Architecture
+
+```
+features/[domain]/repository/
+├── *-repository.interface.ts      # Unified contract (ICategoryRepository, etc.)
+├── local-*-repository.ts          # WatermelonDB implementation
+├── supabase-*-repository.ts       # PostgREST implementation
+├── hybrid-*-repository.ts         # Mediator (local-first reads, sync-aware writes)
+└── index.ts                       # Factory (createHybrid*Repository)
+```
+
+### The Four Layers
+
+| Layer | Role | Example |
+|-------|------|---------|
+| **Interface** | Single contract both implementations conform to | `ICategoryRepository` |
+| **Local Implementation** | WatermelonDB Q API for offline reads/writes | `LocalCategoryRepository` |
+| **Supabase Implementation** | PostgREST API for remote persistence | `SupabaseCategoryRepository` |
+| **Hybrid Mediator** | Delegates to local-first with remote fallback | `HybridCategoryRepository` |
+
+### Why No Base Class
+
+The Local and Supabase implementations **diverge only at the storage API level** — there is zero divergent business logic. Both produce identical domain entities via shared transformers (`lib/data/data-transformers.ts`, `lib/data/local-data-transformers.ts`).
+
+A `BaseRepository<T>` was evaluated (2026-02-05 bloat audit) and rejected because:
+1. **Incompatible query APIs** — WatermelonDB `Q.where()` vs Supabase `.eq()` cannot share a common builder
+2. **Negligible savings** — Each method averages 7-15 lines; the shareable portion (DataResult wrapping) is ~2 lines
+3. **iOS port risk** — A generic `BaseRepository<T, TRow, TCreate, TUpdate>` would complicate Swift protocol mapping
+4. **Cross-cutting dependency** — A base in `@/lib` would violate folder-by-feature ownership (Section 5)
+
+### Factory Pattern & Graceful Degradation
+
+```typescript
+// Normal: Hybrid (local-first + remote sync)
+// Fallback: Supabase-only (when WatermelonDB unavailable, e.g., SSR)
+createHybridCategoryRepository(supabase, watermelonDb)
+```
+
+### Shared Deduplication Points
+
+| Utility | Location | Purpose |
+|---------|----------|---------|
+| Data Transformers | `lib/data/data-transformers.ts` | DB row → domain entity (Supabase) |
+| Local Transformers | `lib/data/local-data-transformers.ts` | WatermelonDB model → domain entity |
+| Sync Utilities | Feature-local | `activeTombstoneFilter()`, `pendingSyncFilter()` |
+
+---
+
+## 9. Test Co-location Convention
 
 **Rule:** Tests live in `__tests__/` subdirectories adjacent to source code.
 
@@ -299,6 +353,8 @@ Import via: `import { createMockSupabase, createMockAuthProvider } from '@/lib/_
 | Validation Schemas | `lib/data/db-row-schemas.ts` |
 | Error Classes | `lib/errors/domain-error.ts` |
 | Native Porting Guide | `docs/NATIVE_PORTING_GUIDE.md` |
+| Repository Interfaces | `features/*/repository/*-repository.interface.ts` |
+| Data Transformers | `lib/data/data-transformers.ts`, `lib/data/local-data-transformers.ts` |
 | Test Helpers | `lib/__tests__/helpers/` |
 
 ---
@@ -308,3 +364,4 @@ Import via: `import { createMockSupabase, createMockAuthProvider } from '@/lib/_
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-31 | Initial creation from ARCHITECTURE.md extraction | Infrastructure Reset |
+| 2026-02-05 | Add Section 8: Repository Strategy Pattern (bloat audit validation) | Bloat Audit |

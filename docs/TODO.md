@@ -17,19 +17,6 @@
 
 ---
 
-## Code Consistency Issues
-
-### 9. Legacy create_transfer NUMERIC Signatures
-> **Technical Debt:** Old RPC signatures violate ADR 001 (Floating-Point Rejection)
-
-- [ ] **Drop:** Legacy `create_transfer` overloads that use NUMERIC (dollars) instead of BIGINT (cents)
-- **Location:** Two overloads in `current_live_snapshot.sql` lines 611-689 and 693+
-- **Blocked By:** Verify S-Tier BIGINT overload works in production first
-- **Migration:** Create `drop_legacy_create_transfer_numeric.sql` after validation period
-- Why: Maintains type symmetry and ADR 001 compliance (Sacred Integer Arithmetic)
-
----
-
 ## Known Bugs & Edge Cases
 
 - [ ] **Main Currency Fix:** Resolve the bug where changing the "Main Currency" breaks existing balance calculations
@@ -42,23 +29,8 @@
 
 > **Context:** Full codebase audit of 375 TS/TSX source files (541 total, 64k lines). Overall the codebase is moderately lean with clean architecture, but these specific areas need attention.
 
-### Quick Wins (< 30 min)
-- [x] ~~**Gitignore `.next/` build output:**~~ Already gitignored and not tracked. No action needed.
-- [x] **Delete duplicate SQL snapshot:** Root-level `current_live_snapshot.sql` deleted (was 3,005-line duplicate of `supabase/` copy)
-- [x] ~~**Delete dead `cents-parser.ts`:**~~ FALSE — has 4 active imports (inbox-detail-panel, transaction-detail-panel, bulk-action-bar, use-transfer-calculation)
-- [x] **Delete deprecated settings re-export shims:** Deleted `reconciliation-form-modal.tsx` and `reconciliation-settings.tsx` from `features/settings/components/`
-- [x] **Remove deprecated type aliases:** Removed `IGroupingOperations`, `GroupingErrorCode`, `GroupingOperationError`, `isGroupingOperationError` from `domain/categories.ts` and `domain/index.ts`
-- [x] ~~**Remove unused Babel devDependencies:**~~ FALSE — actively required by `babel.config.js` for WatermelonDB decorator support
-- [x] **Run `npm prune`:** Removed 5 extraneous WASM packages (`@emnapi/core`, `@emnapi/runtime`, `@emnapi/wasi-threads`, `@napi-rs/wasm-runtime`, `@tybys/wasm-util`)
-
-### Medium Effort (1-2 hours)
-- [x] **Consolidate currency conversion utils:** Deleted duplicate `toCents()`/`fromCents()` from `lib/utils/balance-logic.ts` (naive `Math.round` — IEEE 754 footgun). Repointed 2 imports to `lib/utils/cents-conversion.ts` (string-based parser, single source of truth per Manifesto §2)
-- [x] **Clean deprecated data-transformers:** Deleted 3 commented-out functions in `lib/data/data-transformers.ts` for removed `account_currencies` table (zero imports)
-- [x] ~~**Remove `.gitkeep` stubs:**~~ INVALID — All 15 `.gitkeep` files are in empty `__tests__/` directories (intentional scaffolding per Manifesto §8). Directories with actual tests don't have `.gitkeep`. No action needed.
-- [x] ~~**Consolidate Sentry configs:**~~ INVALID — 3 separate files are **required** by `@sentry/nextjs` SDK for 3 different runtimes (Node.js server, browser, Edge). `instrumentation.ts` conditionally imports by `NEXT_RUNTIME`. Not consolidatable.
 
 ### Large Effort (Future Sprint)
-- [ ] **Abstract shared repository base:** Local-vs-Supabase repository pattern duplicates ~3,500 lines of near-identical CRUD across categories (2,098 lines), transactions (1,736 lines), inbox (1,289 lines), and accounts (~1,000 lines)
 - [ ] **Standardize modal component pattern:** 3 different modal approaches coexist (`FormModal`, `EntityModal`, `DashboardModal`) - pick one pattern
 - [ ] **Address 22 TODO comments:** Concentrated in transaction/inbox repositories (exchange rate handling, batch RPC optimization, delta sync)
 
