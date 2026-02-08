@@ -7,6 +7,7 @@
  * @module inbox-errors
  */
 
+import { INBOX_ERROR_CODES } from './constants';
 import type { InboxError } from './types';
 
 /**
@@ -83,4 +84,55 @@ export class VersionConflictError extends InboxDomainError {
     );
     this.name = 'VersionConflictError';
   }
+}
+
+// ============================================================================
+// TYPE GUARDS — instanceof (pre-serialization)
+// ============================================================================
+
+export function isInboxNotFoundError(error: unknown): error is InboxNotFoundError {
+  return error instanceof InboxNotFoundError;
+}
+
+export function isInboxValidationError(error: unknown): error is InboxValidationError {
+  return error instanceof InboxValidationError;
+}
+
+export function isInboxRepositoryError(error: unknown): error is InboxRepositoryError {
+  return error instanceof InboxRepositoryError;
+}
+
+export function isInboxPromotionError(error: unknown): error is InboxPromotionError {
+  return error instanceof InboxPromotionError;
+}
+
+export function isInboxAlreadyProcessedError(error: unknown): error is InboxAlreadyProcessedError {
+  return error instanceof InboxAlreadyProcessedError;
+}
+
+export function isVersionConflictError(error: unknown): error is VersionConflictError {
+  return error instanceof VersionConflictError;
+}
+
+// ============================================================================
+// TYPE GUARDS — code-based (post-serialization / DataResult)
+// ============================================================================
+
+/**
+ * Check if a serialized InboxError has a specific error code.
+ * Use this in hooks/UI where errors are serialized InboxError interfaces
+ * (not class instances — instanceof won't work across the serialization boundary).
+ */
+export function hasInboxErrorCode(
+  error: InboxError | null | undefined,
+  code: InboxError['code']
+): boolean {
+  return error?.code === code;
+}
+
+/**
+ * Convenience: check if a serialized InboxError is a version conflict.
+ */
+export function isVersionConflictCode(error: InboxError | null | undefined): boolean {
+  return hasInboxErrorCode(error, INBOX_ERROR_CODES.VERSION_CONFLICT);
 }

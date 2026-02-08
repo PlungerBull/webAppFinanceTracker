@@ -1,13 +1,5 @@
 # Project Roadmap & Tasks
 
-## Reliability & Go-Live Readiness
-
-- [x] **Import Optimization:** Fix timeouts on large Excel/CSV imports — chunked import (500-row batches) with progress bar and CSV support
-- [x] **Transaction View Latency:** Optimize `transactions_view` in Supabase to handle larger datasets more efficiently
-- [x] **OCC Ghost-Version Fix:** Parsed real server version from PostgreSQL error (was hardcoded -1), added auto-retry on version conflict during inbox promotion
-
----
-
 ## Sync Hardening Backlog (Post S-Tier Sprint)
 
 > **Context:** During the S-Tier Sync Infrastructure Hardening sprint (2026-02-02), these items were identified but intentionally deferred to maintain focus on core sync reliability.

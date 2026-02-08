@@ -26,6 +26,9 @@ export type {
 export type { InboxItemEntity, InboxItemViewEntity } from '@/domain/inbox';
 export { isPromotionReady } from '@/domain/inbox';
 
+// Domain Constants
+export { INBOX_ERROR_CODES, PROMOTE_MAX_RETRIES, PROMOTE_RETRY_JITTER } from './domain/constants';
+
 // Domain Errors
 export {
   InboxDomainError,
@@ -35,6 +38,16 @@ export {
   InboxPromotionError,
   InboxAlreadyProcessedError,
   VersionConflictError, // Required for sync conflict resolution (CTO Mandate)
+  // Type Guards — instanceof (pre-serialization)
+  isInboxNotFoundError,
+  isInboxValidationError,
+  isInboxRepositoryError,
+  isInboxPromotionError,
+  isInboxAlreadyProcessedError,
+  isVersionConflictError,
+  // Type Guards — code-based (post-serialization / DataResult)
+  hasInboxErrorCode,
+  isVersionConflictCode,
 } from './domain/errors';
 
 // Repository (for testing/DI)

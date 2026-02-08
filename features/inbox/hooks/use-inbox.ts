@@ -10,6 +10,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getInboxService } from '../services/inbox-service';
 import { INBOX, PAGINATION, createQueryOptions } from '@/lib/constants';
+import { INBOX_ERROR_CODES, PROMOTE_MAX_RETRIES, PROMOTE_RETRY_JITTER } from '../domain/constants';
 import type {
   CreateInboxItemDTO,
   UpdateInboxItemDTO,
@@ -136,28 +137,35 @@ export function usePromoteInboxItem() {
         // If fetch fails, proceed with original — the RPC trigger will enforce correctness
       }
 
-      const result = await inboxService.promote(dto);
+      // Promote with bounded retry on version conflict (OCC)
+      // Max PROMOTE_MAX_RETRIES attempts with jittered backoff to break collision locks
+      let lastResult = await inboxService.promote(dto);
 
-      // Auto-retry once on version conflict: fetch fresh version from Supabase, re-attempt
-      if (!result.success && result.error?.name === 'VersionConflictError') {
-        const freshResult = await inboxService.getById(dto.inboxId);
-        if (freshResult.success && freshResult.data.version > 0) {
-          const retryResult = await inboxService.promote({
-            ...dto,
-            lastKnownVersion: freshResult.data.version,
-          });
-          if (retryResult.success) {
-            return retryResult.data;
-          }
-          throw new Error(retryResult.error.message);
+      for (let attempt = 1; attempt <= PROMOTE_MAX_RETRIES; attempt++) {
+        if (lastResult.success || lastResult.error?.code !== INBOX_ERROR_CODES.VERSION_CONFLICT) {
+          break;
         }
+
+        // Jittered backoff to break collision lock between competing clients
+        const jitter = PROMOTE_RETRY_JITTER.min +
+          Math.random() * (PROMOTE_RETRY_JITTER.max - PROMOTE_RETRY_JITTER.min);
+        await new Promise((resolve) => setTimeout(resolve, jitter));
+
+        // Fetch fresh version from server
+        const freshResult = await inboxService.getById(dto.inboxId);
+        if (!freshResult.success || freshResult.data.version <= 0) {
+          break; // Can't resolve — fall through to error handler
+        }
+
+        dto = { ...dto, lastKnownVersion: freshResult.data.version };
+        lastResult = await inboxService.promote(dto);
       }
 
-      if (!result.success) {
-        throw new Error(result.error.message);
+      if (!lastResult.success) {
+        throw new Error(lastResult.error.message);
       }
 
-      return result.data;
+      return lastResult.data;
     },
     onMutate: async (params) => {
       // Extract inbox ID from params
