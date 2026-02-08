@@ -18,7 +18,7 @@ export const SETTINGS = {
   DESCRIPTIONS: {
     ACCOUNT: 'Update your personal information and security settings.',
     DATA: 'Manage your financial data. Import from Excel, export for backup, or reset your account.',
-    IMPORT: 'Import transactions from an Excel file (.xlsx, .xls).',
+    IMPORT: 'Import transactions from an Excel or CSV file (.xlsx, .xls, .csv).',
     EXPORT: 'Download a backup of all your transactions in Excel format.',
     CLEAR_DATA: 'Permanently delete all your transactions, accounts, and categories.',
     CLEAR_DATA_CONFIRM: 'This action cannot be undone. This will permanently delete all your transactions, bank accounts, categories, and currencies from our servers.',
@@ -60,9 +60,11 @@ export const SETTINGS = {
       CLEAR_FAILED: 'Failed to clear data. Please try again.',
       IMPORT_ERRORS: (success: number, failed: number, errors: string[]) =>
         `Imported ${success} records. Failed: ${failed}. Errors: ${errors.slice(0, 3).join(', ')}...`,
+      IMPORT_ABORTED: (success: number, failed: number) =>
+        `Import aborted due to network error. ${success} rows were saved, ${failed} failed. You can re-upload the file; duplicates will be skipped.`,
     },
     FILE_STRUCTURE_INTRO: (fileTypes: string) =>
-      `Please ensure your Excel file (${fileTypes}) matches the following structure:`,
+      `Please ensure your file (${fileTypes}) matches the following structure:`,
   },
   TIMEOUTS: {
     SUCCESS_MESSAGE: 2000,

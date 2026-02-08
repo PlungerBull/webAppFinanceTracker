@@ -470,12 +470,14 @@ export class SupabaseInboxRepository implements IInboxRepository {
       if (error) {
         // Check for custom version conflict code (P0001) or message
         if (error.code === 'P0001' || error.message.includes('Version conflict')) {
-          // We don't have the actual version here easily without a separate fetch, 
-          // so we pass -1 as actual. The UI should refresh regardless.
+          // Parse actual server version from PostgreSQL error:
+          // "Version conflict: Expected version X, but found Y."
+          const versionMatch = error.message.match(/but found (\d+)/);
+          const actualVersion = versionMatch ? parseInt(versionMatch[1], 10) : -1;
           return {
             success: false,
             data: null,
-            error: new VersionConflictError(data.inboxId, data.lastKnownVersion ?? -1, -1)
+            error: new VersionConflictError(data.inboxId, data.lastKnownVersion ?? -1, actualVersion)
           };
         }
 

@@ -5,7 +5,14 @@
 export const IMPORT_EXPORT = {
   REQUIRED_COLUMNS: ['Date', 'Amount', 'Account', 'Description', 'Category', 'Currency'],
   OPTIONAL_COLUMNS: ['Exchange Rate', 'Notes'],
-  FILE_TYPES: ['.xlsx', '.xls'],
+  FILE_TYPES: ['.xlsx', '.xls', '.csv'],
+
+  /**
+   * Chunked import configuration
+   */
+  CHUNK: {
+    SIZE: 500,
+  },
 
   /**
    * Excel date conversion constants
@@ -15,6 +22,18 @@ export const IMPORT_EXPORT = {
     DATE_ADJUSTMENT: 2, // Excel date adjustment for leap year bug
     SECONDS_PER_DAY: 86400, // Seconds in a day
     MS_MULTIPLIER: 1000, // Milliseconds conversion
+  },
+
+  /**
+   * Progress messages for chunked import
+   */
+  PROGRESS: {
+    CHUNK_LABEL: (current: number, total: number) =>
+      `Uploading chunk ${current} of ${total}...`,
+    ROWS_PROCESSED: (processed: number, total: number) =>
+      `${processed} of ${total} rows processed`,
+    COMPLETE: 'Import complete',
+    IMPORTING: 'Importing...',
   },
 
   /**
@@ -31,6 +50,10 @@ export const IMPORT_EXPORT = {
     RPC_CALL_FAILED: (message: string) => `RPC call failed: ${message}`,
     FILE_PROCESSING_ERROR: (error: string) => `File processing error: ${error}`,
     UNKNOWN_ERROR: 'Unknown error',
+    CHUNK_NETWORK_ERROR: (chunkIndex: number, totalChunks: number, message: string) =>
+      `Network error on chunk ${chunkIndex}/${totalChunks}: ${message}`,
+    IMPORT_ABORTED_PARTIAL: (successSoFar: number, totalRows: number) =>
+      `Import aborted after ${successSoFar}/${totalRows} rows. Previously saved chunks are committed. You can re-upload the file; our system will skip duplicates.`,
   },
 
   /**

@@ -138,6 +138,21 @@ export function usePromoteInboxItem() {
 
       const result = await inboxService.promote(dto);
 
+      // Auto-retry once on version conflict: fetch fresh version from Supabase, re-attempt
+      if (!result.success && result.error?.name === 'VersionConflictError') {
+        const freshResult = await inboxService.getById(dto.inboxId);
+        if (freshResult.success && freshResult.data.version > 0) {
+          const retryResult = await inboxService.promote({
+            ...dto,
+            lastKnownVersion: freshResult.data.version,
+          });
+          if (retryResult.success) {
+            return retryResult.data;
+          }
+          throw new Error(retryResult.error.message);
+        }
+      }
+
       if (!result.success) {
         throw new Error(result.error.message);
       }

@@ -20,11 +20,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { IMPORT_EXPORT, SETTINGS, QUERY_KEYS } from '@/lib/constants';
 import { useClearUserData } from '../hooks/use-user-settings';
+import type { ImportProgress } from '@/features/import-export/services/data-import-service';
 
 export function DataManagement() {
   const router = useRouter();
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const queryClient = useQueryClient();
   const clearUserDataMutation = useClearUserData();
 
@@ -83,8 +86,9 @@ export function DataManagement() {
                         <div className="relative">
                             <input
                                 type="file"
-                                accept=".xlsx, .xls"
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                accept=".xlsx, .xls, .csv"
+                                disabled={isImporting}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                                 onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
@@ -92,9 +96,14 @@ export function DataManagement() {
                                     try {
                                         setImportSuccess(null);
                                         setImportError(null);
+                                        setImportProgress(null);
+                                        setIsImporting(true);
+
                                         const { DataImportService } = await import('@/features/import-export/services/data-import-service');
                                         const service = new DataImportService(supabase, authProvider);
-                                        const result = await service.importFromExcel(file);
+                                        const result = await service.importFromFile(file, {
+                                            onProgress: (progress) => setImportProgress(progress),
+                                        });
 
                                         if (result.failed > 0) {
                                             setImportError(SETTINGS.MESSAGES.ERROR.IMPORT_ERRORS(result.success, result.failed, result.errors));
@@ -112,14 +121,46 @@ export function DataManagement() {
                                     } catch (err) {
                                         setImportError(err instanceof Error ? err.message : SETTINGS.MESSAGES.ERROR.IMPORT_FAILED);
                                         e.target.value = '';
+                                    } finally {
+                                        setIsImporting(false);
+                                        setImportProgress(null);
                                     }
                                 }}
                             />
-                            <Button variant="secondary" size="sm">
-                                {SETTINGS.BUTTONS.SELECT_FILE}
+                            <Button variant="secondary" size="sm" disabled={isImporting}>
+                                {isImporting ? IMPORT_EXPORT.PROGRESS.IMPORTING : SETTINGS.BUTTONS.SELECT_FILE}
                             </Button>
                         </div>
                     </div>
+
+                    {/* Chunked Import Progress Bar */}
+                    {importProgress && (
+                        <div className="space-y-2 p-4 rounded-lg border border-blue-200 dark:border-blue-900/30 bg-white dark:bg-blue-900/10">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="font-medium text-blue-700 dark:text-blue-400">
+                                    {IMPORT_EXPORT.PROGRESS.CHUNK_LABEL(
+                                        importProgress.currentChunk,
+                                        importProgress.totalChunks
+                                    )}
+                                </span>
+                                <span className="text-blue-600 dark:text-blue-500">
+                                    {IMPORT_EXPORT.PROGRESS.ROWS_PROCESSED(
+                                        importProgress.successSoFar + importProgress.failedSoFar,
+                                        importProgress.totalRows
+                                    )}
+                                </span>
+                            </div>
+                            <div className="h-2 w-full rounded-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-blue-600 transition-all duration-300 ease-out"
+                                    style={{
+                                        width: `${Math.round(((importProgress.successSoFar + importProgress.failedSoFar) / importProgress.totalRows) * 100)}%`,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     {importError && (
                         <div className="text-sm text-red-600 bg-white border border-red-200 p-2 rounded">{importError}</div>
                     )}

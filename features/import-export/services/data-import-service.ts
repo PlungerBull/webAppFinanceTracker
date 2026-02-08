@@ -4,12 +4,35 @@ import type { IAuthProvider } from '@/lib/auth/auth-provider.interface';
 import { ACCOUNT, CATEGORY, IMPORT_EXPORT } from '@/lib/constants';
 import { validateOrThrow } from '@/lib/data/validate';
 import { ImportResultRpcSchema } from '@/lib/data/db-row-schemas';
+import { chunkArray } from '@/lib/utils/array-utils';
 
 export interface ImportResult {
     total: number;
     success: number;
     failed: number;
     errors: string[];
+}
+
+/** Progress state passed to the onProgress callback */
+export interface ImportProgress {
+    /** 1-based index of the chunk currently being uploaded */
+    currentChunk: number;
+    /** Total number of chunks */
+    totalChunks: number;
+    /** Cumulative success count so far */
+    successSoFar: number;
+    /** Cumulative failed count so far */
+    failedSoFar: number;
+    /** Total rows being imported */
+    totalRows: number;
+}
+
+/** Options for the import method */
+export interface ImportOptions {
+    /** Called after each chunk completes. Receives cumulative progress. */
+    onProgress?: (progress: ImportProgress) => void;
+    /** Number of rows per chunk. Defaults to IMPORT_EXPORT.CHUNK.SIZE (500). */
+    chunkSize?: number;
 }
 
 interface ImportRow {
@@ -29,7 +52,7 @@ export class DataImportService {
         private readonly authProvider: IAuthProvider
     ) {}
 
-    async importFromExcel(file: File): Promise<ImportResult> {
+    async importFromFile(file: File, options?: ImportOptions): Promise<ImportResult> {
         const result: ImportResult = {
             total: 0,
             success: 0,
@@ -88,29 +111,57 @@ export class DataImportService {
 
             const userId = await this.authProvider.getCurrentUserId();
 
-            // Call RPC
-            const { data, error } = await this.supabase.rpc(IMPORT_EXPORT.RPC.IMPORT_TRANSACTIONS, {
-                [IMPORT_EXPORT.RPC.PARAMS.USER_ID]: userId,
-                [IMPORT_EXPORT.RPC.PARAMS.TRANSACTIONS]: processedRows,
-                [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_ACCOUNT_COLOR]: ACCOUNT.DEFAULT_COLOR,
-                [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_CATEGORY_COLOR]: CATEGORY.DEFAULT_COLOR,
-                p_general_label: 'General',           // NEW: i18n support for hierarchy redirection
-                p_uncategorized_label: 'Uncategorized' // NEW: i18n support for unknown categories
-            });
+            // Split into chunks and send sequentially
+            const chunkSize = options?.chunkSize ?? IMPORT_EXPORT.CHUNK.SIZE;
+            const chunks = chunkArray(processedRows, chunkSize);
 
-            if (error) throw new Error(IMPORT_EXPORT.ERRORS.RPC_CALL_FAILED(error.message));
+            for (let i = 0; i < chunks.length; i++) {
+                const { data, error } = await this.supabase.rpc(IMPORT_EXPORT.RPC.IMPORT_TRANSACTIONS, {
+                    [IMPORT_EXPORT.RPC.PARAMS.USER_ID]: userId,
+                    [IMPORT_EXPORT.RPC.PARAMS.TRANSACTIONS]: chunks[i],
+                    [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_ACCOUNT_COLOR]: ACCOUNT.DEFAULT_COLOR,
+                    [IMPORT_EXPORT.RPC.PARAMS.DEFAULT_CATEGORY_COLOR]: CATEGORY.DEFAULT_COLOR,
+                    p_general_label: 'General',
+                    p_uncategorized_label: 'Uncategorized'
+                });
 
-            // Validate and parse RPC result at the network boundary
-            const rpcResult = validateOrThrow(ImportResultRpcSchema, data, 'ImportResultRpc');
+                if (error) {
+                    // Network/RPC-level failure: stop sending further chunks
+                    result.errors.push(
+                        IMPORT_EXPORT.ERRORS.CHUNK_NETWORK_ERROR(i + 1, chunks.length, error.message)
+                    );
+                    result.errors.push(
+                        IMPORT_EXPORT.ERRORS.IMPORT_ABORTED_PARTIAL(result.success, result.total)
+                    );
+                    break;
+                }
 
-            result.success = rpcResult.success;
-            result.failed = rpcResult.failed;
-            result.errors = rpcResult.errors;
+                // Validate and parse RPC result at the network boundary
+                const rpcResult = validateOrThrow(ImportResultRpcSchema, data, 'ImportResultRpc');
+
+                result.success += rpcResult.success;
+                result.failed += rpcResult.failed;
+                result.errors.push(...rpcResult.errors);
+
+                // Notify caller of progress
+                options?.onProgress?.({
+                    currentChunk: i + 1,
+                    totalChunks: chunks.length,
+                    successSoFar: result.success,
+                    failedSoFar: result.failed,
+                    totalRows: result.total,
+                });
+            }
 
         } catch (error) {
             result.errors.push(IMPORT_EXPORT.ERRORS.FILE_PROCESSING_ERROR(error instanceof Error ? error.message : IMPORT_EXPORT.ERRORS.UNKNOWN_ERROR));
         }
 
         return result;
+    }
+
+    /** @deprecated Use importFromFile. Kept for backward compatibility. */
+    async importFromExcel(file: File, options?: ImportOptions): Promise<ImportResult> {
+        return this.importFromFile(file, options);
     }
 }

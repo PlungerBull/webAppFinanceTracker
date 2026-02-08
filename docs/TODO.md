@@ -2,8 +2,9 @@
 
 ## Reliability & Go-Live Readiness
 
-- [ ] **Import Optimization:** Fix timeouts on large Excel/CSV imports
+- [x] **Import Optimization:** Fix timeouts on large Excel/CSV imports — chunked import (500-row batches) with progress bar and CSV support
 - [ ] **Transaction View Latency:** Optimize `transactions_view` in Supabase to handle larger datasets more efficiently
+- [x] **OCC Ghost-Version Fix:** Parsed real server version from PostgreSQL error (was hardcoded -1), added auto-retry on version conflict during inbox promotion
 
 ---
 
