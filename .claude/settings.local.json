@@ -61,7 +61,12 @@
       "Bash(awk:*)",
       "Bash(git -C /Users/ternero/Documents/webAppFinanceTracker ls-files:*)",
       "Bash(npm prune:*)",
-      "Bash(npm why:*)"
+      "Bash(npm why:*)",
+      "Bash(git log:*)",
+      "Bash(docker info:*)",
+      "Bash(DOCKER_HOST=unix:///var/run/docker.sock docker ps:*)",
+      "Bash(pgrep:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []
