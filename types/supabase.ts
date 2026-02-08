@@ -803,6 +803,20 @@ export type Database = {
         Args: { p_expected_version: number; p_inbox_id: string }
         Returns: Json
       }
+      get_category_counts: {
+        Args: {
+          p_user_id: string
+          p_account_id?: string
+          p_start_date?: string
+          p_end_date?: string
+          p_cleared?: boolean
+          p_reconciliation_id?: string
+        }
+        Returns: {
+          category_id: string
+          count: number
+        }[]
+      }
       get_changes_since: {
         Args: {
           p_limit?: number

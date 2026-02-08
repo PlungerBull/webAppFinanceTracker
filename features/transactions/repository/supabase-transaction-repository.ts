@@ -42,6 +42,7 @@ import {
   TransactionValidationError,
 } from '../domain/errors';
 import { validateISODate } from '@/lib/utils/date-validation';
+import { toSafeIntegerOrZero } from '@/lib/utils/bigint-safety';
 import { TRANSACTION_VALIDATION, TRANSACTION_ERRORS } from '../domain/constants';
 import {
   dbTransactionViewToDomain as sharedDbTransactionViewToDomain,
@@ -251,15 +252,14 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
     filters?: TransactionFilters
   ): Promise<DataResult<CategoryCounts>> {
     try {
-      let query = this.supabase
-        .from('transactions_view')
-        .select('category_id')
-        .eq('user_id', userId);
-
-      // Apply filters (excluding category filter itself)
-      query = this.applyFilters(query, { ...filters, categoryId: undefined });
-
-      const { data, error } = await query;
+      const { data, error } = await this.supabase.rpc('get_category_counts', {
+        p_user_id: userId,
+        p_account_id: filters?.accountId,
+        p_start_date: filters?.startDate,
+        p_end_date: filters?.endDate,
+        p_cleared: filters?.cleared,
+        p_reconciliation_id: filters?.reconciliationId,
+      });
 
       if (error) {
         return {
@@ -269,11 +269,12 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
         };
       }
 
-      // Aggregate counts
+      // Transform RPC result → CategoryCounts map
+      // BIGINT safety: PostgreSQL COUNT returns BIGINT, Supabase serializes as string
       const counts: CategoryCounts = {};
-      data?.forEach((row) => {
+      (data ?? []).forEach((row: { category_id: string | null; count: number }) => {
         const categoryId = row.category_id || 'uncategorized';
-        counts[categoryId] = (counts[categoryId] || 0) + 1;
+        counts[categoryId] = toSafeIntegerOrZero(row.count);
       });
 
       return {
