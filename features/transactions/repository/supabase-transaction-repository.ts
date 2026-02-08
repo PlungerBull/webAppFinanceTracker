@@ -271,9 +271,13 @@ export class SupabaseTransactionRepository implements ITransactionRepository {
 
       // Transform RPC result → CategoryCounts map
       // BIGINT safety: PostgreSQL COUNT returns BIGINT, Supabase serializes as string
+      // Ghost Category: RPC COALESCE maps NULL → sentinel UUID '00000000-...'
+      const UNCATEGORIZED_SENTINEL = '00000000-0000-0000-0000-000000000000';
       const counts: CategoryCounts = {};
       (data ?? []).forEach((row: { category_id: string | null; count: number }) => {
-        const categoryId = row.category_id || 'uncategorized';
+        const categoryId = (!row.category_id || row.category_id === UNCATEGORIZED_SENTINEL)
+          ? 'uncategorized'
+          : row.category_id;
         counts[categoryId] = toSafeIntegerOrZero(row.count);
       });
 

@@ -805,12 +805,12 @@ export type Database = {
       }
       get_category_counts: {
         Args: {
-          p_user_id: string
           p_account_id?: string
-          p_start_date?: string
-          p_end_date?: string
           p_cleared?: boolean
+          p_end_date?: string
           p_reconciliation_id?: string
+          p_start_date?: string
+          p_user_id: string
         }
         Returns: {
           category_id: string
@@ -939,31 +939,6 @@ export type Database = {
               p_category_id: string
               p_exchange_rate?: number
               p_final_amount?: number
-              p_final_date?: string
-              p_final_description?: string
-              p_inbox_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_account_id: string
-              p_category_id: string
-              p_exchange_rate?: number
-              p_expected_version?: number
-              p_final_amount?: number
-              p_final_date?: string
-              p_final_description?: string
-              p_inbox_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_account_id: string
-              p_category_id: string
-              p_exchange_rate?: number
-              p_final_amount_cents?: number
               p_final_date?: string
               p_final_description?: string
               p_inbox_id: string
